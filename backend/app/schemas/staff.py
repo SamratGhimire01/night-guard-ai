@@ -16,15 +16,19 @@ class StaffCreate(BaseModel):
 
 
 class StaffUpdate(BaseModel):
-    """PATCH — every field optional, only fields actually sent are changed."""
+    """PATCH — a field omitted entirely is left unchanged. Both fields are NOT NULL
+    in the DB (Staff has no nullable field to clear), so an explicit null is rejected
+    with a 422 rather than reaching the DB as an IntegrityError."""
 
     name: str | None = None
     role: str | None = None
 
     @field_validator("name", "role")
     @classmethod
-    def not_blank(cls, value: str | None) -> str | None:
-        if value is not None and not value.strip():
+    def not_blank(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("This field is required and cannot be cleared to null.")
+        if not value.strip():
             raise ValueError("This field must not be blank.")
         return value
 

@@ -12,10 +12,11 @@ def get_business(db: Session, *, business_id: uuid.UUID) -> Business:
 
 def update_business(db: Session, *, business_id: uuid.UUID, payload: BusinessUpdate) -> Business:
     business = db.get(Business, business_id)
-    # exclude_none: a PATCH sending an explicit null for a required field (name,
-    # timezone) would otherwise hit the DB's NOT NULL constraint as a 500 instead
-    # of a clean no-op; nullable fields are simply cleared with "" instead of null.
-    for field, value in payload.model_dump(exclude_unset=True, exclude_none=True).items():
+    # exclude_unset: a field the client never sent is left alone. A field sent as an
+    # explicit null DOES come through (and clears a nullable column) — BusinessUpdate's
+    # validators reject an explicit null on name/timezone before this ever runs, so a
+    # NOT NULL violation can't reach the DB from here.
+    for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(business, field, value)
     db.commit()
     db.refresh(business)

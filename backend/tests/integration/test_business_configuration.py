@@ -247,6 +247,83 @@ def test_rbac_staff_role_can_read_but_not_write(staff_token, two_businesses):
     )
 
 
+def test_patch_omitted_fields_are_left_unchanged(two_businesses):
+    """The Phase 4 no-op-null bug: a field never sent in the PATCH body must not
+    be wiped, even though the schema types it as Optional to allow omission."""
+    token_a = two_businesses["token_a"]
+
+    staff = client.post(
+        "/api/v1/staff", json={"name": "Dr. Assigned", "role": "dentist"}, headers=_auth_header(token_a)
+    ).json()
+    service = client.post(
+        "/api/v1/services",
+        json={
+            "name": "Root Canal",
+            "description": "Full endodontic treatment",
+            "price": "500.00",
+            "duration_minutes": 60,
+            "staff_id": staff["id"],
+        },
+        headers=_auth_header(token_a),
+    ).json()
+
+    patch = client.patch(
+        f"/api/v1/services/{service['id']}", json={"price": 100}, headers=_auth_header(token_a)
+    )
+    assert patch.status_code == 200, patch.text
+    after = patch.json()
+    assert after["price"] == "100.00"
+    assert after["name"] == "Root Canal"
+    assert after["description"] == "Full endodontic treatment"
+    assert after["duration_minutes"] == 60
+    assert after["staff_id"] == staff["id"]
+
+    staff_patch = client.patch(
+        f"/api/v1/staff/{staff['id']}", json={"role": "lead dentist"}, headers=_auth_header(token_a)
+    )
+    assert staff_patch.status_code == 200, staff_patch.text
+    assert staff_patch.json()["name"] == "Dr. Assigned"
+    assert staff_patch.json()["role"] == "lead dentist"
+
+
+def test_patch_explicit_null_clears_nullable_field_but_rejects_on_required_field(two_businesses):
+    token_a = two_businesses["token_a"]
+
+    service = client.post(
+        "/api/v1/services",
+        json={"name": "Cleaning", "description": "desc", "price": "75.00", "duration_minutes": 30},
+        headers=_auth_header(token_a),
+    ).json()
+
+    # explicit null on a nullable field clears it
+    cleared = client.patch(
+        f"/api/v1/services/{service['id']}", json={"description": None}, headers=_auth_header(token_a)
+    )
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["description"] is None
+    assert cleared.json()["name"] == "Cleaning"  # untouched
+
+    # explicit null on a NOT NULL field is rejected with 422, never reaches the DB
+    rejected = client.patch(
+        f"/api/v1/services/{service['id']}", json={"price": None}, headers=_auth_header(token_a)
+    )
+    assert rejected.status_code == 422, rejected.text
+
+    # confirm the rejected request did not mutate anything
+    still_there = client.get("/api/v1/services", headers=_auth_header(token_a)).json()
+    assert next(s for s in still_there if s["id"] == service["id"])["price"] == "75.00"
+
+    # same rule on business profile: nullable clears, required rejects
+    business_patch = client.patch(
+        "/api/v1/business/me", json={"description": None}, headers=_auth_header(token_a)
+    )
+    assert business_patch.status_code == 200, business_patch.text
+    business_reject = client.patch(
+        "/api/v1/business/me", json={"name": None}, headers=_auth_header(token_a)
+    )
+    assert business_reject.status_code == 422, business_reject.text
+
+
 @pytest.mark.parametrize(
     "path,method,body",
     [

@@ -31,7 +31,10 @@ def update_service(
     service = get_service(db, business_id=business_id, service_id=service_id)
     if service is None:
         return None
-    for field, value in payload.model_dump(exclude_unset=True, exclude_none=True).items():
+    # exclude_unset: an omitted field is left alone. An explicit null (only ever
+    # possible for description/staff_id — ServiceUpdate's validators reject it for
+    # name/price/duration_minutes) clears that nullable column.
+    for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(service, field, value)
     db.commit()
     db.refresh(service)

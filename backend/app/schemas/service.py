@@ -4,14 +4,14 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
-def _non_negative_price(value: Decimal | None) -> Decimal | None:
-    if value is not None and value < 0:
+def _non_negative_price(value: Decimal) -> Decimal:
+    if value < 0:
         raise ValueError("Price must not be negative.")
     return value
 
 
-def _positive_duration(value: int | None) -> int | None:
-    if value is not None and value <= 0:
+def _positive_duration(value: int) -> int:
+    if value <= 0:
         raise ValueError("Duration must be a positive number of minutes.")
     return value
 
@@ -28,7 +28,11 @@ class ServiceCreate(BaseModel):
 
 
 class ServiceUpdate(BaseModel):
-    """PATCH — every field optional, only fields actually sent are changed."""
+    """PATCH — a field omitted entirely is left unchanged; a field sent as an
+    explicit null clears it (only valid for the nullable ones: description,
+    staff_id). name/price/duration_minutes are NOT NULL in the DB, so an explicit
+    null on any of those is rejected with a 422 rather than reaching the DB as an
+    IntegrityError."""
 
     name: str | None = None
     description: str | None = None
@@ -36,8 +40,26 @@ class ServiceUpdate(BaseModel):
     duration_minutes: int | None = None
     staff_id: uuid.UUID | None = None
 
-    _validate_price = field_validator("price")(_non_negative_price)
-    _validate_duration = field_validator("duration_minutes")(_positive_duration)
+    @field_validator("name")
+    @classmethod
+    def name_not_null(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("This field is required and cannot be cleared to null.")
+        return value
+
+    @field_validator("price")
+    @classmethod
+    def price_valid(cls, value: Decimal | None) -> Decimal:
+        if value is None:
+            raise ValueError("This field is required and cannot be cleared to null.")
+        return _non_negative_price(value)
+
+    @field_validator("duration_minutes")
+    @classmethod
+    def duration_valid(cls, value: int | None) -> int:
+        if value is None:
+            raise ValueError("This field is required and cannot be cleared to null.")
+        return _positive_duration(value)
 
 
 class ServiceRead(BaseModel):

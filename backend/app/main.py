@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.routes import auth, business, customers, health, services, staff
+from app.api.routes import auth, business, customers, health, knowledge, services, staff
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
@@ -17,3 +17,4 @@ app.include_router(customers.router, prefix="/api/v1", tags=["customers"])
 app.include_router(business.router, prefix="/api/v1", tags=["business"])
 app.include_router(services.router, prefix="/api/v1", tags=["services"])
 app.include_router(staff.router, prefix="/api/v1", tags=["staff"])
+app.include_router(knowledge.router, prefix="/api/v1", tags=["knowledge"])

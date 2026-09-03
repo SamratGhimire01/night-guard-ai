@@ -1,8 +1,9 @@
 import enum
 import uuid
+from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Enum, ForeignKey, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,6 +25,10 @@ class KnowledgeDocument(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Update
     __tablename__ = "knowledge_documents"
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Phase 5: the raw ingested text (typed manually or extracted from an uploaded
+    # file). Phase 6 will chunk this into KnowledgeChunk rows for embedding/retrieval;
+    # this column stays the source of truth for "what was actually submitted."
+    content: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     source: Mapped[str] = mapped_column(String(500), nullable=False)
     status: Mapped[KnowledgeDocumentStatus] = mapped_column(
         Enum(KnowledgeDocumentStatus, name="knowledge_document_status"), nullable=False
@@ -35,6 +40,7 @@ class KnowledgeDocument(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Update
     approved_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("business_users.id")
     )
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class KnowledgeChunk(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):

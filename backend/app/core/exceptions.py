@@ -55,6 +55,28 @@ class TooManyRequestsError(NightGuardError):
     error_type = "too_many_requests"
 
 
+class UnsupportedMediaTypeError(NightGuardError):
+    """Raised when an uploaded file's type is not one of the ones this endpoint accepts."""
+
+    status_code = status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
+    error_type = "unsupported_media_type"
+
+
+class PayloadTooLargeError(NightGuardError):
+    """Raised when an uploaded file exceeds the endpoint's size limit."""
+
+    status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    error_type = "payload_too_large"
+
+
+class UnprocessableEntityError(NightGuardError):
+    """Raised for a well-formed request that fails a business-logic check made after
+    Pydantic validation (e.g. a file that parses but yields no extractable text)."""
+
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_type = "unprocessable_entity"
+
+
 async def night_guard_exception_handler(request: Request, exc: NightGuardError) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,

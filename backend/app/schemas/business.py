@@ -1,6 +1,6 @@
 import uuid
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class BusinessRead(BaseModel):
@@ -19,7 +19,10 @@ class BusinessRead(BaseModel):
 
 
 class BusinessUpdate(BaseModel):
-    """PATCH — every field optional, only fields actually sent are changed."""
+    """PATCH — a field omitted entirely is left unchanged; a field sent as an
+    explicit null clears it (only valid for the nullable ones below). name/timezone
+    are NOT NULL in the DB, so an explicit null on either is rejected with a 422
+    rather than reaching the DB as an IntegrityError."""
 
     name: str | None = None
     description: str | None = None
@@ -30,3 +33,10 @@ class BusinessUpdate(BaseModel):
     timezone: str | None = None
     languages: list[str] | None = None
     tone: str | None = None
+
+    @field_validator("name", "timezone")
+    @classmethod
+    def required_field_not_null(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("This field is required and cannot be cleared to null.")
+        return value

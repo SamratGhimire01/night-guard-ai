@@ -31,7 +31,9 @@ def update_staff(
     staff = get_staff(db, business_id=business_id, staff_id=staff_id)
     if staff is None:
         return None
-    for field, value in payload.model_dump(exclude_unset=True, exclude_none=True).items():
+    # exclude_unset: an omitted field is left alone. Staff has no nullable field, so
+    # StaffUpdate's validators reject an explicit null on both name and role.
+    for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(staff, field, value)
     db.commit()
     db.refresh(staff)
