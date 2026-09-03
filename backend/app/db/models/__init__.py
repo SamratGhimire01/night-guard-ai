@@ -1,6 +1,12 @@
 from app.db.models.appointment import Appointment, AppointmentParticipant, AppointmentStatus
 from app.db.models.audit_log import AuditLog
-from app.db.models.business import Business, BusinessHours, BusinessUser, BusinessUserRole
+from app.db.models.business import (
+    Business,
+    BusinessHours,
+    BusinessHoursException,
+    BusinessUser,
+    BusinessUserRole,
+)
 from app.db.models.conversation import Conversation, Message, MessageSenderType
 from app.db.models.customer import Customer
 from app.db.models.follow_up import FollowUp
@@ -18,6 +24,7 @@ __all__ = [
     "AuditLog",
     "Business",
     "BusinessHours",
+    "BusinessHoursException",
     "BusinessUser",
     "BusinessUserRole",
     "Conversation",

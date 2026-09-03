@@ -492,3 +492,202 @@ $ alembic current -> 5588d67a7cf6 (head)
 - No business-user management endpoints exist yet (inviting additional staff/admin accounts to an existing business) — the RBAC test had to insert a staff user directly via the ORM because no such endpoint exists. This is expected: Phase 3 asked for the *mechanism*, not the full user-management surface.
 - No typechecker configured (carried over from Phase 2) — "lint clean" means ruff only.
 - No commit has been made yet — awaiting user confirmation of this verification output per working rule #6.
+
+---
+
+## Phase 4 — Business Configuration
+
+**Date:** 2026-09-03
+
+**Required:**
+- Authenticated, tenant-scoped CRUD for business profile, services, staff, and business hours — never trusting a client-supplied `business_id`.
+- RBAC where it matters.
+- Full CRUD verified with real re-fetches, cross-tenant IDOR test, RBAC test, validation returning 422 not 500, lint clean.
+
+**Implemented:**
+
+- **Business profile expanded** (`app/db/models/business.py`): added `description` (`Text`), `languages` (Postgres `ARRAY(String(16))`, e.g. `["en","es"]`), `tone` (`String(100)`) to `Business`. `name`/`timezone`/`address`/`phone`/`email`/`website` already existed from Phase 2.
+  - `GET /api/v1/business/me` (any authenticated role) / `PATCH /api/v1/business/me` (owner/admin only) — `app/api/routes/business.py` → `app/services/business_service.py`.
+  - **PATCH semantics, deliberately simple**: `model_dump(exclude_unset=True, exclude_none=True)` — only fields actually sent are touched, and an explicit `null` for a field is treated as "don't change" rather than "clear it." This was the lazy, safe choice: `name`/`timezone` are `NOT NULL` in the DB, so without `exclude_none` a client sending `{"name": null}` would reach the DB as an `IntegrityError` → 500, violating the "no 500s" requirement. To actually clear a nullable field (e.g. `address`), send `""` instead of `null`. Noted here as a real, minor limitation, not hidden.
+
+- **Services CRUD** (`app/db/models/service.py`, `app/schemas/service.py`, `app/services/service_service.py`, `app/api/routes/services.py`): `GET /api/v1/services` (list, any role) / `POST` (owner/admin) / `PATCH /{id}` (owner/admin) / `DELETE /{id}` (owner/admin), all scoped by `current_user.business_id`.
+  - **Staff assignment added** ("if applicable" per the ticket): `Service.staff_id` — nullable, with the same composite-FK same-tenant pattern already used for `Appointment` (`fk_services_staff_same_tenant`: `(staff_id, business_id)` → `(staff.id, staff.business_id)`), so a service can never be assigned to another business's staff member even at the DB level.
+  - **Validation**: `price` must be ≥ 0, `duration_minutes` must be > 0 — enforced in Pydantic (`app/schemas/service.py`) so bad input is a clean 422, not a DB constraint violation surfacing as 500.
+
+- **Staff CRUD** (`app/db/models/staff.py` unchanged from Phase 2, `app/schemas/staff.py`, `app/services/staff_service.py`, `app/api/routes/staff.py`): `GET /api/v1/staff` (list, any role) / `POST` / `PATCH /{id}` / `DELETE /{id}` (owner/admin), scoped by `business_id`.
+  - **Validation**: `name`/`role` rejected if blank/whitespace-only.
+
+- **Business hours** (`app/db/models/business.py`):
+  - `BusinessHours` extended: added `closed: bool` (default `false`), and `open_time`/`close_time` are now **nullable** (required only when not closed). Added `UniqueConstraint(business_id, day_of_week)` and a new `CheckConstraint` `ck_business_hours_valid_range`: `closed OR (open_time IS NOT NULL AND close_time IS NOT NULL AND close_time > open_time)` — enforced at the DB level as a safety net, with the same rule also validated in Pydantic (`app/schemas/business_hours.py`) so the client-facing error is a clean 422.
+  - `GET /api/v1/business/hours` — returns `{"weekly": [...], "exceptions": [...]}` for the authenticated business (any role).
+  - `PUT /api/v1/business/hours` (owner/admin) — **replaces the entire week in one call**: deletes all existing `BusinessHours` rows for the business, inserts the new set (`app/services/business_hours_service.py::replace_hours`). Duplicate `day_of_week` values in one request are rejected with 422 before any DB write.
+  - **Holidays/exceptions — new lightweight model added**, since none existed from Phase 2: `BusinessHoursException` (`business_hours_exceptions` table) — `date` (unique per business), `closed` (default `true`), optional `open_time`/`close_time` for a custom-hours override. Same valid-range check constraint as `BusinessHours`.
+    - `POST /api/v1/business/hours/exceptions` (owner/admin, 409 if that date already has an exception) / `DELETE /api/v1/business/hours/exceptions/{id}` (owner/admin, 404 if not found or not this business's).
+    - Scope decision: full PATCH/list-alone endpoints for exceptions were not added — "support" was read as create/view/remove being enough; a business changes its mind about a holiday by deleting and re-creating, not editing in place. Flagging in case in-place edit is wanted later.
+
+- **RBAC policy — stated explicitly, not left ambiguous**: for every resource in this phase (business profile, services, staff, business hours + exceptions), **all reads are allowed to any authenticated role** (`owner`, `admin`, `staff`) and **all writes (create/update/delete) require `owner` or `admin`** via the existing `require_role(["owner", "admin"])` dependency from Phase 3. `staff` role is read-only across this entire phase's surface. This mirrors the Phase 3 `customers` reference implementation's delete-gating, extended consistently to every write here. Verified live against a real minted staff token (Verification §7 below) — every read returned 200, every write returned 403, and the same owner token succeeded on the same write immediately after, proving it's a role gate and not a blanket failure.
+
+- **Migration** `backend/app/db/migrations/versions/be989d8a4be3_business_configuration.py` (`down_revision = 5588d67a7cf6`), generated via `alembic revision --autogenerate`, then hand-fixed for one real, expected gap in autogenerate (caught, not hidden): **autogenerate does not diff `CheckConstraint`s on existing tables** (only picks them up on `CREATE TABLE`) — so `ck_business_hours_valid_range` on the pre-existing `business_hours` table had to be added by hand to both `upgrade()` (`op.create_check_constraint(...)`, placed after the column/nullability changes it depends on) and `downgrade()` (`op.drop_constraint(...)`, placed before reverting `open_time`/`close_time` back to `NOT NULL`). The equivalent constraint on the brand-new `business_hours_exceptions` table *was* autogenerated correctly, since it's part of that table's `CREATE TABLE`.
+
+**Verification output (actual, run 2026-09-03):**
+
+1. `alembic upgrade head` from Phase 3's head, `alembic check` confirms model/DB agreement, and a full reversibility cycle:
+```
+$ docker compose exec backend alembic upgrade head
+INFO  [alembic.runtime.migration] Running upgrade 5588d67a7cf6 -> be989d8a4be3, business configuration
+
+$ docker compose exec backend alembic check
+No new upgrade operations detected.
+
+$ docker compose exec backend alembic downgrade base && docker compose exec backend alembic upgrade head
+Running downgrade be989d8a4be3 -> 5588d67a7cf6, business configuration
+Running downgrade 5588d67a7cf6 -> 371630166e11, add unique constraint on business_users email
+Running downgrade 371630166e11 -> , initial schema
+Running upgrade  -> 371630166e11, initial schema
+Running upgrade 371630166e11 -> 5588d67a7cf6, add unique constraint on business_users email
+Running upgrade 5588d67a7cf6 -> be989d8a4be3, business configuration
+```
+(all clean, no errors, no leftover-type issues this time since no new enums were added)
+
+2. Full CRUD cycle for **services** via curl, with re-fetch after every write (business A, real requests against the live Docker backend):
+```
+$ curl -X POST .../services -d '{"name":"Dental Cleaning","description":"Standard cleaning","price":"75.00","duration_minutes":30}'
+{"id":"232c3460-...","business_id":"5bc95eac-...","name":"Dental Cleaning","price":"75.00","duration_minutes":30,"staff_id":null}
+
+$ curl .../services   # list
+[{"id":"232c3460-...", ..., "price":"75.00","duration_minutes":30}]
+
+$ curl -X PATCH .../services/232c3460-... -d '{"price":"85.00","duration_minutes":45}'
+{"id":"232c3460-...", ..., "price":"85.00","duration_minutes":45}
+
+$ curl .../services   # re-fetch — confirms the PATCH actually persisted
+[{"id":"232c3460-...", ..., "price":"85.00","duration_minutes":45}]
+
+$ curl -X DELETE .../services/232c3460-...
+HTTP/1.1 204 No Content
+
+$ curl .../services   # re-fetch — confirms the DELETE actually persisted
+[]
+```
+
+3. Full CRUD cycle for **staff** via curl, same re-fetch-after-every-write pattern:
+```
+$ curl -X POST .../staff -d '{"name":"Dr. Jane Doe","role":"dentist"}'
+{"id":"0cd74e30-...","name":"Dr. Jane Doe","role":"dentist"}
+$ curl .../staff  → [{"id":"0cd74e30-...","role":"dentist"}]
+$ curl -X PATCH .../staff/0cd74e30-... -d '{"role":"lead dentist"}'
+{"id":"0cd74e30-...","role":"lead dentist"}
+$ curl .../staff  → [{"id":"0cd74e30-...","role":"lead dentist"}]   # PATCH persisted
+$ curl -X DELETE .../staff/0cd74e30-...  → HTTP/1.1 204
+$ curl .../staff  → []   # DELETE persisted
+```
+
+4. Business hours PUT (full week replace) + holiday exception, with re-fetch:
+```
+$ curl .../business/hours   → {"weekly":[],"exceptions":[]}
+$ curl -X PUT .../business/hours -d '{"days":[{"day_of_week":0,"open_time":"09:00:00","close_time":"17:00:00"}, ... 6 more days incl. two "closed":true]}'
+[{"day_of_week":0,"closed":false,"open_time":"09:00:00","close_time":"17:00:00"}, ...]
+$ curl .../business/hours   → same 7 days, confirmed persisted
+$ curl -X POST .../business/hours/exceptions -d '{"date":"2026-12-25","closed":true}'
+{"id":"6e02869e-...","date":"2026-12-25","closed":true,"open_time":null,"close_time":null}
+$ curl .../business/hours   → exceptions now includes 2026-12-25, confirmed persisted
+$ curl -X DELETE .../business/hours/exceptions/6e02869e-...  → HTTP/1.1 204
+$ curl .../business/hours   → exceptions:[] again, confirmed persisted
+```
+
+5. Business profile GET/PATCH with re-fetch:
+```
+$ curl .../business/me  → {"name":"Bright Smile Dental","description":null,...}
+$ curl -X PATCH .../business/me -d '{"description":"A friendly neighborhood dental clinic","address":"123 Main St","phone":"555-1234","website":"https://brightsmile.example","languages":["en","es"],"tone":"friendly"}'
+{"description":"A friendly neighborhood dental clinic", ..., "languages":["en","es"],"tone":"friendly"}
+$ curl .../business/me  → identical to the PATCH response — confirmed persisted
+```
+
+6. **Cross-tenant test** (Business A vs Business B, real registered businesses, real tokens, same IDOR-guessing pattern as Phase 3's critical test): Business A creates a service and a staff member; Business B attempts PATCH/DELETE on both by ID:
+```
+$ curl -X PATCH .../services/{business_A_service_id}  (token B)
+HTTP/1.1 404 Not Found   {"error":{"type":"not_found","message":"Service not found."}}
+$ curl -X DELETE .../services/{business_A_service_id}  (token B)
+HTTP/1.1 404 Not Found   {"error":{"type":"not_found","message":"Service not found."}}
+$ curl -X PATCH .../staff/{business_A_staff_id}  (token B)
+HTTP/1.1 404 Not Found   {"error":{"type":"not_found","message":"Staff member not found."}}
+$ curl -X DELETE .../staff/{business_A_staff_id}  (token B)
+HTTP/1.1 404 Not Found   {"error":{"type":"not_found","message":"Staff member not found."}}
+```
+Re-fetched with Business A's own token afterward — service/staff both still present and unmodified. Also tested: Business B `PATCH .../business/me` with a `business_id` field stuffed into the body (ignored — not a schema field on `BusinessUpdate`, so it can only ever touch B's own business, per the mandatory `current_user.business_id`-scoping convention); Business B `DELETE` on Business A's hours-exception id → 404, A's exception confirmed still present after.
+
+7. **RBAC test** — a real `staff`-role `BusinessUser` inserted directly (no staff-invite endpoint exists yet, same limitation noted in Phase 3) and a token minted for it the same way login does:
+```
+Reads (staff token):
+GET /business/me        → 200
+GET /services            → 200
+GET /staff                → 200
+GET /business/hours       → 200
+
+Writes (staff token) — all blocked:
+PATCH /business/me       → 403 {"error":{"type":"forbidden",...}}
+POST  /services           → 403
+PATCH /services/{id}      → 403
+DELETE /services/{id}     → 403
+POST  /staff               → 403
+DELETE /staff/{id}         → 403
+PUT   /business/hours      → 403
+```
+**Policy, stated explicitly**: staff role = read-only across business profile, services, staff, and business hours/exceptions; owner/admin = full read+write. Not ambiguous, not left to guesswork.
+
+8. **Validation test** — one clearly invalid payload per resource type, all 422 (never 500):
+```
+POST /services  {"price":"-10.00", ...}                          → 422 "Price must not be negative."
+POST /services  {"duration_minutes":-5, ...}                      → 422 "Duration must be a positive number of minutes."
+POST /staff     {"name":"   ", ...}                                → 422 "This field must not be blank."
+PUT  /business/hours  close_time before open_time                 → 422 "close_time must be after open_time."
+PUT  /business/hours  day_of_week: 9                                → 422 "day_of_week must be between 0 (Monday) and 6 (Sunday)."
+POST /business/hours/exceptions  closed:false, no times             → 422 "open_time and close_time are required unless the day is closed."
+```
+
+9. **Automated regression suite** — `backend/tests/integration/test_business_configuration.py` (new, 10 tests: profile CRUD, service full cycle, staff full cycle, hours PUT-replace, cross-tenant isolation, RBAC, and a parametrized 422 sweep), run alongside the existing Phase 3 suite, all against the real live Docker Postgres via `TestClient`:
+```
+$ docker compose exec backend python -m pytest tests/ -v
+tests/integration/test_business_configuration.py::test_business_profile_crud PASSED
+tests/integration/test_business_configuration.py::test_service_full_crud_cycle PASSED
+tests/integration/test_business_configuration.py::test_staff_full_crud_cycle PASSED
+tests/integration/test_business_configuration.py::test_business_hours_put_replaces_full_week PASSED
+tests/integration/test_business_configuration.py::test_cross_tenant_service_and_staff_are_isolated PASSED
+tests/integration/test_business_configuration.py::test_rbac_staff_role_can_read_but_not_write PASSED
+tests/integration/test_business_configuration.py::test_invalid_payloads_return_422_not_500[...] PASSED (x4)
+tests/integration/test_tenant_isolation.py::test_business_a_cannot_read_business_bs_customer PASSED
+tests/integration/test_tenant_isolation.py::test_business_a_cannot_delete_business_bs_customer PASSED
+tests/integration/test_tenant_isolation.py::test_unauthenticated_request_is_rejected PASSED
+tests/integration/test_tenant_isolation.py::test_role_based_access_control_blocks_staff_from_delete PASSED
+
+======================== 14 passed, 1 warning in 13.54s ========================
+```
+
+10. Lint: `docker compose exec backend ruff check .` → `All checks passed!`
+
+11. DB left clean after all manual curl testing + automated tests (pytest fixtures self-clean; the manual-curl businesses were deleted by hand afterward):
+```
+$ psql -c "SELECT count(*) FROM businesses;"                    → 0
+$ psql -c "SELECT count(*) FROM services;"                      → 0
+$ psql -c "SELECT count(*) FROM staff;"                          → 0
+$ psql -c "SELECT count(*) FROM business_hours;"                 → 0
+$ psql -c "SELECT count(*) FROM business_hours_exceptions;"      → 0
+$ psql -c "SELECT count(*) FROM business_users;"                 → 0
+```
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Full CRUD cycle for services + staff, re-fetched after each write | ✓ Pass (curl output above) |
+| Cross-tenant test: Business A cannot read/update/delete Business B's services/staff/hours | ✓ Pass — 404 on every attempt, verified unmodified afterward |
+| RBAC test: staff role allowed reads, blocked writes; policy stated explicitly | ✓ Pass — 4x 200 reads, 7x 403 writes, then owner succeeds on the same write |
+| Validation test: ≥1 invalid payload per resource type → 422, not 500 | ✓ Pass — 6 cases covered (price, duration, blank name, bad time range, bad day_of_week, missing times) |
+| Lint clean | ✓ Pass (ruff) |
+
+**Known issues / punted items (explicit, not hidden):**
+- **PATCH on business/service/staff treats an explicit `null` as "leave unchanged," not "clear this field."** To clear a nullable field, send `""`. Chosen to avoid a 500 on `NOT NULL` columns (`name`, `timezone`) without adding a second validation layer just for this — a real, minor UX gap, not a bug.
+- **No staff-user invite/management endpoint exists yet** (carried over from Phase 3) — the RBAC test again had to insert a `staff`-role `BusinessUser` directly via the ORM, because there is still no API path to create one. This phase's `staff` table (dentists/hygienists, bookable resources) is unrelated to `business_users` (login accounts) — worth flagging in case that distinction gets confused later.
+- **Business hours exceptions have no PATCH/list-by-id** — only create/list-all/delete. A changed-mind holiday is handled by delete + re-create, not in-place edit. Flagging in case in-place edit is wanted.
+- **`Business.email`/`website`/`phone` are plain strings, not format-validated** — consistent with how Phase 2's model originally defined them; not newly introduced here, just carried forward.
+- No typechecker configured (carried over from Phase 2/3) — "lint clean" still means ruff only.
+- No commit has been made yet — awaiting user confirmation of this verification output per working rule #6.

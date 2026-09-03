@@ -1,7 +1,8 @@
 import enum
-from datetime import time
+from datetime import date, time
 
-from sqlalchemy import CheckConstraint, Enum, String, Time, UniqueConstraint
+from sqlalchemy import CheckConstraint, Date, Enum, String, Text, Time, UniqueConstraint
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -21,10 +22,13 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     timezone: Mapped[str] = mapped_column(String(64), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
     address: Mapped[str | None] = mapped_column(String(500))
     phone: Mapped[str | None] = mapped_column(String(50))
     email: Mapped[str | None] = mapped_column(String(255))
     website: Mapped[str | None] = mapped_column(String(255))
+    languages: Mapped[list[str] | None] = mapped_column(ARRAY(String(16)))
+    tone: Mapped[str | None] = mapped_column(String(100))
 
 
 class BusinessUser(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):
@@ -45,14 +49,35 @@ class BusinessUser(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):
     )
 
 
+_VALID_HOURS_RANGE_SQL = "closed OR (open_time IS NOT NULL AND close_time IS NOT NULL AND close_time > open_time)"
+
+
 class BusinessHours(UUIDPrimaryKeyMixin, TenantMixin, Base):
-    """Weekly operating hours. One row per open day per business."""
+    """Weekly operating hours. One row per day of the week per business (PUT replaces all 7)."""
 
     __tablename__ = "business_hours"
     __table_args__ = (
         CheckConstraint("day_of_week >= 0 AND day_of_week <= 6", name="ck_business_hours_day_of_week"),
+        CheckConstraint(_VALID_HOURS_RANGE_SQL, name="ck_business_hours_valid_range"),
+        UniqueConstraint("business_id", "day_of_week", name="uq_business_hours_business_day"),
     )
 
     day_of_week: Mapped[int] = mapped_column(nullable=False)
-    open_time: Mapped[time] = mapped_column(Time, nullable=False)
-    close_time: Mapped[time] = mapped_column(Time, nullable=False)
+    closed: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
+    open_time: Mapped[time | None] = mapped_column(Time)
+    close_time: Mapped[time | None] = mapped_column(Time)
+
+
+class BusinessHoursException(UUIDPrimaryKeyMixin, TenantMixin, Base):
+    """A one-off override for a single date (holiday closure or custom hours)."""
+
+    __tablename__ = "business_hours_exceptions"
+    __table_args__ = (
+        CheckConstraint(_VALID_HOURS_RANGE_SQL, name="ck_business_hours_exceptions_valid_range"),
+        UniqueConstraint("business_id", "date", name="uq_business_hours_exceptions_business_date"),
+    )
+
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    closed: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
+    open_time: Mapped[time | None] = mapped_column(Time)
+    close_time: Mapped[time | None] = mapped_column(Time)
