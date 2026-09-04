@@ -2387,3 +2387,194 @@ businesses=0  appointments=0  conversations=0  customers=0
 - **No appointment-id-based lookup exists for this intent, by design** — `AppointmentStatusTool` always returns the full active+recent-past picture rather than resolving one specific id the way cancel/reschedule do. This was the deliberately simpler choice (no LLM extraction step, nothing to fail to resolve) and is also precisely what makes the cross-tenant guarantee architectural rather than conventional — flagging as a considered trade-off, not an oversight, in case a future phase wants "look up appointment by booking ID specifically" as its own capability.
 - Carried over from Phase 10/11/12/13, still real and still open: no staff-capacity model, fixed 15-minute slot grid, exact-match-only service-name resolution, in-memory rate limiter, no refresh tokens, no worker/cron for `dispatch_queued_notifications`, no `DELIVERED` notification state.
 - No commit has been made yet — awaiting your confirmation of this verification output per working rule #6.
+
+---
+
+## Phase 15 — SMS as a Premium Feature
+
+**Date:** 2026-09-04
+
+**Required:** Make SMS a real, business-configurable premium feature — a business can enable/disable it, and when enabled, real SMS notifications go out through the `SMSNotificationProvider` interface from Phase 13 (which currently only stubs/logs). Must not block on real SMS provider credentials being provisioned — implement a real provider for real, gated behind config, defaulting to the existing safe stub when credentials are missing. Business toggle (tenant-scoped, owner/admin RBAC), delivery tracking using honest real provider states, resilience matching Phase 13's "never breaks the booking flow" guarantee.
+
+**Design decisions made and justified (the two "your call" items in the brief):**
+
+1. **Consent model — a business-level toggle AND a customer-level opt-in, both required.** The master plan explicitly says "never spam customers." A business turning `sms_enabled` on does not imply every existing customer consented to receive texts — so `Customer.sms_opt_in` (default `False`) is a second, independent gate. A real SMS is only ever attempted when **both** are true. **Known limitation, flagged not hidden:** no customer-update endpoint exists anywhere in this codebase yet (Phase 4 never built customer PATCH), so `sms_opt_in` can currently only be set at customer creation (`POST /customers`), not changed later for an existing customer. Adding a general customer-update endpoint was out of scope for this phase — a small, contained addition for a future phase.
+2. **Channel selection — SMS is a fallback for customers with no email on file, not a preferred channel.** `booking_service._notification_channel(business, customer)`: returns `"sms"` only when `business.sms_enabled AND customer.sms_opt_in AND customer.phone AND NOT customer.email`; every other case (including a customer with both email and SMS consent) stays on `"email"`, unchanged from Phase 10/11/13's existing default. Chosen over a live "try email, catch failure, fall back to SMS at send time" because that needs the dispatch retry loop to span two different providers/channels for one notification — materially more complex for a demo-scale app, and the ticket explicitly said "your call, document which." This is a one-function, easily-revisited decision if SMS-preferred-when-available is ever wanted instead.
+
+**Implemented:**
+
+- **`app/db/models/business.py`**: `Business.sms_enabled: bool` (`NOT NULL`, `default=False`, `server_default="false"`) — the premium-tier toggle.
+- **`app/db/models/customer.py`**: `Customer.sms_opt_in: bool` (`NOT NULL`, `default=False`, `server_default="false"`) — the consent gate described above.
+- **Migration `3d021b71559b_sms_premium_feature.py`**: clean autogenerate, two `add_column`s, no hand-fixing needed this time (no enum/type changes, unlike Phase 13's migration). Reversible `drop_column`s in `downgrade()`.
+- **`PATCH /api/v1/business/me` reused, not a new route** — `BusinessUpdate.sms_enabled: bool | None`, with the same explicit-null-rejected validator pattern Phase 4 already established for `name`/`timezone` (a client sending `"sms_enabled": null` gets a 422, not a `NOT NULL` `IntegrityError`). This endpoint was already tenant-scoped (`current_user.business_id`, never a client-supplied `business_id`) and owner/admin-gated (`require_role(["owner","admin"])`) since Phase 4 — satisfies "PATCH endpoint, tenant-scoped, owner/admin only" with zero new route, exactly the reuse the ticket's own phrasing ("extend Business... PATCH endpoint") invited.
+- **`app/schemas/customer.py`**: `CustomerCreate.sms_opt_in: bool = False`, `CustomerRead.sms_opt_in: bool` — settable at creation (see limitation above).
+- **`app/core/config.py` / `.env.example`**: `twilio_account_sid`/`twilio_auth_token`/`twilio_from_number`, all default `""`. **To go live with real SMS, set in your own `backend/.env`:**
+  ```
+  TWILIO_ACCOUNT_SID=<your Account SID>
+  TWILIO_AUTH_TOKEN=<your Auth Token>
+  TWILIO_FROM_NUMBER=<your Twilio number, E.164, e.g. +15551234567>
+  ```
+  Twilio was chosen because it has a real free trial tier and its REST API is a single authenticated HTTPS POST — simple enough to implement with **stdlib `urllib`/`base64`/`json` only, no `twilio` SDK dependency added** (same "stdlib over a new dependency" discipline as Phase 13's `smtplib`-based Gmail provider).
+- **`app/services/notifications/sms_provider.py`**: added `TwilioSMSProvider(NotificationProvider)` alongside the existing stub `SMSNotificationProvider` (now explicitly `SIMULATED = True`, a new class attribute — see below). Real Twilio call: `POST https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json`, HTTP Basic Auth (base64 of `sid:token`, never logged — grep-verified below), form-encoded `To`/`From`/`Body`. `_normalize_phone` is a deliberately naive US-only E.164 heuristic (10 digits → `+1##########`, anything already starting with `+` trusted as-is) — `# ponytail: naive US-only heuristic, extend with a real phone-number library if international customers arrive`. HTTP error classification: `400/401/403` (bad number, bad auth, malformed request) → `transient=False` (never retried); anything else (5xx, 429) → `transient=True`. A missing recipient phone fails permanently before any network call, same discipline as the email provider's missing-recipient guard.
+- **`app/services/notifications/base.py`**: `NotificationProvider.SIMULATED = False` — a new base class attribute. Only the stub SMS provider overrides it to `True`. This is what lets `dispatch_service` pick the honest terminal status generically (see below) without hardcoding per-channel branches.
+- **`app/services/notifications/content.py`**: `compose_sms(...)` — a short one-line deterministic SMS body (no LLM, same discipline as `compose_email`), reusing the same real Appointment/Business/Service rows. No subject line (SMS/Twilio has none).
+- **`app/services/notifications/dispatch_service.py`** — **refactored, not just extended**, because Twilio (unlike the old stub) can genuinely fail transiently and needs the same bounded-retry treatment email already had; the old code had a separate, retry-less `if channel == "sms"` early-return branch that could no longer be correct once a real SMS provider existed:
+  - `_resolve_sms_provider()`: returns a real `TwilioSMSProvider()` only when `settings.twilio_account_sid AND twilio_auth_token AND twilio_from_number` are **all** non-empty (checked live on every dispatch call, not cached — so a test/env change takes effect immediately); otherwise returns the existing stub instance. This is the "gated behind a config flag that defaults to the existing safe stub behavior" requirement, and it is **independent of `business.sms_enabled`** — that flag already gated *which channel got chosen* upstream in `booking_service`, so by the time `_dispatch` runs, a `channel="sms"` notification only exists for a business that opted in; `_resolve_sms_provider` only decides real-vs-stub.
+  - `_dispatch` now picks `provider`/`recipient`/`subject`/`body` per channel (`email` → `_PROVIDERS["email"]` unchanged, `sms` → `_resolve_sms_provider()`), then runs **one shared bounded-retry loop** for both channels — collapsing what used to be two different code paths (retry-with-3-attempts for email vs. single-call-always-succeeds for SMS) into one, now that SMS also needs retry semantics for its real provider. `success_status = NotificationStatus.SIMULATED if getattr(provider, "SIMULATED", False) else NotificationStatus.SENT` — the stub (still a single always-succeeding call in practice) lands on `SIMULATED` exactly as before; the real Twilio provider lands on `SENT` after passing through the identical retry/backoff/permanent-vs-transient logic email already had. `getattr(..., False)` (not `provider.SIMULATED`) deliberately tolerates the existing test suite's plain-class fake providers (`_FakeProvider`/`_BuggyProvider` in `test_notifications.py`, which predate this class attribute and don't set it) — they default to the `SENT`-terminal behavior those tests already assert, so this refactor required zero changes to Phase 13's existing test file.
+  - **`_PROVIDERS["email"]` dict lookup is untouched** — Phase 13's existing tests monkeypatch `dispatch_service._PROVIDERS["email"]` directly and all still pass unmodified (verified — see regression count below).
+- **`app/services/booking_service.py`**: new `_notification_channel(business, customer) -> str` helper (the design decision above), wired into all three existing Notification-queuing call sites — `create_appointment`, `cancel_appointment`, `reschedule_appointment` — replacing the hardcoded `channel="email"` literal in each. `create_appointment` now keeps the `Customer` object it was already fetching (previously discarded after an existence check) and additionally loads `Business` (cheap `db.get`, business existence was already guaranteed by the earlier `get_available_slots` call raising `NotFoundError` otherwise); `cancel_appointment`/`reschedule_appointment` load both fresh via `db.get` from the appointment's own `business_id`/`customer_id`. **`_create_group_all_or_nothing`/`_create_group_partial` (Phase 12) needed zero changes** — they call the same `create_appointment(..., _commit=False)`, which already does the channel selection internally.
+
+**Delivery tracking / honesty (explicit, not assumed):**
+- Real Twilio's synchronous API response only confirms Twilio **accepted** the message (`status` field is typically `"queued"`/`"accepted"` at that point, before any carrier confirms delivery) — there is no delivery-status webhook wired up in this simple setup. So, exactly like Phase 13's Gmail `250 accepted` ceiling, **`SENT` is the real terminal success state for real SMS too — `DELIVERED` is never claimed, never reachable**, for the same honest reason already documented for email in Phase 13.
+- The stub path (no real credentials) still lands on `SIMULATED`, distinct from `SENT`, so it's never mistaken for a real send — unchanged from Phase 13.
+
+**Verification output — every claim labeled live vs. automated, per the Phase 12/14 convention:**
+
+1. **[verified via automated test]** Migration — clean autogenerate (`Detected added column 'businesses.sms_enabled'`, `'customers.sms_opt_in'`), applied, and a real reversibility cycle:
+```
+$ docker compose exec backend alembic upgrade head
+INFO  Running upgrade f00944fc83c2 -> 3d021b71559b, sms premium feature
+$ docker compose exec backend alembic check
+No new upgrade operations detected.
+
+$ docker compose exec backend alembic downgrade -1
+INFO  Running downgrade 3d021b71559b -> f00944fc83c2, sms premium feature
+$ psql -c "\d businesses" | grep sms_enabled   -> (no output — column gone)
+$ psql -c "\d customers" | grep sms_opt_in     -> (no output — column gone)
+
+$ docker compose exec backend alembic upgrade head
+INFO  Running upgrade f00944fc83c2 -> 3d021b71559b, sms premium feature
+$ psql -c "\d businesses" | grep sms_enabled
+ sms_enabled | boolean | not null | false
+$ psql -c "\d customers" | grep sms_opt_in
+ sms_opt_in  | boolean | not null | false
+$ docker compose exec backend alembic check
+No new upgrade operations detected.
+```
+
+2. **[verified live, real HTTP]** Business SMS toggle — real register/login for two real businesses, real PATCH, real re-GET, real cross-tenant check:
+```
+$ curl -i -X PATCH .../business/me -H "Authorization: Bearer <ownerA>" -d '{"sms_enabled": true}'
+HTTP/1.1 200 OK
+{"id":"e7af1eb1-...","name":"Live SMS Test A",...,"sms_enabled":true}
+
+$ curl .../business/me -H "Authorization: Bearer <ownerA>"   -> sms_enabled: true (stuck)
+
+-- CROSS-TENANT: Business B's own token/own row, fetched after A's toggle:
+$ curl .../business/me -H "Authorization: Bearer <ownerB>"
+{"id":"bbecd02e-...","name":"Live SMS Test B",...,"sms_enabled":false}   -- A's toggle never leaked to B
+
+$ curl -i -X PATCH .../business/me -H "Authorization: Bearer <ownerA>" -d '{"sms_enabled": false}'
+HTTP/1.1 200 OK   -> sms_enabled: false (toggled back off)
+```
+
+3. **[verified live, real HTTP]** Non-admin (staff) rejection — a real staff `BusinessUser` inserted directly (no staff-invite endpoint exists, same technique Phase 3/4's RBAC tests use), a real token minted for it, a real PATCH attempt:
+```
+$ curl -i -X PATCH .../business/me -H "Authorization: Bearer <staff>" -d '{"sms_enabled": false}'
+HTTP/1.1 403 Forbidden
+{"error":{"type":"forbidden","message":"You do not have permission to perform this action."}}
+
+-- confirmed nothing changed:
+$ curl .../business/me -H "Authorization: Bearer <ownerA>"   -> sms_enabled: true (unchanged by the rejected staff attempt)
+```
+
+4. **[verified live, real HTTP + real DB + real backend log — the "no credentials provided" fallback path]** Confirmed this environment genuinely has no Twilio credentials, then ran the real acceptance scenario end to end: SMS enabled for a real business, a real customer with a phone/no email/`sms_opt_in:true`, a real booking through `POST /appointments`:
+```
+$ docker compose exec backend python3 -c "from app.core.config import settings; print(settings.twilio_account_sid, settings.twilio_auth_token, settings.twilio_from_number)"
+('', '', '')   -- genuinely no credentials in this container's real env
+
+$ curl -X POST .../customers -d '{"name":"Live SMS Customer","phone":"+15551234567","sms_opt_in":true}'
+{"id":"07a63812-...",...,"phone":"+15551234567","email":null,"sms_opt_in":true}
+
+$ curl -i -X POST .../appointments -d '{"customer_id":"07a63812-...","service_id":"...","scheduled_at":"2026-09-07T10:00:00Z"}'
+HTTP/1.1 201 Created
+{"id":"25918048-...","status":"confirmed",...}    -- booking succeeded; notification failure (if any) never breaks this
+```
+Real DB row after real inline dispatch:
+```
+$ psql -c "SELECT channel, event_type, status FROM notifications WHERE appointment_id='25918048-...';"
+ channel | event_type         | status
+---------+--------------------+-----------
+ sms     | booking_confirmed  | SIMULATED
+```
+Real backend log lines (structured JSON, real timestamps):
+```
+{"logger": "app.services.notifications.sms_provider", "message": "SIMULATED SMS to +15551234567: "}
+{"logger": "app.services.notifications.dispatch_service", "message": "notification_id=9401f1f0-... simulated on attempt 1/3: simulated — no real SMS gateway configured"}
+```
+**Confirms: channel correctly resolved to `sms` (business enabled + customer opted in + no email on file), the missing-credentials fallback engaged automatically with no crash, the booking API still returned a clean `201`, and the Notification honestly landed on `SIMULATED` — never a fabricated `SENT`/`DELIVERED`.**
+
+   **To go live with real SMS:** set `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN`/`TWILIO_FROM_NUMBER` in your own `backend/.env` (see above) and restart the backend container — no code change needed; `_resolve_sms_provider()` will start returning the real `TwilioSMSProvider` automatically. I do not have Twilio credentials to provision one myself and this phase was explicitly scoped to not block on that.
+
+5. **[verified via automated test]** Real-provider gating and retry behavior, with credentials **and** the network call both faked (no real Twilio account exists to test against) — `tests/integration/test_sms_notifications.py`, 13 new tests, real DB/HTTP throughout, only the network layer stubbed (same discipline as Phase 13's `test_notifications.py`):
+```
+$ docker compose exec backend python -m pytest tests/integration/test_sms_notifications.py -v
+...
+test_owner_can_enable_and_disable_sms PASSED
+test_staff_cannot_toggle_sms PASSED
+test_sms_toggle_is_tenant_scoped PASSED
+test_sms_enabled_cannot_be_cleared_to_null PASSED
+test_sms_enabled_and_opted_in_no_email_customer_falls_back_to_stub_and_never_crashes PASSED
+test_sms_enabled_but_customer_not_opted_in_stays_on_email_channel PASSED
+test_customer_with_email_stays_on_email_even_when_sms_enabled_and_opted_in PASSED
+test_sms_disabled_never_selects_sms_channel_even_with_opt_in PASSED
+test_when_twilio_credentials_are_configured_dispatch_uses_the_real_provider_and_retries PASSED
+test_missing_any_one_credential_still_falls_back_to_stub PASSED
+test_twilio_provider_rejects_missing_phone_without_any_network_call PASSED
+test_twilio_provider_builds_a_real_request_with_basic_auth_and_normalized_phone PASSED
+test_twilio_provider_classifies_auth_failure_as_permanent_and_5xx_as_transient PASSED
+======================== 13 passed, 1 warning in 14.73s ========================
+```
+   What the two most load-bearing prove: `test_when_twilio_credentials_are_configured_dispatch_uses_the_real_provider_and_retries` — a fake `TwilioSMSProvider` scripted to fail transiently once then succeed asserts `notification.status == SENT` (not `SIMULATED`) and `fake.calls == 2` (one real retry), proving the gating logic genuinely branches to the retry-capable real-provider path once credentials are present. `test_twilio_provider_builds_a_real_request_with_basic_auth_and_normalized_phone` calls the real `TwilioSMSProvider.send()` with `urllib.request.urlopen` mocked, and asserts on the actual constructed request: Basic-Auth header present, the raw token string never appears in it (only its base64 form), and a bare 10-digit US number is correctly normalized to `+1##########` in the real form-encoded POST body.
+
+6. **[verified via automated test]** Consent-gate + fallback-only channel selection, deterministically: `test_sms_enabled_but_customer_not_opted_in_stays_on_email_channel` (opt-in withheld → stays on email, which then honestly fails for lack of a recipient — never silently texts without consent) and `test_customer_with_email_stays_on_email_even_when_sms_enabled_and_opted_in` (SMS is fallback-only, not preferred) and `test_sms_disabled_never_selects_sms_channel_even_with_opt_in` (business-level gate independently enforced) — all three real DB/HTTP, real `_notification_channel` code path.
+
+7. **[verified via automated test]** Full regression suite — zero pre-existing tests needed changes (unlike Phase 13, which had to update 3 Phase 11 tests for a real behavior change; this phase's dispatch_service refactor was designed specifically to avoid that, see the `getattr(..., False)` note above):
+```
+$ docker compose exec backend python -m pytest tests/ -q
+...
+120 passed, 1 skipped, 1 warning in 100.70s
+```
+(107 passed at the end of Phase 14 + 13 new this phase = 120; the 1 skip is pre-existing and unrelated to this phase.)
+
+8. **[verified live + automated]** Secrets grep — the real Twilio Auth Token is referenced in exactly two real places (the `settings` declaration, and the one `base64` basic-auth encode) and never passed to any `logger.*` call; container logs across all of this phase's real HTTP/CLI testing never contain a real or fake secret string:
+```
+$ grep -rn "twilio_auth_token" app/
+  dispatch_service.py:32: (truthiness check only)
+  sms_provider.py:66:     (base64 encode — the one real use)
+  config.py:33:           (declaration)
+$ grep -n "logger\." app/services/notifications/sms_provider.py app/services/notifications/dispatch_service.py
+  -> no line references settings.twilio_auth_token or any raw credential
+$ docker compose logs backend --tail=3000 | grep -iE "secrettoken|tokenfake"   -> no match (test fixtures' fake tokens never leaked into a log either)
+$ git ls-files | grep -E '\.env$'   -> none tracked
+$ git check-ignore -v backend/.env  -> .gitignore:21:.env backend/.env (still ignored)
+$ git grep -nE 'TWILIO_(ACCOUNT_SID|AUTH_TOKEN|FROM_NUMBER)\s*=\s*[A-Za-z0-9]' -- . ':!backend/.env.example'   -> no match, only placeholders in .env.example
+```
+
+9. Lint: `docker compose exec backend ruff check .` → `All checks passed!`
+
+10. **[verified live]** DB left clean after all live/manual testing this phase: `businesses=0 customers=0 appointments=0 notifications=0` (the 4 live-test businesses created during manual curl verification were deleted afterward).
+
+**Resilience — confirmed the same "never breaks the booking flow" guarantee as Phase 13:** `dispatch_notification`'s outer `try/except Exception` (unchanged from Phase 13) already wraps the entire `_dispatch` call, including the new SMS branch and the real Twilio provider — a bug in `TwilioSMSProvider` (or an unreachable Twilio API) is caught exactly the same way an `EmailNotificationProvider` bug already was, marks the Notification `FAILED`, and never propagates to the caller. Directly demonstrated above (§4): the real `POST /appointments` call returned a clean `201` even though the notification dispatch that followed it (stub fallback) happened inline in the same request.
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Business SMS toggle: real API call, tenant-scoped, RBAC-checked, cross-tenant + non-admin rejections | ✓ Pass — §2/§3 live |
+| Real SMS send with real credentials | **Not applicable — no Twilio credentials provided** (explicitly not required to block this phase); real provider implemented and unit-tested against a mocked network call (§5) |
+| Fallback-to-stub verified when `sms_enabled=true` but no real credentials — never crashes | ✓ Pass — §4 live (real DB `SIMULATED` row + real `201` booking response + real log lines) |
+| Told exactly what env vars are needed to go live | ✓ Pass — `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN`/`TWILIO_FROM_NUMBER`, documented in `.env.example` and §4 above |
+| SMS respects the same "never breaks the booking flow" resilience as email | ✓ Pass — same `try/except Exception` wrapper, demonstrated live in §4 |
+| Delivery tracking uses honest real states (no fabricated DELIVERED) | ✓ Pass — `SENT` is the real ceiling for real SMS (Twilio's synchronous accept-only response), `SIMULATED` for the stub, `DELIVERED` remains unreachable exactly like email (Phase 13) |
+| Secrets grep clean (provider auth token never logged) | ✓ Pass — §8 |
+| Lint clean | ✓ Pass — §9 |
+| Migration reversible | ✓ Pass — §1, full down/up cycle |
+
+**Known issues / punted items:**
+- **No customer-update endpoint exists to change `sms_opt_in` after creation** — flagged above as a real, scoped-out gap (this codebase has never had customer PATCH at all, not something this phase removed). A customer can only opt in at the moment they're created. A future phase adding general customer-update would close this in one field addition.
+- **There is currently no real end-user- or business-staff-facing way to ever actually set `sms_opt_in` to `true`, despite the field being real and correctly persisted.** Confirmed by direct inspection (2026-09-04): the *only* code path that ever constructs a `Customer` row anywhere in this codebase is `customer_service.create_customer`, called from exactly one route, `POST /api/v1/customers` (`CustomerCreate.sms_opt_in`) — a raw API call, not something surfaced through any product surface. There is **no frontend** (`frontend/` contains only a placeholder `README.md`, zero application code, so no admin-dashboard toggle exists), and **no conversational flow** ever creates or updates a `Customer` (the chat/booking orchestrator only ever reads an already-existing `customer_id` already attached to the conversation — it never asks a customer for SMS consent or writes it). So in practice today, the only way `sms_opt_in` ever becomes `true` is a business's own backend/integration code (or a manual API call) explicitly passing `"sms_opt_in": true` at customer-creation time. **This must not be mistaken for a working, reachable consent flow** — it is a real, tested database field and API parameter with no actual UI, chat prompt, or update path attached to it yet. Closing this needs, at minimum, a customer-update endpoint (see the bullet above) and, ideally, an actual place (dashboard or conversational prompt) that asks the customer and writes the flag — both out of scope for this phase.
+- **No real Twilio account was available to test against** — every real-provider claim above (gating, retry, request shape, error classification) is proven with the network call mocked, exactly the same "stub the network, not the business logic" approach Phase 13 used before real Gmail credentials were provided. If/when you provision a Twilio trial account and add the three env vars, the very first real send will be the true end-to-end proof — happy to run and paste that verification once credentials exist.
+- **No delivery-status webhook** — `DELIVERED` remains modeled in the schema but unreachable by any code path for either channel, an honest carry-over from Phase 13, not new to this phase.
+- **SMS remains fallback-only, never preferred, even for an opted-in customer with an email on file** — a deliberate, documented, one-function-away decision (see "Design decisions" above), not an oversight.
+- Carried over from Phase 10/11/12/13/14, still real and still open: no staff-capacity model, fixed 15-minute slot grid, exact-match-only service-name resolution, in-memory rate limiter, no refresh tokens, no worker/cron for `dispatch_queued_notifications`.
+- No commit has been made yet — awaiting your confirmation of this verification output per working rule #6.

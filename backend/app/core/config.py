@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     gmail_address: str = ""
     gmail_app_password: str = ""
 
+    # Twilio SMS (app/services/notifications/sms_provider.py). Empty by default:
+    # the dispatch service falls back to the safe Phase 13 stub (SIMULATED,
+    # never a real send) whenever any of these three is missing, regardless of
+    # a business's sms_enabled flag.
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

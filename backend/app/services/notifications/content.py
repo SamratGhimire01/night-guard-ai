@@ -48,3 +48,23 @@ def compose_email(*, event_type: str, appointment: Appointment, business: Busine
         f"Booking ID: {booking_id}\n"
     )
     return subject, body
+
+
+def compose_sms(*, event_type: str, appointment: Appointment, business: Business, service: Service) -> str:
+    """Deterministic one-line SMS body — same real-row/no-LLM discipline as
+    compose_email, just short (SMS has no subject line and carriers/Twilio
+    charge per ~160-char segment)."""
+    tz = ZoneInfo(business.timezone)
+    when = _format_local(appointment.scheduled_at, tz)
+    booking_id = str(appointment.id)[:8]
+
+    if event_type == "booking_confirmed":
+        verb = "confirmed"
+    elif event_type == "appointment_cancelled":
+        verb = "cancelled"
+    elif event_type == "appointment_rescheduled":
+        verb = "rescheduled"
+    else:
+        raise ValueError(f"Unknown notification event_type: {event_type!r}")
+
+    return f"{business.name}: your {service.name} appointment on {when} is {verb}. Booking ID {booking_id}."

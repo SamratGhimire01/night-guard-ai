@@ -1,7 +1,7 @@
 import enum
 from datetime import date, time
 
-from sqlalchemy import CheckConstraint, Date, Enum, String, Text, Time, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Date, Enum, String, Text, Time, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -29,6 +29,10 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     website: Mapped[str | None] = mapped_column(String(255))
     languages: Mapped[list[str] | None] = mapped_column(ARRAY(String(16)))
     tone: Mapped[str | None] = mapped_column(String(100))
+    # Phase 15: premium-tier toggle. Off by default — enabling it alone still
+    # doesn't send a real text to any given customer unless that customer has
+    # ALSO opted in (Customer.sms_opt_in) — see that column's comment for why.
+    sms_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
 
 class BusinessUser(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):

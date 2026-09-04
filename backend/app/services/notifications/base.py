@@ -22,6 +22,12 @@ class NotificationProvider(ABC):
     Notification.channel. Mirrors the ChatProvider/EmbeddingProvider seam from
     app/llm/base.py."""
 
+    # True only for a provider that never actually contacts a real backend
+    # (the SMS stub) — dispatch_service maps a successful send to
+    # NotificationStatus.SIMULATED instead of SENT for these, so a simulated
+    # "send" can never be mistaken for proof a real message went out.
+    SIMULATED = False
+
     @abstractmethod
     def send(self, *, to: str, subject: str, body: str) -> str:
         """Sends the message. Returns a short human-readable success detail

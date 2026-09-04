@@ -5,15 +5,16 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.models.appointment import Appointment
 from app.db.models.business import Business
 from app.db.models.customer import Customer
 from app.db.models.notification import Notification, NotificationStatus
 from app.db.models.service import Service
 from app.services.notifications.base import NotificationDeliveryError
-from app.services.notifications.content import compose_email
+from app.services.notifications.content import compose_email, compose_sms
 from app.services.notifications.email_provider import EmailNotificationProvider
-from app.services.notifications.sms_provider import SMSNotificationProvider
+from app.services.notifications.sms_provider import SMSNotificationProvider, TwilioSMSProvider
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,16 @@ _MAX_SEND_ATTEMPTS = 3
 _RETRY_DELAY_SECONDS = 1
 
 _PROVIDERS = {"email": EmailNotificationProvider(), "sms": SMSNotificationProvider()}
+
+
+def _resolve_sms_provider():
+    """Real Twilio only when all three env vars are actually set (checked live,
+    not cached, so a test/monkeypatch of `settings` takes effect immediately);
+    otherwise the same safe Phase 13 stub via _PROVIDERS["sms"] — never crashes
+    on missing config, regardless of a business's sms_enabled flag."""
+    if settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from_number:
+        return TwilioSMSProvider()
+    return _PROVIDERS["sms"]
 
 
 def dispatch_notification(db: Session, notification: Notification) -> None:
@@ -53,11 +64,6 @@ def _mark_failed(db: Session, notification: Notification, reason: str) -> None:
 
 
 def _dispatch(db: Session, notification: Notification) -> None:
-    provider = _PROVIDERS.get(notification.channel)
-    if provider is None:
-        _mark_failed(db, notification, f"no provider registered for channel={notification.channel!r}")
-        return
-
     appointment = db.get(Appointment, notification.appointment_id)
     business = db.get(Business, notification.business_id)
     service = db.get(Service, appointment.service_id) if appointment else None
@@ -66,23 +72,36 @@ def _dispatch(db: Session, notification: Notification) -> None:
         _mark_failed(db, notification, "missing appointment/business/service/customer data")
         return
 
-    subject, body = compose_email(
-        event_type=notification.event_type, appointment=appointment, business=business, service=service
-    )
-
-    if notification.channel == "sms":
-        detail = provider.send(to=customer.phone or "", subject=subject, body=body)
-        logger.info("notification_id=%s simulated sms: %s", notification.id, detail)
-        notification.status = NotificationStatus.SIMULATED
-        db.commit()
+    if notification.channel == "email":
+        provider = _PROVIDERS["email"]
+        recipient = customer.email or ""
+        subject, body = compose_email(
+            event_type=notification.event_type, appointment=appointment, business=business, service=service
+        )
+    elif notification.channel == "sms":
+        provider = _resolve_sms_provider()
+        recipient = customer.phone or ""
+        subject, body = "", compose_sms(
+            event_type=notification.event_type, appointment=appointment, business=business, service=service
+        )
+    else:
+        _mark_failed(db, notification, f"no provider registered for channel={notification.channel!r}")
         return
+
+    # Real providers (email, real Twilio) confirm SENT — a real network
+    # acceptance response, never a delivery receipt (see each provider's
+    # docstring for why DELIVERED is unreachable). The stub SMS provider
+    # confirms only SIMULATED, so it can never be mistaken for a real send.
+    success_status = (
+        NotificationStatus.SIMULATED if getattr(provider, "SIMULATED", False) else NotificationStatus.SENT
+    )
 
     last_error: NotificationDeliveryError | None = None
     attempts_made = 0
     for attempt in range(1, _MAX_SEND_ATTEMPTS + 1):
         attempts_made = attempt
         try:
-            detail = provider.send(to=customer.email or "", subject=subject, body=body)
+            detail = provider.send(to=recipient, subject=subject, body=body)
         except NotificationDeliveryError as exc:
             last_error = exc
             if not exc.transient or attempt == _MAX_SEND_ATTEMPTS:
@@ -98,9 +117,14 @@ def _dispatch(db: Session, notification: Notification) -> None:
             continue
         else:
             logger.info(
-                "notification_id=%s sent on attempt %d/%d: %s", notification.id, attempt, _MAX_SEND_ATTEMPTS, detail
+                "notification_id=%s %s on attempt %d/%d: %s",
+                notification.id,
+                success_status.value,
+                attempt,
+                _MAX_SEND_ATTEMPTS,
+                detail,
             )
-            notification.status = NotificationStatus.SENT
+            notification.status = success_status
             db.commit()
             return
 

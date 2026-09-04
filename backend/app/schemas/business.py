@@ -16,6 +16,7 @@ class BusinessRead(BaseModel):
     timezone: str
     languages: list[str] | None
     tone: str | None
+    sms_enabled: bool
 
 
 class BusinessUpdate(BaseModel):
@@ -33,10 +34,18 @@ class BusinessUpdate(BaseModel):
     timezone: str | None = None
     languages: list[str] | None = None
     tone: str | None = None
+    sms_enabled: bool | None = None
 
     @field_validator("name", "timezone")
     @classmethod
     def required_field_not_null(cls, value: str | None) -> str:
         if value is None:
             raise ValueError("This field is required and cannot be cleared to null.")
+        return value
+
+    @field_validator("sms_enabled")
+    @classmethod
+    def sms_enabled_not_null(cls, value: bool | None) -> bool:
+        if value is None:
+            raise ValueError("sms_enabled cannot be cleared to null — pass true or false.")
         return value

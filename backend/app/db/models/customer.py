@@ -1,4 +1,4 @@
-from sqlalchemy import String, UniqueConstraint
+from sqlalchemy import Boolean, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -19,3 +19,10 @@ class Customer(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):
     phone: Mapped[str | None] = mapped_column(String(50))
     email: Mapped[str | None] = mapped_column(String(255))
     preferred_language: Mapped[str | None] = mapped_column(String(32))
+    # Phase 15: explicit per-customer SMS consent. Defaults False — the master
+    # plan's "never spam customers" rule means a business turning sms_enabled on
+    # must NOT retroactively start texting every existing customer; only a
+    # customer who explicitly opted in (set at creation for now — no customer-
+    # update endpoint exists yet in this codebase, see PHASE_STATUS.md) is ever
+    # eligible for a real SMS send.
+    sms_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")

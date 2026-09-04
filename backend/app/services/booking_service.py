@@ -10,6 +10,7 @@ from app.core.exceptions import ConflictError, NotFoundError, UnprocessableEntit
 from app.db.models.appointment import Appointment, AppointmentParticipant, AppointmentStatus
 from app.db.models.audit_log import AuditLog
 from app.db.models.business import Business, BusinessHours, BusinessHoursException
+from app.db.models.customer import Customer
 from app.db.models.notification import Notification, NotificationStatus
 from app.services import customer_service, service_service, staff_service
 from app.services.notifications import dispatch_notification
@@ -21,6 +22,19 @@ _CANCELLABLE_STATUSES = (AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED)
 # one shared grid; add a per-business setting if a service ever genuinely
 # needs a finer/coarser one than 15 minutes.
 SLOT_GRANULARITY_MINUTES = 15
+
+
+def _notification_channel(business: Business, customer: Customer) -> str:
+    """SMS (Phase 15) is used only as a fallback for a customer with no email
+    on file — email stays the unconditional default for every customer who has
+    one, exactly matching pre-Phase-15 behavior. It's only even eligible when
+    the business has explicitly turned SMS on AND the customer explicitly
+    opted in (never spam customers who didn't ask for texts — see
+    Customer.sms_opt_in's comment and PHASE_STATUS.md Phase 15 for the
+    consent design)."""
+    if business.sms_enabled and customer.sms_opt_in and customer.phone and not customer.email:
+        return "sms"
+    return "email"
 
 
 def _resolve_effective_staff_id(service, staff_id: uuid.UUID | None) -> uuid.UUID | None:
@@ -179,7 +193,8 @@ def create_appointment(
         raise NotFoundError("Service not found.")
     if staff_id is not None and staff_service.get_staff(db, business_id=business_id, staff_id=staff_id) is None:
         raise NotFoundError("Staff member not found.")
-    if customer_service.get_customer(db, business_id=business_id, customer_id=customer_id) is None:
+    customer = customer_service.get_customer(db, business_id=business_id, customer_id=customer_id)
+    if customer is None:
         raise NotFoundError("Customer not found.")
 
     available = get_available_slots(
@@ -213,10 +228,11 @@ def create_appointment(
         db.rollback()
         raise ConflictError("This slot was just booked by someone else — please choose another time.")
 
+    business = db.get(Business, business_id)
     notification = Notification(
         business_id=business_id,
         appointment_id=appointment.id,
-        channel="email",
+        channel=_notification_channel(business, customer),
         event_type="booking_confirmed",
         status=NotificationStatus.QUEUED,
     )
@@ -509,10 +525,12 @@ def cancel_appointment(db: Session, *, business_id: uuid.UUID, appointment_id: u
         )
 
     appointment.status = AppointmentStatus.CANCELLED
+    business = db.get(Business, business_id)
+    customer = db.get(Customer, appointment.customer_id)
     notification = Notification(
         business_id=business_id,
         appointment_id=appointment.id,
-        channel="email",
+        channel=_notification_channel(business, customer),
         event_type="appointment_cancelled",
         status=NotificationStatus.QUEUED,
     )
@@ -581,10 +599,12 @@ def reschedule_appointment(
             result=f"moved_from={previous_scheduled_at.isoformat()}",
         )
     )
+    business = db.get(Business, business_id)
+    customer = db.get(Customer, appointment.customer_id)
     notification = Notification(
         business_id=business_id,
         appointment_id=appointment.id,
-        channel="email",
+        channel=_notification_channel(business, customer),
         event_type="appointment_rescheduled",
         status=NotificationStatus.QUEUED,
     )
