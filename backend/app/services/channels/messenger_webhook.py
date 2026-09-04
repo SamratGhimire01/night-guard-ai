@@ -7,42 +7,18 @@ from sqlalchemy.orm import Session
 from app.db.models.conversation import Message
 from app.db.models.integration import Integration
 from app.services.channels.messenger import MessengerChannelAdapter
+from app.services.channels.meta_messaging_webhook import extract_incoming_text_messages
 
 logger = logging.getLogger(__name__)
 
 _adapter = MessengerChannelAdapter()
 
-
-def extract_incoming_text_messages(payload: dict) -> list[dict]:
-    """Walks Meta's real Messenger Platform webhook envelope shape —
-    `entry[].messaging[]`, genuinely different from WhatsApp Cloud API's
-    `entry[].changes[].value.messages[]` even though both are Meta products
-    signed/verified the same way — and returns one normalized dict per real
-    incoming TEXT message: {page_id, psid, message_id, text}.
-
-    Deliberately tolerant, not a strict schema: this identical endpoint also
-    delivers delivery/read receipts (`delivery`/`read` keys, no `message`),
-    postbacks (button taps, no `message.text`), and echoes of the Page's OWN
-    outgoing sends (`message.is_echo: true` — a Messenger-specific concept
-    WhatsApp's webhook doesn't have, since Messenger echoes a Page's sent
-    messages back through the same webhook) — all silently skipped, never a
-    crash, since raising here would make Meta retry-storm us over events we
-    don't act on (same discipline as WhatsApp's extract_incoming_text_messages).
-    """
-    results = []
-    for entry in payload.get("entry", []) or []:
-        page_id = entry.get("id")
-        for event in entry.get("messaging", []) or []:
-            message = event.get("message") or {}
-            if not message or message.get("is_echo"):
-                continue
-            text = message.get("text")
-            psid = (event.get("sender") or {}).get("id")
-            message_id = message.get("mid")
-            if not (page_id and psid and message_id and text):
-                continue
-            results.append({"page_id": page_id, "psid": psid, "message_id": message_id, "text": text})
-    return results
+# Re-exported (Phase 27 moved the real implementation to
+# meta_messaging_webhook.py, shared with instagram_webhook.py — Meta's
+# entry[].messaging[] envelope shape is genuinely identical between the two
+# products, see that module's docstring) so any existing import of
+# `extract_incoming_text_messages` from this module keeps working unchanged.
+__all__ = ["extract_incoming_text_messages", "process_webhook_payload"]
 
 
 def _resolve_integration(db: Session, *, page_id: str) -> Integration | None:
@@ -89,9 +65,9 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
     """
     outcomes = []
     for incoming in extract_incoming_text_messages(payload):
-        integration = _resolve_integration(db, page_id=incoming["page_id"])
+        integration = _resolve_integration(db, page_id=incoming["account_id"])
         if integration is None:
-            logger.warning("messenger webhook: no business registered for page_id=%s", incoming["page_id"])
+            logger.warning("messenger webhook: no business registered for page_id=%s", incoming["account_id"])
             outcomes.append({"message_id": incoming["message_id"], "status": "unknown_page_id"})
             continue
         business_id = integration.business_id
@@ -108,7 +84,7 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
             result = _adapter.receive_message(
                 db,
                 business_id=business_id,
-                external_customer_ref=incoming["psid"],
+                external_customer_ref=incoming["sender_id"],
                 content=incoming["text"],
                 external_message_id=incoming["message_id"],
             )
@@ -126,7 +102,7 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
             continue
 
         send_detail = _adapter.send_message(
-            psid=incoming["psid"],
+            psid=incoming["sender_id"],
             text=result["response"],
             page_access_token=(integration.config or {}).get("page_access_token") or "",
         )

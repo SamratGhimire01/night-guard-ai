@@ -63,6 +63,19 @@ class Settings(BaseSettings):
     messenger_verify_token: str = ""
     messenger_api_version: str = "v20.0"
 
+    # Instagram Messaging (app/services/channels/instagram.py). Empty by default —
+    # no production Meta Instagram professional account exists yet (Phase 27), same
+    # honest gap as WhatsApp/Messenger. instagram_app_secret/instagram_verify_token
+    # play the identical role as their WhatsApp/Messenger counterparts (the webhook
+    # signature/handshake mechanism is genuinely the same across all three products —
+    # see meta_webhook_signature.py). Like Messenger, there is no
+    # instagram_access_token setting: each Instagram professional account has its
+    # own access token, obtained per-account — that lives in each business's own
+    # Integration.config["access_token"], not here.
+    instagram_app_secret: str = ""
+    instagram_verify_token: str = ""
+    instagram_api_version: str = "v20.0"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

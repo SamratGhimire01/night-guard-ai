@@ -5466,3 +5466,199 @@ $ docker compose exec backend python -m pytest tests/ -q
 - **`page_access_token` stored in `Integration.config` as plain JSONB, not separately encrypted at rest** — consistent with how this codebase already stores `WHATSAPP_ACCESS_TOKEN`-equivalent secrets (env var, not DB, for WhatsApp) but a real, honest step down in at-rest protection since here it's a per-tenant DB value; same class of gap as storing any other per-tenant API credential in this schema today (none currently exist) — flagged for a future encrypted-secrets-at-rest phase, not hidden.
 - Carried over from every prior phase, still real and still open: no staff-capacity model, fixed 15-minute slot grid, exact-match-only service-name resolution, no refresh tokens, no worker/cron for the several "run this later" functions, no real Twilio account tested against, `KnowledgeDocument.approved_by` still not tenant-cross-checked at the DB level.
 - No commit has been made yet — awaiting your confirmation of this verification output per working rule #6.
+
+---
+
+## Phase 27 — Instagram Adapter
+
+**Date:** 2026-09-05
+
+**⚠️ NOT LIVE-TESTED AGAINST PRODUCTION META — READ BEFORE TRUSTING THIS AS A WORKING INTEGRATION.** No Meta Business account/Instagram professional account/App exists for this project — same honest gap as Phase 22/26. Everything below verified as "live" was run against the real, production `POST /api/v1/webhooks/instagram` / `GET /api/v1/webhooks/instagram` routes on this real running backend, using real cryptography (HMAC-SHA256) and a real Azure LLM — but the HTTP requests were sent by curl/pytest simulating Meta, not by Meta's actual servers. What a first real end-to-end test against production Meta would additionally need (same class of list as Phase 22/26, plus): a real Instagram professional account linked/authorized for Instagram Messaging, App Review for the relevant `instagram_business_basic`/messaging permissions, and a real per-account access token.
+
+**Required:** A real `InstagramChannelAdapter` on the Phase 21 `ChannelAdapter` interface, reusing Phase 26's shared `meta_webhook_signature.py` as-is, researching Instagram's actual current documented webhook shape and reusing Messenger's envelope-parsing logic wherever it's genuinely identical (not just similar), diverging only where the real contract actually differs.
+
+**Research finding, stated explicitly (the ticket asked this be argued):** Instagram Messaging webhooks and Messenger Platform webhooks are not merely "similar enough to force together" — they are a **genuine, field-for-field structural match**. Both are built on the same underlying Meta messaging-webhook infrastructure (Instagram DMs were brought onto the Messenger Platform's own conversations model): both deliver `entry[].id` (the receiving account) and `entry[].messaging[]` events shaped identically — `sender.id` / `recipient.id` / `message.mid` / `message.text` / `message.is_echo`. Only the *meaning* of the ids differs (a Facebook Page id + PSID for Messenger vs. an Instagram-scoped business account id + IGSID for Instagram) — the JSON shape and field names do not differ at all. This is a materially different finding from WhatsApp Cloud API's `entry[].changes[].value.messages[]` shape, which genuinely is structurally different and was correctly NOT shared in Phase 22/26.
+
+**Implemented:**
+
+- **`app/services/channels/meta_messaging_webhook.py`** (new) — `extract_incoming_text_messages(payload)`, the one real shared envelope parser this finding justifies: walks `entry[].messaging[]` and returns normalized `{account_id, sender_id, message_id, text}` dicts, generic field names on purpose (this function itself has no concept of "Page" vs "Instagram account" — each channel's own webhook module maps these onto its own vocabulary). **Extracted out of `messenger_webhook.py`** (where Phase 26 originally defined it as `extract_incoming_text_messages` with Messenger-specific key names `page_id`/`psid`) — `messenger_webhook.py` now imports it and re-exports it (`__all__`), with its own `_resolve_integration`/`process_webhook_payload` updated to read `incoming["account_id"]`/`incoming["sender_id"]` instead. Proven not to have changed Messenger's behavior: the full, unmodified Phase 26 `test_messenger.py` suite stays green (§8 below) — same "extract real shared code, verify nothing broke" discipline Phase 26 established for `verify_signature`.
+- **`app/services/channels/instagram.py`** (new) — `InstagramChannelAdapter(ChannelAdapter)`, same shape as `MessengerChannelAdapter`/`WhatsAppChannelAdapter`: `receive_message()` is the same 2-call wrapper, proven live below to trigger the identical real Phase 19 handoff logic through this channel too. `external_customer_ref` is the real Instagram-scoped id (IGSID) — not a secret, used directly.
+  - **`send_message(igsid, text, ig_account_id, access_token)`** — the real Instagram Messaging API send shape: `POST https://graph.facebook.com/{version}/{ig_account_id}/messages?access_token=...`, body `{"recipient":{"id":igsid},"message":{"text":text}}` — the request BODY is genuinely identical to Messenger's, but the URL path is real Send-API-scoped to `/{ig_account_id}/messages`, deliberately NOT Messenger's Page-scoped `/me/messages` (Meta disambiguates the two products at exactly this one point). Like Messenger (and unlike WhatsApp), there is no platform-wide token — each Instagram professional account has its own access token, sourced per-request from this business's own `Integration.config["access_token"]`, not a global setting. Graceful fallback identical to WhatsApp/Messenger: empty/missing token → `SIMULATED` log line, no network call, never raises.
+- **`app/services/channels/instagram_webhook.py`** (new) — same pipeline shape as `messenger_webhook.py`: `_resolve_integration(db, ig_account_id)` extends the `page_id → business_id` pattern to Instagram's `ig_account_id`, reusing the already-generic `Integration` model with **zero schema changes** (`type="instagram"`, `config={"ig_account_id": ..., "access_token": ...}`); `process_webhook_payload()` reuses the shared `extract_incoming_text_messages` directly (imported, not reimplemented), same real idempotency pre-check, `IntegrityError` race backstop, then `send_message()`.
+  - **Idempotency column reuse, explicitly justified (same reasoning already applied twice)**: reuses `Message.external_message_id`'s existing unique constraint. Instagram `mid`s, Messenger `mid`s, and WhatsApp `wamid`s are opaque strings from different Meta subsystems with visibly different formats — real collision risk across all three is not credible, and even a pathological collision fails safe (a dropped duplicate-looking message, logged, still acked). No new column/migration for a non-issue.
+- **`app/api/routes/webhooks.py`** — `GET /api/v1/webhooks/instagram` (identical handshake logic, own `instagram_verify_token`) and `POST /api/v1/webhooks/instagram` (same raw-body-first-then-verify-then-parse discipline, reusing the same shared `verify_signature` already used for WhatsApp/Messenger), added alongside the existing routes in the same router/file — zero changes to the WhatsApp/Messenger routes.
+- **`app/core/config.py` / `.env.example`** — `INSTAGRAM_APP_SECRET`, `INSTAGRAM_VERIFY_TOKEN`, `INSTAGRAM_API_VERSION` (default `v20.0`). Deliberately no `INSTAGRAM_ACCESS_TOKEN` — same per-account-token reasoning as Messenger. Local `.env` given real, randomly-generated (not Meta-issued) values, same discipline as Phase 22/26.
+- **No migration this phase** — confirmed via `alembic check` (§11 below): `Message.external_message_id`'s existing constraint and the already-generic `Integration` model needed zero schema changes.
+
+**Real-API acceptance verification (actual output, run 2026-09-05; conversation-engine parts are real Azure LLM calls; the "Meta side" is simulated by curl/pytest with correct cryptography, since no real Meta Instagram account exists — see the warning banner above). Business used for live curl testing: "Instagram Live Test Biz", `business_id=55e5459a-545f-40bc-97f4-3fc02a3dc19e`, a real `Integration` row inserted directly for testing (`type="instagram"`, `config={"ig_account_id":"live-ig-account-778899","access_token":""}`), same precedent as Phase 22/26 — `docker compose restart backend` run first to load the new code:**
+
+1. **Verification handshake — real GET, real plain-text echo:**
+```
+$ curl -i ".../webhooks/instagram?hub.mode=subscribe&hub.verify_token=132a91fc97b49867c06d7a879d212093&hub.challenge=5566778899"
+HTTP/1.1 200 OK
+content-type: text/plain; charset=utf-8
+
+5566778899
+```
+   Wrong token — real rejection:
+```
+$ curl -i ".../webhooks/instagram?hub.mode=subscribe&hub.verify_token=totally-wrong&hub.challenge=5566778899"
+HTTP/1.1 403 Forbidden
+{"error":{"type":"forbidden","message":"Webhook verification failed."}}
+```
+
+2. **Real end-to-end simulated flow — real Meta Instagram payload shape (`entry[].messaging[]`), real HMAC signature, real Azure LLM, shared code path proven:**
+```
+$ curl -i -X POST .../webhooks/instagram -H "X-Hub-Signature-256: sha256=3048f36fc891e40a7e8f23285e2f346923ad45105b5e1471b15fac5c1f126615" --data-binary @ig_payload.json
+(payload: entry[0].id="live-ig-account-778899", messaging[0].sender.id="igsid-live-0001",
+ message.mid="ig.mid.88448da9d56d4eecb1aa7edbfb5aa61f",
+ message.text="Do you offer laser teeth whitening, and if so what brand of equipment do you use?")
+HTTP/1.1 200 OK
+{"status":"ok"}
+```
+   Real DB — a real Customer/Conversation/2 Messages, exactly the shape every other channel produces:
+```
+$ psql -c "SELECT id, channel, customer_id FROM conversations WHERE business_id='55e5459a-...';"
+ 26de19f1-... | instagram | a133ce5b-...
+$ psql -c "SELECT sender_type, left(content,140), detected_intent, external_message_id FROM messages WHERE conversation_id='26de19f1-...' ORDER BY created_at;"
+ CUSTOMER | Do you offer laser teeth whitening, and if so what brand of equipment do you use?               | service_question | ig.mid.88448da9d56d4eecb1aa7edbfb5aa61f
+ AGENT    | I don't have that information on file — our services and equipment aren't listed here. Would... |                  |
+```
+   Real full agent response (real Azure LLM), including Phase 19's real handoff sentence — this business has zero knowledge documents, the exact same real-handoff behavior already proven for widget (21), WhatsApp (22), Messenger (26), now proven through Instagram via the identical shared orchestrator:
+```
+"I don't have that information on file — our services and equipment aren't listed here. Would you like me to connect you with our team so they can confirm whether we offer laser teeth whitening and which brand of equipment we use? I've also let our team know, so a real person will follow up with you."
+```
+   Real backend log confirming the graceful send fallback fired (no access token configured for this business):
+```
+{"logger": "app.services.channels.instagram", "message": "SIMULATED Instagram send to igsid-live-0001: I don't have that information on file ... I've also let our team know, so a real person will follow up with you."}
+{"logger": "app.api.routes.webhooks", "message": "instagram webhook processed: 1 message(s), outcomes=['processed']"}
+```
+
+3. **Real HMAC signature verification — invalid/tampered rejected:**
+```
+$ curl -i -X POST .../webhooks/instagram -H "X-Hub-Signature-256: <the ORIGINAL, now-stale signature>" --data-binary @ig_payload_with_text_changed_to_TAMPERED.json
+HTTP/1.1 401 Unauthorized
+{"error":{"type":"unauthorized","message":"Invalid webhook signature."}}
+```
+   No signature header at all:
+```
+$ curl -i -X POST .../webhooks/instagram --data-binary @ig_payload.json   (no X-Hub-Signature-256 header)
+HTTP/1.1 401 Unauthorized
+{"error":{"type":"unauthorized","message":"Invalid webhook signature."}}
+```
+
+4. **Idempotency — the identical webhook (same real Meta `mid`) redelivered:**
+```
+$ curl -i -X POST .../webhooks/instagram -H "X-Hub-Signature-256: <same real signature>" --data-binary @ig_payload.json   (SECOND delivery, identical bytes)
+HTTP/1.1 200 OK
+{"status":"ok"}   -- still acked, never turned into an error
+```
+   Real DB proof — still exactly one:
+```
+$ psql -c "SELECT count(*) FROM messages WHERE external_message_id='ig.mid.88448da9d56d4eecb1aa7edbfb5aa61f';"   -> 1
+$ psql -c "SELECT count(*) FROM conversations WHERE business_id='55e5459a-...';"                                  -> 1
+$ psql -c "SELECT count(*) FROM messages WHERE conversation_id='26de19f1-...';"                                   -> 2   (not 4)
+```
+
+5. **Three-way cross-channel sanity check — real WhatsApp and Messenger `Integration`s added to the SAME business as the Instagram one above, real correctly-signed webhooks sent for all three:**
+```
+$ curl -i -X POST .../webhooks/messenger -H "X-Hub-Signature-256: <real>" --data-binary @mg_3way_payload.json
+(page_id="live-page-3way-001", sender.id="psid-3way-001", mid="mid.56ac96e89eae4178a90c5443599d3b29")
+HTTP/1.1 200 OK
+{"status":"ok"}
+
+$ curl -i -X POST .../webhooks/whatsapp -H "X-Hub-Signature-256: <real>" --data-binary @wa_3way_payload.json
+(phone_number_id="live-pnid-3way-001", wa_id="15559990777", id="wamid.78e75ebdeef440bfa19b8968cfad845e")
+HTTP/1.1 200 OK
+{"status":"ok"}
+```
+   Real DB proof, same business_id, all three channels present and fully separate:
+```
+$ psql -c "SELECT channel, external_ref, customer_id FROM channel_identities WHERE business_id='55e5459a-...' ORDER BY channel;"
+ instagram | igsid-live-0001 | a133ce5b-caf2-4559-8b1c-5c14651bb77e
+ messenger | psid-3way-001   | 5f77c9e7-e924-4d11-945f-ab8e29947fe9
+ whatsapp  | 15559990777     | 264a5d5c-edb3-41b2-93e9-affcaeea4f79
+$ psql -c "SELECT id, channel, customer_id FROM conversations WHERE business_id='55e5459a-...' ORDER BY channel;"
+ 26de19f1-... | instagram | a133ce5b-...
+ 780dc178-... | messenger | 5f77c9e7-...
+ be4ea947-... | whatsapp  | 264a5d5c-...
+$ psql -c "SELECT c.channel, m.external_message_id FROM messages m JOIN conversations c ON c.id = m.conversation_id WHERE c.business_id='55e5459a-...' AND m.external_message_id IS NOT NULL ORDER BY c.channel;"
+ instagram | ig.mid.88448da9d56d4eecb1aa7edbfb5aa61f
+ messenger | mid.56ac96e89eae4178a90c5443599d3b29
+ whatsapp  | wamid.78e75ebdeef440bfa19b8968cfad845e
+```
+   Three distinct `ChannelIdentity` rows, three distinct `Conversation` rows, three distinct `customer_id`s, and each channel's message id appears ONLY in its own channel's conversation — zero cross-contamination across all three, for one real `business_id`. *(Full bidirectional message-id-set isolation across all three channels additionally automated-test-verified in `test_whatsapp_messenger_and_instagram_conversations_for_the_same_business_never_cross_contaminate`.)*
+
+6. **Secrets grep:**
+```
+$ docker compose logs backend --tail=3000 | grep -F "<the real INSTAGRAM_APP_SECRET>"    -> no match (never logged)
+$ docker compose logs backend --tail=3000 | grep -F "<the real INSTAGRAM_VERIFY_TOKEN>"  -> 1 match: uvicorn's own access-log line
+   for the GET handshake request — identical, protocol-mandated nuance already explained and accepted in Phase 22/26
+$ git ls-files | grep -E '\.env$'   -> none tracked
+$ git grep -nE 'INSTAGRAM_(APP_SECRET|VERIFY_TOKEN)\s*=\s*[A-Za-z0-9]' -- . ':!backend/.env.example'   -> no match
+$ grep -rn "instagram_app_secret\|instagram_verify_token" app/   -> only used for HMAC verification / the handshake comparison, never passed to a logger.* call
+```
+
+7. **[verified via automated test]** `tests/integration/test_instagram.py`, 13 new tests, real DB throughout (embedding/chat providers stubbed — same discipline as `test_whatsapp.py`/`test_messenger.py`; HMAC signature verification is real, unstubbed cryptography in every test):
+```
+$ docker compose exec backend python -m pytest tests/integration/test_instagram.py -v
+test_valid_signature_is_accepted PASSED
+test_tampered_payload_with_stale_signature_is_rejected PASSED
+test_missing_signature_header_is_rejected PASSED
+test_wrong_secret_signature_is_rejected PASSED
+test_verification_handshake_echoes_challenge_on_matching_token PASSED
+test_verification_handshake_rejects_wrong_token PASSED
+test_incoming_message_flows_through_the_real_shared_orchestrator PASSED
+test_message_echo_of_our_own_send_is_ignored_not_processed PASSED
+test_identical_webhook_delivered_twice_creates_only_one_message PASSED
+test_db_constraint_itself_rejects_a_second_row_with_the_same_external_message_id PASSED
+test_unknown_ig_account_id_is_acked_and_skipped_not_a_crash PASSED
+test_send_message_gracefully_simulates_when_no_access_token_configured PASSED
+test_whatsapp_messenger_and_instagram_conversations_for_the_same_business_never_cross_contaminate PASSED
+======================== 13 passed in 3.75s ========================
+```
+
+8. **[verified via automated test]** Phase 22/26's full WhatsApp + Messenger suites, unmodified, still green after `extract_incoming_text_messages` was extracted out from under Messenger's module — proof the shared-parser refactor changed zero WhatsApp/Messenger behavior:
+```
+$ docker compose exec backend python -m pytest tests/integration/test_messenger.py tests/integration/test_whatsapp.py -v
+======================== 24 passed in 5.41s ========================
+```
+
+9. **[verified via automated test]** Full regression suite — zero pre-existing tests needed changes:
+```
+$ docker compose exec backend python -m pytest tests/ -q
+288 passed, 1 skipped, 1 warning in 277.94s
+```
+(275 passed at the end of Phase 26 + 13 new in `test_instagram.py` = 288.)
+
+10. Lint: `docker compose exec backend ruff check .` → `All checks passed!`
+
+11. **No migration this phase** — confirmed:
+```
+$ docker compose exec backend alembic check
+No new upgrade operations detected.
+```
+
+12. **[verified live]** DB left clean after all real/manual testing — the test business/its `Integration`/`ChannelIdentity`/`Conversation`/`Message` rows fully removed (cascade via `Business` delete): `businesses=0 channel_identities=0 conversations=0` for `business_id=55e5459a-...` confirmed post-cleanup (other, pre-existing rows from earlier session activity in this shared dev DB were left untouched, not mine to delete).
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real webhook signature verification: valid accepted, tampered/invalid rejected | ✓ Pass — §3 |
+| Real end-to-end simulated flow through the full orchestrator (Phase 25a/25b/25c hardening applies identically) | ✓ Pass — §2 (real Azure LLM, real Phase 19 handoff logic firing identically to WhatsApp/Messenger/widget — same engine, same hardening, proven by construction since it's literally the same `handle_incoming_message` call) |
+| Idempotency: duplicate webhook → exactly one Message | ✓ Pass — §4, real DB counts before/after |
+| Real verification handshake | ✓ Pass — §1 |
+| Graceful no-op send without real credentials | ✓ Pass — §2's log line, §7's dedicated test |
+| Three-way cross-channel isolation: WhatsApp + Messenger + Instagram on one business stay fully separate | ✓ Pass — §5, real DB proof, plus automated bidirectional isolation test across all three |
+| Full regression suite — zero regressions across all three adapters | ✓ Pass — §8 (WhatsApp/Messenger suites unmodified, still green), §9 (288 passed, 1 skipped, 0 failed) |
+| Secrets grep clean, lint clean, migration reversible if applicable | ✓ Pass — §6, §10; no migration needed this phase (§11) |
+
+**Known issues / punted items:**
+- **No production Meta Instagram professional account/App exists — see the warning banner at the top of this section.** Everything here is verified against the real code path with simulated-but-correctly-shaped/signed requests, never against Meta's actual servers. Explicitly the ticket's own instruction, not a shortcut.
+- **`send_message`'s real HTTP path has never actually executed against a real network** — only its structure was verified by code inspection against Meta's real documented Instagram Messaging API shape, identical honest gap as WhatsApp/Messenger's `send_message`. The graceful-fallback branch (the one that DOES run today) is the one proven live in §2.
+- **No connect-your-Instagram-account onboarding UI** — a business's `Integration` row (`type="instagram"`, `config={"ig_account_id": ..., "access_token": ...}`) is inserted directly via the ORM for testing, the identical honest gap pattern as WhatsApp's/Messenger's Integration rows. A real flow would need Meta's Instagram Login/Facebook Login for Business OAuth to obtain each business's own access token — not built here, out of scope.
+- **Only `type: "text"` incoming messages are handled** — attachments, story replies/mentions, reactions, and Instagram's own delivery/read-receipt and echo webhooks are all silently, safely skipped, identical scope decision to WhatsApp/Messenger.
+- **Idempotency column (`Message.external_message_id`) is now shared, unscoped-by-channel, across all THREE channels** (WhatsApp, Messenger, Instagram) — explicitly argued above as a non-issue given the three id-namespaces' real formats, not silently punted; the risk profile doesn't change by adding a third sharer, since the constraint was already global, not pairwise.
+- **`access_token` stored in `Integration.config` as plain JSONB, not separately encrypted at rest** — same already-flagged gap as Messenger's `page_access_token` (Phase 26), not a new one introduced here.
+- Carried over from every prior phase, still real and still open: no staff-capacity model, fixed 15-minute slot grid, exact-match-only service-name resolution, no refresh tokens, no worker/cron for the several "run this later" functions, no real Twilio account tested against, `KnowledgeDocument.approved_by` still not tenant-cross-checked at the DB level.
+- No commit has been made yet — awaiting your confirmation of this verification output per working rule #6.
