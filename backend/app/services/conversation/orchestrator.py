@@ -166,6 +166,40 @@ def _format_reschedule_result(result: dict, *, tz: ZoneInfo, customer_name: str 
     return f"I couldn't reschedule that{who} — {result['message'].rstrip('.').lower()}."
 
 
+def _format_appointment_status_result(result: dict, *, tz: ZoneInfo, customer_name: str | None) -> str:
+    """The ONLY place an appointment-status answer is composed — deterministic
+    Python reading AppointmentStatusTool's real, freshly-queried result, never
+    the LLM's own reading of the conversation summary/memory. This is what
+    makes "the real DB always wins over stale memory" airtight rather than a
+    prompt instruction the model could still get wrong (see Phase 14's
+    staleness-proof test)."""
+    who = f", {customer_name}" if customer_name else ""
+    active = result["active"]
+    recent_past = result["recent_past"]
+
+    def describe(a: dict) -> str:
+        when = _format_local(datetime.fromisoformat(a["scheduled_at"]), tz)
+        return f"{a['service']} on {when} (booking ID {a['id']})"
+
+    if not active and not recent_past:
+        return f"You don't have any appointments on file with us right now{who}."
+
+    parts = []
+    if not active:
+        parts.append(f"You don't have any upcoming appointments right now{who}.")
+    elif len(active) == 1:
+        parts.append(f"You have one upcoming appointment{who}: {describe(active[0])}, status: {active[0]['status']}.")
+    else:
+        lines = "; ".join(describe(a) for a in active)
+        parts.append(f"You have {len(active)} upcoming appointments{who}: {lines}.")
+
+    if recent_past:
+        lines = "; ".join(f"{describe(a)} — {a['status']}" for a in recent_past)
+        parts.append(f"Also on file (most recent): {lines}.")
+
+    return " ".join(parts)
+
+
 def handle_incoming_message(
     db: Session, *, conversation_id: uuid.UUID, business_id: uuid.UUID, content: str
 ) -> dict | None:
@@ -312,6 +346,19 @@ def handle_incoming_message(
             )
         else:
             response_text = _RESCHEDULE_CLARIFY_FALLBACK
+    elif intent == ConversationIntent.APPOINTMENT_STATUS and tool is not None:
+        # No extraction/resolution step needed (unlike booking/cancel/reschedule):
+        # the tool always succeeds — worst case it truthfully reports nothing on
+        # file — so there's no "unresolved" fallback path here.
+        result = tool.run(db, business_id=business_id, customer_id=conversation.customer_id)
+        tz = ZoneInfo(business.timezone) if business is not None else ZoneInfo("UTC")
+        response_text = _format_appointment_status_result(result, tz=tz, customer_name=customer_name)
+        logger.info(
+            "appointment_status tool executed: conversation_id=%s active=%d recent_past=%d",
+            conversation_id,
+            len(result["active"]),
+            len(result["recent_past"]),
+        )
 
     customer_message = Message(
         conversation_id=conversation_id, sender_type=MessageSenderType.CUSTOMER, content=content

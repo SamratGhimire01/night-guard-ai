@@ -190,16 +190,23 @@ def test_unknown_conversation_id_is_rejected(two_businesses, monkeypatch):
 # --- tool-calling scaffold ------------------------------------------------------
 
 
-def test_tool_registry_has_booking_cancellation_and_rescheduling():
+def test_tool_registry_has_booking_cancellation_rescheduling_and_status():
     """Phase 10 registered a real tool for BOOKING; Phase 11 adds real tools for
-    CANCELLATION and RESCHEDULING the same way. No other intent has a tool, so
-    the orchestrator's honesty guardrail (Phase 8/9) stays meaningful for those."""
+    CANCELLATION and RESCHEDULING; Phase 14 adds APPOINTMENT_STATUS the same
+    way. No other intent has a tool, so the orchestrator's honesty guardrail
+    (Phase 8/9) stays meaningful for those."""
     assert set(TOOL_REGISTRY) == {
         ConversationIntent.BOOKING,
         ConversationIntent.CANCELLATION,
         ConversationIntent.RESCHEDULING,
+        ConversationIntent.APPOINTMENT_STATUS,
     }
-    for intent in (ConversationIntent.BOOKING, ConversationIntent.CANCELLATION, ConversationIntent.RESCHEDULING):
+    for intent in (
+        ConversationIntent.BOOKING,
+        ConversationIntent.CANCELLATION,
+        ConversationIntent.RESCHEDULING,
+        ConversationIntent.APPOINTMENT_STATUS,
+    ):
         assert find_tool(intent) is not None
     for intent in set(ConversationIntent) - set(TOOL_REGISTRY):
         assert find_tool(intent) is None

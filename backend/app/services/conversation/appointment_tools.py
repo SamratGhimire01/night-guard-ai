@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, NotFoundError, UnprocessableEntityError
+from app.memory.appointment_context import get_appointment_context
 from app.schemas.conversation import ConversationIntent
 from app.services import booking_service
 from app.services.conversation.tools import TOOL_REGISTRY, ConversationTool
@@ -87,5 +88,25 @@ class RescheduleAppointmentTool(ConversationTool):
         return {"success": True, "appointment": _serialize(appointment), "message": None}
 
 
+class AppointmentStatusTool(ConversationTool):
+    """Phase 14: answers "what's my appointment status" from a REAL, fresh query
+    every single time — never from Phase 7's conversation summary, which can go
+    stale the instant an appointment changes through a different
+    request/channel after the summary text was generated. `get_appointment_context`
+    is the exact same tenant/customer-scoped query Phase 7 already re-runs fresh
+    on every turn to build the LLM's own prompt context — this tool doesn't
+    duplicate that query, it just makes sure the intent's actual *response* is
+    built deterministically from that same real data (orchestrator's
+    `_format_appointment_status_result`), instead of trusting the LLM to read
+    it correctly out of everything else in the prompt."""
+
+    name = "appointment_status"
+    handles_intents = frozenset({ConversationIntent.APPOINTMENT_STATUS})
+
+    def run(self, db: Session, *, business_id: uuid.UUID, customer_id: uuid.UUID, **kwargs) -> dict:
+        return get_appointment_context(db, customer_id=customer_id, business_id=business_id)
+
+
 TOOL_REGISTRY[ConversationIntent.CANCELLATION] = CancelAppointmentTool()
 TOOL_REGISTRY[ConversationIntent.RESCHEDULING] = RescheduleAppointmentTool()
+TOOL_REGISTRY[ConversationIntent.APPOINTMENT_STATUS] = AppointmentStatusTool()

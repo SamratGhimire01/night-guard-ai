@@ -2246,3 +2246,144 @@ $ git grep -nE 'GMAIL_(ADDRESS|APP_PASSWORD)\s*=\s*[A-Za-z0-9]' -- . ':!backend/
 - **Retry backoff is a fixed 1-second sleep, not exponential** — simple and sufficient for `_MAX_SEND_ATTEMPTS=3`; flagged as a deliberate simplicity choice, not an oversight, in case a much larger retry budget is ever wanted.
 - Carried over from Phase 10/11/12, still real and still open: no staff-capacity model, fixed 15-minute slot grid, exact-match-only service-name resolution, in-memory rate limiter, no refresh tokens.
 - No commit has been made yet — awaiting your confirmation of this verification output per working rule #6, and separately, please check `samratghimire01@gmail.com` for the four real test emails and confirm they arrived with correct content.
+
+---
+
+## Phase 14 — Appointment Status
+
+**Date:** 2026-09-04
+
+**Required:** When a customer asks about their appointment(s), answer from a REAL, fresh database query — never from Phase 7's conversation summary/memory alone, even when memory happens to be right too, because memory can go stale the moment an appointment changes through a different request/channel after a summary was generated. Handle no-appointments / one active / multiple active / a specifically-referenced cancelled appointment, prove staleness resistance with the same rigor as Phase 10's race test, and keep cross-tenant isolation airtight.
+
+**Implemented:**
+
+- **`app/services/conversation/appointment_tools.py`** (extended, no new file — same file already holding `CancelAppointmentTool`/`RescheduleAppointmentTool`): `AppointmentStatusTool`, registered against `ConversationIntent.APPOINTMENT_STATUS` in the existing `TOOL_REGISTRY` — the registry and `find_tool()` needed zero changes, exactly as Phase 8/10/11 designed. `run()` calls `app.memory.appointment_context.get_appointment_context(db, customer_id=..., business_id=...)` directly — **the exact same tenant/customer-scoped query Phase 7 already re-runs fresh on every single turn** to build the LLM's own prompt context (confirmed by reading `memory/appointment_context.py`: it's a live `SELECT` against `Appointment`/`Service`/`Staff`, not a cache, not anything derived from `Conversation.summary`). This tool doesn't duplicate that query — it reuses it — and its only job is to make sure the intent's *response* is built deterministically from that same real data, rather than trusting the LLM to read it correctly out of everything else in the prompt (which also includes the potentially-stale summary text).
+- **`app/services/conversation/orchestrator.py`**: `_format_appointment_status_result(result, tz, customer_name)` — the only place an appointment-status answer is composed, deterministic Python string building off the tool's real result dict, same discipline as `_format_booking_result`/`_format_cancellation_result`/`_format_reschedule_result`. Distinguishes: zero appointments at all → honest "you don't have any appointments on file"; zero active but some recent-past → says so and still lists the recent-past ones with their real status; one active → full detail (service, local date/time, booking ID, real status word); 2+ active → lists every one, never drops any; any recent-past rows (cancelled/completed, up to `RECENT_PAST_LIMIT=3`) are always appended with their real status, which is what makes "a cancelled appointment asked about specifically" work automatically — no special-casing needed, it's just what's actually in the fresh query result. A new `elif intent == ConversationIntent.APPOINTMENT_STATUS` branch in `handle_incoming_message` — deliberately the simplest of the four tool branches: **no LLM extraction/resolution step at all** (unlike booking/cancel/reschedule, which need the LLM to identify a service/appointment/time first). The tool takes only `business_id`/`customer_id` — both already known from the authenticated conversation, never from anything the customer said — so there's nothing to resolve and nothing that can fail; the tool always succeeds, worst case truthfully reporting nothing on file. This is also *why* the cross-tenant test below holds architecturally, not just by convention: there is no code path that does an ID-based lookup from message text, so naming another business's real appointment ID in the chat literally does nothing.
+- **No new migration, no schema change** — `get_appointment_context` and `Appointment`/`Conversation` already existed unchanged since Phase 2/7. Confirmed via `alembic check` → `No new upgrade operations detected.`
+- **`app/schemas/conversation.py`**: no change needed — `ConversationIntent.APPOINTMENT_STATUS` already existed in the enum since Phase 8 (it was simply never wired to a tool until now, exactly like `RESCHEDULING`/`CANCELLATION` sat unwired between Phase 8 and Phase 11).
+- **`app/services/conversation/intent.py`**: no change needed — verified empirically (see the real conversation transcripts below) that the existing system prompt's intent list plus the always-fresh `_format_appointments`-injected context is already enough for the real LLM to classify "when is my appointment", "do I have anything booked", "what appointments do I have coming up", and "what's the status of my appointment" correctly as `appointment_status` on the first try, with no new rule or few-shot example needed. Since Python unconditionally overwrites `response` for this intent exactly like the other three tool-backed intents, the LLM's own drafted text for this turn is irrelevant to the final answer regardless — so even a future misclassification-adjacent wording only needs a prompt tweak, not an architecture change.
+
+**Why this is airtight, not just "usually correct" (the actual point of this phase):** the mechanism has two independent layers of staleness-resistance:
+1. `AppointmentStatusTool.run()`'s signature takes no `context`/`summary` argument at all — it is architecturally incapable of reading the conversation summary, not merely instructed not to (proven directly by `test_status_tool_never_reads_conversation_summary` via `inspect.signature`).
+2. Even before this phase, `get_appointment_context` was already called fresh on every turn (Phase 7) to build the LLM's *prompt* context — so the "Customer's active/upcoming appointments" list the LLM sees was already never stale. What Phase 14 actually fixes is that, until now, nothing stopped the LLM from answering an appointment-status question in its own prose (potentially blending in the stale `Conversation.summary` text instead of the fresh list, since LLMs don't reliably prioritize one context source over another). Now the final response for this intent is never LLM-authored at all.
+
+**Verification output (every claim below is explicitly labeled live vs. automated, per the Phase 12 convention):**
+
+1. **[verified via live conversation]** No appointments at all — real business, real customer with zero appointments, real Azure LLM:
+```
+POST /conversations/{id}/messages {"content": "Hi, do I have anything booked with you?"}
+HTTP/1.1 201 Created
+{"intent":"appointment_status","response":"You don't have any appointments on file with us right now, Jordan Lee."}
+```
+
+2. **[verified via live conversation]** One active appointment — real booking via real LLM, then a real status question, matched against the real DB row:
+```
+POST /conversations/{id}/messages {"content": "Actually, can you book me a cleaning next Monday at 2pm?"}
+{"intent":"booking","response":"You're all set, Jordan Lee!... Your booking ID is c9fe2a93-85a4-4e02-bed1-327607ba744d."}
+
+POST /conversations/{id}/messages {"content": "When is my appointment, and what is the booking ID?"}
+{"intent":"appointment_status","response":"You have one upcoming appointment, Jordan Lee: Cleaning on Monday, September 7 at 2:00 PM (booking ID c9fe2a93-85a4-4e02-bed1-327607ba744d), status: confirmed."}
+```
+Real DB row, id and status matching the response exactly:
+```
+id=c9fe2a93-85a4-4e02-bed1-327607ba744d | status=CONFIRMED | scheduled_at=2026-09-07 18:00:00+00
+```
+
+3. **[verified via live conversation]** Multiple active appointments — a second real booking via direct API, then a real status question, both listed with neither dropped:
+```
+POST /appointments {"scheduled_at":"2026-09-08T15:00:00Z", ...} -> 201, id=f4073c4f-ac41-43db-a64b-37d96249df2e
+
+POST /conversations/{id}/messages {"content": "What appointments do I currently have coming up?"}
+{"intent":"appointment_status","response":"You have 2 upcoming appointments, Jordan Lee: Cleaning on Monday, September 7 at 2:00 PM (booking ID c9fe2a93-...); Cleaning on Tuesday, September 8 at 11:00 AM (booking ID f4073c4f-...)."}
+```
+
+4. **[verified via live conversation] THE STALENESS-PROOF TEST — the most important check in this phase, run with the same rigor as Phase 10's race condition test:**
+   - Step 1 — forced a REAL summarization LLM call (not a hand-written fake summary) on this exact conversation's real message history so far, via `maybe_summarize_conversation(..., threshold=1, keep_recent=0)` (same real function `handle_incoming_message` already calls every turn, just with a lower threshold so it actually fires on demand):
+     ```
+     SUMMARY: "Jordan Lee initially had no appointments on file. The customer requested and the agent
+     booked a Cleaning for Monday, September 7 at 2:00 PM (30 min), booking ID c9fe2a93-...,
+     status: confirmed. The agent also shows a second upcoming Cleaning on Tuesday, September 8
+     at 11:00 AM, booking ID f4073c4f-...."
+     ```
+     This is a real, LLM-generated summary that explicitly says `c9fe2a93` is `confirmed`.
+   - Step 2 — cancelled `c9fe2a93` through a **different channel** than the conversation (a direct `PATCH /appointments/{id}/cancel` call, not a chat message) — real HTTP, real DB write:
+     ```
+     PATCH /appointments/c9fe2a93.../cancel -> HTTP/1.1 200 OK {"status":"cancelled",...}
+     ```
+   - Step 3 — confirmed the stale summary was NOT touched by the cancellation (still says `confirmed`, proving it was genuinely stale at query time, not coincidentally refreshed):
+     ```
+     $ psql -c "SELECT summary FROM conversations WHERE id='...';"
+     "...booking ID c9fe2a93-..., status: confirmed. ..."   -- unchanged, still says confirmed
+     ```
+   - Step 4 — asked the status question again, in the SAME conversation, with that stale "confirmed" summary still sitting right there in the context the LLM receives:
+     ```
+     POST /conversations/{id}/messages {"content": "Quick check - what is the status of my Monday appointment?"}
+     {"intent":"appointment_status","response":"You have one upcoming appointment, Jordan Lee: Cleaning on
+     Tuesday, September 8 at 11:00 AM (booking ID f4073c4f-...), status: confirmed. Also on file (most
+     recent): Cleaning on Monday, September 7 at 2:00 PM (booking ID c9fe2a93-...) — cancelled."}
+     ```
+     **The real, current DB state (cancelled) won over the stale summary's claim (confirmed) — exactly the failure mode this phase exists to prevent, proven against a genuinely LLM-authored stale summary, not a synthetic one.**
+   - **[verified via automated test]** The same mechanism, deterministically, as a permanent pytest regression (`test_status_reflects_real_cancellation_not_stale_confirmed` in `tests/integration/test_appointment_status.py`): a hand-set stale summary + a real `booking_service.cancel_appointment` call (a different code path than the status question) + asserts the response says "cancelled" and never says "confirmed." Also `test_status_tool_never_reads_conversation_summary` — asserts via `inspect.signature` that `AppointmentStatusTool.run` doesn't even accept a summary/context argument, so this can't regress silently in a future refactor.
+
+5. **[verified via live conversation] Cross-tenant — two angles, real second business, real rejection:**
+   ```
+   -- Business B's OWN customer, in Business B's OWN conversation, explicitly names Business A's real appointment id in the chat text:
+   POST /conversations/{conv_b}/messages {"content": "Can you check the status of appointment f4073c4f-.../ for me?"}
+   {"intent":"appointment_status","response":"You don't have any appointments on file with us right now, Someone Else."}
+   -- Business A's real id never appears anywhere in the response; the tool's business_id/customer_id
+   came only from Business B's own authenticated conversation, never from the message text.
+
+   -- Business B's real token against Business A's real (guessed) conversation_id:
+   POST /conversations/{business_A_conversation_id}/messages  (Business B's token)
+   HTTP/1.1 404 Not Found  {"error":{"type":"not_found","message":"Conversation not found."}}
+   ```
+
+6. **[verified via automated test]** `tests/integration/test_appointment_status.py`, 6 new tests, stubbed LLM/embedding provider, real DB/HTTP: no-appointments, one-active-matches-DB-row, multiple-active-none-dropped, stale-summary-vs-real-cancellation, tool-signature-excludes-summary, cross-tenant-even-when-id-named-in-chat.
+```
+$ docker compose exec backend python -m pytest tests/integration/test_appointment_status.py -v
+...
+======================== 6 passed, 1 warning in 5.99s ========================
+```
+
+7. **[verified via automated test]** `test_tool_registry_has_booking_cancellation_and_rescheduling` (Phase 11) renamed to `test_tool_registry_has_booking_cancellation_rescheduling_and_status` and extended to assert `APPOINTMENT_STATUS` is now also registered — the only production-adjacent test change this phase required.
+
+8. **[verified via automated test]** Full regression suite:
+```
+$ docker compose exec backend python -m pytest tests/ -q
+...
+107 passed, 1 skipped, 1 warning in 87.97s
+```
+
+9. **[verified via automated + live]** Secrets/lint/migration checks after this phase's real HTTP traffic:
+```
+$ docker compose exec backend ruff check .   -> All checks passed!
+$ docker compose exec backend alembic check  -> No new upgrade operations detected. (no schema change this phase)
+$ git grep -nE 'AZURE_OPENAI_(API_KEY|ENDPOINT)\s*=\s*[A-Za-z0-9]|GMAIL_(ADDRESS|APP_PASSWORD)\s*=\s*[A-Za-z0-9]' -- . ':!backend/.env.example'
+   -> only PHASE_STATUS.md's own placeholder/test-value lines matched (GMAIL_ADDRESS=changeme@gmail.com,
+      the Phase 13 wrongpassword1234 test note) — no real credential
+$ git ls-files | grep -E '\.env$'   -> none tracked
+```
+
+10. **[verified via live conversation]** DB left clean after all manual testing — both real test businesses (and everything cascading off them) deleted:
+```
+businesses=0  appointments=0  conversations=0  customers=0
+```
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| No appointments → honest response | ✓ Pass — §1 live + §6 automated |
+| One active appointment → correct detail matching real DB row | ✓ Pass — §2 live + §6 automated |
+| Multiple active → all listed, none dropped | ✓ Pass — §3 live + §6 automated |
+| Cancelled appointment referenced specifically → correct real status, not stale "confirmed" | ✓ Pass — §4 (folded into the staleness test itself, live + automated) |
+| **Staleness-proof: real DB wins over a genuinely stale, LLM-generated summary** | ✓ Pass — §4 live (real summarization call + real cross-channel cancellation + real re-query) + automated regression |
+| Cross-tenant: can't surface another business's appointment data even by naming its real ID in chat | ✓ Pass — §5 live |
+| Secrets grep clean | ✓ Pass — §9 |
+| Lint clean | ✓ Pass — §9 |
+| Migration reversible if applicable | ✓ Pass (N/A — no schema change this phase, confirmed via `alembic check`) |
+
+**Known issues / punted items:**
+- **`recent_past` is bounded to `RECENT_PAST_LIMIT=3`** (Phase 7's existing constant, unchanged) — a customer asking about a cancelled appointment from further back than their 3 most recent past/cancelled ones won't see it in a general status question. Every scenario this phase's ticket actually describes (asking right after a recent cancellation) is well within that window; a customer wanting to look further back would need a dedicated appointment-history feature, out of scope here.
+- **No appointment-id-based lookup exists for this intent, by design** — `AppointmentStatusTool` always returns the full active+recent-past picture rather than resolving one specific id the way cancel/reschedule do. This was the deliberately simpler choice (no LLM extraction step, nothing to fail to resolve) and is also precisely what makes the cross-tenant guarantee architectural rather than conventional — flagging as a considered trade-off, not an oversight, in case a future phase wants "look up appointment by booking ID specifically" as its own capability.
+- Carried over from Phase 10/11/12/13, still real and still open: no staff-capacity model, fixed 15-minute slot grid, exact-match-only service-name resolution, in-memory rate limiter, no refresh tokens, no worker/cron for `dispatch_queued_notifications`, no `DELIVERED` notification state.
+- No commit has been made yet — awaiting your confirmation of this verification output per working rule #6.
