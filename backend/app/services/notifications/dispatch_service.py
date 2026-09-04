@@ -72,12 +72,18 @@ def _dispatch(db: Session, notification: Notification) -> None:
         _mark_failed(db, notification, "missing appointment/business/service/customer data")
         return
 
+    send_kwargs: dict = {}
     if notification.channel == "email":
         provider = _PROVIDERS["email"]
         recipient = customer.email or ""
-        subject, body = compose_email(
-            event_type=notification.event_type, appointment=appointment, business=business, service=service
+        subject, body, html_body = compose_email(
+            event_type=notification.event_type,
+            appointment=appointment,
+            business=business,
+            service=service,
+            customer=customer,
         )
+        send_kwargs = {"html_body": html_body}
     elif notification.channel == "sms":
         provider = _resolve_sms_provider()
         recipient = customer.phone or ""
@@ -101,7 +107,7 @@ def _dispatch(db: Session, notification: Notification) -> None:
     for attempt in range(1, _MAX_SEND_ATTEMPTS + 1):
         attempts_made = attempt
         try:
-            detail = provider.send(to=recipient, subject=subject, body=body)
+            detail = provider.send(to=recipient, subject=subject, body=body, **send_kwargs)
         except NotificationDeliveryError as exc:
             last_error = exc
             if not exc.transient or attempt == _MAX_SEND_ATTEMPTS:

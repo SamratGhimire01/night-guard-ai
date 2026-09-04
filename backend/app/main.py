@@ -8,6 +8,7 @@ from app.api.routes import (
     customers,
     health,
     knowledge,
+    reports,
     services,
     staff,
 )
@@ -30,3 +31,4 @@ app.include_router(staff.router, prefix="/api/v1", tags=["staff"])
 app.include_router(knowledge.router, prefix="/api/v1", tags=["knowledge"])
 app.include_router(conversations.router, prefix="/api/v1", tags=["conversations"])
 app.include_router(appointments.router, prefix="/api/v1", tags=["appointments"])
+app.include_router(reports.router, prefix="/api/v1", tags=["reports"])

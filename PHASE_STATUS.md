@@ -2578,3 +2578,485 @@ $ git grep -nE 'TWILIO_(ACCOUNT_SID|AUTH_TOKEN|FROM_NUMBER)\s*=\s*[A-Za-z0-9]' -
 - **SMS remains fallback-only, never preferred, even for an opted-in customer with an email on file** — a deliberate, documented, one-function-away decision (see "Design decisions" above), not an oversight.
 - Carried over from Phase 10/11/12/13/14, still real and still open: no staff-capacity model, fixed 15-minute slot grid, exact-match-only service-name resolution, in-memory rate limiter, no refresh tokens, no worker/cron for `dispatch_queued_notifications`.
 - No commit has been made yet — awaiting your confirmation of this verification output per working rule #6.
+
+---
+
+## Phase 16 — Daily Reports + Excel Export
+
+**Date:** 2026-09-04
+
+**Required:** A real, accurate daily operational summary for a business owner — today's appointments, cancellations, reschedules, new leads — computed from REAL current data, delivered by email as a real Excel attachment and available as a downloadable `.xlsx`, with no AI-generated commentary presented as fact. `GET /api/v1/reports/daily` (JSON), `GET /api/v1/reports/daily/excel` (real `.xlsx`), a real callable send function/endpoint (not a fake cron), all tenant-scoped and owner/admin-only. Honest treatment of `HumanHandoff` if it has no real producer yet.
+
+**Implemented:**
+
+- **`app/services/reporting/report_service.py`** — `generate_daily_report(db, *, business_id, report_date)` is the single source of truth: both the JSON endpoint and the Excel export call this exact function, so they can never disagree with each other. Five real, independently-queried sections, each keyed by the day that actually matters for that section (not all four blindly filtered by `Appointment.scheduled_at` — see below):
+  - **Appointments scheduled that day** — `Appointment.scheduled_at` within the business's own local calendar day (same `datetime.combine(date, time.min, tzinfo=tz)` → next-day boundary resolution `booking_service.list_appointments` already uses for `date_from`/`date_to`), **any status**, enriched with real customer/service/staff names via batched `IN (...)` lookups (this codebase has no ORM `relationship()`s anywhere — confirmed by grep — so this follows the same manual-join convention as `dispatch_service.py`).
+  - **Cancellations that day** — keyed by `Appointment.updated_at` (when the cancellation event actually happened), **not** by original `scheduled_at`, per the ticket's explicit "regardless of when they were originally scheduled for." This is a real, reliable proxy, not a guess: `cancel_appointment` (Phase 11) is the *only* code path that ever sets `status=CANCELLED`, and once cancelled an appointment is never touched again (`_CANCELLABLE_STATUSES` gates both cancel and reschedule against a terminal `CANCELLED` row) — so `updated_at` cannot have been bumped by anything else afterward.
+  - **Reschedules that day** — reconstructed from the real Phase 11 `AuditLog` trail (`action="appointment_rescheduled"`, `result="moved_from=<old scheduled_at>"`), keyed by `AuditLog.created_at`. Old→new time is derived, not guessed: `reschedule_appointment` is the *only* path that ever changes `Appointment.scheduled_at`, so for a given reschedule event, "new time" is exactly the *next* reschedule event's `moved_from` value for the same appointment (if it was moved again later), or — if this was the most recent reschedule ever recorded for it — the appointment's real current `scheduled_at`. Both branches are exact reconstructions from real data, verified with a dedicated same-day-double-reschedule test (see below) that would fail if the chain logic were wrong.
+  - **New leads that day** — `Customer.created_at` within the local day, real name/phone/email.
+  - **Human review** — **honest, not fabricated**: confirmed by direct grep (`grep -rn "HumanHandoff(" app/`) that `HumanHandoff` has **zero real producers anywhere in this codebase** — only the Phase 2 model class exists, nothing ever constructs a row. The report queries the table for real (`count` of open/`resolved_at IS NULL` rows for the business — genuinely always `0` today, not hardcoded to `0`) and returns an explicit `"implemented": false` flag plus a note explaining why, so a future phase (the ticket names Phase 25) that adds a real producer needs to change nothing here — the count will just start being real and non-zero.
+- **`app/services/reporting/excel_export.py`** — `build_report_workbook(report)` / `report_to_xlsx_bytes(report)`, real `openpyxl` `Workbook`, five sheets in the master plan's order: **Appointments, Cancellations, Reschedules, New Leads, Summary**. Both take the *same* `generate_daily_report` output dict the JSON endpoint returns — no separate query path that could drift out of sync.
+- **New dependency: `openpyxl==3.1.5`.** No stdlib option writes a real `.xlsx` (it's a zip of OOXML XML — hand-rolling one would be far more code and fragile than a well-maintained library for a "generate a spreadsheet" requirement); openpyxl is the standard choice and nothing already-installed does this job. Image rebuilt (`docker compose build backend`) to pick it up.
+- **`app/services/notifications/email_provider.py`** — `EmailNotificationProvider.send()` gained an optional `attachments: list[tuple[filename, content_bytes, mime_type]] | None = None` parameter (email-only — deliberately **not** added to `NotificationProvider`'s shared abstract signature or to either SMS provider, since `dispatch_service`'s generic per-channel retry loop never passes attachments for ordinary appointment notifications; only `report_service.send_daily_report_email` ever calls it with one). Uses `EmailMessage.add_attachment(...)` (stdlib `email` — already in use for the plain-text body since Phase 13).
+- **`app/api/routes/reports.py`** — three routes, all `require_role(["owner","admin"])` and tenant-scoped via `current_user.business_id` (never a client-supplied `business_id`), the same convention as every other business-data endpoint since Phase 3:
+  - `GET /api/v1/reports/daily?date=YYYY-MM-DD` → the JSON report.
+  - `GET /api/v1/reports/daily/excel?date=YYYY-MM-DD` → a real `Response` with `content-type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` and `Content-Disposition: attachment; filename="daily_report_<date>.xlsx"`, real file bytes in the body.
+  - `POST /api/v1/reports/daily/send?date=YYYY-MM-DD` → triggers `report_service.send_daily_report_email`, returns `{sent, recipient, detail/reason, attachment_filename, attachment_size_bytes}` as JSON — a **real, callable admin action, not a scheduled job**. No scheduler/cron infrastructure exists anywhere in this codebase (Phase 13 already flagged the identical gap for `dispatch_queued_notifications`), so real automatic 6am delivery is an honest, explicitly deferred later-infrastructure phase — nothing here pretends to be a cron job that runs on its own.
+  - Registered in `app/main.py` (`reports.router`, prefix `/api/v1`, tag `reports`).
+- **`send_daily_report_email(db, *, business_id, report_date)`**: generates the report, builds the real `.xlsx` bytes, composes a short deterministic (no-LLM) text body (same discipline as `notifications/content.py`), and sends via `EmailNotificationProvider` with the workbook attached. **Recipient is `Business.email`** (Phase 4's existing field) — the exact default the ticket itself named. Never raises: a missing recipient or a real provider failure is returned as data (`sent: false`, `reason`, and `transient` when applicable), mirroring `dispatch_service.dispatch_notification`'s "never crash the caller" discipline, just synchronous since this is a direct admin-triggered action rather than an inline booking-flow side effect.
+- **Configurable report time/recipient — explicitly deferred, not built.** The ticket named this a nice-to-have to add "unless trivial." A dedicated `report_email`/`report_time` field would need a new `Business` column and migration — not trivial in the "reuse what exists" sense the rest of this codebase follows, so it was deferred rather than added as a rushed extra column. `Business.email` (already real, already settable via `PATCH /business/me`) serves as the recipient today, exactly as the ticket's own "default: business's own email from Phase 4" phrasing anticipated.
+- **No migration this phase** — every field the report reads already existed (`Appointment`, `AuditLog`, `Customer`, `HumanHandoff`, `Business.email`, all from Phase 2/4/11). Confirmed via `alembic check`.
+
+**Verification output — every claim labeled live vs. automated:**
+
+1. **[verified live, real HTTP + real DB cross-check]** Built real test data for Business A: 3 customers, 3 appointments on a real future date (`2026-09-07`) — one left confirmed, one cancelled, one rescheduled (11:00→14:00, same day) — via the real API (`POST /customers`, `POST /appointments`, `PATCH .../cancel`, `PATCH .../reschedule`). Fetched the real JSON report for both the appointment date and "today" (the real date the cancel/reschedule/customer-creation events happened):
+```
+$ curl .../reports/daily?date=2026-09-07   (appointments-scheduled section)
+{
+  "appointments": [
+    {"id":"2f917caa-...","scheduled_at":"2026-09-07T09:00:00+00:00","status":"confirmed","customer_name":"Alice Confirmed","service_name":"Cleaning",...},
+    {"id":"9bbf08c4-...","scheduled_at":"2026-09-07T10:00:00+00:00","status":"cancelled","customer_name":"Bob Cancelled","service_name":"Cleaning",...},
+    {"id":"e5f2c42a-...","scheduled_at":"2026-09-07T14:00:00+00:00","status":"confirmed","customer_name":"Carol Rescheduled","service_name":"Cleaning",...}
+  ],
+  "cancellations": [], "reschedules": [], "new_leads": [],
+  "summary": {"appointments_scheduled":3,"appointments_by_status":{"confirmed":2,"cancelled":1},"cancellations":0,"reschedules":0,"new_leads":0,"human_review_open_count":0}
+}
+
+$ curl .../reports/daily?date=2026-09-04   (cancellation/reschedule/new-lead event-date section)
+{
+  "appointments": [],
+  "cancellations": [{"id":"9bbf08c4-...","originally_scheduled_at":"2026-09-07T10:00:00+00:00","cancelled_at":"2026-09-04T07:03:46.735674","customer_name":"Bob Cancelled",...}],
+  "reschedules": [{"id":"e5f2c42a-...","old_scheduled_at":"2026-09-07T11:00:00+00:00","new_scheduled_at":"2026-09-07T14:00:00+00:00","changed_at":"2026-09-04T07:03:46.769984","customer_name":"Carol Rescheduled",...}],
+  "new_leads": [ {"name":"Alice Confirmed",...}, {"name":"Bob Cancelled",...}, {"name":"Carol Rescheduled",...} ],
+  "summary": {"appointments_scheduled":0,"appointments_by_status":{},"cancellations":1,"reschedules":1,"new_leads":3,"human_review_open_count":0}
+}
+```
+**Manual DB cross-check (pasted, not just asserted):**
+```
+$ psql -c "SELECT id, scheduled_at, status FROM appointments WHERE business_id='86fc6332-...' AND scheduled_at >= '2026-09-07T00:00:00Z' AND scheduled_at < '2026-09-08T00:00:00Z';"
+ 2f917caa-... | 2026-09-07 09:00:00+00 | CONFIRMED
+ 9bbf08c4-... | 2026-09-07 10:00:00+00 | CANCELLED
+ e5f2c42a-... | 2026-09-07 14:00:00+00 | CONFIRMED
+(3 rows)   -- matches the report exactly
+
+$ psql -c "SELECT id, status, updated_at FROM appointments WHERE business_id='86fc6332-...' AND status='CANCELLED';"
+ 9bbf08c4-... | CANCELLED | 2026-09-04 07:03:46.735674   -- matches report's cancelled_at exactly
+
+$ psql -c "SELECT resource_id, result, created_at FROM audit_logs WHERE business_id='86fc6332-...' AND action='appointment_rescheduled';"
+ e5f2c42a-... | moved_from=2026-09-07T11:00:00+00:00 | 2026-09-04 07:03:46.769984   -- matches report's old_scheduled_at + changed_at exactly
+
+$ psql -c "SELECT id, name, phone, created_at FROM customers WHERE business_id='86fc6332-...' ORDER BY created_at;"
+ (3 rows, names/phones/timestamps all match the report's new_leads section exactly)
+```
+
+2. **[verified live, real HTTP — cross-tenant, overlapping dates]** Business B (a separate real business) booked its own real appointment on the *same* overlapping date (`2026-09-07`):
+```
+$ curl .../reports/daily?date=2026-09-07  (Business B's own token)
+{"business_id":"4181d1db-...","business_name":"Live Report Co B",
+ "appointments":[{"id":"fb8690b4-...","customer_name":"BusinessB Customer",...}],
+ "summary":{"appointments_scheduled":1,"appointments_by_status":{"confirmed":1},...}}
+
+-- Business A's real appointment ID never appears anywhere in B's report:
+$ curl .../reports/daily?date=2026-09-07 -H "Authorization: Bearer <ownerB>" | grep -c "2f917caa-..."
+0
+```
+Business A's report (§1 above) likewise never mentions Business B's `fb8690b4-...` appointment — real isolation, both directions, real overlapping-date data.
+
+3. **[verified live, real file bytes]** Real `.xlsx` download, headers, and content read back independently with `openpyxl` (not just "it downloaded"):
+```
+$ curl -D headers.txt -o daily_report.xlsx .../reports/daily/excel?date=2026-09-07
+content-disposition: attachment; filename="daily_report_2026-09-07.xlsx"
+content-type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+content-length: 7586
+
+$ file daily_report.xlsx
+daily_report.xlsx: Microsoft Excel 2007+
+
+$ python3 -c "from openpyxl import load_workbook; wb = load_workbook('daily_report.xlsx'); print(wb.sheetnames); ..."
+Sheets: ['Appointments', 'Cancellations', 'Reschedules', 'New Leads', 'Summary']
+--- Appointments (3 data rows) ---
+('Time', 'Customer', 'Service', 'Staff', 'Status', 'Booking ID')
+('2026-09-07T09:00:00+00:00', 'Alice Confirmed', 'Cleaning', None, 'confirmed', '2f917caa-...')
+('2026-09-07T10:00:00+00:00', 'Bob Cancelled', 'Cleaning', None, 'cancelled', '9bbf08c4-...')
+('2026-09-07T14:00:00+00:00', 'Carol Rescheduled', 'Cleaning', None, 'confirmed', 'e5f2c42a-...')
+--- Summary ---
+('Business', 'Live Report Co A')  ('Report Date', '2026-09-07')  ('Appointments Scheduled', 3)  ...
+```
+Real sheet names, real rows, matching the JSON report exactly — same underlying `generate_daily_report` call.
+
+4. **[verified live, REAL Gmail SMTP, real attachment — not stubbed]** Set `Business.email` to the real Gmail address already on file from Phase 13 (`samratghimire01@gmail.com`, self-send, same precedent as Phase 13's live email verification), then triggered the real send endpoint:
+```
+$ curl -X PATCH .../business/me -d '{"email":"samratghimire01@gmail.com"}'
+-> business.email set to: samratghimire01@gmail.com
+
+$ curl -i -X POST ".../reports/daily/send?date=2026-09-07"
+HTTP/1.1 200 OK
+{"sent":true,"recipient":"samratghimire01@gmail.com","detail":"250 message accepted for delivery","attachment_filename":"daily_report_2026-09-07.xlsx","attachment_size_bytes":7586}
+```
+Real, unstubbed Gmail SMTP `250` acceptance response, real attachment size matching the real `.xlsx` downloaded in §3 exactly (`7586` bytes both times — same workbook, same data). **Not independently confirmed:** no IMAP/inbox access, so — per the same fallback already used in Phase 13 — the real SMTP `250` response is the proof available; **please check `samratghimire01@gmail.com` and confirm the report email arrived with the `.xlsx` attachment opening correctly and matching the numbers above.**
+
+5. **[verified live]** Zero-activity day — honest empty report, not an error, not fabricated placeholder data:
+```
+$ curl -i .../reports/daily?date=2030-01-01
+HTTP/1.1 200 OK
+{"appointments":[],"cancellations":[],"reschedules":[],"new_leads":[],
+ "human_review":{"count":0,"implemented":false,"note":"HumanHandoff has no real producer..."},
+ "summary":{"appointments_scheduled":0,"appointments_by_status":{},"cancellations":0,"reschedules":0,"new_leads":0,"human_review_open_count":0}}
+```
+
+6. **[verified live, real RBAC]** Staff (non-admin) rejected on all three endpoints — a real staff `BusinessUser` inserted directly (same technique as every other RBAC test since Phase 3), a real token minted, real requests:
+```
+$ curl -i .../reports/daily?date=2026-09-07          -H "Authorization: Bearer <staff>"   -> 403
+$ curl -i .../reports/daily/excel?date=2026-09-07     -H "Authorization: Bearer <staff>"   -> 403
+$ curl -i -X POST .../reports/daily/send?date=2026-09-07 -H "Authorization: Bearer <staff>" -> 403
+```
+
+7. **[verified via automated test]** `tests/integration/test_daily_reports.py`, 14 new tests, real DB/HTTP throughout (only the SMTP network call stubbed, same discipline as `test_notifications.py`):
+```
+$ docker compose exec backend python -m pytest tests/integration/test_daily_reports.py -v
+test_report_appointments_section_matches_real_bookings PASSED
+test_report_zero_activity_day_is_honest_empty PASSED
+test_report_cancellations_section_reflects_real_cancellation_event PASSED
+test_report_reschedules_section_shows_real_old_and_new_time PASSED
+test_report_reschedules_section_handles_two_reschedules_same_day PASSED
+test_report_new_leads_section_reflects_real_customer_creation PASSED
+test_report_human_review_section_is_honest_about_having_no_producer PASSED
+test_report_cross_tenant_isolation_with_overlapping_dates PASSED
+test_staff_forbidden_from_all_three_report_endpoints PASSED
+test_excel_export_produces_a_real_readable_xlsx_with_correct_sheets_and_data PASSED
+test_send_daily_report_email_no_recipient_configured PASSED
+test_send_daily_report_email_attaches_a_real_xlsx_stubbed_network PASSED
+test_send_daily_report_email_provider_failure_never_crashes PASSED
+test_send_daily_report_endpoint_owner_can_trigger_it PASSED
+======================== 14 passed, 1 warning in 14.89s ========================
+```
+   `test_report_reschedules_section_handles_two_reschedules_same_day` is the load-bearing one for the AuditLog-chain reconstruction: it reschedules the same appointment twice in one test, then asserts the first hop's `new_scheduled_at` exactly equals the second hop's `old_scheduled_at` (both derived from real audit rows), and the second hop's `new_scheduled_at` matches the appointment's real, current `scheduled_at` — proving the chain logic (not just the single-reschedule case) is correct.
+
+8. **[verified via automated test]** Full regression suite — zero pre-existing tests needed changes:
+```
+$ docker compose exec backend python -m pytest tests/ -q
+134 passed, 1 skipped, 1 warning in 116.46s
+```
+(120 passed at the end of Phase 15 + 14 new this phase = 134.)
+
+9. **[verified live + automated]** Secrets grep — the real Gmail app password is referenced in exactly the same two places Phase 13 already established (declaration + `smtp.login`), the reporting module has zero `logger.*` calls at all (it never needed any — every claim it makes is returned as data, not logged), and no real or fake credential ever appeared in a container log across this phase's real SMTP send:
+```
+$ grep -rn "gmail_app_password" app/           -> config.py declaration + email_provider.py's smtp.login (unchanged from Phase 13/15)
+$ grep -n "logger\." app/services/reporting/*.py   -> (no matches — module never logs)
+$ docker compose logs backend --tail=200 | grep -iE "<real gmail app password string>"   -> no match
+$ git ls-files | grep -E '\.env$'   -> none tracked
+$ git check-ignore -v backend/.env  -> .gitignore:21:.env backend/.env (still ignored)
+```
+
+10. Lint: `docker compose exec backend ruff check .` → `All checks passed!`
+
+11. `docker compose exec backend alembic check` → `No new upgrade operations detected.` (N/A this phase — no schema change; every field the report reads already existed).
+
+12. **[verified live]** DB left clean after all live/manual testing: `businesses=0 customers=0 appointments=0 audit_logs=0` (the 2 live-test businesses were deleted afterward).
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real report for a day with real bookings/cancellations/reschedules/new customers — JSON pasted + manually cross-checked against real DB queries | ✓ Pass — §1, every number matched exactly |
+| Real `.xlsx` produced — real file size + sheet names + rows read back | ✓ Pass — §3, `7586` real bytes, `file` confirms real OOXML format, real rows match the JSON exactly |
+| Real email sent with the real Excel file as a real attachment — real SMTP send confirmation | ✓ Pass — §4, real unstubbed Gmail `250` response; inbox arrival not independently confirmable (no IMAP access, same fallback as Phase 13) — **please confirm receipt** |
+| Cross-tenant test with overlapping-date data across two real businesses | ✓ Pass — §2, both directions, real data |
+| Zero-activity day is honest (empty, not an error, not fabricated) | ✓ Pass — §5 |
+| Secrets grep clean | ✓ Pass — §9 |
+| Lint clean | ✓ Pass — §10 |
+| Migration reversible if applicable | ✓ N/A — no schema change this phase, confirmed via `alembic check` |
+
+**Known issues / punted items:**
+- **No scheduler/cron — real automatic 6am delivery is a later infrastructure phase, not built here.** `POST /reports/daily/send` is a real, callable action (proven live in §4) but nothing calls it automatically. This is the identical, already-precedented gap Phase 13 flagged for `dispatch_queued_notifications` — no new infrastructure was invented to fake a schedule that doesn't run.
+- **Configurable report recipient/time is deferred, not built** — `Business.email` (already real, already settable) is the recipient; a dedicated `report_email`/`report_time` field would need a new column + migration, which the ticket explicitly allowed deferring as a nice-to-have. A future phase could add this as a small, contained `Business` column addition.
+- **`AppointmentParticipant`s (Phase 12 group-booking extra names) are not broken out separately in the report** — a group booking's *primary* appointment row appears once in the Appointments section (correct — it's one real `Appointment` row); the extra named participants on it are not separately listed. Not requested by this ticket; flagging as a real, scoped gap in case a future phase wants per-participant reporting.
+- **Human review section will always read `0`/`implemented: false` until a real `HumanHandoff` producer exists** (see "Implemented" above) — an honest, verified-by-grep gap, not a guess, and by design requires zero changes to this phase's code once a producer exists.
+- **Excel cell types are all strings** (openpyxl received Python `str`/`int`/`bool` values, not `datetime` objects, for date/time columns) — real, readable, correctly-valued cells (verified in §3), just not native Excel date-formatted cells a user could re-sort by date natively in Excel without a text-to-date conversion. A small, contained improvement for a future pass if that matters; not requested by this ticket ("real .xlsx file" was the bar, met).
+- Carried over from Phase 10/11/12/13/14/15, still real and still open: no staff-capacity model, fixed 15-minute slot grid, exact-match-only service-name resolution, in-memory rate limiter, no refresh tokens, no worker/cron for `dispatch_queued_notifications`, no real Twilio account tested against, no customer-update endpoint.
+- No commit has been made yet — awaiting your confirmation of this verification output per working rule #6, and separately, please check `samratghimire01@gmail.com` for the real daily report email and confirm the `.xlsx` attachment arrived and opens correctly.
+
+---
+
+## Phase 17 — Email Design Upgrade + Monthly Analytics
+
+**Date:** 2026-09-04
+
+### PART A: Premium Email Templates
+
+**Required:** Replace plain-text emails (booking/cancel/reschedule/daily report) with real, professional HTML — a shared header/card/footer style, inline CSS + table layout for email-client compatibility, the daily report email gets a real in-email HTML summary table, every email keeps a plain-text `multipart/alternative` fallback, and the underlying data/computation must not change — presentation only.
+
+**Implemented:**
+
+- **New dependency: `jinja2==3.1.4`.** Justified, not reflexive: 5 HTML templates (booking/cancel/reschedule/daily report/monthly report — Part B) share one header/card/footer layout. Hand-rolled f-strings would either duplicate that shared HTML 5 times or need a bespoke wrapper-function that reinvents a subset of what Jinja2's `{% extends %}`/`{% block %}` already does. More importantly, Jinja2's `autoescape=True` gives real HTML-escaping for free on every interpolated value (customer/business names are user-supplied data going into HTML — a real, not hypothetical, injection concern); hand-building 5 templates would need `html.escape()` called correctly at every interpolation site, easy to miss once. That combination (shared layout + mandatory escaping of user data) is genuine templating-engine territory, not a "6-line f-string" job.
+- **`app/services/notifications/templates/`** (new package): `base.html.j2` (shared layout — dark-blue header bar with the business name, white card body, light-gray footer disclaimer, all real inline `style="..."` attributes, `<table role="presentation">`-based layout throughout — no `<style>` blocks, no CSS classes, no flexbox/grid, nothing Outlook's Word rendering engine or a stripped-CSS Gmail view would silently drop), `appointment.html.j2` (extends base — headline, greeting, a bordered light-gray "card" table with Service/When/Status/Booking ID rows, a colored status pill), `daily_report.html.j2` / `monthly_report.html.j2` (extend base — a real `<table>` metric/value summary, Part B's monthly template also lists top busiest days / most-requested services as plain text lines). `render.py`: one shared Jinja2 `Environment` (`FileSystemLoader` rooted at the package directory so it works regardless of process cwd, `autoescape=True` unconditionally since every template here is HTML) with three thin render functions.
+- **`app/services/notifications/content.py`**: `compose_email()` now returns a 3-tuple `(subject, plain_text_body, html_body)` instead of 2 — same real `Appointment`/`Business`/`Service` rows as before, **now also takes `customer`** (previously discarded after an existence check in `booking_service`/`dispatch_service` — Phase 17 threads it through so the email can say "Hi, Jordan Lee," instead of just "Hi,", a small, real design-quality improvement in scope for "treat it with real care"). A `_STATUS_STYLE` dict maps each `event_type` to a (label, text color, pill background) triple — green "Confirmed", red "Cancelled", blue "Rescheduled" — used to render the HTML status pill. The plain-text body's actual content (booking ID, service, date/time) is byte-for-byte the same computation as before this phase; only the greeting line gained a name.
+- **`app/services/notifications/email_provider.py`**: `EmailNotificationProvider.send()` gained an optional `html_body: str | None = None` parameter. When given, `message.set_content(body)` (plain text, unchanged) then `message.add_alternative(html_body, subtype="html")` — Python's modern `email.message.EmailMessage` API is specifically designed to make this "one line" (per the ticket's own framing): it automatically builds the correct `multipart/alternative` structure, and — when `attachments` (Phase 16) are *also* given — automatically promotes the whole thing to `multipart/mixed(multipart/alternative(text, html), attachment)` with zero extra code, verified directly in Verification §3/§4 below by parsing the real raw MIME bytes.
+- **`app/services/notifications/dispatch_service.py`**: `_dispatch`'s email branch now unpacks the 3-tuple from `compose_email` (passing `customer=customer`, which it already had loaded) and forwards `html_body` to `provider.send()` via a small `send_kwargs` dict that stays empty for the SMS branch — so `SMSNotificationProvider`/`TwilioSMSProvider`'s `send()` signatures needed zero changes; only the email path gained the new parameter, exactly matching the ticket's "email-only" framing (SMS has no HTML/multipart concept).
+- **`app/services/reporting/report_service.py`**: `_daily_report_rows(report)` is a new shared helper — both `_compose_report_email_body` (plain text) and the new `render_daily_report_email(...)` call (HTML) read this exact same list, so the plain-text and HTML versions of a report email can never show different numbers. `send_daily_report_email` now also renders and passes `html_body` to the provider.
+- **Real professional design, described for your inbox check** (since you can visually confirm, here's what to expect before you look): a **dark navy-blue header bar** (`#1f3a5f`) spanning the full width with the business's name in bold white text; below it, a **white content area** with a bold dark headline ("Your appointment is confirmed." / "...has been cancelled." / "...has been rescheduled."), a personalized greeting ("Hi, Jordan Lee,"), then a **light-gray bordered card** with rounded corners containing four clean label/value rows — **Service** (bold), **When** (full weekday/date/time), **Status** (a small rounded colored pill — green for confirmed, red for cancelled, blue for rescheduled), **Booking ID** (monospace, muted gray). A light-gray **footer bar** below a thin border line with small muted-gray disclaimer text ("This is an automated message from {business}..."). The daily/monthly report emails use the same header/footer shell but the content area is instead a **real bordered summary table** — a dark-navy header row ("Metric" / "Count") over alternating clean rows (Appointments Scheduled, Cancellations, Reschedules, New Leads, Human Review), the last row bold, with a short line above pointing to the attached Excel for full detail.
+
+**Verification output — every claim labeled live vs. automated:**
+
+1. **[verified live, real Gmail SMTP]** Real booking confirmation email — real business "Willow Creek Family Dentistry" (`America/New_York`), real service "Dental Cleaning", real customer, real booking:
+```
+$ curl -i -X POST .../appointments -d '{"customer_id":"...","service_id":"...","scheduled_at":"2026-09-07T10:00:00-04:00"}'
+HTTP/1.1 201 Created  {"id":"64033af1-...","scheduled_at":"2026-09-07T14:00:00Z","status":"confirmed",...}
+
+Real backend log (real Gmail acceptance):
+notification_id=c51897d2-... sent on attempt 1/3: 250 message accepted for delivery
+```
+
+2. **[verified live, real Gmail SMTP]** Real cancellation email — a second real booking, then real cancel:
+```
+$ curl -i -X PATCH .../appointments/{id}/cancel
+HTTP/1.1 200 OK  {"status":"cancelled",...}
+notification_id=9ddc0f18-... sent on attempt 1/3: 250 message accepted for delivery
+```
+
+3. **[verified live, real Gmail SMTP]** Real reschedule email — a third real booking, then real reschedule:
+```
+$ curl -i -X PATCH .../appointments/{id}/reschedule -d '{"scheduled_at":"...T15:00:00-04:00"}'
+HTTP/1.1 200 OK  {"status":"confirmed",...}
+notification_id=d3a33f23-... sent on attempt 1/3: 250 message accepted for delivery
+```
+
+4. **[verified live, real Gmail SMTP + real raw MIME inspected]** Real daily report email, sent while wrapping `smtplib.SMTP.send_message` to capture the exact bytes handed to Gmail (still a real, unmodified send — the wrapper calls the real method after capturing):
+```
+SEND RESULT: {'sent': True, 'recipient': 'samratghimire01@gmail.com', 'detail': '250 message accepted for delivery',
+              'attachment_filename': 'daily_report_2026-09-07.xlsx', 'attachment_size_bytes': 7468}
+raw MIME bytes written, size= 15346
+```
+   Real parsed MIME structure (`email.message_from_bytes` on the actual captured bytes — not reconstructed):
+```
+Top-level Content-Type: multipart/mixed
+  part: multipart/mixed
+  part: multipart/alternative
+  part: text/plain
+  part: text/html
+  part: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet  filename=daily_report_2026-09-07.xlsx
+```
+   **Real plain-text fallback part** (proves multipart/alternative, not HTML-only):
+```
+Hi,
+
+Here is the daily operations report for Willow Creek Family Dentistry on 2026-09-07.
+
+Appointments Scheduled: 1
+Cancellations: 0
+Reschedules: 0
+New Leads: 0
+Conversations needing human review (feature not yet implemented — always 0 today): 0
+
+Full detail is attached as an Excel file.
+```
+   **Real HTML summary table** (the "table in email" ask specifically — actual bytes from the actual sent message, not a mockup):
+```html
+<table role="presentation" ...>
+<tr><td style="background-color:#1f3a5f;color:#ffffff;...">Metric</td><td style="...">Count</td></tr>
+<tr><td style="...">Appointments Scheduled</td><td style="...">1</td></tr>
+<tr><td style="...">Cancellations</td><td style="...">0</td></tr>
+<tr><td style="...">Reschedules</td><td style="...">0</td></tr>
+<tr><td style="...">New Leads</td><td style="...">0</td></tr>
+<tr><td style="...">Conversations needing human review (feature not yet implemented — always 0 today)</td><td style="...">0</td></tr>
+</table>
+```
+
+5. **[verified live]** No data discrepancy — the real DB row vs. the real HTML content for the exact same appointment:
+```
+$ psql -c "SELECT id, scheduled_at, status FROM appointments WHERE id='64033af1-...';"
+ 64033af1-... | 2026-09-07 14:00:00+00 | CONFIRMED
+
+$ (re-derive the real HTML via the exact same compose_email() call dispatch_service used, from the same DB row)
+Booking ID in DB:       64033af1-a8e7-47d7-9027-82d250355937
+Booking ID in HTML:     True
+Scheduled_at in DB:     2026-09-07T14:00:00+00:00
+When shown in HTML:     Monday, September 7 at 10:00 AM
+```
+   `14:00 UTC` correctly renders as `10:00 AM` in the business's `America/New_York` timezone (EDT, UTC-4) — booking ID and time both match the DB exactly, no discrepancy.
+
+6. **[verified via automated test]** `tests/integration/test_email_design.py`, 8 new tests, real HTTP/DB for the end-to-end path, network stubbed only where a raw MIME structure needed inspecting without a real SMTP round trip:
+```
+$ docker compose exec backend python -m pytest tests/integration/test_email_design.py -v
+test_compose_email_produces_three_parts_with_real_appointment_data PASSED
+test_compose_email_status_pill_matches_event_type[booking_confirmed-Confirmed] PASSED
+test_compose_email_status_pill_matches_event_type[appointment_cancelled-Cancelled] PASSED
+test_compose_email_status_pill_matches_event_type[appointment_rescheduled-Rescheduled] PASSED
+test_compose_email_autoescapes_customer_and_business_names PASSED
+test_provider_sends_real_multipart_alternative_with_plain_text_fallback PASSED
+test_provider_combines_html_body_and_attachment_correctly PASSED
+test_real_booking_dispatches_a_real_html_email_with_matching_data PASSED
+======================== 8 passed, 1 warning in 2.13s ========================
+```
+   `test_compose_email_autoescapes_customer_and_business_names` is the load-bearing security check: a customer name of `<script>alert("x")</script>` and a business name of `A & B <Dental>` are asserted to appear in the rendered HTML **only** in their escaped form (`&lt;script&gt;`, `A &amp; B &lt;Dental&gt;`) — real proof Jinja2's autoescape is actually wired on, not just assumed.
+
+7. **[verified live + automated]** Secrets grep — unchanged from Phase 13/15/16 (2 real uses: config declaration + `smtp.login`), zero `logger.*` calls anywhere in the new `templates/` package, real Gmail app password never appeared in 500+ lines of real container logs across this phase's live sends:
+```
+$ grep -rn "gmail_app_password" app/                          -> config.py declaration + email_provider.py's smtp.login (unchanged)
+$ grep -rn "logger\." app/services/notifications/templates/   -> (no matches)
+$ docker compose logs backend --tail=500 | grep -iE "<real app password>"   -> no match
+```
+
+8. Lint: `docker compose exec backend ruff check .` → `All checks passed!`
+
+**Result / Acceptance criteria (Part A):**
+| Criterion | Status |
+|---|---|
+| Real booking confirmation email, new HTML design, send confirmation + description pasted | ✓ Pass — §1, design described above for your inbox check |
+| Real cancellation email | ✓ Pass — §2 |
+| Real reschedule email | ✓ Pass — §3 |
+| Real daily report email with in-email summary table | ✓ Pass — §4 |
+| Plain-text fallback part confirmed in raw sent MIME | ✓ Pass — §4, real parsed structure + real plain-text content pasted |
+| No data discrepancy (HTML booking ID/time matches DB) | ✓ Pass — §5 |
+| Secrets grep clean | ✓ Pass — §7 |
+| Lint clean | ✓ Pass — §8 |
+
+---
+
+### PART B: Monthly Analytics
+
+**Required:** Real DB-derived monthly aggregates — no LLM commentary — total conversations/customers, appointments requested/completed/cancelled/rescheduled, an explicitly-defined cancellation rate and booking conversion, busiest days/hours, most-requested services; `GET /api/v1/reports/monthly?year=&month=`, tenant-scoped owner/admin only; reuse Part A's design for a monthly email; no AI-generated insight narration.
+
+**Methodology — stated explicitly, since the ticket calls out real ambiguity (quoted in full from the code, not paraphrased after the fact):**
+- **"requested" appointments** = `Appointment.created_at` falls in the month — booking demand that *arrived* this month, regardless of what date the appointment is/was for.
+- **"scheduled for the month"** = `Appointment.scheduled_at` falls in the month (any current status) — the real calendar volume. `cancellation_rate`, `appointments_completed`, `busiest_days/hours`, and `most_requested_services` are **all derived from this one row-set** so they share a single consistent axis (schedule date, current status) rather than mixing a schedule-date population with an event-date numerator, which could otherwise silently disagree across a month boundary.
+- **`cancellation_rate`** = of that scheduled-for-month population, the fraction whose **current** status is `CANCELLED`. Deliberately *not* paired with "cancellation events that happened during the month" (reported separately as `cancellation_events_this_month`, event-dated by `updated_at`, same methodology as Phase 16's daily cancellations) — pairing an event-dated numerator with a schedule-dated denominator would let the ratio quietly misbehave across a month boundary.
+- **`busiest_days`/`busiest_hours`/`most_requested_services`** exclude currently-cancelled appointments from the scheduled-for-month population — a cancelled appointment never occupied real staff time or reflected fulfilled demand.
+- **`booking_conversion`** = appointments requested this month ÷ total conversations this month. **Explicitly an honest proxy, not precise per-conversation attribution**: confirmed by grep that this codebase persists **no** `intent` column on `Message` or `Conversation` anywhere — Phase 8's intent classification happens in memory, per turn, and is never stored — so "conversations that had real booking intent" cannot be queried directly. Using total conversations as the denominator is the closest honest substitute; a future phase persisting intent per turn would make this precise instead of a proxy. This caveat is embedded directly in the API response's `booking_conversion.definition` field, not just in this doc.
+- **`appointments_completed`** — same honest-gap treatment as Phase 16's `HumanHandoff`: confirmed by grep that `AppointmentStatus.COMPLETED` has **zero real producers** anywhere in this codebase (only referenced as a possible past-status filter value and in the original enum migration) — reported as a real, always-0-today count plus an explicit `implemented: false` flag and note, never fabricated.
+
+**Implemented:**
+
+- **`app/services/reporting/monthly_report_service.py`** (new module — kept separate from `report_service.py`, which was already 355 lines for the daily report alone; reuses `report_service._name_maps` rather than duplicating it): `generate_monthly_report(db, *, business_id, year, month)`. `_month_bounds` mirrors the daily report's `_day_bounds` exactly — a business's "month" is resolved in its **own local timezone**, not UTC, using `datetime(year, month, 1, tzinfo=tz)` → next-month boundary. One query fetches the scheduled-for-month row set; `Counter` (stdlib) builds weekday/hour/service breakdowns in Python from that single fetch — no new dependency needed for this part.
+- **`app/api/routes/reports.py`**: `GET /api/v1/reports/monthly?year=&month=` (JSON), `GET /api/v1/reports/monthly/excel?year=&month=` (real `.xlsx`), `POST /api/v1/reports/monthly/send?year=&month=` (real, callable-not-scheduled email, same discipline as the daily send). All three `require_role(["owner","admin"])`, tenant-scoped via `current_user.business_id`, `year`/`month` validated by FastAPI `Query(ge=..., le=...)` constraints (month 1-12, year 2000-2100) so an out-of-range value never even reaches the service layer.
+- **`app/services/reporting/excel_export.py`**: `build_monthly_report_workbook`/`monthly_report_to_xlsx_bytes` — 4 sheets: **Summary** (every headline number plus both rate definitions spelled out as cell text), **Busiest Days**, **Busiest Hours**, **Most Requested Services**.
+- **`app/services/notifications/templates/monthly_report.html.j2`**: reuses Part A's exact base layout/header/footer; content is the same metric/value table pattern as the daily report plus two short "Busiest days" / "Most-requested services" lines.
+- **No AI-generated insight narration anywhere** — every field in the response is a real query result or a real derived ratio with its numerator/denominator both shown; nothing resembling "requests increased 18% because..." exists in this phase's code, matching the master plan's explicit warning.
+- **No migration this phase** — every field read already existed (`Appointment`, `AuditLog`, `Conversation`, `Customer`, all since Phase 2/7/11). Confirmed via `alembic check`.
+
+**Verification output — every claim labeled live vs. automated:**
+
+1. **[verified live, real HTTP]** Real monthly report for a real business with real activity this month — 3 real bookings (one later cancelled, one later rescheduled), fetched as real JSON:
+```json
+{
+  "business_name": "Willow Creek Family Dentistry", "timezone": "America/New_York", "period_label": "September 2026",
+  "conversations": {"total": 0},
+  "customers": {"new": 1, "total_at_month_end": 1},
+  "appointments": {"requested": 3, "scheduled_for_month": 3, "cancellation_events_this_month": 1,
+                   "cancelled_of_scheduled": 1, "rescheduled": {"events": 1, "distinct_appointments": 1}},
+  "cancellation_rate": {"value": 0.3333333333333333, "numerator": 1, "denominator": 3, "definition": "..."},
+  "booking_conversion": {"value": null, "numerator": 3, "denominator": 0, "definition": "..."},
+  "busiest_days": [{"day":"Monday","count":1},{"day":"Wednesday","count":1},{"day":"Tuesday","count":0}, ...],
+  "busiest_hours": [{"hour":10,"count":1},{"hour":15,"count":1}],
+  "most_requested_services": [{"service_name":"Dental Cleaning","count":2}]
+}
+```
+   Note the CANCELLED appointment's original hour (11, Tuesday) is **correctly absent** from `busiest_days`/`busiest_hours`/`most_requested_services` (methodology above), and `booking_conversion.value` is honestly `null` (0 conversations were created this business), not a crash or a fabricated number.
+
+2. **[verified live, real DB — manual cross-check for 3 metrics, as required]**:
+```
+-- Metric 1: appointments.requested
+$ psql -c "SELECT count(*) FROM appointments WHERE business_id='...' AND created_at >= '2026-09-01T04:00:00Z' AND created_at < '2026-10-01T04:00:00Z';"
+ 3   -- matches report exactly (America/New_York Sept boundary correctly resolved to 04:00 UTC, EDT)
+
+-- Metric 2: cancellation_rate numerator/denominator
+$ psql -c "SELECT status, count(*) FROM appointments WHERE business_id='...' AND scheduled_at >= '2026-09-01T04:00:00Z' AND scheduled_at < '2026-10-01T04:00:00Z' GROUP BY status;"
+ CANCELLED | 1
+ CONFIRMED | 2   -- matches report's cancelled_of_scheduled=1, scheduled_for_month=3 exactly -> rate 1/3
+
+-- Metric 3: busiest_hours — real scheduled_at of the 2 non-cancelled rows, converted to business-local time
+$ psql -c "SELECT id, scheduled_at, scheduled_at AT TIME ZONE 'America/New_York' AS local_time, status FROM appointments WHERE business_id='...' ORDER BY scheduled_at;"
+ 64033af1-... | 2026-09-07 14:00:00+00 | 2026-09-07 10:00:00 | CONFIRMED   -- hour 10
+ 3abd27f6-... | 2026-09-08 15:00:00+00 | 2026-09-08 11:00:00 | CANCELLED  -- excluded, hour 11 correctly absent from busiest_hours
+ f0eb702e-... | 2026-09-09 19:00:00+00 | 2026-09-09 15:00:00 | CONFIRMED  -- hour 15
+```
+   All three match the report exactly.
+
+3. **[verified live]** `booking_conversion` definition stated (in the API response's own `definition` field, quoted verbatim above) and its numerator/denominator manually verified against real data in Verification §2's Metric 1 (`requested=3`) and the real `conversations.total=0` shown in §1 — `value: null` is the honest result of a real zero-denominator, not silently defaulting to `0` or crashing.
+
+4. **[verified live]** Busiest day/hour manually verified against real, independently-queried data — see §2 Metric 3 above; the CANCELLED appointment's hour is confirmed absent by direct inspection of the raw rows, not just trusted from the report's own output.
+
+5. **[verified live, real Gmail SMTP]** Real monthly report email, reusing Part A's design:
+```
+$ curl -i -X POST .../reports/monthly/send?year=2026&month=9
+HTTP/1.1 200 OK
+{"sent":true,"recipient":"samratghimire01@gmail.com","detail":"250 message accepted for delivery",
+ "attachment_filename":"monthly_report_2026-09.xlsx","attachment_size_bytes":7318}
+```
+
+6. **[verified live, real HTTP — cross-tenant, overlapping date]** A second real business, a real appointment on the exact same overlapping date as Business A's:
+```
+-- Business B's own report:
+{"business_name":"Second Business For Isolation Test", "appointments":{"requested":1,...}}
+
+-- Business A's real appointment ID never appears in B's report:
+$ curl .../reports/monthly?year=2026&month=9 (Business B's token) | grep -c "<Business A's real appointment id>"
+0
+```
+
+7. **[verified live]** Zero-activity month — a real month long before this business existed:
+```
+$ curl -i .../reports/monthly?year=2015&month=1
+HTTP/1.1 200 OK
+{"conversations":{"total":0}, "customers":{"new":0,...}, "appointments":{"requested":0,...},
+ "cancellation_rate":{"value":null,...}, "booking_conversion":{"value":null,...},
+ "busiest_days":[{"day":"Monday","count":0}, ...all 7 present...], "busiest_hours":[], "most_requested_services":[]}
+```
+   Honest, empty, `200 OK` — no error, no fabricated placeholder data, both rates correctly `null` rather than a `ZeroDivisionError` or a silently-wrong `0`.
+
+8. **[verified live, real RBAC]** Staff rejected on all three monthly endpoints:
+```
+GET  .../reports/monthly?year=2026&month=9        -> 403
+GET  .../reports/monthly/excel?year=2026&month=9  -> 403
+POST .../reports/monthly/send?year=2026&month=9   -> 403
+```
+
+9. **[verified via automated test]** `tests/integration/test_monthly_reports.py`, 12 new tests, real DB/HTTP throughout (only SMTP stubbed in the email tests):
+```
+$ docker compose exec backend python -m pytest tests/integration/test_monthly_reports.py -v
+test_monthly_report_counts_match_real_db_state PASSED
+test_zero_activity_month_is_honest PASSED
+test_booking_conversion_definition_and_value PASSED
+test_cancellation_rate_definition_and_value PASSED
+test_busiest_day_and_hour_match_real_bookings PASSED
+test_most_requested_services_matches_real_bookings PASSED
+test_monthly_report_cross_tenant_isolation PASSED
+test_month_boundary_uses_business_local_timezone_not_utc PASSED
+test_staff_forbidden_from_all_monthly_report_endpoints PASSED
+test_monthly_excel_export_has_correct_sheets_and_data PASSED
+test_send_monthly_report_email_attaches_real_xlsx_stubbed_network PASSED
+test_send_monthly_report_endpoint_owner_can_trigger_it PASSED
+======================== 12 passed, 1 warning in 13.09s ========================
+```
+   `test_month_boundary_uses_business_local_timezone_not_utc` is the load-bearing timezone-bug test the ticket specifically warned about: an appointment at `23:00 America/New_York` on August 31st (`03:00 UTC` on September 1st — genuinely a different UTC month) is asserted to count toward **August's** report (`scheduled_for_month == 1`) and **not** September's (`scheduled_for_month == 0`) — proving `_month_bounds` resolves against the business's local timezone, not UTC. One real bug was caught and fixed while writing `test_busiest_day_and_hour_match_real_bookings` itself (not a production bug — a test-construction one): the test initially tried to book 3 appointments at the exact same instant for a staff-less service, which the real DB exclusion constraint correctly rejected (a staff-less service is a single shared per-business resource, confirmed in `booking_service`'s own docstring) — fixed by using a 15-minute-duration service with 15-minute-spaced bookings so all 3 land in the same hour bucket without colliding.
+
+10. **[verified via automated test]** Full regression suite:
+```
+$ docker compose exec backend python -m pytest tests/ -q
+154 passed, 1 skipped, 1 warning in 139.82s
+```
+(134 passed at the end of Phase 16 + 8 email-design tests + 12 monthly-report tests = 154.)
+
+11. **[verified live + automated]** Secrets grep clean (§7 under Part A covers this phase's whole diff, including Part B — no new credential-adjacent code was added). Lint: `ruff check .` → `All checks passed!`. Migration: `alembic check` → `No new upgrade operations detected.` (N/A — no schema change).
+
+12. **[verified live]** DB left clean after all live/manual testing: `businesses=0 customers=0 appointments=0`.
+
+**Result / Acceptance criteria (Part B):**
+| Criterion | Status |
+|---|---|
+| Real monthly report for a real month, JSON pasted, ≥3 metrics cross-checked against raw DB queries | ✓ Pass — §1/§2 |
+| Booking conversion: definition stated, numerator/denominator manually verified | ✓ Pass — §3, definition embedded in the API response itself |
+| Busiest day/hour manually verified against real data | ✓ Pass — §4 |
+| Cross-tenant test | ✓ Pass — §6 |
+| Zero-activity month is honest (no error, no fabricated data) | ✓ Pass — §7 |
+| Secrets grep clean | ✓ Pass — §11 |
+| Lint clean | ✓ Pass — §11 |
+| Migration reversible if applicable | ✓ N/A — no schema change, confirmed via `alembic check` |
+| No AI-generated insight narration | ✓ Pass — every field is a real query result or a real ratio with numerator/denominator shown |
+
+**Known issues / punted items (both parts):**
+- **`booking_conversion` is an honest proxy, not precise attribution** (see Methodology above) — this codebase has no persisted per-conversation/message intent, so it can't be made exact without a future phase adding that column. The caveat is embedded directly in the API response, not just this doc.
+- **`appointments_completed` will always read `0`/`implemented: false` until a real producer exists** — same honest-gap treatment as Phase 16's `HumanHandoff`, verified by grep, not guessed.
+- **No Outlook-desktop-specific MSO conditional-comment hacks** — the email templates use table-based layout + inline CSS throughout (the well-established 90% compatibility solution the ticket asked for), but do not add Outlook's `<!--[if mso]-->` conditional-comment workarounds for its most obscure rendering quirks (e.g. VML backgrounds) — a real, scoped simplification, not something silently broken; flag if pixel-perfect Outlook desktop rendering becomes a hard requirement.
+- **Monthly Excel cells are plain values, same as Phase 16's daily export** — real, correctly-valued, not native Excel date/percentage-formatted cells. Same carried-over gap, not new to this phase.
+- **No customer-update endpoint, no real Twilio account tested against, no worker/cron for scheduled report delivery** — all carried over, still real, still open (see Phase 13/15/16).
+- No commit has been made yet — awaiting your confirmation of this verification output per working rule #6, and separately, please check `samratghimire01@gmail.com` for the real booking/cancellation/reschedule/daily-report/monthly-report emails from this phase and confirm the new HTML design looks right.

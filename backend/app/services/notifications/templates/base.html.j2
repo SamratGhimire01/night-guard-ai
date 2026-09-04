@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ business_name }}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f5f7;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f5f7;">
+<tr>
+<td align="center" style="padding:24px 16px;">
+
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:8px;">
+<tr>
+<td style="background-color:#1f3a5f;padding:24px 32px;border-radius:8px 8px 0 0;">
+<span style="color:#ffffff;font-size:20px;line-height:28px;font-weight:bold;font-family:Arial,Helvetica,sans-serif;">{{ business_name }}</span>
+</td>
+</tr>
+<tr>
+<td style="padding:32px;font-family:Arial,Helvetica,sans-serif;">
+{% block content %}{% endblock %}
+</td>
+</tr>
+<tr>
+<td style="background-color:#f4f5f7;padding:16px 32px;border-top:1px solid #e5e7eb;border-radius:0 0 8px 8px;">
+<p style="margin:0;color:#8a8f98;font-size:12px;line-height:18px;font-family:Arial,Helvetica,sans-serif;">This is an automated message from {{ business_name }}. Please do not reply directly to this email.</p>
+</td>
+</tr>
+</table>
+
+</td>
+</tr>
+</table>
+</body>
+</html>
