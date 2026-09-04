@@ -14,11 +14,28 @@ from fastapi.testclient import TestClient
 from app.core.security import create_access_token
 from app.db.database import SessionLocal
 from app.db.models.business import Business, BusinessUser, BusinessUserRole
+from app.db.models.knowledge import EMBEDDING_DIMENSIONS
 from app.main import app
+from app.services import knowledge_service
 
 client = TestClient(app)
 
 _FIXTURES = Path(__file__).parent.parent / "fixtures"
+
+
+class _FakeEmbeddingProvider:
+    """Deterministic, zero-cost stand-in for the real Azure embedding provider —
+    this suite tests chunking/approval wiring, not the live embedding API. Real
+    embedding/search behavior is verified with real API calls (see PHASE_STATUS.md
+    Phase 6), not here."""
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        return [[0.01] * EMBEDDING_DIMENSIONS for _ in texts]
+
+
+@pytest.fixture(autouse=True)
+def _stub_embeddings(monkeypatch):
+    monkeypatch.setattr(knowledge_service, "get_embedding_provider", lambda: _FakeEmbeddingProvider())
 
 
 def _unique_email(label: str) -> str:

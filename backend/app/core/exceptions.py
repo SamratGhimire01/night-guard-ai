@@ -1,5 +1,9 @@
+import logging
+
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
+
+logger = logging.getLogger(__name__)
 
 
 class NightGuardError(Exception):
@@ -85,6 +89,12 @@ async def night_guard_exception_handler(request: Request, exc: NightGuardError) 
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Without this, an unexpected exception is completely invisible: FastAPI's own
+    # handler is what would normally print a traceback, but registering a custom
+    # Exception handler (needed for the consistent JSON error body) suppresses that
+    # entirely. Found this gap the hard way — a real 500 during Phase 9 testing had
+    # nothing to diagnose it with until this was added.
+    logger.exception("unhandled exception on %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"error": {"type": "internal_error", "message": "An unexpected error occurred."}},

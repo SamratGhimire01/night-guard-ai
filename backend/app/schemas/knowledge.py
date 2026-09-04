@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.db.models.knowledge import KnowledgeDocumentStatus
 
@@ -60,3 +60,25 @@ class KnowledgeDocumentRead(BaseModel):
     approved_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class KnowledgeSearchRequest(BaseModel):
+    query: str
+    top_k: int = Field(default=5, ge=1, le=20)
+
+    @field_validator("query")
+    @classmethod
+    def query_not_blank(cls, value: str) -> str:
+        return _not_blank(value)
+
+
+class KnowledgeSearchResult(BaseModel):
+    chunk_id: uuid.UUID
+    document_id: uuid.UUID
+    document_title: str
+    content: str
+    similarity: float
+
+
+class KnowledgeSearchResponse(BaseModel):
+    results: list[KnowledgeSearchResult]

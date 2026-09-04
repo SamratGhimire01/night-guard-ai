@@ -16,7 +16,15 @@ from app.core.exceptions import (
 )
 from app.db.models.business import BusinessUser
 from app.db.models.knowledge import KnowledgeDocumentStatus
-from app.schemas.knowledge import KnowledgeDocumentCreate, KnowledgeDocumentRead, KnowledgeDocumentUpdate
+from app.llm import get_embedding_provider
+from app.schemas.knowledge import (
+    KnowledgeDocumentCreate,
+    KnowledgeDocumentRead,
+    KnowledgeDocumentUpdate,
+    KnowledgeSearchRequest,
+    KnowledgeSearchResponse,
+    KnowledgeSearchResult,
+)
 from app.services import knowledge_service
 
 router = APIRouter()
@@ -142,3 +150,27 @@ async def upload_knowledge_document(
         source="upload",
     )
     return KnowledgeDocumentRead.model_validate(document)
+
+
+@router.post("/knowledge/search", response_model=KnowledgeSearchResponse)
+def search_knowledge(
+    payload: KnowledgeSearchRequest,
+    current_user: BusinessUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> KnowledgeSearchResponse:
+    query_vector = get_embedding_provider().embed([payload.query])[0]
+    rows = knowledge_service.search_chunks(
+        db, business_id=current_user.business_id, query_vector=query_vector, top_k=payload.top_k
+    )
+    return KnowledgeSearchResponse(
+        results=[
+            KnowledgeSearchResult(
+                chunk_id=chunk.id,
+                document_id=doc.id,
+                document_title=doc.title,
+                content=chunk.content,
+                similarity=similarity,
+            )
+            for chunk, doc, similarity in rows
+        ]
+    )

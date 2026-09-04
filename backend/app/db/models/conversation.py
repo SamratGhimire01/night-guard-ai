@@ -34,6 +34,14 @@ class Conversation(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMi
     customer_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
     channel: Mapped[str] = mapped_column(String(50), nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False)
+    # Phase 7: rolling LLM-generated summary of every message older than the most
+    # recent "keep_recent" window (see app/memory/summarization.py). NULL until the
+    # conversation first crosses the summarization threshold.
+    summary: Mapped[str | None] = mapped_column(Text)
+    # How many of this conversation's oldest messages (ordered by created_at) are
+    # already folded into `summary` — lets re-summarization pick up only the newly
+    # aged-out messages instead of re-summarizing the whole prefix every time.
+    summarized_message_count: Mapped[int] = mapped_column(nullable=False, server_default="0")
 
 
 class Message(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
