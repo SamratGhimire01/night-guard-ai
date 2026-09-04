@@ -224,25 +224,18 @@ def _new_leads(db: Session, *, business_id: uuid.UUID, start: datetime, end: dat
 
 
 def _human_review(db: Session, *, business_id: uuid.UUID) -> dict:
-    """HumanHandoff has zero real producers anywhere in this codebase as of
-    Phase 16 (verified by grep: the model class is defined, nothing ever
-    constructs a HumanHandoff row) — this is the "tie-in point for later
-    Phase 25" the ticket names. Rather than fabricate activity, this honestly
-    reports a real (currently always-zero) count of still-open handoffs plus
-    an explicit implemented=False flag, so a future phase adding a real
-    producer doesn't need to touch this section at all — it will just start
-    reporting real non-zero numbers."""
+    """Phase 16 flagged this as always-zero (HumanHandoff had no real
+    producer). Phase 19 added the real producer (app.services.handoff_service,
+    called from the conversation orchestrator), so this is now a real,
+    currently-open-handoff count — no code here changed except the flag/note
+    reflecting that, exactly as Phase 16 anticipated."""
     open_count = db.execute(
         select(HumanHandoff).where(HumanHandoff.business_id == business_id, HumanHandoff.resolved_at.is_(None))
     ).scalars().all()
     return {
         "count": len(open_count),
-        "implemented": False,
-        "note": (
-            "HumanHandoff has no real producer in this codebase yet — nothing ever creates a "
-            "handoff row, so this count is honestly always 0 today. Not fabricated; will start "
-            "reflecting real activity once a producer (e.g. Phase 25) exists."
-        ),
+        "implemented": True,
+        "note": "Real count of currently-open human handoffs for this business.",
     }
 
 

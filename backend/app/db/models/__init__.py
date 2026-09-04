@@ -7,6 +7,7 @@ from app.db.models.business import (
     BusinessUser,
     BusinessUserRole,
 )
+from app.db.models.channel_identity import ChannelIdentity
 from app.db.models.conversation import Conversation, Message, MessageSenderType
 from app.db.models.customer import Customer
 from app.db.models.follow_up import FollowUp
@@ -16,6 +17,7 @@ from app.db.models.knowledge import KnowledgeChunk, KnowledgeDocument, Knowledge
 from app.db.models.notification import Notification, NotificationStatus
 from app.db.models.service import Service
 from app.db.models.staff import Staff
+from app.db.models.training import TrainingQuestion
 
 __all__ = [
     "Appointment",
@@ -27,6 +29,7 @@ __all__ = [
     "BusinessHoursException",
     "BusinessUser",
     "BusinessUserRole",
+    "ChannelIdentity",
     "Conversation",
     "Message",
     "MessageSenderType",
@@ -41,4 +44,5 @@ __all__ = [
     "NotificationStatus",
     "Service",
     "Staff",
+    "TrainingQuestion",
 ]

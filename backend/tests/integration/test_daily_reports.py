@@ -316,16 +316,49 @@ def test_report_new_leads_section_reflects_real_customer_creation(business_ready
     assert row["email"] == "lead@example.com"
 
 
-# --- human review section: honest, not fabricated -------------------------------------
+# --- human review section: real since Phase 19's HumanHandoff producer -----------------
 
 
-def test_report_human_review_section_is_honest_about_having_no_producer(business_ready):
+def test_report_human_review_section_is_zero_but_real_with_no_handoffs(business_ready):
     today = date.today()
     resp = client.get(f"/api/v1/reports/daily?date={today.isoformat()}", headers=_auth_header(business_ready["token"]))
     report = resp.json()
-    assert report["human_review"]["implemented"] is False
+    assert report["human_review"]["implemented"] is True
     assert report["human_review"]["count"] == 0
-    assert "no real producer" in report["human_review"]["note"]
+
+
+def test_report_human_review_section_reflects_a_real_open_handoff(business_ready):
+    """Phase 19 gave HumanHandoff its first real producer — this is no longer
+    always-empty (Phase 16's own flagged gap)."""
+    from app.db.models.conversation import Conversation
+    from app.schemas.conversation import ConversationIntent
+    from app.services import handoff_service
+
+    customer = _create_customer(business_ready["token"], phone="+15550000099")
+    with SessionLocal() as db:
+        conversation = Conversation(
+            business_id=business_ready["business_id"],
+            customer_id=uuid.UUID(customer["id"]),
+            channel="sms",
+            status="open",
+        )
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
+        handoff_service.maybe_create_handoff(
+            db,
+            business_id=business_ready["business_id"],
+            conversation_id=conversation.id,
+            intent=ConversationIntent.COMPLAINT,
+            best_similarity=None,
+        )
+
+    today = date.today()
+    resp = client.get(f"/api/v1/reports/daily?date={today.isoformat()}", headers=_auth_header(business_ready["token"]))
+    report = resp.json()
+    assert report["human_review"]["implemented"] is True
+    assert report["human_review"]["count"] == 1
+    assert report["summary"]["human_review_open_count"] == 1
 
 
 # --- cross-tenant isolation ------------------------------------------------------------

@@ -33,6 +33,10 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # doesn't send a real text to any given customer unless that customer has
     # ALSO opted in (Customer.sms_opt_in) — see that column's comment for why.
     sms_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Phase 18: follow-up messages carry real spam risk (an unwanted "are you still
+    # interested" nudge), so — same as sms_enabled — this defaults OFF and requires
+    # explicit opt-in, never on by default.
+    follow_ups_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
 
 class BusinessUser(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):

@@ -1,0 +1,243 @@
+<!--
+  DEV/TEST TOOL ONLY. Talks to the real widget endpoint
+  (POST /api/v1/widget/{business_id}/messages) with no auth, mirroring what
+  any anonymous website visitor can already do. Do not deploy this page
+  anywhere public-facing in production.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Night Guard - Test Chat</title>
+<style>
+  :root {
+    --bg: #0b0b0f;
+    --panel: #16161d;
+    --border: #2a2a35;
+    --purple: #8b5cf6;
+    --purple-dim: #6d28d9;
+    --agent-bubble: #24242e;
+    --text: #e8e6f0;
+    --text-dim: #9a97ad;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  header .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--purple);
+    box-shadow: 0 0 8px var(--purple);
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  .config {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .config input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .config label {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .config input#backendUrl { width: 260px; }
+  .config input#businessId { width: 300px; }
+  .config .status { font-size: 11px; color: var(--text-dim); align-self: flex-end; padding-bottom: 6px; }
+
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg { max-width: 70%; display: flex; flex-direction: column; }
+  .msg.customer { align-self: flex-end; align-items: flex-end; }
+  .msg.agent { align-self: flex-start; align-items: flex-start; }
+  .bubble {
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .msg.customer .bubble {
+    background: var(--purple);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.agent .bubble {
+    background: var(--agent-bubble);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .msg.system .bubble {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px dashed var(--border);
+    font-size: 12px;
+  }
+  .intent {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 3px;
+    padding: 0 4px;
+  }
+
+  form#composer {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+  }
+  #content {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  #content:focus { outline: 1px solid var(--purple); }
+  button#send {
+    background: var(--purple);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button#send:hover { background: var(--purple-dim); }
+  button#send:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="dot"></div>
+    <h1>Night Guard - Test Chat</h1>
+  </header>
+
+  <div class="config">
+    <label>Backend URL
+      <input id="backendUrl" value="http://localhost:8000">
+    </label>
+    <label>Business ID
+      <input id="businessId" placeholder="00000000-0000-0000-0000-000000000000">
+    </label>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div id="chat"></div>
+
+  <form id="composer">
+    <input id="content" placeholder="Type a message..." autocomplete="off">
+    <button id="send" type="submit">Send</button>
+  </form>
+
+<script>
+  let sessionToken = null;
+
+  const chat = document.getElementById('chat');
+  const form = document.getElementById('composer');
+  const contentInput = document.getElementById('content');
+  const sendBtn = document.getElementById('send');
+  const backendUrlInput = document.getElementById('backendUrl');
+  const businessIdInput = document.getElementById('businessId');
+  const statusEl = document.getElementById('status');
+
+  function addMessage(role, text, intent) {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg ' + role;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    wrap.appendChild(bubble);
+    if (intent) {
+      const intentEl = document.createElement('div');
+      intentEl.className = 'intent';
+      intentEl.textContent = 'intent: ' + intent;
+      wrap.appendChild(intentEl);
+    }
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const content = contentInput.value.trim();
+    const businessId = businessIdInput.value.trim();
+    const backendUrl = backendUrlInput.value.trim().replace(/\/$/, '');
+    if (!content) return;
+    if (!businessId) {
+      statusEl.textContent = 'Set a business_id first.';
+      return;
+    }
+
+    addMessage('customer', content);
+    contentInput.value = '';
+    sendBtn.disabled = true;
+    statusEl.textContent = 'Sending...';
+
+    try {
+      const res = await fetch(`${backendUrl}/api/v1/widget/${businessId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_token: sessionToken, content }),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        addMessage('system', `Error ${res.status}: ${errBody}`);
+        statusEl.textContent = `Last request failed (${res.status})`;
+        return;
+      }
+
+      const data = await res.json();
+      sessionToken = data.session_token;
+      addMessage('agent', data.response, data.intent);
+      statusEl.textContent = 'session: ' + sessionToken.slice(0, 8) + '...';
+    } catch (err) {
+      addMessage('system', 'Network error: ' + err.message);
+      statusEl.textContent = 'Network error';
+    } finally {
+      sendBtn.disabled = false;
+      contentInput.focus();
+    }
+  });
+</script>
+</body>
+</html>

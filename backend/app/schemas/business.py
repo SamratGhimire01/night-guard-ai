@@ -17,6 +17,7 @@ class BusinessRead(BaseModel):
     languages: list[str] | None
     tone: str | None
     sms_enabled: bool
+    follow_ups_enabled: bool
 
 
 class BusinessUpdate(BaseModel):
@@ -35,6 +36,7 @@ class BusinessUpdate(BaseModel):
     languages: list[str] | None = None
     tone: str | None = None
     sms_enabled: bool | None = None
+    follow_ups_enabled: bool | None = None
 
     @field_validator("name", "timezone")
     @classmethod
@@ -43,9 +45,9 @@ class BusinessUpdate(BaseModel):
             raise ValueError("This field is required and cannot be cleared to null.")
         return value
 
-    @field_validator("sms_enabled")
+    @field_validator("sms_enabled", "follow_ups_enabled")
     @classmethod
-    def sms_enabled_not_null(cls, value: bool | None) -> bool:
+    def bool_toggle_not_null(cls, value: bool | None) -> bool:
         if value is None:
-            raise ValueError("sms_enabled cannot be cleared to null — pass true or false.")
+            raise ValueError("This field cannot be cleared to null — pass true or false.")
         return value

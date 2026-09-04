@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKeyConstraint, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKeyConstraint, Index, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,6 +18,22 @@ class HumanHandoff(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):
             ["conversation_id", "business_id"],
             ["conversations.id", "conversations.business_id"],
             name="fk_human_handoffs_conversation_same_tenant",
+        ),
+        # Phase 19: the real, DB-level anti-spam guarantee — at most one OPEN
+        # (resolved_at IS NULL) handoff per conversation. Deliberately NOT a
+        # flat UniqueConstraint like Phase 18's FollowUp ("at most one EVER"):
+        # a handoff must be re-raisable after resolution — a customer can
+        # genuinely need escalation again later in the same conversation, and
+        # a flat constraint would permanently block that. A PARTIAL unique
+        # index (only over still-open rows) enforces "no duplicate open
+        # escalation" while still allowing a new row once the old one is
+        # resolved — a real Postgres constraint a race/retry can't bypass,
+        # not just an application-level check.
+        Index(
+            "uq_human_handoffs_conversation_id_open",
+            "conversation_id",
+            unique=True,
+            postgresql_where=text("resolved_at IS NULL"),
         ),
     )
 

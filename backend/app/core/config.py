@@ -33,6 +33,23 @@ class Settings(BaseSettings):
     twilio_auth_token: str = ""
     twilio_from_number: str = ""
 
+    # WhatsApp Cloud API (app/services/channels/whatsapp.py). Empty by default —
+    # no production Meta Business account/credentials exist yet (Phase 22).
+    # whatsapp_app_secret: verifies X-Hub-Signature-256 on every inbound webhook —
+    #   an empty value makes verification always fail closed (never "no secret
+    #   configured, so skip verification").
+    # whatsapp_verify_token: our own arbitrary string, compared against Meta's
+    #   hub.verify_token on the GET handshake — this is a value WE choose and
+    #   register in the Meta App Dashboard, not one Meta issues to us.
+    # whatsapp_access_token: the real Send API bearer token. Empty by default:
+    #   WhatsAppChannelAdapter.send_message falls back to a safe, logged
+    #   simulation whenever this is missing — same graceful-fallback discipline
+    #   as Phase 15's SMSNotificationProvider stub.
+    whatsapp_app_secret: str = ""
+    whatsapp_verify_token: str = ""
+    whatsapp_access_token: str = ""
+    whatsapp_api_version: str = "v20.0"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

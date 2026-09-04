@@ -20,3 +20,7 @@ def render_daily_report_email(**context) -> str:
 
 def render_monthly_report_email(**context) -> str:
     return _env.get_template("monthly_report.html.j2").render(**context)
+
+
+def render_followup_email(**context) -> str:
+    return _env.get_template("followup.html.j2").render(**context)

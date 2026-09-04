@@ -80,12 +80,24 @@ def two_businesses():
         db.commit()
 
 
-def _create_customer(token: str) -> uuid.UUID:
-    resp = client.post(
-        "/api/v1/customers", headers=_auth_header(token), json={"name": "Test Customer"}
-    )
+def _create_customer(token: str, *, email: str | None = None, phone: str | None = None) -> uuid.UUID:
+    payload = {"name": "Test Customer"}
+    if email:
+        payload["email"] = email
+    if phone:
+        payload["phone"] = phone
+    resp = client.post("/api/v1/customers", headers=_auth_header(token), json=payload)
     assert resp.status_code == 201, resp.text
     return uuid.UUID(resp.json()["id"])
+
+
+def _create_customer_with_contact(token: str) -> uuid.UUID:
+    """Phase 24: the booking-dispatch tests need a customer the (new)
+    contact-info gate lets through — a plain `_create_customer` deliberately
+    stays contact-less by default so the cancellation/reschedule tests that
+    assert on a real FAILED notification (no recipient on file) are
+    unaffected."""
+    return _create_customer(token, email=_unique_email("booking-contact"))
 
 
 def _create_conversation(business_id: uuid.UUID, customer_id: uuid.UUID) -> uuid.UUID:
@@ -253,7 +265,7 @@ def test_booking_tool_creates_real_appointment_and_response_reflects_it(two_busi
     token_a = two_businesses["token_a"]
     business_id_a = two_businesses["business_id_a"]
     service_id = _setup_booking_business(token_a)
-    customer_id = _create_customer(token_a)
+    customer_id = _create_customer_with_contact(token_a)
     conversation_id = _create_conversation(business_id_a, customer_id)
     target_date = _next_monday()
 
@@ -292,7 +304,7 @@ def test_booking_tool_failure_is_never_reported_as_success(two_businesses, monke
     token_a = two_businesses["token_a"]
     business_id_a = two_businesses["business_id_a"]
     service_id = _setup_booking_business(token_a)
-    customer_id = _create_customer(token_a)
+    customer_id = _create_customer_with_contact(token_a)
     conversation_id = _create_conversation(business_id_a, customer_id)
     target_date = _next_monday()
 
@@ -350,7 +362,7 @@ def test_booking_falls_back_to_clarifying_when_service_name_unresolvable(two_bus
     token_a = two_businesses["token_a"]
     business_id_a = two_businesses["business_id_a"]
     _setup_booking_business(token_a)
-    customer_id = _create_customer(token_a)
+    customer_id = _create_customer_with_contact(token_a)
     conversation_id = _create_conversation(business_id_a, customer_id)
     target_date = _next_monday()
 
@@ -402,7 +414,7 @@ def test_group_booking_tool_creates_shared_appointment_with_participants(two_bus
     token_a = two_businesses["token_a"]
     business_id_a = two_businesses["business_id_a"]
     service_id = _setup_booking_business(token_a)
-    customer_id = _create_customer(token_a)
+    customer_id = _create_customer_with_contact(token_a)
     conversation_id = _create_conversation(business_id_a, customer_id)
     target_date = _next_monday()
 
@@ -451,7 +463,7 @@ def test_group_booking_hallucination_proof_partial_failure_is_never_reported_as_
     token_a = two_businesses["token_a"]
     business_id_a = two_businesses["business_id_a"]
     service_id = _setup_booking_business(token_a)
-    customer_id = _create_customer(token_a)
+    customer_id = _create_customer_with_contact(token_a)
     conversation_id = _create_conversation(business_id_a, customer_id)
     target_date = _next_monday()
 
@@ -506,7 +518,7 @@ def test_group_booking_all_or_nothing_books_nothing_when_one_slot_unavailable(tw
     business_id_a = two_businesses["business_id_a"]
     _setup_booking_business(token_a)
     consult_id = _setup_second_service(token_a)
-    customer_id = _create_customer(token_a)
+    customer_id = _create_customer_with_contact(token_a)
     conversation_id = _create_conversation(business_id_a, customer_id)
     target_date = _next_monday()
 
@@ -558,7 +570,7 @@ def test_group_booking_falls_back_to_clarifying_when_a_persons_service_is_unreso
     token_a = two_businesses["token_a"]
     business_id_a = two_businesses["business_id_a"]
     _setup_booking_business(token_a)
-    customer_id = _create_customer(token_a)
+    customer_id = _create_customer_with_contact(token_a)
     conversation_id = _create_conversation(business_id_a, customer_id)
     target_date = _next_monday()
 
@@ -879,9 +891,29 @@ def test_parse_response_extracts_valid_booking_request():
     assert result.booking_request == {"service": "Cleaning", "date": "2026-09-10", "time": "14:00"}
 
 
-def test_parse_response_ignores_malformed_booking_request():
+def test_parse_response_extracts_partial_booking_request_with_nulls_for_missing_fields():
+    """Phase 25a: a booking_request with only SOME fields present is now a
+    normal partial extraction (orchestrator._merge_booking_draft accumulates
+    it across turns) — no longer treated as malformed/discarded, which was
+    the old, incomplete-extraction-triggers-a-loop behavior."""
     raw = '{"intent": "booking", "response": "hi", "booking_request": {"service": "Cleaning"}}'
+    assert _parse_response(raw).booking_request == {"service": "Cleaning", "date": None, "time": None}
+
+
+def test_parse_response_booking_request_missing_key_entirely_is_none():
+    raw = '{"intent": "booking", "response": "hi"}'
     assert _parse_response(raw).booking_request is None
+
+
+def test_parse_response_booking_request_all_null_is_a_valid_empty_dict():
+    """A plain confirmation ("yes") that adds nothing new is expected to
+    still emit an all-null booking_request, not None — see intent.py rule 9's
+    few-shot example."""
+    raw = (
+        '{"intent": "booking", "response": "Great!", '
+        '"booking_request": {"service": null, "date": null, "time": null}}'
+    )
+    assert _parse_response(raw).booking_request == {"service": None, "date": None, "time": None}
 
 
 def test_parse_response_extracts_valid_cancellation_request():
@@ -957,3 +989,1215 @@ def test_parse_response_ignores_group_booking_request_with_incomplete_person():
         '{"label": "Spouse", "service": null, "date": "2026-09-07", "time": "14:00"}]}}'
     )
     assert _parse_response(raw).group_booking_request is None
+
+
+# --- Phase 24 urgent fix: booking blocked without real contact info -----------
+
+
+def test_booking_blocked_when_customer_has_no_contact_info(two_businesses, monkeypatch):
+    """A customer with no phone/email on file (the default `_create_customer`)
+    must NOT get a real booking — the business would have no way to confirm
+    it. No Appointment row, no HumanHandoff (this is a gate, not an escalation),
+    and the deterministic ask-for-contact sentence, never the LLM's own text."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)  # no phone, no email
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    _stub_providers(
+        monkeypatch, _booking_reply("Cleaning", target_date.isoformat(), "14:00", response="You're all set!")
+    )
+
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Can I get a cleaning next Monday at 2pm?"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert "you're all set" not in body["response"].lower()
+    assert "phone number or email" in body["response"].lower()
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+        from app.db.models.handoff import HumanHandoff
+
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 0
+        assert db.query(HumanHandoff).filter(HumanHandoff.business_id == business_id_a).count() == 0
+
+
+def test_group_booking_blocked_when_customer_has_no_contact_info(two_businesses, monkeypatch):
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)  # no phone, no email
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    _stub_providers(
+        monkeypatch,
+        _group_booking_reply(
+            [
+                {"label": "Jordan", "service": "Cleaning", "date": target_date.isoformat(), "time": "14:00"},
+                {"label": "Spouse", "service": "Cleaning", "date": target_date.isoformat(), "time": "14:00"},
+            ],
+            all_or_nothing=False,
+            response="You're both booked!",
+        ),
+    )
+
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Book me and my wife for cleanings next Monday at 2pm."},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert "you're both booked" not in body["response"].lower()
+    assert "phone number or email" in body["response"].lower()
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 0
+
+
+def test_booking_proceeds_when_contact_info_given_in_same_message(two_businesses, monkeypatch):
+    """Contact info volunteered in THIS SAME message (e.g. "book me at 2pm,
+    I'm Jordan, jordan@example.com") must immediately satisfy the gate — no
+    need to ask-then-retry across two turns."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)  # no phone, no email yet
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    reply = json.dumps(
+        {
+            "intent": "booking",
+            "response": "Let me get that booked.",
+            "booking_request": {"service": "Cleaning", "date": target_date.isoformat(), "time": "14:00"},
+            "contact_info_update": {"name": None, "email": "jordan@example.com", "phone": None},
+        }
+    )
+    _stub_providers(monkeypatch, reply)
+
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Can I get a cleaning next Monday at 2pm? I'm Jordan, jordan@example.com"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert "phone number or email" not in body["response"].lower()
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+        from app.db.models.customer import Customer
+
+        appointments = db.query(Appointment).filter(Appointment.business_id == business_id_a).all()
+        assert len(appointments) == 1, "the gate must not have blocked a booking with contact info in the same turn"
+        assert appointments[0].service_id == service_id
+        assert db.get(Customer, customer_id).email == "jordan@example.com"
+
+
+def test_booking_asks_again_after_gate_when_customer_still_gives_no_contact(two_businesses, monkeypatch):
+    """A second turn where the customer still hasn't given contact info must
+    keep being gated — never a one-time check that then trusts the session."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    _stub_providers(monkeypatch, _booking_reply("Cleaning", target_date.isoformat(), "14:00"))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Can I get a cleaning next Monday at 2pm?"},
+    )
+    assert "phone number or email" in resp.json()["response"].lower()
+
+    _stub_providers(monkeypatch, _booking_reply("Cleaning", target_date.isoformat(), "14:00"))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Just book it please."},
+    )
+    assert "phone number or email" in resp.json()["response"].lower()
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 0
+
+
+# --- Phase 24 urgent fix: business-scope boundary (off_topic) -----------------
+
+
+# --- Urgent fix: real 500 on provider failure -> graceful degradation --------
+
+
+def _stub_failing_embedding_provider(monkeypatch):
+    """Simulates the real, live-captured failure mode: `_post` (app/llm/
+    azure_openai.py) exhausts its own internal retry budget and raises
+    RuntimeError — this is what the orchestrator's safety net must catch,
+    not a raw exception straight from httpx."""
+    import app.services.conversation.orchestrator as orchestrator_module
+
+    class _FailingEmbeddingProvider:
+        def embed(self, texts):
+            raise RuntimeError("LLM provider request failed: ConnectError")
+
+    monkeypatch.setattr(orchestrator_module, "get_embedding_provider", lambda: _FailingEmbeddingProvider())
+
+
+def test_provider_failure_degrades_gracefully_never_a_raw_500(two_businesses, monkeypatch):
+    """The exact real bug: the embedding call fails after its own internal
+    retries (RuntimeError, never a raw httpx exception once azure_openai._post
+    is fixed) — the endpoint must still return 201 with an honest message, the
+    customer's real message must still be persisted (never silently dropped),
+    and a REAL HumanHandoff must be created — never a bare 500."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    _stub_failing_embedding_provider(monkeypatch)
+
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "sunnu na mero teeth ali ali dukhay ko 2 din vayo check garau nai parxara?"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["intent"] == "unknown"
+    assert "trouble connecting" in body["response"].lower()
+    assert "let our team know" in body["response"].lower()
+
+    with SessionLocal() as db:
+        from app.db.models.conversation import Message
+        from app.db.models.handoff import HumanHandoff
+
+        messages = list(
+            db.query(Message).filter(Message.conversation_id == conversation_id).order_by(Message.created_at)
+        )
+        assert [m.content for m in messages] == [
+            "sunnu na mero teeth ali ali dukhay ko 2 din vayo check garau nai parxara?",
+            body["response"],
+        ]
+        assert [m.sender_type.value for m in messages] == ["customer", "agent"]
+
+        handoffs = list(db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id))
+        assert len(handoffs) == 1
+        assert "provider" in handoffs[0].reason.lower()
+        assert handoffs[0].status == "open"
+
+
+def test_provider_failure_renders_in_the_already_locked_language(two_businesses, monkeypatch):
+    """The static failure sentence must still respect an already-locked
+    conversation language — never silently reverting to English mid-
+    conversation just because the LLM itself is unreachable."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        conversation.detected_language = "ne_roman"
+        db.commit()
+
+    _stub_failing_embedding_provider(monkeypatch)
+
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "kehi bhannu paryo"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "connect garna samasya" in resp.json()["response"].lower()
+
+
+def test_handoff_reason_provider_failure_takes_priority_unconditionally():
+    """Direct check of the structural guard (handoff_service._handoff_reason):
+    `is_provider_failure` must produce a reason regardless of intent, and
+    must never be silently overridden by the language-switch exclusion or any
+    other signal."""
+    from app.services.handoff_service import _handoff_reason
+
+    reason = _handoff_reason(
+        intent=ConversationIntent.UNKNOWN,
+        best_similarity=None,
+        llm_confirmed_answered=None,
+        is_provider_failure=True,
+    )
+    assert reason is not None
+    assert "provider" in reason.lower()
+
+    # Even for an intent that would otherwise never trigger a handoff on its
+    # own (OFF_TOPIC isn't in COMPLAINT/HUMAN_HANDOFF/_INFO_INTENTS).
+    reason2 = _handoff_reason(
+        intent=ConversationIntent.OFF_TOPIC,
+        best_similarity=None,
+        llm_confirmed_answered=None,
+        is_provider_failure=True,
+    )
+    assert reason2 is not None
+
+
+def test_off_topic_intent_declines_deterministically_and_creates_no_handoff(two_businesses, monkeypatch):
+    """Even if the (stubbed, adversarial) LLM's own `response` actually answers
+    the off-topic question, the customer must never see that text — the
+    orchestrator's deterministic override is the only thing that reaches them
+    — and this must never create a HumanHandoff (it's out-of-scope, not an
+    unanswered business question)."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    hallucinated_history_answer = (
+        "America was reached by European explorers when Christopher Columbus's expedition "
+        "landed in the Caribbean in 1492."
+    )
+    _stub_providers(
+        monkeypatch,
+        json.dumps({"intent": "off_topic", "response": hallucinated_history_answer, "needs_human_handoff": False}),
+    )
+
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Random question — how was America discovered?"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["intent"] == "off_topic"
+    assert "columbus" not in body["response"].lower()
+    assert "1492" not in body["response"]
+    assert "is there something about that i can help with" in body["response"].lower()
+
+    with SessionLocal() as db:
+        from app.db.models.handoff import HumanHandoff
+
+        assert db.query(HumanHandoff).filter(HumanHandoff.business_id == business_id_a).count() == 0
+
+
+def test_off_topic_intent_uses_business_name_in_decline(two_businesses, monkeypatch):
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    _stub_providers(
+        monkeypatch,
+        json.dumps({"intent": "off_topic", "response": "irrelevant stubbed text", "needs_human_handoff": False}),
+    )
+
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Who won the last election?"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "Conv A" in resp.json()["response"]
+
+
+# --- Phase 25 urgent fix: locked per-conversation language/script -------------
+
+
+def test_language_lock_set_from_first_message_and_used_in_deterministic_sentence(two_businesses, monkeypatch):
+    """The very first message with a clear signal locks Conversation.
+    detected_language immediately, and that SAME turn's deterministic
+    sentence (never LLM-drafted text) already reflects it."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    _stub_providers(
+        monkeypatch,
+        json.dumps(
+            {
+                "intent": "off_topic",
+                "response": "irrelevant stubbed text",
+                "needs_human_handoff": False,
+                "message_language": "ne_roman",
+            }
+        ),
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Timro rashifal ke ho?"},
+    )
+    assert resp.status_code == 201, resp.text
+    # ne_roman off_topic template, never the English one, never the LLM's own stubbed text.
+    assert "sanga related kura haru" in resp.json()["response"]
+    assert "irrelevant stubbed text" not in resp.json()["response"]
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.detected_language == "ne_roman"
+        assert conversation.language_switch_streak == 0
+
+
+def test_language_lock_persists_across_turns_for_a_different_deterministic_sentence(two_businesses, monkeypatch):
+    """Once locked on turn 1, an UNRELATED deterministic sentence on turn 2
+    (the booking-no-contact-info gate) must already render in that same
+    locked language — never re-guessed, never left in English."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    _stub_providers(
+        monkeypatch,
+        json.dumps(
+            {
+                "intent": "greeting",
+                "response": "Namaste!",
+                "needs_human_handoff": False,
+                "message_language": "ne_roman",
+            }
+        ),
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Namaste!"},
+    )
+    assert resp.status_code == 201, resp.text
+
+    reply = json.dumps(
+        {
+            "intent": "booking",
+            "response": "should never be shown — contact-info gate must override this",
+            "booking_request": {"service": "Cleaning", "date": target_date.isoformat(), "time": "14:00"},
+        }
+    )
+    _stub_providers(monkeypatch, reply)
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Can I book a cleaning next Monday at 2pm?"},
+    )
+    assert resp.status_code == 201, resp.text
+    # Phase 25a-2: the gate is dynamic — since this turn's booking_request is
+    # fully specified, the ne_roman "booking_gate_with_progress" template
+    # renders (not the "nothing known yet" booking_no_contact one), and it
+    # must still be in the locked language, never English.
+    body = resp.json()["response"]
+    assert "Lock garna malai tapaiko naam ra phone number wa email chahincha" in body
+    assert "Cleaning" in body
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.detected_language == "ne_roman"
+
+
+def test_resolve_message_language_devanagari_deterministic_override():
+    """Direct, deterministic check of the Devanagari script guard (Phase 25)
+    — found live: the LLM's own `message_language` self-report can anchor to
+    whatever the conversation is already locked to, even for a message that
+    provably isn't in that script. Devanagari presence is the one part of
+    this that's mechanically checkable, so it always overrides positively
+    (real script beats any LLM claim) and suppresses a false positive claim
+    (an unbacked "ne_deva" self-report is dropped to no signal, never
+    trusted and never guessed at) — see orchestrator._resolve_message_language."""
+    from app.services.conversation.orchestrator import _resolve_message_language
+
+    assert _resolve_message_language("नमस्ते", "en") == "ne_deva"
+    assert _resolve_message_language("नमस्ते", None) == "ne_deva"
+    assert _resolve_message_language("What are your business hours?", "ne_deva") is None
+    assert _resolve_message_language("Namaste, kasto cha?", "ne_deva") is None
+    assert _resolve_message_language("What are your business hours?", "en") == "en"
+    assert _resolve_message_language("Namaste, kasto cha?", "ne_roman") == "ne_roman"
+    assert _resolve_message_language("some text", None) is None
+
+
+def test_resolve_locked_language_ignores_one_off_drift_but_relocks_after_sustained_streak():
+    """Direct, deterministic check of the streak-based lock (Phase 25) — a
+    single differing message must never flip the lock, but
+    _LANGUAGE_LOCK_STREAK_THRESHOLD consecutive differing messages must."""
+    from types import SimpleNamespace
+
+    from app.services.conversation.orchestrator import _LANGUAGE_LOCK_STREAK_THRESHOLD, _resolve_locked_language
+
+    conversation = SimpleNamespace(detected_language=None, language_switch_streak=0)
+
+    # First clear signal locks immediately and is used the same turn.
+    assert _resolve_locked_language(conversation, "ne_roman") == "ne_roman"
+    assert conversation.detected_language == "ne_roman"
+
+    # A single differing message never flips it — still renders as the old lock.
+    assert _resolve_locked_language(conversation, "en") == "ne_roman"
+    assert conversation.detected_language == "ne_roman"
+    assert conversation.language_switch_streak == 1
+
+    # Matching the lock again resets the streak.
+    assert _resolve_locked_language(conversation, "ne_roman") == "ne_roman"
+    assert conversation.language_switch_streak == 0
+
+    # A sustained streak of the SAME different language, up to the threshold,
+    # actually relocks — but only takes effect for the turn AFTER it crosses.
+    for i in range(_LANGUAGE_LOCK_STREAK_THRESHOLD - 1):
+        language_used = _resolve_locked_language(conversation, "en")
+        assert language_used == "ne_roman", f"turn {i}: must still render in the old lock"
+        assert conversation.detected_language == "ne_roman"
+
+    language_used = _resolve_locked_language(conversation, "en")
+    assert language_used == "ne_roman", "the turn that crosses the threshold still renders in the OLD lock"
+    assert conversation.detected_language == "en", "but the lock itself has now moved for the NEXT turn"
+    assert conversation.language_switch_streak == 0
+
+    # And the next turn actually uses the new lock.
+    assert _resolve_locked_language(conversation, "en") == "en"
+
+
+# --- Phase 25b urgent fix: explicit language-switch override + self-awareness -
+
+
+def test_resolve_locked_language_explicit_switch_overrides_immediately_bypassing_streak():
+    """Direct, deterministic check: an explicit switch request (as opposed to
+    passive drift) must NOT wait for the 3-consecutive-message streak — it
+    overrides the lock on the very turn it's reported, even mid-streak."""
+    from types import SimpleNamespace
+
+    from app.services.conversation.orchestrator import _resolve_locked_language
+
+    conversation = SimpleNamespace(detected_language="ne_roman", language_switch_streak=0)
+
+    # One passive-drift message starts building a streak, same as before.
+    assert _resolve_locked_language(conversation, "en") == "ne_roman"
+    assert conversation.language_switch_streak == 1
+
+    # An explicit switch request on the very next turn overrides immediately —
+    # used THIS turn, streak reset, regardless of the in-progress streak above.
+    assert _resolve_locked_language(conversation, "en", explicit_switch_target="en") == "en"
+    assert conversation.detected_language == "en"
+    assert conversation.language_switch_streak == 0
+
+    # Also overrides an unset lock immediately (first-message case).
+    fresh = SimpleNamespace(detected_language=None, language_switch_streak=0)
+    assert _resolve_locked_language(fresh, "ne_roman", explicit_switch_target="ne_roman") == "ne_roman"
+    assert fresh.detected_language == "ne_roman"
+
+    # An invalid/absent target is a no-op — falls through to normal drift logic.
+    assert _resolve_locked_language(conversation, "en", explicit_switch_target=None) == "en"
+    assert _resolve_locked_language(conversation, "en", explicit_switch_target="not_a_language") == "en"
+
+
+def test_handoff_reason_structurally_excludes_language_switch_regardless_of_intent():
+    """Direct check of the structural (not just prompted) exclusion: even a
+    COMPLAINT/HUMAN_HANDOFF intent, or an info-intent with zero knowledge
+    similarity and needs_human_handoff=True, must never produce a handoff
+    reason when is_language_switch_request=True."""
+    from app.services.handoff_service import _handoff_reason
+
+    for intent in (
+        ConversationIntent.COMPLAINT,
+        ConversationIntent.HUMAN_HANDOFF,
+        ConversationIntent.GENERAL_QUESTION,
+        ConversationIntent.PRICING_QUESTION,
+    ):
+        assert (
+            _handoff_reason(
+                intent=intent,
+                best_similarity=0.0,
+                llm_confirmed_answered=False,
+                is_language_switch_request=True,
+            )
+            is None
+        )
+
+    # Sanity: without the flag, these same inputs DO produce a reason (proves
+    # the test above is actually exercising the guard, not a no-op path).
+    assert (
+        _handoff_reason(intent=ConversationIntent.COMPLAINT, best_similarity=0.0, llm_confirmed_answered=False)
+        is not None
+    )
+
+
+def test_explicit_language_switch_overrides_lock_same_turn_and_creates_no_handoff(two_businesses, monkeypatch):
+    """Full pipeline: a conversation already locked to Roman Nepali, customer
+    explicitly asks to switch to English — the very next response must use
+    the new lock immediately (not wait 3 turns), the DB must show
+    detected_language updated on this exact turn, and no HumanHandoff may be
+    created even though the LLM's own drafted response reads like a language
+    question the knowledge base has no chunk for."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        conversation.detected_language = "ne_roman"
+        conversation.language_switch_streak = 0
+        db.commit()
+
+    _stub_providers(
+        monkeypatch,
+        json.dumps(
+            {
+                "intent": "general_question",
+                "response": "Of course! Switching to English now — how can I help?",
+                "needs_human_handoff": False,
+                "message_language": "en",
+                "language_switch_request": "en",
+            }
+        ),
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Can we just switch to English please?"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "Switching to English" in resp.json()["response"]
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.detected_language == "en"
+        assert conversation.language_switch_streak == 0
+
+        from app.db.models.handoff import HumanHandoff
+
+        assert db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).count() == 0
+
+
+def test_passive_single_word_drift_does_not_override_lock_or_create_handoff(two_businesses, monkeypatch):
+    """Regression / distinction check: a single stray English word mid-Nepali
+    conversation (no `language_switch_request`) must NOT flip the lock — only
+    an explicit switch request does. Proves the two paths are genuinely
+    distinct, not accidentally over-broad."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        conversation.detected_language = "ne_roman"
+        conversation.language_switch_streak = 0
+        db.commit()
+
+    _stub_providers(
+        monkeypatch,
+        json.dumps(
+            {
+                "intent": "follow_up",
+                "response": "Swagat cha! Aru kehi sahayog chahiyo bhane bhanuhos.",
+                "needs_human_handoff": False,
+                "message_language": "en",
+                "language_switch_request": None,
+            }
+        ),
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "thanks!"},
+    )
+    assert resp.status_code == 201, resp.text
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.detected_language == "ne_roman"
+        assert conversation.language_switch_streak == 1
+
+
+def test_explicit_language_switch_reverse_direction_nepali(two_businesses, monkeypatch):
+    """Same mechanism, the other direction: English-locked conversation,
+    explicit request to switch to Nepali — the very next response is already
+    in Nepali, and detected_language updates on this exact turn."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        conversation.detected_language = "en"
+        conversation.language_switch_streak = 0
+        db.commit()
+
+    _stub_providers(
+        monkeypatch,
+        json.dumps(
+            {
+                "intent": "general_question",
+                "response": "Pakka, ma Nepali ma kura garna sakchu! Kehi sodhna man lagcha?",
+                "needs_human_handoff": False,
+                "message_language": "en",
+                "language_switch_request": "ne_roman",
+            }
+        ),
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Can we talk in Nepali from now on?"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "Nepali ma kura garna sakchu" in resp.json()["response"]
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.detected_language == "ne_roman"
+
+        from app.db.models.handoff import HumanHandoff
+
+        assert db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).count() == 0
+
+
+# --- Phase 25a urgent fix: persisted booking-draft slot tracking --------------
+
+
+def _partial_booking_reply(
+    *, service: str | None = None, date: str | None = None, time: str | None = None, response: str = "ok"
+) -> str:
+    return json.dumps(
+        {
+            "intent": "booking",
+            "response": response,
+            "booking_request": {"service": service, "date": date, "time": time},
+        }
+    )
+
+
+def test_booking_draft_accumulates_across_turns_and_books_once_complete(two_businesses, monkeypatch):
+    """The exact shape of the reported infinite-loop bug: service, then a
+    date, then a time, given in three SEPARATE turns — each turn's stubbed
+    LLM output only ever contains the ONE new field, exactly like a real
+    partial extraction. Must book on the turn that completes the triple,
+    with no extra confirmation round-trip."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    _stub_providers(monkeypatch, _partial_booking_reply(service="Cleaning", response="Sure — what date and time?"))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "I'd like to book a cleaning."},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "what date" in resp.json()["response"].lower()
+    assert "which service" not in resp.json()["response"].lower()
+
+    _stub_providers(monkeypatch, _partial_booking_reply(date=target_date.isoformat(), response="Got it."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Next Monday."},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "what time" in resp.json()["response"].lower()
+    assert "which service" not in resp.json()["response"].lower()
+    assert "what date" not in resp.json()["response"].lower(), "must never re-ask for a slot already filled"
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 0
+
+    _stub_providers(monkeypatch, _partial_booking_reply(time="14:00", response="One moment."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "2pm works."},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert "One moment." not in body["response"]
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        appointments = db.query(Appointment).filter(Appointment.business_id == business_id_a).all()
+        assert len(appointments) == 1, "must book on the turn that completes the triple — no extra confirmation turn"
+        assert appointments[0].service_id == service_id
+        assert appointments[0].scheduled_at.hour == 14
+        assert str(appointments[0].id) in body["response"]
+
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.booking_draft_service_id is None
+        assert conversation.booking_draft_date is None
+        assert conversation.booking_draft_time is None
+
+
+def test_booking_draft_redundant_confirmation_does_not_loop_or_double_book(two_businesses, monkeypatch):
+    """Explicit re-confirmations ("yes") after the draft is already complete
+    must not create a second booking or re-ask anything — the draft is
+    cleared the instant it's used, so a stray extra "yes" after booking finds
+    nothing left to act on."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    _stub_providers(monkeypatch, _booking_reply("Cleaning", target_date.isoformat(), "14:00"))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "book me a cleaning next monday at 2pm"},
+    )
+    assert resp.status_code == 201, resp.text
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 1
+
+    # A redundant "yes" with nothing new extracted must not re-book.
+    _stub_providers(monkeypatch, _partial_booking_reply(response="Great!"))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "yes"},
+    )
+    assert resp.status_code == 201, resp.text
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 1, (
+            "a stray confirmation after the draft was already used must never create a second appointment"
+        )
+
+
+def test_booking_draft_survives_contact_gate_then_books_once_contact_given(two_businesses, monkeypatch):
+    """Slots given before contact info must not be lost — once contact info
+    arrives (even with no new slot info in that same message), the booking
+    must proceed immediately using what was already collected."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)  # no phone, no email
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    _stub_providers(monkeypatch, _booking_reply("Cleaning", target_date.isoformat(), "14:00"))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "book me a cleaning next monday at 2pm"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "phone number or email" in resp.json()["response"].lower()
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 0
+
+    reply = json.dumps(
+        {
+            "intent": "booking",
+            "response": "Thanks!",
+            "booking_request": {"service": None, "date": None, "time": None},
+            "contact_info_update": {"name": "Jamie Rivera", "email": "jamie@example.com", "phone": None},
+        }
+    )
+    _stub_providers(monkeypatch, reply)
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "I'm Jamie Rivera, jamie@example.com"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert "phone number or email" not in body["response"].lower()
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        appointments = db.query(Appointment).filter(Appointment.business_id == business_id_a).all()
+        assert len(appointments) == 1, "the slots given before contact info must not have been lost"
+        assert appointments[0].service_id == service_id
+        assert str(appointments[0].id) in body["response"]
+
+
+def test_booking_draft_correction_uses_latest_value_not_stale_one(two_businesses, monkeypatch):
+    """Customer gives a time, then changes their mind BEFORE the booking
+    actually fires (the contact-info gate is what keeps this one pending
+    across turns, same real gate Phase 24 added) — the corrected value must
+    be what actually gets booked, not the stale first one."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)  # no phone, no email yet
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    _stub_providers(monkeypatch, _booking_reply("Cleaning", target_date.isoformat(), "10:00"))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Book me a cleaning next Monday at 10am."},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "phone number or email" in resp.json()["response"].lower()
+
+    _stub_providers(monkeypatch, _partial_booking_reply(time="11:00", response="Sure, updating that."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Actually, make it 11am instead."},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "phone number or email" in resp.json()["response"].lower(), "still gated — contact info not given yet"
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 0
+
+    reply = json.dumps(
+        {
+            "intent": "booking",
+            "response": "Thanks!",
+            "booking_request": {"service": None, "date": None, "time": None},
+            "contact_info_update": {"name": "Jamie Rivera", "email": "jamie@example.com", "phone": None},
+        }
+    )
+    _stub_providers(monkeypatch, reply)
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "I'm Jamie Rivera, jamie@example.com"},
+    )
+    assert resp.status_code == 201, resp.text
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        appointments = db.query(Appointment).filter(Appointment.business_id == business_id_a).all()
+        assert len(appointments) == 1
+        assert appointments[0].scheduled_at.hour == 11, "the corrected time must be used, not the stale 10am"
+
+
+def test_booking_missing_slots_message_asks_only_for_what_is_actually_missing(two_businesses, monkeypatch):
+    """When only the service is known, the response must ask for date/time
+    but never re-ask which service — and vice versa when only date+time are
+    known but the service name didn't resolve."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    _stub_providers(monkeypatch, _partial_booking_reply(service="Cleaning"))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "I want a cleaning."},
+    )
+    body = resp.json()["response"].lower()
+    assert "what date" in body and "what time" in body
+    assert "which service" not in body
+
+    conversation_id_2 = _create_conversation(business_id_a, customer_id)
+    _stub_providers(monkeypatch, _partial_booking_reply(date=target_date.isoformat(), time="14:00"))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id_2}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Next Monday at 2pm."},
+    )
+    body = resp.json()["response"].lower()
+    assert "which service" in body
+    assert "what date" not in body and "what time" not in body
+
+
+def test_booking_completes_when_contact_info_arrives_on_an_off_intent_turn(two_businesses, monkeypatch):
+    """Real bug found live: contact info can arrive on a turn the LLM
+    classifies as something other than "booking" (e.g. a bare "I'm Devon,
+    devon@example.com" reads as follow_up) — if that's the exact missing
+    piece for an otherwise-complete draft, the booking must still fire THIS
+    turn rather than leave the LLM's own hedging text standing."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)  # no phone, no email yet
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    _stub_providers(monkeypatch, _booking_reply("Cleaning", target_date.isoformat(), "14:00"))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Can I book a cleaning next Monday at 2pm?"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "phone number or email" in resp.json()["response"].lower()
+
+    # This turn is classified as follow_up, NOT booking — the LLM's own text
+    # is a hedge ("Would you like me to go ahead and book...?") that must
+    # never reach the customer once contact info completes the draft.
+    reply = json.dumps(
+        {
+            "intent": "follow_up",
+            "response": "Would you like me to go ahead and book that?",
+            "contact_info_update": {"name": "Devon Clarke", "email": "devon.clarke@example.com", "phone": None},
+            "needs_human_handoff": False,
+        }
+    )
+    _stub_providers(monkeypatch, reply)
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Sure, I'm Devon Clarke, devon.clarke@example.com"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert "would you like me to go ahead" not in body["response"].lower()
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        appointments = db.query(Appointment).filter(Appointment.business_id == business_id_a).all()
+        assert len(appointments) == 1, "must book off the pending draft even though this turn wasn't classified as booking"
+        assert appointments[0].service_id == service_id
+        assert str(appointments[0].id) in body["response"]
+
+
+def test_off_intent_contact_update_does_not_hijack_unrelated_turn_without_a_pending_draft(two_businesses, monkeypatch):
+    """The off-intent completion path must never fire when there's no
+    partial draft to complete — an ordinary contact-info update on an
+    unrelated turn must behave exactly as it always has."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    reply = json.dumps(
+        {
+            "intent": "follow_up",
+            "response": "Thanks, Devon!",
+            "contact_info_update": {"name": "Devon Clarke", "email": "devon.clarke@example.com", "phone": None},
+            "needs_human_handoff": False,
+        }
+    )
+    _stub_providers(monkeypatch, reply)
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Oh, I'm Devon Clarke, devon.clarke@example.com"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "Thanks, Devon!" in resp.json()["response"]
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 0
+
+
+# --- Phase 25a-2 urgent fix: dynamic contact-gate + failure-aware draft clearing --
+
+
+def test_contact_gate_reflects_accumulated_draft_and_changes_every_turn(two_businesses, monkeypatch):
+    """Real adversarial testing found the contact-info gate repeating one
+    identical static sentence across many turns while service/date/time
+    contradicted and changed underneath it. This is the direct regression
+    test: three separate corrections, all before contact info is given, each
+    turn's gate sentence must be DIFFERENT from the last and must contain the
+    latest value — never the same static sentence twice in a row."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)  # no phone, no email
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+    later_date = target_date + timedelta(days=1)
+
+    _stub_providers(monkeypatch, _partial_booking_reply(service="Cleaning", response="Sure."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "I'd like to book a cleaning."},
+    )
+    body_1 = resp.json()["response"]
+    assert "phone number or email" in body_1.lower()
+    assert "Cleaning" in body_1
+
+    _stub_providers(monkeypatch, _partial_booking_reply(date=target_date.isoformat(), response="Got it."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Next Monday."},
+    )
+    body_2 = resp.json()["response"]
+    assert body_2 != body_1, "must not repeat the identical sentence once new info was given"
+    assert "Cleaning" in body_2, "the service given earlier must not be lost"
+    assert "phone number or email" in body_2.lower()
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.booking_draft_date == target_date.isoformat()
+
+    _stub_providers(monkeypatch, _partial_booking_reply(date=later_date.isoformat(), response="Sure, updating."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Actually, make it the day after instead."},
+    )
+    body_3 = resp.json()["response"]
+    assert body_3 != body_2, "the corrected date must change the gate sentence, not repeat the old one"
+    assert "Cleaning" in body_3
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.booking_draft_date == later_date.isoformat(), "the corrected date must be what's persisted"
+        assert conversation.booking_draft_time is None
+
+    _stub_providers(monkeypatch, _partial_booking_reply(time="15:00", response="Noted."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "3pm works."},
+    )
+    body_4 = resp.json()["response"]
+    assert body_4 != body_3, "adding the time must change the gate sentence again"
+    assert "3:00 PM" in body_4
+    assert "phone number or email" in body_4.lower()
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 0, (
+            "no contact info was ever given — nothing should have booked yet"
+        )
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.booking_draft_time == "15:00"
+
+
+def test_contact_gate_with_nothing_known_yet_uses_plain_static_sentence(two_businesses, monkeypatch):
+    """When truly nothing has been given yet, the gate still uses the plain
+    "nothing known yet" wording — there's nothing real to acknowledge, so a
+    fabricated "Got it — ..." with an empty summary would be worse, not
+    better."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    _stub_providers(monkeypatch, _partial_booking_reply(response="Sure, one moment."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "I'd like to book something."},
+    )
+    assert "Before I can get that booked" in resp.json()["response"]
+
+
+def test_booking_failure_preserves_service_and_same_day_alternative_preserves_date(two_businesses, monkeypatch):
+    """Real bug found live: a failed booking attempt (the requested time is
+    already taken) was clearing the ENTIRE draft, forcing the customer to
+    re-state the service. Since a real, same-day alternative slot exists
+    (the business is open all day, only 2pm is taken), the date is correct
+    and unaffected by the failure too — only the time needs re-specifying."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    with SessionLocal() as db:
+        scheduled_at = datetime(target_date.year, target_date.month, target_date.day, 14, 0, tzinfo=ZoneInfo("UTC"))
+        booking_service.create_appointment(
+            db,
+            business_id=business_id_a,
+            customer_id=customer_id,
+            service_id=service_id,
+            staff_id=None,
+            scheduled_at=scheduled_at,
+        )
+
+    _stub_providers(monkeypatch, _booking_reply("Cleaning", target_date.isoformat(), "14:00"))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Can I get a cleaning next Monday at 2pm?"},
+    )
+    assert resp.status_code == 201, resp.text
+    lowered = resp.json()["response"].lower()
+    assert "isn't available" in lowered or "not available" in lowered
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.booking_draft_service_id == service_id, "the service was never actually invalid"
+        assert conversation.booking_draft_date == target_date.isoformat(), (
+            "a real same-day alternative exists, so the date is still valid — must survive the failure"
+        )
+        assert conversation.booking_draft_time is None, "the specific failed time must be cleared"
+
+    # The customer only needs to give a new time — service AND date survive.
+    _stub_providers(monkeypatch, _partial_booking_reply(time="10:00", response="Sure, checking 10am."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "How about 10am instead?"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        appointments = db.query(Appointment).filter(Appointment.business_id == business_id_a).all()
+        booked = [a for a in appointments if a.scheduled_at.hour == 10]
+        assert len(booked) == 1, "must book using the SURVIVING service+date plus only the newly given time"
+        assert booked[0].service_id == service_id
+        assert str(booked[0].id) in body["response"]
+
+
+def test_booking_failure_on_a_fully_closed_day_clears_date_too(two_businesses, monkeypatch):
+    """When the requested day has NO real availability at all (a closed day),
+    keeping the date after the failure would silently re-present an invalid
+    day as if it still held — the date must be cleared too, while the
+    service (never actually invalid) still survives."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)  # Sunday (day_of_week 6) is closed
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    today = date.today()
+    days_ahead = (6 - today.weekday()) % 7 or 7
+    closed_sunday = today + timedelta(days=days_ahead)
+
+    _stub_providers(monkeypatch, _booking_reply("Cleaning", closed_sunday.isoformat(), "14:00"))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Can I get a cleaning this Sunday at 2pm?"},
+    )
+    assert resp.status_code == 201, resp.text
+    lowered = resp.json()["response"].lower()
+    assert "isn't available" in lowered or "not available" in lowered
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.booking_draft_service_id == service_id, "the service was never actually invalid"
+        assert conversation.booking_draft_date is None, "the whole day is closed — must not be silently kept"
+        assert conversation.booking_draft_time is None

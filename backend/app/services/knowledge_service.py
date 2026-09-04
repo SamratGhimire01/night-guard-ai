@@ -21,18 +21,37 @@ def list_documents(
 
 
 def create_document(
-    db: Session, *, business_id: uuid.UUID, title: str, content: str, source: str
+    db: Session,
+    *,
+    business_id: uuid.UUID,
+    title: str,
+    content: str,
+    source: str,
+    status: KnowledgeDocumentStatus = KnowledgeDocumentStatus.DRAFT,
+    approved_by: uuid.UUID | None = None,
 ) -> KnowledgeDocument:
+    """`status`/`approved_by` default to the original Phase 5 behavior (always
+    draft, never approved) — every pre-Phase-20 caller (manual entry, upload)
+    is unaffected. Phase 20's training-room correction is the first caller to
+    pass status=APPROVED directly (see training_service.py for why), which
+    also triggers real chunking/embedding immediately, same as going through
+    the existing PATCH .../knowledge/{id} {"status":"approved"} approval path."""
     document = KnowledgeDocument(
         business_id=business_id,
         title=title,
         content=content,
         source=source,
-        status=KnowledgeDocumentStatus.DRAFT,
+        status=status,
     )
+    if status == KnowledgeDocumentStatus.APPROVED:
+        document.approved_by = approved_by
+        document.approved_at = datetime.now(UTC)
     db.add(document)
     db.commit()
     db.refresh(document)
+    if status == KnowledgeDocumentStatus.APPROVED:
+        _regenerate_chunks(db, document)
+        db.refresh(document)
     return document
 
 
