@@ -50,6 +50,19 @@ class Settings(BaseSettings):
     whatsapp_access_token: str = ""
     whatsapp_api_version: str = "v20.0"
 
+    # Messenger Platform (app/services/channels/messenger.py). Empty by default —
+    # no production Meta Page/App exists yet (Phase 26), same honest gap as
+    # WhatsApp. messenger_app_secret/messenger_verify_token play the identical
+    # role as their WhatsApp counterparts (Meta's webhook signature/handshake
+    # mechanism is genuinely the same across both products — see
+    # meta_webhook_signature.py). UNLIKE WhatsApp there is no
+    # messenger_access_token setting: Messenger's Send API is authenticated
+    # per-Page (a Page Access Token from OAuth), not one platform-wide token —
+    # that lives in each business's own Integration.config["page_access_token"].
+    messenger_app_secret: str = ""
+    messenger_verify_token: str = ""
+    messenger_api_version: str = "v20.0"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

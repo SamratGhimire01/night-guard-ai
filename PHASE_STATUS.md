@@ -5281,3 +5281,188 @@ All checks passed!
 - **The provider-failure safety net's static sentence doesn't distinguish embedding-search failure from chat-classification failure** — both currently render the same generic "having trouble connecting" text; a more granular message (e.g. acknowledging partial progress if classification itself succeeded but a later step failed) isn't needed today since both failure points are the exact same underlying provider call, but is worth revisiting if a THIRD distinct failure point is ever added to this pipeline.
 - Carried over from every prior phase, still real and still open: no staff-capacity model, fixed 15-minute slot grid, exact-match-only service-name resolution, no refresh tokens, no worker/cron for the several "run this later" functions, no real Twilio account tested against, `KnowledgeDocument.approved_by` still not tenant-cross-checked at the DB level.
 - No commit has been made yet — awaiting your confirmation of this verification output. Per your instruction: not starting Messenger until this crash is fully confirmed root-caused and fixed.
+
+---
+
+## Phase 26 — Messenger Adapter
+
+**Date:** 2026-09-05
+
+**⚠️ NOT LIVE-TESTED AGAINST PRODUCTION META — READ BEFORE TRUSTING THIS AS A WORKING INTEGRATION.** No Meta Business account/Page/App exists for this project — same honest gap as Phase 22's WhatsApp adapter. Everything below verified as "live" was run against the real, production `POST /api/v1/webhooks/messenger` / `GET /api/v1/webhooks/messenger` routes on this real running backend, using real cryptography (HMAC-SHA256) and a real Azure LLM — but the HTTP requests were sent by curl/pytest simulating Meta, not by Meta's actual servers. What a first real end-to-end test against production Meta would additionally need (identical list to Phase 22, plus): a verified Facebook Page, a Meta App in App Review for `pages_messaging`, and a real per-Page access token (Page Access Token via OAuth, not a platform-wide token — see the design note below on why that's structurally different from WhatsApp).
+
+**Required:** A real `MessengerChannelAdapter` on the Phase 21 `ChannelAdapter` interface, reusing the same architecture as Phase 22's WhatsApp adapter — same conversation engine, same idempotency discipline — but against Messenger Platform's real, differently-shaped webhook payload, reusing the genuinely-identical parts of Meta's webhook contract (signature verification, GET handshake) rather than duplicating them.
+
+**Implemented:**
+
+- **`app/services/channels/meta_webhook_signature.py`** (new) — `verify_signature()`, the real `X-Hub-Signature-256` HMAC-SHA256 check, **extracted out of `whatsapp_webhook.py`** (where Phase 22 originally defined it) since this exact mechanism — `"sha256=" + hex(HMAC-SHA256(app_secret, raw_body))`, checked with `hmac.compare_digest` against the RAW bytes — is genuinely identical across every Meta Graph API webhook product (WhatsApp Cloud API, Messenger Platform, both keyed by their own consuming Meta App's App Secret). `whatsapp_webhook.py` now imports and re-exports it (`__all__`) so `app/api/routes/webhooks.py`'s existing `from ...whatsapp_webhook import verify_signature` needed zero changes — proven by the full Phase 22 WhatsApp test suite staying green unmodified (§8 below). This is the one piece of real shared code the ticket asked for; everything else below is genuinely different per Meta product and was NOT force-shared.
+- **`app/services/channels/messenger.py`** (new) — `MessengerChannelAdapter(ChannelAdapter)`, same shape as `WhatsAppChannelAdapter`: `receive_message()` is the same 2-call wrapper (`get_or_create_conversation` → `orchestrator.handle_incoming_message()`), proven live below to trigger the identical real Phase 19 handoff logic through this channel too. `external_customer_ref` is the real Messenger PSID (page-scoped id) — not a secret, used directly, same reasoning as WhatsApp's `wa_id`.
+  - **`send_message(psid, text, page_access_token)`** — the real Messenger Send API shape (`POST https://graph.facebook.com/{version}/me/messages?access_token=...`, body `{"recipient":{"id":psid},"message":{"text":text}}`), via stdlib `urllib`, same "no SDK for one POST" precedent. **A real, deliberate architectural difference from WhatsApp, not an oversight**: WhatsApp uses one platform-wide `WHATSAPP_ACCESS_TOKEN` because a single Meta App/WABA can send on behalf of many registered phone numbers under one system-user token. Messenger's Send API is authenticated **per-Page** — a Page Access Token is minted via OAuth for exactly one specific Facebook Page, and there is no equivalent "one token, many Pages" mechanism. So `page_access_token` is a real, required parameter here, sourced per-request from *this business's own* `Integration.config["page_access_token"]` — there is no `MESSENGER_ACCESS_TOKEN` global setting at all (see `config.py` below). Graceful fallback identical to WhatsApp: empty/missing token → `SIMULATED` log line, no network call, never raises (send failure must never break the webhook's ack).
+- **`app/services/channels/messenger_webhook.py`** (new):
+  - **`extract_incoming_text_messages(payload)`** — walks Messenger's real webhook envelope: **`entry[].messaging[]`**, genuinely different from WhatsApp's `entry[].changes[].value.messages[]` even though both are Meta products (the ticket's own explicit "research the real structure — it differs" instruction). Tolerant by design, same reasoning as Phase 22: silently skips delivery/read receipts (no `message` key), postbacks (no `message.text`), and — a real Messenger-specific concept WhatsApp's webhook has no equivalent of — **echoes of the Page's own outgoing sends** (`message.is_echo: true`, since Messenger's webhook reflects a Page's sent messages back through the same endpoint). Proven live not to create a conversation (§3b below).
+  - **`_resolve_integration(db, page_id)`** — extends Phase 22's `phone_number_id → business_id` pattern to Messenger's `page_id`, reusing the already-generic `Integration` model (`type`/`config` JSONB) with **zero schema changes**: `type="messenger"`, `config={"page_id": ..., "page_access_token": ...}`. Returns the full `Integration` row (not just `business_id`) since `send_message` also needs this business's own per-Page token out of the same row — no second query needed.
+  - **`process_webhook_payload(db, payload)`** — same pipeline shape as WhatsApp's: resolve tenant (skip + log if unknown, still ack 200), real idempotency pre-check, call the adapter, catch `IntegrityError` as the real race backstop, then `send_message()`.
+  - **Idempotency column reuse, explicitly justified (the ticket asked this be argued)**: reuses `Message.external_message_id`'s existing unique constraint rather than adding a second column/migration. Messenger `mid`s and WhatsApp `wamid`s are opaque strings from two different Meta subsystems with visibly different formats — real collision risk is not credible — and even in a pathological collision the failure mode is a dropped duplicate-looking message (logged, still acked), never cross-tenant data corruption. Not scoped per-channel at the DB level; a real, accepted, documented gap rather than a new migration for a non-issue.
+- **`app/api/routes/webhooks.py`** — `GET /api/v1/webhooks/messenger` (identical handshake logic to WhatsApp's, own `messenger_verify_token`) and `POST /api/v1/webhooks/messenger` (same raw-body-first-then-verify-then-parse discipline, reusing the shared `verify_signature` import already used for WhatsApp), added alongside the existing WhatsApp routes in the same router/file — zero changes to the WhatsApp routes themselves.
+- **`app/core/config.py` / `.env.example`** — `MESSENGER_APP_SECRET`, `MESSENGER_VERIFY_TOKEN`, `MESSENGER_API_VERSION` (default `v20.0`). Deliberately **no** `MESSENGER_ACCESS_TOKEN` — see the per-Page-token design note above. Local `.env` given real, randomly-generated (not Meta-issued) values for `MESSENGER_APP_SECRET`/`MESSENGER_VERIFY_TOKEN` (`openssl rand -hex 32` / `-hex 16`), same discipline as Phase 22's WhatsApp values.
+- **No migration this phase** — `Message.external_message_id`'s Phase 22 unique constraint and the already-generic `Integration` model needed zero schema changes, exactly the reuse the ticket asked for.
+
+**Real-API acceptance verification (actual output, run 2026-09-05; the conversation-engine parts are real Azure LLM calls; the "Meta side" is simulated by curl/pytest with correct cryptography, since no real Meta Page/App exists — see the warning banner above). Business used for live curl testing: "Messenger Live Test Biz", `business_id=4a8eb993-1c3b-4d66-a4fe-a21741b997f6`, a real `Integration` row inserted directly for testing (`type="messenger"`, `config={"page_id":"live-page-1002003004","page_access_token":""}`), same precedent as Phase 22 — `docker compose restart backend` run first to load the new code (no `--reload`, same documented gotcha):**
+
+1. **Verification handshake — real GET, real plain-text echo:**
+```
+$ curl -i ".../webhooks/messenger?hub.mode=subscribe&hub.verify_token=0c17ffa181efb7cde62a4a1c9c8be8b7&hub.challenge=9876543210"
+HTTP/1.1 200 OK
+content-type: text/plain; charset=utf-8
+
+9876543210
+```
+   Wrong token — real rejection:
+```
+$ curl -i ".../webhooks/messenger?hub.mode=subscribe&hub.verify_token=totally-wrong&hub.challenge=9876543210"
+HTTP/1.1 403 Forbidden
+{"error":{"type":"forbidden","message":"Webhook verification failed."}}
+```
+
+2. **Real end-to-end simulated flow — real Meta Messenger payload shape (`entry[].messaging[]`), real HMAC signature, real Azure LLM, shared code path proven:**
+```
+$ curl -i -X POST .../webhooks/messenger -H "X-Hub-Signature-256: sha256=aca300829639865dee2c1f3dc6b57716f01af3a9f09489feef91112c8d3691cf" --data-binary @messenger_payload.json
+(payload: entry[0].id="live-page-1002003004", messaging[0].sender.id="psid-live-0001",
+ message.mid="mid.c76b0f10212845eb8daae03f42d0c30d",
+ message.text="Do you offer laser teeth whitening, and if so what brand of equipment do you use?")
+HTTP/1.1 200 OK
+{"status":"ok"}
+```
+   Real DB — a real Customer/Conversation/2 Messages, exactly the shape every other channel produces:
+```
+$ psql -c "SELECT id, channel, customer_id FROM conversations WHERE business_id='4a8eb993-...';"
+ 51c4cf68-... | messenger | 831d8d95-...
+$ psql -c "SELECT sender_type, left(content,140), detected_intent, external_message_id FROM messages WHERE conversation_id='51c4cf68-...' ORDER BY created_at;"
+ CUSTOMER | Do you offer laser teeth whitening, and if so what brand of equipment do you use?              | service_question | mid.c76b0f10212845eb8daae03f42d0c30d
+ AGENT    | I don't have that information in our records. Would you like me to connect you with our team... |                  |
+```
+   Real full agent response (real Azure LLM), including Phase 19's real handoff sentence — this business has zero knowledge documents, the exact same real-handoff behavior already proven for widget (Phase 21) and WhatsApp (Phase 22), now proven through Messenger via the identical shared orchestrator:
+```
+"I don't have that information in our records. Would you like me to connect you with our team so they can confirm whether we offer laser teeth whitening and what brand of equipment we use? I've also let our team know, so a real person will follow up with you."
+```
+   Real backend log confirming the graceful send fallback fired (no page access token configured for this business):
+```
+{"logger": "app.services.channels.messenger", "message": "SIMULATED Messenger send to psid-live-0001: I don't have that information in our records. ... I've also let our team know, so a real person will follow up with you."}
+{"logger": "app.api.routes.webhooks", "message": "messenger webhook processed: 1 message(s), outcomes=['processed']"}
+```
+
+3. **Real HMAC signature verification — invalid/tampered rejected:**
+```
+$ curl -i -X POST .../webhooks/messenger -H "X-Hub-Signature-256: <the ORIGINAL, now-stale signature>" --data-binary @messenger_payload_with_text_changed_to_TAMPERED.json
+HTTP/1.1 401 Unauthorized
+{"error":{"type":"unauthorized","message":"Invalid webhook signature."}}
+```
+   No signature header at all:
+```
+$ curl -i -X POST .../webhooks/messenger --data-binary @messenger_payload.json   (no X-Hub-Signature-256 header)
+HTTP/1.1 401 Unauthorized
+{"error":{"type":"unauthorized","message":"Invalid webhook signature."}}
+```
+
+3b. **Messenger-specific: echo of our own outgoing send is ignored, not processed** *(automated-test-verified — `test_message_echo_of_our_own_send_is_ignored_not_processed`)*: a payload with `message.is_echo: true` is correctly acked 200 but creates zero conversations — proof `extract_incoming_text_messages` correctly filters a real Messenger-only webhook concept WhatsApp's payload shape has no equivalent of.
+
+4. **Idempotency — the identical webhook (same real Meta `mid`) redelivered:**
+```
+$ curl -i -X POST .../webhooks/messenger -H "X-Hub-Signature-256: <same real signature>" --data-binary @messenger_payload.json   (SECOND delivery, identical bytes)
+HTTP/1.1 200 OK
+{"status":"ok"}   -- still acked, never turned into an error
+```
+   Real DB proof — still exactly one:
+```
+$ psql -c "SELECT count(*) FROM messages WHERE external_message_id='mid.c76b0f10212845eb8daae03f42d0c30d';"   -> 1
+$ psql -c "SELECT count(*) FROM conversations WHERE business_id='4a8eb993-...';"                                -> 1
+$ psql -c "SELECT count(*) FROM messages WHERE conversation_id='51c4cf68-...';"                                 -> 2   (not 4)
+```
+
+5. **Cross-channel sanity check — a real WhatsApp `Integration` added to the SAME business, a real WhatsApp webhook sent, then checked against the Messenger conversation above:**
+```
+$ curl -i -X POST .../webhooks/whatsapp -H "X-Hub-Signature-256: <real, valid>" --data-binary @wa_payload.json
+(entry[].changes[].value.messages[] shape, phone_number_id="live-pnid-5566778899", wa_id="15559990555",
+ id="wamid.b8f6dd695ed642f2a760a718cda06b34", text="Live WhatsApp cross-channel check")
+HTTP/1.1 200 OK
+{"status":"ok"}
+```
+   Real DB proof, same business_id, both channels present and fully separate:
+```
+$ psql -c "SELECT channel, external_ref, customer_id FROM channel_identities WHERE business_id='4a8eb993-...' ORDER BY channel;"
+ messenger | psid-live-0001 | 831d8d95-f604-4dd7-991f-b1f08fb48cde
+ whatsapp  | 15559990555    | 9762e89d-219a-4507-a826-09ae38e507fd
+$ psql -c "SELECT id, channel, customer_id FROM conversations WHERE business_id='4a8eb993-...' ORDER BY channel;"
+ 51c4cf68-... | messenger | 831d8d95-f604-4dd7-991f-b1f08fb48cde
+ d966e20d-... | whatsapp  | 9762e89d-219a-4507-a826-09ae38e507fd
+```
+   Two distinct `ChannelIdentity` rows, two distinct `Conversation` rows, two distinct `customer_id`s for the identical `business_id` — structurally isolated (not just by convention), the same `(business_id, channel, external_ref)` uniqueness Phase 21 already guarantees, now proven across two real channels on one tenant. *(Full bidirectional message-content isolation — each conversation contains only its own channel's messages, none of the other's — additionally automated-test-verified in `test_whatsapp_and_messenger_conversations_for_the_same_business_never_cross_contaminate`.)*
+
+6. **Secrets grep:**
+```
+$ docker compose logs backend --tail=3000 | grep -F "<the real MESSENGER_APP_SECRET>"    -> no match (never logged)
+$ docker compose logs backend --tail=3000 | grep -F "<the real MESSENGER_VERIFY_TOKEN>"  -> 1 match: uvicorn's own access-log line
+   for the GET handshake request — the identical, protocol-mandated nuance already explained and accepted in Phase 22 (Meta puts hub.verify_token
+   in the handshake URL's query string by design; this is not a leak introduced by this codebase)
+$ git ls-files | grep -E '\.env$'   -> none tracked
+$ git grep -nE 'MESSENGER_(APP_SECRET|VERIFY_TOKEN)\s*=\s*[A-Za-z0-9]' -- . ':!backend/.env.example'   -> no match
+$ grep -rn "messenger_app_secret\|messenger_verify_token" app/   -> only used for HMAC verification / the handshake comparison, never passed to a logger.* call
+```
+
+7. **[verified via automated test]** `tests/integration/test_messenger.py`, 13 new tests, real DB throughout (embedding/chat providers stubbed — same discipline as `test_whatsapp.py`; HMAC signature verification is real, unstubbed cryptography in every test):
+```
+$ docker compose exec backend python -m pytest tests/integration/test_messenger.py -v
+test_valid_signature_is_accepted PASSED
+test_tampered_payload_with_stale_signature_is_rejected PASSED
+test_missing_signature_header_is_rejected PASSED
+test_wrong_secret_signature_is_rejected PASSED
+test_verification_handshake_echoes_challenge_on_matching_token PASSED
+test_verification_handshake_rejects_wrong_token PASSED
+test_incoming_message_flows_through_the_real_shared_orchestrator PASSED
+test_message_echo_of_our_own_send_is_ignored_not_processed PASSED
+test_identical_webhook_delivered_twice_creates_only_one_message PASSED
+test_db_constraint_itself_rejects_a_second_row_with_the_same_external_message_id PASSED
+test_unknown_page_id_is_acked_and_skipped_not_a_crash PASSED
+test_send_message_gracefully_simulates_when_no_page_access_token_configured PASSED
+test_whatsapp_and_messenger_conversations_for_the_same_business_never_cross_contaminate PASSED
+======================== 13 passed in 4.40s ========================
+```
+
+8. **[verified via automated test]** Phase 22's full WhatsApp suite, unmodified, still green after `verify_signature` was extracted out from under it — proof the shared-signature refactor changed zero WhatsApp behavior:
+```
+$ docker compose exec backend python -m pytest tests/integration/test_whatsapp.py -v
+======================== 11 passed in 3.96s ========================
+```
+
+9. **[verified via automated test]** Full regression suite — zero pre-existing tests needed changes:
+```
+$ docker compose exec backend python -m pytest tests/ -q
+275 passed, 1 skipped, 1 warning in 288.75s
+```
+(262 passed at the end of Phase 25c + 13 new in `test_messenger.py` = 275.)
+
+10. Lint: `docker compose exec backend ruff check .` → `All checks passed!`
+
+11. **No migration this phase** — no schema changes (see "Implemented" above); `alembic check` therefore has nothing new to report, consistent with the reuse being real, not just claimed.
+
+12. **[verified live]** DB left clean after all real/manual testing — the test business/its `Integration`/`ChannelIdentity`/`Conversation`/`Message` rows fully removed (cascade via `Business` delete): `businesses=0 channel_identities=0 conversations=0` for `business_id=4a8eb993-...` confirmed post-cleanup (other, pre-existing rows from earlier session activity in this shared dev DB were left untouched, not mine to delete).
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real webhook signature verification: valid accepted, tampered/invalid rejected | ✓ Pass — §3 |
+| Real end-to-end simulated flow through the shared orchestrator (Phase 25a/25b/25c hardening included, same pipeline) | ✓ Pass — §2 (real Azure LLM, real Phase 19 handoff logic firing identically to WhatsApp/widget) |
+| Idempotency: identical webhook twice → only one Message | ✓ Pass — §4, real DB counts before/after |
+| Verification handshake: real GET request/response | ✓ Pass — §1 |
+| Outgoing send gracefully no-ops without a real access token | ✓ Pass — §2's log line, §7's dedicated test |
+| Cross-channel sanity check: WhatsApp + Messenger conversations for the same business stay separate | ✓ Pass — §5, real DB proof both directions, plus automated bidirectional content-isolation test |
+| Secrets grep clean, lint clean, migration reversible if applicable | ✓ Pass — §6, §10; no migration needed this phase (§11) |
+
+**Known issues / punted items:**
+- **No production Meta Page/App exists — see the warning banner at the top of this section.** Everything here is verified against the real code path with simulated-but-correctly-shaped/signed requests, never against Meta's actual servers. Explicitly the ticket's own instruction, not a shortcut.
+- **`send_message`'s real HTTP path has never actually executed against a real network** — only its structure was verified by code inspection against Meta's real documented Send API shape, identical honest gap as WhatsApp's `send_message`. The graceful-fallback branch (the one that DOES run today) is the one proven live in §2.
+- **No connect-your-Messenger-Page onboarding UI** — a business's `Integration` row (`type="messenger"`, `config={"page_id": ..., "page_access_token": ...}`) is inserted directly via the ORM for testing, the identical honest gap pattern as WhatsApp's `phone_number_id` Integration row and "no staff-invite endpoint" before it. A real flow would need Meta's Facebook Login for Business (per-Page OAuth) to obtain each business's own Page Access Token — not built here, out of scope.
+- **Only `type: "text"` incoming messages are handled** — attachments, quick replies, postbacks, and Messenger's own delivery/read-receipt and echo webhooks are all silently, safely skipped, identical scope decision to WhatsApp's Phase 22.
+- **Idempotency column (`Message.external_message_id`) is shared, unscoped-by-channel, across WhatsApp and Messenger** — explicitly argued above as a non-issue given the two id-namespaces' real formats, not silently punted.
+- **`page_access_token` stored in `Integration.config` as plain JSONB, not separately encrypted at rest** — consistent with how this codebase already stores `WHATSAPP_ACCESS_TOKEN`-equivalent secrets (env var, not DB, for WhatsApp) but a real, honest step down in at-rest protection since here it's a per-tenant DB value; same class of gap as storing any other per-tenant API credential in this schema today (none currently exist) — flagged for a future encrypted-secrets-at-rest phase, not hidden.
+- Carried over from every prior phase, still real and still open: no staff-capacity model, fixed 15-minute slot grid, exact-match-only service-name resolution, no refresh tokens, no worker/cron for the several "run this later" functions, no real Twilio account tested against, `KnowledgeDocument.approved_by` still not tenant-cross-checked at the DB level.
+- No commit has been made yet — awaiting your confirmation of this verification output per working rule #6.

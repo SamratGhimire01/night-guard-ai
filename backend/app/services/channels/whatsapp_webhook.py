@@ -1,5 +1,3 @@
-import hashlib
-import hmac
 import logging
 import uuid
 
@@ -9,28 +7,19 @@ from sqlalchemy.orm import Session
 
 from app.db.models.conversation import Message
 from app.db.models.integration import Integration
+from app.services.channels.meta_webhook_signature import verify_signature
 from app.services.channels.whatsapp import WhatsAppChannelAdapter
 
 logger = logging.getLogger(__name__)
 
-_SIGNATURE_PREFIX = "sha256="
-
 _adapter = WhatsAppChannelAdapter()
 
-
-def verify_signature(*, app_secret: str, raw_body: bytes, signature_header: str | None) -> bool:
-    """Real Meta Cloud API webhook verification: X-Hub-Signature-256 is
-    `"sha256=" + hex(HMAC-SHA256(app_secret, raw_request_body))`. Verified
-    against the RAW bytes (never a re-serialized/re-parsed JSON body — key
-    ordering/whitespace could differ from what Meta actually signed) using a
-    constant-time comparison. An empty app_secret or missing/malformed header
-    always fails closed — never "no secret configured, so skip verification."
-    """
-    if not app_secret or not signature_header or not signature_header.startswith(_SIGNATURE_PREFIX):
-        return False
-    expected = hmac.new(app_secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
-    provided = signature_header[len(_SIGNATURE_PREFIX) :]
-    return hmac.compare_digest(expected, provided)
+# Re-exported (Phase 26 moved the real implementation to
+# meta_webhook_signature.py, shared with messenger_webhook.py — the HMAC
+# mechanism is genuinely identical across Meta webhook products) so
+# app/api/routes/webhooks.py's existing `from ...whatsapp_webhook import
+# verify_signature` keeps working unchanged.
+__all__ = ["verify_signature", "process_webhook_payload", "extract_incoming_text_messages"]
 
 
 def extract_incoming_text_messages(payload: dict) -> list[dict]:
