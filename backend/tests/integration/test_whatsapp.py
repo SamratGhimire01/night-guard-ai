@@ -236,6 +236,68 @@ def test_incoming_message_flows_through_the_real_shared_orchestrator(business_wi
         assert "I've also let our team know, so a real person will follow up with you." in agent_msg.content
 
 
+def test_non_text_message_and_status_only_webhooks_are_acked_and_skipped_not_a_crash(business_with_whatsapp):
+    """extract_incoming_text_messages's own docstring documents two real,
+    frequent Meta webhook shapes this codebase deliberately doesn't act on:
+    a non-text message (image/sticker/button, `type != "text"`) and a
+    delivery/read-receipt status webhook (`statuses` key, no `messages` key
+    at all) — both silently skipped, never a 500. Until now nothing proved
+    either one: a happy-path-only gap."""
+    non_text_payload = {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "id": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+                "changes": [
+                    {
+                        "value": {
+                            "messaging_product": "whatsapp",
+                            "metadata": {"display_phone_number": "15550001111", "phone_number_id": business_with_whatsapp["phone_number_id"]},
+                            "contacts": [{"profile": {"name": "Test User"}, "wa_id": "15551230099"}],
+                            "messages": [
+                                {
+                                    "from": "15551230099",
+                                    "id": f"wamid.{uuid.uuid4().hex}",
+                                    "timestamp": "1690000000",
+                                    "type": "image",
+                                    "image": {"id": "media-id-123", "mime_type": "image/jpeg"},
+                                }
+                            ],
+                        },
+                        "field": "messages",
+                    }
+                ],
+            }
+        ],
+    }
+    status_only_payload = {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "id": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+                "changes": [
+                    {
+                        "value": {
+                            "messaging_product": "whatsapp",
+                            "metadata": {"display_phone_number": "15550001111", "phone_number_id": business_with_whatsapp["phone_number_id"]},
+                            "statuses": [{"id": f"wamid.{uuid.uuid4().hex}", "status": "delivered", "timestamp": "1690000000"}],
+                        },
+                        "field": "messages",
+                    }
+                ],
+            }
+        ],
+    }
+
+    for payload in (non_text_payload, status_only_payload):
+        status, body = _post_webhook(payload)
+        assert status == 200, body
+
+    with SessionLocal() as db:
+        conversations = db.query(Conversation).filter(Conversation.business_id == business_with_whatsapp["business_id"]).all()
+        assert conversations == [], "a non-text message or a status-only webhook must never create a conversation"
+
+
 # ---------------------------------------------------------------------------
 # Idempotency — real DB-level guarantee.
 # ---------------------------------------------------------------------------

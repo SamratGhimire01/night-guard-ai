@@ -850,6 +850,38 @@ def test_reschedule_hallucination_proof_target_slot_already_taken(two_businesses
     assert row.scheduled_at.hour == 10, "the failed reschedule must not have moved the original appointment"
 
 
+# --- Phase 11 regression: appointment times shown to the LLM use business-local time --
+
+
+def test_format_appointments_converts_utc_to_business_local_time():
+    """Phase 11 real bug, found live: the model correctly listed two distinct
+    real appointments during an ambiguous-cancellation clarification but
+    misstated one's local time (said 3:00 PM for an appointment actually at
+    11:00 AM America/New_York), because the appointment list handed to the
+    LLM was built from the raw UTC ISO string with no timezone conversion.
+    Fixed by threading the business's ZoneInfo through _build_user_prompt ->
+    _format_appointments. This directly exercises that conversion — an
+    appointment stored at 15:00 UTC must read as 11:00 AM in a UTC-4 business,
+    never 3:00 PM."""
+    from app.services.conversation.intent import _format_appointments
+
+    appointment_id = uuid.uuid4()
+    appointments = [
+        {
+            "id": str(appointment_id),
+            "service": "Root Canal",
+            "scheduled_at": "2026-09-08T15:00:00+00:00",
+            "status": "confirmed",
+        }
+    ]
+
+    formatted = _format_appointments("Customer's active/upcoming appointments", appointments, ZoneInfo("America/New_York"))
+
+    assert formatted is not None
+    assert "11:00 AM" in formatted, f"expected business-local 11:00 AM, got: {formatted!r}"
+    assert "3:00 PM" not in formatted, "must never show the raw UTC hour unconverted"
+
+
 # --- intent/response JSON parsing -----------------------------------------------
 
 

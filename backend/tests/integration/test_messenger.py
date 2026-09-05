@@ -257,6 +257,40 @@ def test_message_echo_of_our_own_send_is_ignored_not_processed(business_with_mes
         assert len(conversations) == 0  # never created anything
 
 
+def test_attachment_only_message_with_no_text_is_acked_and_skipped_not_a_crash(business_with_messenger):
+    """A real Messenger attachment (image/sticker/etc.) or a button-tap
+    postback carries no `message.text` field at all — only `attachments`/
+    `postback`. meta_messaging_webhook.py's own docstring already documents
+    this exact case as deliberately skipped (`if not (... and text): continue`),
+    but until now nothing proved it: this was a happy-path-only gap."""
+    payload = {
+        "object": "page",
+        "entry": [
+            {
+                "id": business_with_messenger["page_id"],
+                "time": 1690000000000,
+                "messaging": [
+                    {
+                        "sender": {"id": "psid-0012"},
+                        "recipient": {"id": business_with_messenger["page_id"]},
+                        "timestamp": 1690000000000,
+                        "message": {
+                            "mid": f"mid.{uuid.uuid4().hex}",
+                            "attachments": [{"type": "image", "payload": {"url": "https://example.com/photo.jpg"}}],
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+    status, body = _post_webhook(payload)
+    assert status == 200, body
+
+    with SessionLocal() as db:
+        conversations = db.query(Conversation).filter(Conversation.business_id == business_with_messenger["business_id"]).all()
+        assert conversations == [], "a text-less attachment message must be skipped, never crash and never create a conversation"
+
+
 # ---------------------------------------------------------------------------
 # Idempotency — real DB-level guarantee.
 # ---------------------------------------------------------------------------

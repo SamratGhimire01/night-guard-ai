@@ -360,6 +360,68 @@ def test_all_or_nothing_race_rolls_back_everything(business_a_ready, monkeypatch
     assert rows == [], "a race during the write pass must leave zero rows, not a partial group"
 
 
+def test_group_partial_mode_never_leaves_an_appointment_without_its_participants(business_a_ready, monkeypatch):
+    """Phase 30 real bug, found live via a genuine `docker compose kill`
+    (SIGKILL) mid-transaction test: partial-mode group booking used TWO
+    separate commits per cluster — one inside create_appointment for the
+    Appointment+Notification, a second, later one for the
+    AppointmentParticipant rows. A real crash in the gap between them left a
+    confirmed Appointment row with ZERO participant rows (proven live,
+    PHASE_STATUS.md Phase 30). Fixed by sharing ONE commit per cluster:
+    create_appointment(..., _commit=False) (flush only, no commit) followed
+    by the participant rows and a single db.commit() in
+    _create_group_partial. Structurally proves the fix by asserting
+    create_appointment is actually called with _commit=False from the
+    partial-mode path — if that regresses back to the (default) _commit=True,
+    the appointment becomes durable on its own, one commit ahead of the
+    participant rows, reopening the exact crash window found live. Also
+    proves the ordinary functional outcome still holds: appointment +
+    participant land together."""
+    business_id = business_a_ready["business_id_a"]
+    customer_id = business_a_ready["customer_id"]
+    cleaning_id = business_a_ready["cleaning_id"]
+    day = _next_weekday(2)
+    t1 = datetime.combine(day, datetime.min.time()).replace(hour=9, tzinfo=ZoneInfo("UTC"))
+
+    real_create_appointment = booking_service.create_appointment
+    captured = {}
+
+    def _capturing_create_appointment(db, *, _commit=True, **kwargs):
+        captured["commit_kwarg"] = _commit
+        return real_create_appointment(db, _commit=_commit, **kwargs)
+
+    monkeypatch.setattr(booking_service, "create_appointment", _capturing_create_appointment)
+
+    with SessionLocal() as db:
+        result = booking_service.create_group_appointments(
+            db,
+            business_id=business_id,
+            customer_id=customer_id,
+            people=[_person("Jordan", cleaning_id, t1)],
+            all_or_nothing=False,
+        )
+
+    assert result["success"] is True
+    assert captured["commit_kwarg"] is False, (
+        "partial-mode group booking must call create_appointment(_commit=False) so the "
+        "appointment is only flushed, never independently committed ahead of its "
+        "participant rows — otherwise a crash between the two writes leaves a real, "
+        "durable Appointment with no participant attribution (the exact Phase 30 bug)"
+    )
+
+    with SessionLocal() as db:
+        rows = (
+            db.query(Appointment)
+            .filter(Appointment.business_id == business_id, Appointment.customer_id == customer_id)
+            .all()
+        )
+        assert len(rows) == 1
+        participants = (
+            db.query(AppointmentParticipant).filter(AppointmentParticipant.appointment_id == rows[0].id).all()
+        )
+        assert len(participants) == 1
+
+
 # --- GET /appointments?group_booking_id= filtering --------------------------------
 
 
