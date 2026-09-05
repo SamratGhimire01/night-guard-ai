@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Training Room — Night Guard AI (Reference UI)</title>
+<link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Willow Creek<br/>Family Dentistry</div>
+        <div class="brand-sub">Night Guard AI dashboard</div>
+      </div>
+    </div>
+    <div class="nav-group-label">Workspace</div>
+    <div>
+      <a class="nav-item" href="overview.html"><span class="nav-icon">🏠</span>Overview</a>
+      <a class="nav-item" href="appointments.html"><span class="nav-icon">📅</span>Appointments</a>
+      <a class="nav-item" href="services.html"><span class="nav-icon">🦷</span>Services</a>
+      <a class="nav-item" href="staff.html"><span class="nav-icon">👥</span>Staff</a>
+      <a class="nav-item" href="hours.html"><span class="nav-icon">🕐</span>Business Hours</a>
+      <a class="nav-item" href="knowledge.html"><span class="nav-icon">📚</span>Knowledge Base</a>
+      <a class="nav-item active" href="training.html"><span class="nav-icon">🎯</span>AI Training Room</a>
+      <a class="nav-item" href="handoffs.html"><span class="nav-icon">🧑‍💼</span>Human Handoffs<span class="nav-badge">2</span></a>
+      <a class="nav-item" href="reports.html"><span class="nav-icon">📊</span>Reports</a>
+      <a class="nav-item" href="followups.html"><span class="nav-icon">🔁</span>Follow-ups</a>
+      <a class="nav-item" href="settings.html"><span class="nav-icon">⚙️</span>Settings</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar">EK</div>
+      <div>
+        <div class="sidebar-footer-name">Dr. Elena Kapoor</div>
+        <div class="sidebar-footer-role">owner</div>
+      </div>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="ref-banner">This is a non-functional visual reference — see <a href="README.md" style="text-decoration:underline">README.md</a>. Real implementation is driven by <code>docs/frontend-api-contract.md</code>.</div>
+    <div class="topbar">
+      <div>
+        <h1>AI Training Room</h1>
+        <div class="topbar-sub">Test and correct how the AI answers, before it reaches a real customer</div>
+      </div>
+      <div class="topbar-actions"></div>
+    </div>
+    <div class="content">
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h2>Ask a test question</h2></div>
+          <div class="card-body">
+            <div class="chat-bubble user" style="margin-left:0; margin-right:auto;">What is your cancellation policy?</div>
+            <div class="chat-bubble bot">We require at least 24 hours' notice for cancellations—if you cancel with less than 24 hours' notice, a $25 fee applies. Can I help you with anything else?</div>
+            <div class="kb-doc-meta" style="padding:0 0 16px">Used knowledge: <strong>Cancellation Policy</strong> (similarity 0.62) · intent: general_question</div>
+            <div style="display:flex; gap:8px;">
+              <input class="field-input" style="flex:1; max-width:none" placeholder="Type a question to test how the AI answers..." />
+              <a class="btn btn-primary">Ask</a>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:12px;">
+              <a class="btn" style="border-color:var(--ok); color:var(--ok)">👍 Correct</a>
+              <a class="btn" style="border-color:var(--danger); color:var(--danger)">👎 Needs correction</a>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2>Recent test questions</h2></div>
+          <div class="kb-doc">
+            <div class="kb-doc-title">What is your cancellation policy?</div>
+            <div class="kb-doc-meta">general_question · not yet reviewed</div>
+          </div>
+          <div class="kb-doc">
+            <div class="kb-doc-title">Do you accept Medicaid?</div>
+            <div class="kb-doc-meta">pricing_question · <span class="pill pill-danger">marked incorrect</span></div>
+          </div>
+          <div class="kb-doc">
+            <div class="kb-doc-title">Can I book a cleaning for tomorrow?</div>
+            <div class="kb-doc-meta">booking · <span class="pill pill-ok">marked correct</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="empty-hint">This tool asks the real AI exactly as a customer would, without creating a real conversation — see §14 of the API contract.</div>
+
+    </div>
+  </div>
+</body>
+</html>

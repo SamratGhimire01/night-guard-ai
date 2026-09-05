@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Overview — Night Guard AI (Reference UI)</title>
+<link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Willow Creek<br/>Family Dentistry</div>
+        <div class="brand-sub">Night Guard AI dashboard</div>
+      </div>
+    </div>
+    <div class="nav-group-label">Workspace</div>
+    <div>
+      <a class="nav-item active" href="overview.html"><span class="nav-icon">🏠</span>Overview</a>
+      <a class="nav-item" href="appointments.html"><span class="nav-icon">📅</span>Appointments</a>
+      <a class="nav-item" href="services.html"><span class="nav-icon">🦷</span>Services</a>
+      <a class="nav-item" href="staff.html"><span class="nav-icon">👥</span>Staff</a>
+      <a class="nav-item" href="hours.html"><span class="nav-icon">🕐</span>Business Hours</a>
+      <a class="nav-item" href="knowledge.html"><span class="nav-icon">📚</span>Knowledge Base</a>
+      <a class="nav-item" href="training.html"><span class="nav-icon">🎯</span>AI Training Room</a>
+      <a class="nav-item" href="handoffs.html"><span class="nav-icon">🧑‍💼</span>Human Handoffs<span class="nav-badge">2</span></a>
+      <a class="nav-item" href="reports.html"><span class="nav-icon">📊</span>Reports</a>
+      <a class="nav-item" href="followups.html"><span class="nav-icon">🔁</span>Follow-ups</a>
+      <a class="nav-item" href="settings.html"><span class="nav-icon">⚙️</span>Settings</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar">EK</div>
+      <div>
+        <div class="sidebar-footer-name">Dr. Elena Kapoor</div>
+        <div class="sidebar-footer-role">owner</div>
+      </div>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="ref-banner">This is a non-functional visual reference — see <a href="README.md" style="text-decoration:underline">README.md</a>. Real implementation is driven by <code>docs/frontend-api-contract.md</code>.</div>
+    <div class="topbar">
+      <div>
+        <h1>Overview</h1>
+        <div class="topbar-sub">Willow Creek Family Dentistry · Friday, September 4, 2026</div>
+      </div>
+      <div class="topbar-actions"></div>
+    </div>
+    <div class="content">
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">Appointments today</div>
+          <div class="stat-value">6</div>
+          <div class="stat-delta up">▲ 2 vs. yesterday</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">New leads (7d)</div>
+          <div class="stat-value">14</div>
+          <div class="stat-delta up">▲ 18%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Cancellation rate (mo.)</div>
+          <div class="stat-value">8%</div>
+          <div class="stat-delta">1 of 12 scheduled</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Open handoffs</div>
+          <div class="stat-value">2</div>
+          <div class="stat-delta down">Needs attention</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header">
+            <h2>Today — Friday, September 4</h2>
+            <a class="btn" href="appointments.html">View all</a>
+          </div>
+          <table>
+            <thead><tr><th>Time</th><th>Customer</th><th>Service</th><th>Staff</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>9:00 AM</td><td>Jordan Lee</td><td>Teeth Cleaning</td><td>Dr. Kapoor</td><td><span class="pill pill-ok">Confirmed</span></td></tr>
+              <tr><td>10:30 AM</td><td>Maria Gonzalez</td><td>Root Canal</td><td>Dr. Kapoor</td><td><span class="pill pill-ok">Confirmed</span></td></tr>
+              <tr><td>1:00 PM</td><td>Sam Whitfield</td><td>Dental Consultation</td><td>—</td><td><span class="pill pill-warn">Pending</span></td></tr>
+              <tr><td>2:30 PM</td><td>Priya Shah</td><td>Braces Consultation</td><td>Dr. Kapoor</td><td><span class="pill pill-ok">Confirmed</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Needs your attention</h2>
+            <a class="btn" href="handoffs.html">View all</a>
+          </div>
+          <div class="kb-doc">
+            <div class="kb-doc-title">🧑‍💼 Handoff — pricing dispute</div>
+            <div class="kb-doc-content">Customer disputed the $25 late-cancellation fee. Escalated 40 min ago.</div>
+          </div>
+          <div class="kb-doc">
+            <div class="kb-doc-title">🧑‍💼 Handoff — insurance question</div>
+            <div class="kb-doc-content">Asked whether Delta Dental PPO is accepted; outside knowledge base.</div>
+          </div>
+          <div class="kb-doc">
+            <div class="kb-doc-title">📚 Knowledge doc awaiting approval</div>
+            <div class="kb-doc-content">"New Patient Intake Requirements" — drafted from an uploaded PDF.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">This month at a glance</div>
+      <div class="card">
+        <div class="card-body">
+          <div class="bar-row"><div class="bar-label">Monday</div><div class="bar-track"><div class="bar-fill" style="width:70%"></div></div><div class="bar-count">7</div></div>
+          <div class="bar-row"><div class="bar-label">Tuesday</div><div class="bar-track"><div class="bar-fill" style="width:90%"></div></div><div class="bar-count">9</div></div>
+          <div class="bar-row"><div class="bar-label">Wednesday</div><div class="bar-track"><div class="bar-fill" style="width:40%"></div></div><div class="bar-count">4</div></div>
+          <div class="bar-row"><div class="bar-label">Thursday</div><div class="bar-track"><div class="bar-fill" style="width:60%"></div></div><div class="bar-count">6</div></div>
+          <div class="bar-row"><div class="bar-label">Friday</div><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><div class="bar-count">10</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

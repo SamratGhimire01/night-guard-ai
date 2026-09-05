@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Knowledge Base — Night Guard AI (Reference UI)</title>
+<link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Willow Creek<br/>Family Dentistry</div>
+        <div class="brand-sub">Night Guard AI dashboard</div>
+      </div>
+    </div>
+    <div class="nav-group-label">Workspace</div>
+    <div>
+      <a class="nav-item" href="overview.html"><span class="nav-icon">🏠</span>Overview</a>
+      <a class="nav-item" href="appointments.html"><span class="nav-icon">📅</span>Appointments</a>
+      <a class="nav-item" href="services.html"><span class="nav-icon">🦷</span>Services</a>
+      <a class="nav-item" href="staff.html"><span class="nav-icon">👥</span>Staff</a>
+      <a class="nav-item" href="hours.html"><span class="nav-icon">🕐</span>Business Hours</a>
+      <a class="nav-item active" href="knowledge.html"><span class="nav-icon">📚</span>Knowledge Base</a>
+      <a class="nav-item" href="training.html"><span class="nav-icon">🎯</span>AI Training Room</a>
+      <a class="nav-item" href="handoffs.html"><span class="nav-icon">🧑‍💼</span>Human Handoffs<span class="nav-badge">2</span></a>
+      <a class="nav-item" href="reports.html"><span class="nav-icon">📊</span>Reports</a>
+      <a class="nav-item" href="followups.html"><span class="nav-icon">🔁</span>Follow-ups</a>
+      <a class="nav-item" href="settings.html"><span class="nav-icon">⚙️</span>Settings</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar">EK</div>
+      <div>
+        <div class="sidebar-footer-name">Dr. Elena Kapoor</div>
+        <div class="sidebar-footer-role">owner</div>
+      </div>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="ref-banner">This is a non-functional visual reference — see <a href="README.md" style="text-decoration:underline">README.md</a>. Real implementation is driven by <code>docs/frontend-api-contract.md</code>.</div>
+    <div class="topbar">
+      <div>
+        <h1>Knowledge Base</h1>
+        <div class="topbar-sub">What the AI is allowed to tell customers</div>
+      </div>
+      <div class="topbar-actions"></div>
+    </div>
+    <div class="content">
+
+      <div class="toolbar">
+        <input class="search-input" placeholder="Search knowledge base..." />
+        <div style="display:flex; gap:10px;">
+          <a class="btn">Upload PDF / .txt</a>
+          <a class="btn btn-primary">+ Add document</a>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab active">All</div>
+        <div class="tab">Draft</div>
+        <div class="tab">Approved</div>
+        <div class="tab">Archived</div>
+      </div>
+      <div class="card">
+        <div class="kb-doc">
+          <div class="kb-doc-title">Cancellation Policy <span class="pill pill-ok" style="margin-left:8px">Approved</span></div>
+          <div class="kb-doc-content">Cancellations require 24 hours notice or a $25 fee applies.</div>
+          <div class="kb-doc-meta">v1 · approved by Dr. Elena Kapoor · source: manual</div>
+        </div>
+        <div class="kb-doc">
+          <div class="kb-doc-title">New Patient Intake Requirements <span class="pill pill-warn" style="margin-left:8px">Draft</span></div>
+          <div class="kb-doc-content">New patients should arrive 15 minutes early with photo ID and insurance card...</div>
+          <div class="kb-doc-meta">v1 · awaiting approval · source: upload (intake.pdf)</div>
+        </div>
+        <div class="kb-doc">
+          <div class="kb-doc-title">Accepted Insurance Plans <span class="pill pill-ok" style="margin-left:8px">Approved</span></div>
+          <div class="kb-doc-content">We accept Delta Dental PPO, Cigna, and Aetna. We do not accept Medicaid at this location.</div>
+          <div class="kb-doc-meta">v2 · approved by Dr. Elena Kapoor · source: manual</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

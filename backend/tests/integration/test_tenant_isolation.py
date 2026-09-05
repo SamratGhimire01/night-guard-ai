@@ -137,7 +137,11 @@ def test_business_a_cannot_delete_business_bs_customer(two_businesses):
 
 def test_unauthenticated_request_is_rejected():
     resp = client.get("/api/v1/customers/00000000-0000-0000-0000-000000000000")
-    assert resp.status_code == 403  # HTTPBearer: no credentials supplied
+    # Phase 28: HTTPBearer(auto_error=False) + explicit UnauthorizedError, so a
+    # missing Authorization header is a real 401 in the app's own error envelope
+    # instead of FastAPI's raw 403 {"detail": "Not authenticated"}.
+    assert resp.status_code == 401, resp.text
+    assert resp.json() == {"error": {"type": "unauthorized", "message": "Not authenticated."}}
 
 
 def test_role_based_access_control_blocks_staff_from_delete(two_businesses):

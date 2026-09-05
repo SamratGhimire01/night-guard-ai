@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Follow-ups — Night Guard AI (Reference UI)</title>
+<link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Willow Creek<br/>Family Dentistry</div>
+        <div class="brand-sub">Night Guard AI dashboard</div>
+      </div>
+    </div>
+    <div class="nav-group-label">Workspace</div>
+    <div>
+      <a class="nav-item" href="overview.html"><span class="nav-icon">🏠</span>Overview</a>
+      <a class="nav-item" href="appointments.html"><span class="nav-icon">📅</span>Appointments</a>
+      <a class="nav-item" href="services.html"><span class="nav-icon">🦷</span>Services</a>
+      <a class="nav-item" href="staff.html"><span class="nav-icon">👥</span>Staff</a>
+      <a class="nav-item" href="hours.html"><span class="nav-icon">🕐</span>Business Hours</a>
+      <a class="nav-item" href="knowledge.html"><span class="nav-icon">📚</span>Knowledge Base</a>
+      <a class="nav-item" href="training.html"><span class="nav-icon">🎯</span>AI Training Room</a>
+      <a class="nav-item" href="handoffs.html"><span class="nav-icon">🧑‍💼</span>Human Handoffs<span class="nav-badge">2</span></a>
+      <a class="nav-item" href="reports.html"><span class="nav-icon">📊</span>Reports</a>
+      <a class="nav-item active" href="followups.html"><span class="nav-icon">🔁</span>Follow-ups</a>
+      <a class="nav-item" href="settings.html"><span class="nav-icon">⚙️</span>Settings</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar">EK</div>
+      <div>
+        <div class="sidebar-footer-name">Dr. Elena Kapoor</div>
+        <div class="sidebar-footer-role">owner</div>
+      </div>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="ref-banner">This is a non-functional visual reference — see <a href="README.md" style="text-decoration:underline">README.md</a>. Real implementation is driven by <code>docs/frontend-api-contract.md</code>.</div>
+    <div class="topbar">
+      <div>
+        <h1>Follow-ups</h1>
+        <div class="topbar-sub">Nudge customers who went quiet before booking</div>
+      </div>
+      <div class="topbar-actions"></div>
+    </div>
+    <div class="content">
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Automatic follow-up</h2>
+          <div style="display:flex; align-items:center; gap:10px;"><span class="toggle on"></span><span style="font-size:13px; font-weight:600">Enabled</span></div>
+        </div>
+        <div class="field-row"><div class="field-label">Trigger after inactivity</div><div class="field-input" style="display:inline-block">24 hours</div></div>
+        <div class="field-row"><div class="field-label">Applies to</div><div style="font-size:13.5px">Conversations that stalled before booking or after asking a pricing question</div></div>
+      </div>
+      <div class="section-title">Recent runs</div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Run at</th><th>Inactivity window</th><th>Processed</th><th>Sent</th></tr></thead>
+          <tbody>
+            <tr><td>Sep 4, 8:00 AM</td><td>24h</td><td>3</td><td>3</td></tr>
+            <tr><td>Sep 3, 8:00 AM</td><td>24h</td><td>1</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="empty-hint">Today this is a real, callable "run now" action — <code>POST /followups/run</code> — not a background schedule; there is no scheduler in the app yet. This screen's "Enabled" toggle and history table represent a scheduling feature that doesn't exist yet — see §12 of the API contract before building this literally.</div>
+
+    </div>
+  </div>
+</body>
+</html>

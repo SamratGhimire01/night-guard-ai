@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Staff — Night Guard AI (Reference UI)</title>
+<link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Willow Creek<br/>Family Dentistry</div>
+        <div class="brand-sub">Night Guard AI dashboard</div>
+      </div>
+    </div>
+    <div class="nav-group-label">Workspace</div>
+    <div>
+      <a class="nav-item" href="overview.html"><span class="nav-icon">🏠</span>Overview</a>
+      <a class="nav-item" href="appointments.html"><span class="nav-icon">📅</span>Appointments</a>
+      <a class="nav-item" href="services.html"><span class="nav-icon">🦷</span>Services</a>
+      <a class="nav-item active" href="staff.html"><span class="nav-icon">👥</span>Staff</a>
+      <a class="nav-item" href="hours.html"><span class="nav-icon">🕐</span>Business Hours</a>
+      <a class="nav-item" href="knowledge.html"><span class="nav-icon">📚</span>Knowledge Base</a>
+      <a class="nav-item" href="training.html"><span class="nav-icon">🎯</span>AI Training Room</a>
+      <a class="nav-item" href="handoffs.html"><span class="nav-icon">🧑‍💼</span>Human Handoffs<span class="nav-badge">2</span></a>
+      <a class="nav-item" href="reports.html"><span class="nav-icon">📊</span>Reports</a>
+      <a class="nav-item" href="followups.html"><span class="nav-icon">🔁</span>Follow-ups</a>
+      <a class="nav-item" href="settings.html"><span class="nav-icon">⚙️</span>Settings</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar">EK</div>
+      <div>
+        <div class="sidebar-footer-name">Dr. Elena Kapoor</div>
+        <div class="sidebar-footer-role">owner</div>
+      </div>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="ref-banner">This is a non-functional visual reference — see <a href="README.md" style="text-decoration:underline">README.md</a>. Real implementation is driven by <code>docs/frontend-api-contract.md</code>.</div>
+    <div class="topbar">
+      <div>
+        <h1>Staff</h1>
+        <div class="topbar-sub">Who's on the team, and which services they're linked to</div>
+      </div>
+      <div class="topbar-actions"></div>
+    </div>
+    <div class="content">
+
+      <div class="toolbar">
+        <input class="search-input" placeholder="Search staff..." />
+        <a class="btn btn-primary">+ Add staff member</a>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Name</th><th>Role</th><th>Assigned services</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><div class="avatar" style="display:inline-flex;vertical-align:middle;margin-right:10px">EK</div><strong>Dr. Elena Kapoor</strong></td><td>Dentist</td><td>Root Canal, Braces Consultation</td><td><a class="btn">Edit</a></td></tr>
+            <tr><td><div class="avatar" style="display:inline-flex;vertical-align:middle;margin-right:10px;background:#0ea5a5">RM</div><strong>Ravi Menon</strong></td><td>Hygienist</td><td>Teeth Cleaning</td><td><a class="btn">Edit</a></td></tr>
+            <tr><td><div class="avatar" style="display:inline-flex;vertical-align:middle;margin-right:10px;background:#b45309">FO</div><strong>Front Desk (unassigned)</strong></td><td>Receptionist</td><td>—</td><td><a class="btn">Edit</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="empty-hint">Note: "Role" here is a free-text job title, unrelated to dashboard login permissions (owner/admin/staff) — see Finding F7 in the API contract. This screen does not manage logins.</div>
+
+    </div>
+  </div>
+</body>
+</html>

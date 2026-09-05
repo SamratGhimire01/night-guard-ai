@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Settings — Night Guard AI (Reference UI)</title>
+<link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Willow Creek<br/>Family Dentistry</div>
+        <div class="brand-sub">Night Guard AI dashboard</div>
+      </div>
+    </div>
+    <div class="nav-group-label">Workspace</div>
+    <div>
+      <a class="nav-item" href="overview.html"><span class="nav-icon">🏠</span>Overview</a>
+      <a class="nav-item" href="appointments.html"><span class="nav-icon">📅</span>Appointments</a>
+      <a class="nav-item" href="services.html"><span class="nav-icon">🦷</span>Services</a>
+      <a class="nav-item" href="staff.html"><span class="nav-icon">👥</span>Staff</a>
+      <a class="nav-item" href="hours.html"><span class="nav-icon">🕐</span>Business Hours</a>
+      <a class="nav-item" href="knowledge.html"><span class="nav-icon">📚</span>Knowledge Base</a>
+      <a class="nav-item" href="training.html"><span class="nav-icon">🎯</span>AI Training Room</a>
+      <a class="nav-item" href="handoffs.html"><span class="nav-icon">🧑‍💼</span>Human Handoffs<span class="nav-badge">2</span></a>
+      <a class="nav-item" href="reports.html"><span class="nav-icon">📊</span>Reports</a>
+      <a class="nav-item" href="followups.html"><span class="nav-icon">🔁</span>Follow-ups</a>
+      <a class="nav-item active" href="settings.html"><span class="nav-icon">⚙️</span>Settings</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar">EK</div>
+      <div>
+        <div class="sidebar-footer-name">Dr. Elena Kapoor</div>
+        <div class="sidebar-footer-role">owner</div>
+      </div>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="ref-banner">This is a non-functional visual reference — see <a href="README.md" style="text-decoration:underline">README.md</a>. Real implementation is driven by <code>docs/frontend-api-contract.md</code>.</div>
+    <div class="topbar">
+      <div>
+        <h1>Settings</h1>
+        <div class="topbar-sub">Business profile, notification toggles, and team</div>
+      </div>
+      <div class="topbar-actions"></div>
+    </div>
+    <div class="content">
+
+      <div class="tabs">
+        <div class="tab active">Profile</div>
+        <div class="tab">Notifications</div>
+        <div class="tab">Team</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>Business profile</h2></div>
+        <div class="field-row"><div class="field-label">Business name</div><div class="field-input">Willow Creek Family Dentistry</div></div>
+        <div class="field-row"><div class="field-label">Address</div><div class="field-input">142 Willow Creek Rd, Asheville, NC</div></div>
+        <div class="field-row"><div class="field-label">Phone</div><div class="field-input">555-201-4488</div></div>
+        <div class="field-row"><div class="field-label">Timezone</div><div class="field-input">America/New_York</div></div>
+      </div>
+      <div class="section-title">Notifications</div>
+      <div class="card">
+        <div class="field-row"><div class="field-label">SMS notifications</div><div style="display:flex; align-items:center; gap:10px;"><span class="toggle"></span><span style="font-size:13px; color:var(--text-faint)">Off · premium feature</span></div></div>
+        <div class="field-row"><div class="field-label">Automatic follow-ups</div><div style="display:flex; align-items:center; gap:10px;"><span class="toggle on"></span><span style="font-size:13px">On</span></div></div>
+      </div>
+      <div class="section-title">Team</div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+          <tbody><tr><td>Dr. Elena Kapoor</td><td>owner@willowcreekdental.example</td><td><span class="pill pill-brand">Owner</span></td></tr></tbody>
+        </table>
+        <div class="empty-hint">There is no "invite teammate" button here because no invite endpoint exists in the API yet — see Finding F5 in the API contract. A frontend team building this screen for real needs that endpoint built first.</div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

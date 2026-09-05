@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Appointments — Night Guard AI (Reference UI)</title>
+<link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Willow Creek<br/>Family Dentistry</div>
+        <div class="brand-sub">Night Guard AI dashboard</div>
+      </div>
+    </div>
+    <div class="nav-group-label">Workspace</div>
+    <div>
+      <a class="nav-item" href="overview.html"><span class="nav-icon">🏠</span>Overview</a>
+      <a class="nav-item active" href="appointments.html"><span class="nav-icon">📅</span>Appointments</a>
+      <a class="nav-item" href="services.html"><span class="nav-icon">🦷</span>Services</a>
+      <a class="nav-item" href="staff.html"><span class="nav-icon">👥</span>Staff</a>
+      <a class="nav-item" href="hours.html"><span class="nav-icon">🕐</span>Business Hours</a>
+      <a class="nav-item" href="knowledge.html"><span class="nav-icon">📚</span>Knowledge Base</a>
+      <a class="nav-item" href="training.html"><span class="nav-icon">🎯</span>AI Training Room</a>
+      <a class="nav-item" href="handoffs.html"><span class="nav-icon">🧑‍💼</span>Human Handoffs<span class="nav-badge">2</span></a>
+      <a class="nav-item" href="reports.html"><span class="nav-icon">📊</span>Reports</a>
+      <a class="nav-item" href="followups.html"><span class="nav-icon">🔁</span>Follow-ups</a>
+      <a class="nav-item" href="settings.html"><span class="nav-icon">⚙️</span>Settings</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar">EK</div>
+      <div>
+        <div class="sidebar-footer-name">Dr. Elena Kapoor</div>
+        <div class="sidebar-footer-role">owner</div>
+      </div>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="ref-banner">This is a non-functional visual reference — see <a href="README.md" style="text-decoration:underline">README.md</a>. Real implementation is driven by <code>docs/frontend-api-contract.md</code>.</div>
+    <div class="topbar">
+      <div>
+        <h1>Appointments</h1>
+        <div class="topbar-sub">All bookings across every channel — widget, WhatsApp, Messenger, Instagram</div>
+      </div>
+      <div class="topbar-actions"><a class="btn">Export</a></div>
+    </div>
+    <div class="content">
+
+      <div class="toolbar">
+        <input class="search-input" placeholder="Search by customer name..." />
+        <div style="display:flex; gap:10px;">
+          <a class="btn">Filters</a>
+          <a class="btn btn-primary">+ New appointment</a>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab active">Upcoming</div>
+        <div class="tab">Past</div>
+        <div class="tab">Cancelled</div>
+        <div class="tab">All</div>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Date &amp; time</th><th>Customer</th><th>Service</th><th>Staff</th><th>Duration</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Sep 7, 2:00 PM</td><td>Jordan Lee <span class="pill pill-neutral" style="margin-left:6px">group ×3</span></td><td>Teeth Cleaning</td><td>—</td><td>30 min</td><td><span class="pill pill-ok">Confirmed</span></td></tr>
+            <tr><td>Sep 8, 11:00 AM</td><td>Jordan Lee</td><td>Teeth Cleaning</td><td>—</td><td>30 min</td><td><span class="pill pill-ok">Confirmed</span></td></tr>
+            <tr><td>Sep 9, 9:00 AM</td><td>Maria Gonzalez</td><td>Root Canal</td><td>Dr. Kapoor</td><td>60 min</td><td><span class="pill pill-ok">Confirmed</span></td></tr>
+            <tr><td>Sep 10, 2:00 PM</td><td>Maria Gonzalez</td><td>Teeth Cleaning</td><td>—</td><td>30 min</td><td><span class="pill pill-danger">Cancelled</span></td></tr>
+            <tr><td>Sep 11, 3:00 PM</td><td>Sam Whitfield</td><td>Dental Consultation</td><td>—</td><td>20 min</td><td><span class="pill pill-warn">Rescheduled</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="empty-hint">Showing 5 of 5 — this list has no pagination in the live API today (Finding F3 in the API contract); a large business would need this screen to handle a genuinely unbounded response.</div>
+
+    </div>
+  </div>
+</body>
+</html>

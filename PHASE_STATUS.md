@@ -5662,3 +5662,173 @@ No new upgrade operations detected.
 - **`access_token` stored in `Integration.config` as plain JSONB, not separately encrypted at rest** — same already-flagged gap as Messenger's `page_access_token` (Phase 26), not a new one introduced here.
 - Carried over from every prior phase, still real and still open: no staff-capacity model, fixed 15-minute slot grid, exact-match-only service-name resolution, no refresh tokens, no worker/cron for the several "run this later" functions, no real Twilio account tested against, `KnowledgeDocument.approved_by` still not tenant-cross-checked at the DB level.
 - No commit has been made yet — awaiting your confirmation of this verification output per working rule #6.
+
+## Phase 28 — Admin Dashboard API Contract + Reference UI
+
+**Date:** 2026-09-05
+
+**Required:** Two parts. Part A — `docs/frontend-api-contract.md` documenting every
+business-facing endpoint (method, path, auth, RBAC, request/response shape, real
+error examples) plus a real consistency audit (pagination, error shape, timestamps,
+RBAC uniformity), with only small/safe fixes applied and structural issues flagged
+for later. Part B (only after A is complete) — a static, non-functional reference
+UI under `docs/ui-reference/` showing the intended layout of the 11 dashboard
+screens, click-through navigable, explicitly labeled as a non-deliverable visual
+reference.
+
+### PART A — API Contract
+
+**`docs/frontend-api-contract.md` written**, covering all 39 real paths from the
+live OpenAPI spec: auth, business profile/hours, services, staff, knowledge base
+(incl. upload/search), appointments (incl. the group-booking gap), customers, the
+internal conversation-test endpoint, the widget, the three Meta webhooks, reports
+(daily/monthly, incl. `.xlsx`), follow-ups, handoffs, training room. Every
+request/response example on the page is a **real captured response** from a fresh
+test business ("Willow Creek Family Dentistry") registered against the running
+`docker compose` stack — not invented.
+
+**Consistency audit — real findings (F1–F9), most load-bearing ones below; full
+detail and evidence in the doc itself:**
+
+- **F1** — `GET /api/v1/openapi.json` is a real 404; the actual spec is at the app
+  root, `GET /openapi.json` (FastAPI default `openapi_url`, unaffected by router
+  prefixes). Confirmed live, `/docs` also confirmed live. No code bug — a doc-only
+  finding, since the real endpoint already worked correctly.
+- **F2 — error envelope was NOT uniform, now is (fixed this phase).** Two real
+  gaps: (a) a missing `Authorization` header hit FastAPI's own `HTTPBearer`
+  `auto_error=True` path, returning a raw `403 {"detail":"Not authenticated"}`
+  instead of the app's `401 {"error":{...}}` shape; (b) every Pydantic
+  `RequestValidationError` (bad body/query shape) returned FastAPI's raw
+  `{"detail": [...]}` list, bypassing `night_guard_exception_handler` entirely.
+  Both triggered live before the fix, both confirmed fixed live after.
+- **F3** — no list endpoint paginates, anywhere (checked every route file). Real
+  production risk flagged on `GET /appointments` and `GET /training/history`
+  (unbounded growth); lower risk on services/staff/knowledge/handoffs (naturally
+  small in practice). Not fixed — a retrofit, out of scope this phase.
+- **F4** — RBAC is not one uniform "read:any, write:owner/admin" rule. Real
+  breakdown (table in the doc): appointments and customer-contact writes are open
+  to all three roles (operational, not config); handoffs are readable/writable by
+  all three roles (staff field the escalations); reports and the training room are
+  owner/admin for *both* read and write (sensitive data). Every deviation has an
+  existing code comment explaining it — deliberate, not drift — but the doc's task
+  description assumed one uniform rule, which doesn't hold.
+- **F5** — no endpoint exists to add a second `BusinessUser` to an existing
+  business; `POST /auth/register` always creates a brand-new `Business` + owner.
+  Confirmed directly from the test suite's own fixture comment: `"no staff-user
+  invite endpoint exists yet"` (constructs the row via raw SQLAlchemy, bypassing
+  the API). Real structural gap for a "invite your team" screen.
+- **F6** — `PUT /business/hours` response is a bare array; `GET /business/hours`
+  wraps the same data as `{"weekly": [...], "exceptions": [...]}` — confirmed with
+  real before/after payloads. Not fixed (an explicit `response_model=list[...]` in
+  the route, not an obvious bug; changing a response shape isn't "small").
+- **F7** — `Staff.role` (free-text job title, e.g. "Dentist") and `BusinessUserRole`
+  (owner/admin/staff, the RBAC tier) share the field name "role" but are unrelated
+  models — a real naming trap for a frontend dev, documented not renamed.
+- **F8 — timestamp format is genuinely inconsistent (structural, not fixed).**
+  Three real wire formats coexist for "this is UTC" on the same API surface (even
+  the same response, in the daily report): `Z`-suffixed, `+00:00`-suffixed, and
+  naive (no offset at all). Root cause confirmed by reading
+  `app/db/models/mixins.py`: `CreatedAtMixin`/`UpdatedAtMixin` use
+  `mapped_column(server_default=func.now())` with no `DateTime(timezone=True)`, so
+  **every** `created_at`/`updated_at` on **every** model in the schema is naive;
+  fields set explicitly in Python (`approved_at`) or declared `DateTime(timezone=True)`
+  (`Appointment.scheduled_at`) come out tz-aware. No correctness bug (DB is UTC
+  underneath), but a real frontend Date-parsing footgun (a naive ISO string parses
+  as local time in most JS date parsers). Fixing properly needs a schema-wide
+  migration — flagged for Phase 29+, not attempted here.
+- **F9** — group bookings (2+ people in one request) have no dedicated REST
+  endpoint at all; only reachable via the conversation/widget message endpoints,
+  which internally call `booking_service.create_group_appointments`. Documented,
+  not a bug — but a real gap for anyone designing a "book for my family" screen.
+
+**Small fixes applied (both live-verified, both small and contained):**
+1. `backend/app/api/dependencies.py` — `HTTPBearer(auto_error=False)` +
+   explicit `UnauthorizedError("Not authenticated.")` on missing credentials.
+2. `backend/app/core/exceptions.py` (+ registered in `register_exception_handlers`)
+   — a `RequestValidationError` handler that flattens Pydantic's error list into
+   the app's `{"error": {"type": "validation_error", "message": "..."}}` shape.
+
+**Verification — real, this phase:**
+```
+# before fix
+GET /api/v1/appointments (no Authorization header)  → 403 {"detail":"Not authenticated"}
+PATCH /api/v1/knowledge/{id} {"status":"published"}  → 422 {"detail":[{"type":"enum",...}]}
+
+# after fix (docker compose restart backend — no --reload, same documented gotcha)
+GET /api/v1/appointments (no Authorization header)  → 401 {"error":{"type":"unauthorized","message":"Not authenticated."}}
+PATCH /api/v1/knowledge/{id} {"status":"published"}  → 422 {"error":{"type":"validation_error","message":"status: Input should be 'draft', 'approved' or 'archived'"}}
+```
+Full test suite run immediately after the fix: **1 failed** —
+`test_tenant_isolation.py::test_unauthenticated_request_is_rejected`, which had
+asserted the exact pre-fix bug (`403`, comment `# HTTPBearer: no credentials
+supplied`) — i.e. it was pinned to the bug being fixed, not a real regression.
+Test updated to assert the corrected `401` + app-shaped body. Full suite re-run:
+```
+288 passed, 1 skipped, 1 warning in 325.12s (0:05:25)
+```
+`openapi.json` confirmed real and complete:
+```
+GET /openapi.json → 200, title: Night Guard AI, version: 0.1.0, openapi: 3.1.0, paths: 39
+```
+Spot-checked `GET /api/v1/knowledge/{document_id}` in the spec against the
+hand-written doc — matches exactly (real `security: [{"HTTPBearer": []}]`
+requirement, real `uuid`-formatted path param, real `$ref` to
+`KnowledgeDocumentRead` on 200).
+
+### PART B — Reference UI
+
+**`docs/ui-reference/`** written: 11 static HTML pages (Overview, Appointments,
+Services, Staff, Business Hours, Knowledge Base, AI Training Room, Human
+Handoffs, Reports, Follow-ups, Settings) + one shared `shared.css` + `README.md`.
+Plain HTML/CSS, no JS, no framework, no build step — navigation is plain
+`<a href>` links between pages sharing one sidebar/topbar layout. Placeholder
+content reuses real names/values from this project's own testing (Willow Creek
+Family Dentistry, Teeth Cleaning $90/30min, Root Canal $450/60min, Dr. Elena
+Kapoor, Maria Gonzalez, etc.) so it reads as grounded, not generic. Several
+screens carry an explicit inline note pointing back at a specific API-contract
+finding where the mockup shows more than the live API supports today (Follow-ups'
+"scheduled runs" history vs. the real callable-not-scheduled endpoint; Settings'
+missing invite-teammate button vs. Finding F5; Appointments' lack of pagination
+vs. Finding F3) — cross-checked against Part A, not guessed. README explicitly
+states: non-functional visual reference only, real implementation should be
+driven by `docs/frontend-api-contract.md`, and the frontend developer has full
+creative license on visual design (the light-mode SaaS look here is a suggestion,
+noted as a deliberate departure from the dark/purple internal test-chat tool
+built earlier in this project, which was a dev tool, not this dashboard).
+
+**Verification — real, this phase:**
+- Served locally: `python3 -m http.server 8099 --directory docs/ui-reference`.
+  All 11 pages + `shared.css` + `README.md` returned `200`, confirmed via `curl`
+  against every file.
+- Link check: extracted every `href="*.html"` from every page and confirmed the
+  target file exists on disk — zero broken links. Confirmed every page carries
+  all 11 nav items (`grep -c nav-item`).
+- Visually rendered via headless Chrome screenshots (`overview.html`,
+  `handoffs.html`) — clean sidebar/topbar/card layout, no visual breakage, the
+  reference banner and per-page inline notes render correctly.
+- Cross-checked placeholder content against Part A's real API shapes: Reports
+  page's stat tiles and tables mirror `GET /reports/daily`'s real field names
+  (`appointments_scheduled`, `cancellations`, `new_leads`, `human_review_open_count`)
+  rather than inventing a chart the API can't back; no page implies interactive
+  charting, live search, or working buttons anywhere.
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Part A: every existing business-facing endpoint documented with real examples | ✓ Pass |
+| Part A: real consistency audit (pagination, error shape, timestamps, RBAC) with concrete evidence, not "all good" | ✓ Pass — F1–F9 |
+| Part A: only small/safe fixes applied, structural issues flagged not retrofitted | ✓ Pass — 2 small fixes (F2), 7 flagged findings |
+| Part A: 5 spot-checked endpoints, documented shape vs. real live response | ✓ Pass — pasted in-conversation; embedded throughout the doc |
+| Part A: `openapi.json` confirmed real/complete/accurate | ✓ Pass — real path is `/openapi.json`, not `/api/v1/openapi.json` (F1) |
+| Part B: reference UI loads and is click-through navigable | ✓ Pass — local server + curl + link check + screenshots |
+| Part B: doesn't imply functionality that doesn't exist | ✓ Pass — cross-checked against Part A, inline notes where a mockup exceeds real API support |
+
+**Known issues / punted items:**
+- F3 (no pagination anywhere), F5 (no staff-invite endpoint), F6 (hours GET/PUT
+  shape asymmetry), F8 (naive vs. tz-aware timestamps) are all real, all flagged,
+  none fixed — each is a genuine retrofit/feature, explicitly out of scope for
+  this phase's "small, safe fixes only" instruction.
+- The reference UI is exactly that — a reference. It has no real interactivity
+  (buttons/toggles/tabs are visual only), which is by design, not a shortcut.
+- No commit has been made yet — awaiting your confirmation of this verification
+  output per working rule #6.

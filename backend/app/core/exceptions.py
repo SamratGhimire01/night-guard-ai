@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
@@ -88,6 +89,20 @@ async def night_guard_exception_handler(request: Request, exc: NightGuardError) 
     )
 
 
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # Without this, Pydantic/FastAPI request-validation failures (bad body/query
+    # shape, failed field_validator) fall through to FastAPI's own default
+    # {"detail": [...]} body — the one error shape in the whole API that isn't
+    # {"error": {"type", "message"}}, found via Phase 28's consistency audit.
+    field_errors = [
+        f"{'.'.join(str(p) for p in err['loc'][1:]) or 'body'}: {err['msg']}" for err in exc.errors()
+    ]
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"error": {"type": "validation_error", "message": "; ".join(field_errors)}},
+    )
+
+
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # Without this, an unexpected exception is completely invisible: FastAPI's own
     # handler is what would normally print a traceback, but registering a custom
@@ -103,4 +118,5 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 def register_exception_handlers(app) -> None:
     app.add_exception_handler(NightGuardError, night_guard_exception_handler)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)

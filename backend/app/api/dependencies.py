@@ -12,11 +12,11 @@ from app.db.models.business import BusinessUser
 
 __all__ = ["get_db", "get_current_user", "require_role"]
 
-_bearer_scheme = HTTPBearer()
+_bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
     db: Session = Depends(get_db),
 ) -> BusinessUser:
     """Validates the JWT and loads the BusinessUser it names.
@@ -26,6 +26,13 @@ def get_current_user(
     business-data endpoint must scope its queries using current_user.business_id
     from this dependency, never a business_id read from the request body/query.
     """
+    if credentials is None:
+        # auto_error=False above so a missing header lands here instead of
+        # HTTPBearer's own auto_error=True path — which raises a raw 403
+        # {"detail": "Not authenticated"} that bypasses the app's uniform
+        # error envelope and picks the wrong status code (401 is correct for
+        # "no/invalid credentials"; 403 is for "authenticated but not allowed").
+        raise UnauthorizedError("Not authenticated.")
     try:
         payload = decode_access_token(credentials.credentials)
     except jwt.ExpiredSignatureError:

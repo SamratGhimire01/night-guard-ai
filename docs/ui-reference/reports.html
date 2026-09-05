@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reports — Night Guard AI (Reference UI)</title>
+<link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Willow Creek<br/>Family Dentistry</div>
+        <div class="brand-sub">Night Guard AI dashboard</div>
+      </div>
+    </div>
+    <div class="nav-group-label">Workspace</div>
+    <div>
+      <a class="nav-item" href="overview.html"><span class="nav-icon">🏠</span>Overview</a>
+      <a class="nav-item" href="appointments.html"><span class="nav-icon">📅</span>Appointments</a>
+      <a class="nav-item" href="services.html"><span class="nav-icon">🦷</span>Services</a>
+      <a class="nav-item" href="staff.html"><span class="nav-icon">👥</span>Staff</a>
+      <a class="nav-item" href="hours.html"><span class="nav-icon">🕐</span>Business Hours</a>
+      <a class="nav-item" href="knowledge.html"><span class="nav-icon">📚</span>Knowledge Base</a>
+      <a class="nav-item" href="training.html"><span class="nav-icon">🎯</span>AI Training Room</a>
+      <a class="nav-item" href="handoffs.html"><span class="nav-icon">🧑‍💼</span>Human Handoffs<span class="nav-badge">2</span></a>
+      <a class="nav-item active" href="reports.html"><span class="nav-icon">📊</span>Reports</a>
+      <a class="nav-item" href="followups.html"><span class="nav-icon">🔁</span>Follow-ups</a>
+      <a class="nav-item" href="settings.html"><span class="nav-icon">⚙️</span>Settings</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar">EK</div>
+      <div>
+        <div class="sidebar-footer-name">Dr. Elena Kapoor</div>
+        <div class="sidebar-footer-role">owner</div>
+      </div>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="ref-banner">This is a non-functional visual reference — see <a href="README.md" style="text-decoration:underline">README.md</a>. Real implementation is driven by <code>docs/frontend-api-contract.md</code>.</div>
+    <div class="topbar">
+      <div>
+        <h1>Reports</h1>
+        <div class="topbar-sub">Daily and monthly performance — mailed to the business email on request</div>
+      </div>
+      <div class="topbar-actions"></div>
+    </div>
+    <div class="content">
+
+      <div class="tabs">
+        <div class="tab active">Daily</div>
+        <div class="tab">Monthly</div>
+      </div>
+      <div class="toolbar">
+        <div style="font-size:13px; color:var(--text-muted); font-weight:600;">Friday, September 4, 2026</div>
+        <div style="display:flex; gap:10px;">
+          <a class="btn">Download .xlsx</a>
+          <a class="btn btn-primary">Email this report</a>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Appointments scheduled</div><div class="stat-value">4</div></div>
+        <div class="stat-card"><div class="stat-label">Cancellations</div><div class="stat-value">1</div></div>
+        <div class="stat-card"><div class="stat-label">New leads</div><div class="stat-value">1</div></div>
+        <div class="stat-card"><div class="stat-label">Open for human review</div><div class="stat-value">2</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h2>New leads today</h2></div>
+          <table>
+            <thead><tr><th>Name</th><th>Phone</th><th>Email</th></tr></thead>
+            <tbody><tr><td>Maria Gonzalez</td><td>+1 555-123-4567</td><td>maria.g@example.com</td></tr></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2>Cancellations today</h2></div>
+          <table>
+            <thead><tr><th>Customer</th><th>Service</th><th>Was scheduled for</th></tr></thead>
+            <tbody><tr><td>Maria Gonzalez</td><td>Teeth Cleaning</td><td>Sep 10, 2:00 PM</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="empty-hint">Numbers above mirror the real shape of <code>GET /reports/daily</code> — see §11 of the API contract, including which monthly metrics (e.g. "completed" appointments) are honestly always 0 today because nothing in the app marks a visit completed yet.</div>
+
+    </div>
+  </div>
+</body>
+</html>

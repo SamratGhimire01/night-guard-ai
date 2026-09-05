@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Human Handoffs — Night Guard AI (Reference UI)</title>
+<link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Willow Creek<br/>Family Dentistry</div>
+        <div class="brand-sub">Night Guard AI dashboard</div>
+      </div>
+    </div>
+    <div class="nav-group-label">Workspace</div>
+    <div>
+      <a class="nav-item" href="overview.html"><span class="nav-icon">🏠</span>Overview</a>
+      <a class="nav-item" href="appointments.html"><span class="nav-icon">📅</span>Appointments</a>
+      <a class="nav-item" href="services.html"><span class="nav-icon">🦷</span>Services</a>
+      <a class="nav-item" href="staff.html"><span class="nav-icon">👥</span>Staff</a>
+      <a class="nav-item" href="hours.html"><span class="nav-icon">🕐</span>Business Hours</a>
+      <a class="nav-item" href="knowledge.html"><span class="nav-icon">📚</span>Knowledge Base</a>
+      <a class="nav-item" href="training.html"><span class="nav-icon">🎯</span>AI Training Room</a>
+      <a class="nav-item active" href="handoffs.html"><span class="nav-icon">🧑‍💼</span>Human Handoffs<span class="nav-badge">2</span></a>
+      <a class="nav-item" href="reports.html"><span class="nav-icon">📊</span>Reports</a>
+      <a class="nav-item" href="followups.html"><span class="nav-icon">🔁</span>Follow-ups</a>
+      <a class="nav-item" href="settings.html"><span class="nav-icon">⚙️</span>Settings</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar">EK</div>
+      <div>
+        <div class="sidebar-footer-name">Dr. Elena Kapoor</div>
+        <div class="sidebar-footer-role">owner</div>
+      </div>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="ref-banner">This is a non-functional visual reference — see <a href="README.md" style="text-decoration:underline">README.md</a>. Real implementation is driven by <code>docs/frontend-api-contract.md</code>.</div>
+    <div class="topbar">
+      <div>
+        <h1>Human Handoffs</h1>
+        <div class="topbar-sub">Conversations the AI escalated for a real person to take over</div>
+      </div>
+      <div class="topbar-actions"></div>
+    </div>
+    <div class="content">
+
+      <div class="tabs">
+        <div class="tab active">Open <span class="pill pill-danger" style="margin-left:6px">2</span></div>
+        <div class="tab">Resolved</div>
+        <div class="tab">All</div>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Reason</th><th>Conversation</th><th>Opened</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>Customer disputed the $25 late-cancellation fee</td><td>Widget · session #a1c9</td><td>40 min ago</td><td><span class="pill pill-warn">Open</span></td><td><a class="btn">Resolve</a></td></tr>
+            <tr><td>Asked whether Delta Dental PPO is accepted — outside knowledge base</td><td>WhatsApp · +1 555-019-2231</td><td>2 hr ago</td><td><span class="pill pill-warn">Open</span></td><td><a class="btn">Resolve</a></td></tr>
+            <tr><td>Requested a refund for a missed appointment</td><td>Instagram · @taylor.m</td><td>Yesterday</td><td><span class="pill pill-neutral">Resolved</span></td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="empty-hint">Visible to owner, admin, and staff — the only escalation queue in this app not restricted to owner/admin (Finding F4).</div>
+
+    </div>
+  </div>
+</body>
+</html>

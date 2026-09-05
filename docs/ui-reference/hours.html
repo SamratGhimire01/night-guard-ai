@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Business Hours — Night Guard AI (Reference UI)</title>
+<link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Willow Creek<br/>Family Dentistry</div>
+        <div class="brand-sub">Night Guard AI dashboard</div>
+      </div>
+    </div>
+    <div class="nav-group-label">Workspace</div>
+    <div>
+      <a class="nav-item" href="overview.html"><span class="nav-icon">🏠</span>Overview</a>
+      <a class="nav-item" href="appointments.html"><span class="nav-icon">📅</span>Appointments</a>
+      <a class="nav-item" href="services.html"><span class="nav-icon">🦷</span>Services</a>
+      <a class="nav-item" href="staff.html"><span class="nav-icon">👥</span>Staff</a>
+      <a class="nav-item active" href="hours.html"><span class="nav-icon">🕐</span>Business Hours</a>
+      <a class="nav-item" href="knowledge.html"><span class="nav-icon">📚</span>Knowledge Base</a>
+      <a class="nav-item" href="training.html"><span class="nav-icon">🎯</span>AI Training Room</a>
+      <a class="nav-item" href="handoffs.html"><span class="nav-icon">🧑‍💼</span>Human Handoffs<span class="nav-badge">2</span></a>
+      <a class="nav-item" href="reports.html"><span class="nav-icon">📊</span>Reports</a>
+      <a class="nav-item" href="followups.html"><span class="nav-icon">🔁</span>Follow-ups</a>
+      <a class="nav-item" href="settings.html"><span class="nav-icon">⚙️</span>Settings</a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar">EK</div>
+      <div>
+        <div class="sidebar-footer-name">Dr. Elena Kapoor</div>
+        <div class="sidebar-footer-role">owner</div>
+      </div>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="ref-banner">This is a non-functional visual reference — see <a href="README.md" style="text-decoration:underline">README.md</a>. Real implementation is driven by <code>docs/frontend-api-contract.md</code>.</div>
+    <div class="topbar">
+      <div>
+        <h1>Business Hours</h1>
+        <div class="topbar-sub">Timezone: America/New_York</div>
+      </div>
+      <div class="topbar-actions"></div>
+    </div>
+    <div class="content">
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h2>Weekly hours</h2><a class="btn">Edit</a></div>
+          <div class="card-body">
+            <div class="hours-grid">
+              <div class="hours-row"><div class="hours-day">Monday</div><div class="hours-value">9:00 AM – 5:00 PM</div></div>
+              <div class="hours-row"><div class="hours-day">Tuesday</div><div class="hours-value">9:00 AM – 5:00 PM</div></div>
+              <div class="hours-row"><div class="hours-day">Wednesday</div><div class="hours-value">9:00 AM – 5:00 PM</div></div>
+              <div class="hours-row"><div class="hours-day">Thursday</div><div class="hours-value">9:00 AM – 5:00 PM</div></div>
+              <div class="hours-row"><div class="hours-day">Friday</div><div class="hours-value">9:00 AM – 3:00 PM</div></div>
+              <div class="hours-row"><div class="hours-day">Saturday</div><div class="hours-value" style="color:var(--text-faint)">Closed</div></div>
+              <div class="hours-row"><div class="hours-day">Sunday</div><div class="hours-value" style="color:var(--text-faint)">Closed</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2>Holiday exceptions</h2><a class="btn">+ Add</a></div>
+          <table>
+            <thead><tr><th>Date</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>Dec 25, 2026</td><td><span class="pill pill-neutral">Closed</span></td></tr>
+              <tr><td>Jan 1, 2027</td><td><span class="pill pill-neutral">Closed</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
