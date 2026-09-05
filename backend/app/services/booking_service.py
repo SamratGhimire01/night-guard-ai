@@ -361,6 +361,7 @@ def _create_group_partial(
                 staff_id=cluster["staff_id"],
                 scheduled_at=cluster["scheduled_at"],
                 group_booking_id=group_booking_id,
+                _commit=False,
             )
         except (NotFoundError, UnprocessableEntityError, ConflictError) as exc:
             bookings.append(
@@ -379,9 +380,21 @@ def _create_group_partial(
                 }
             )
             continue
+        # Phase 30 fix: the appointment (+ its queued Notification, both written by
+        # create_appointment(_commit=False) above) and its AppointmentParticipant
+        # rows must land in ONE commit, not two — otherwise a real process crash in
+        # the gap between them leaves a confirmed Appointment with no participant
+        # attribution (proven live: a real SIGKILL mid-gap left exactly this state).
+        # Each cluster is still its own independent commit, so partial-mode's
+        # per-person independence is unchanged.
         for label in cluster["labels"]:
             db.add(AppointmentParticipant(appointment_id=appointment.id, name=label))
         db.commit()
+        db.refresh(appointment)
+        notification = db.execute(
+            select(Notification).where(Notification.appointment_id == appointment.id)
+        ).scalar_one()
+        dispatch_notification(db, notification)
         bookings.append(
             {
                 "labels": cluster["labels"],
