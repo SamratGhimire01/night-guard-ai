@@ -6307,5 +6307,134 @@ this pass).
   tz-aware timestamp inconsistency) — none of these are Tier 1/2/3 items this
   phase's ticket named, so none were touched, to keep this phase's diff
   scoped to what was actually asked.
-- No commit has been made yet — awaiting confirmation of this verification
-  output per working rule #6.
+- Committed as `8ded0c6` after user confirmation in chat.
+
+---
+
+## Phase 29b — Starlette Major Version Upgrade
+
+**Date:** 2026-09-05
+
+**Required:** Safely bump `starlette` from 0.49.1 to a 1.x version closing
+Phase 29's remaining 5 CVEs, with a real (not guessed) FastAPI/Starlette
+compatibility check, a real changelog-derived breaking-change review, full
+regression proof, a live re-run of the Phase 29 CORS/rate-limit flood test,
+and a pip-audit before/after — paste-and-wait, no autonomous commit.
+
+**Compatibility matrix (real, from PyPI METADATA + GitHub, not guessed):**
+Checked every FastAPI release's actual `Requires-Dist: starlette` constraint:
+`fastapi<=0.132.1` pins `starlette<1.0.0` (blocks 1.x); `fastapi==0.133.0` is
+the first version to drop the upper bound entirely — its own GitHub release
+notes read "⬆️ Add support for Starlette 1.0.0+" (PR #14987 by @tiangolo),
+and that PR's diff touched only `pyproject.toml` (1 line) + `uv.lock` — no
+FastAPI source change was needed. FastAPI's own lockfile at its latest
+release (`fastapi==0.141.1`) pins and tests against `starlette==1.3.1`
+exactly — the same version needed to close the last remaining CVE
+(`PYSEC-2026-249` requires `>=1.3.1`). Chosen: `fastapi==0.121.2 → 0.141.1`,
+`starlette==0.49.1 → 1.3.1` — both the latest stable release of each and the
+exact pairing FastAPI's own CI validates.
+
+**Real changelog review (every Starlette release 0.50.0→1.3.1, via `gh api
+repos/encode/starlette/releases`) — breaking changes considered and how each
+was ruled out:**
+- 0.51.0's `allow_private_network` addition to `CORSMiddleware` — N/A, this
+  codebase never uses Starlette's `CORSMiddleware`; `WidgetCORSMiddleware`
+  (`app/core/widget_cors.py`) is a hand-rolled `BaseHTTPMiddleware` subclass
+  that sets headers manually.
+- 1.1.0's `HTTPEndpoint` verb-dispatch tightening, `StaticFiles.lookup_path`
+  absolute-path rejection, `FileResponse` media-type fallback change — N/A:
+  no class-based `HTTPEndpoint` anywhere, no `StaticFiles` mount anywhere
+  (grepped), and both of this codebase's two `FileResponse` call sites
+  (`widget.py`'s `get_widget_script`/`get_test_chat_page`) pass `media_type=`
+  explicitly, so the fallback default never applies.
+- 1.3.0's "avoid collapsing exception groups from user code" change to
+  `BaseHTTPMiddleware` (PR #2830, checked directly) — only changes behavior
+  when app code itself raises an `ExceptionGroup`; grepped, nothing in this
+  codebase does.
+- 1.3.1's `FormParser` now enforcing `max_fields`/`max_part_size` for
+  `application/x-www-form-urlencoded` bodies (PR #3329) — N/A, zero
+  form-urlencoded endpoints exist; the one file-upload route
+  (`POST /knowledge/upload`) uses the separate `MultiPartParser` class,
+  whose `max_part_size=1MB` default was already present in the
+  already-installed 0.49.1 (confirmed via `inspect.signature`), so this is
+  not a new constraint introduced by this bump.
+- WebSocket behavior — N/A, `grep -rn "WebSocket\|websocket" app/` found zero
+  matches anywhere in the codebase.
+
+**Change made, isolated:** `backend/requirements.txt` only —
+```
+-fastapi==0.121.2          +fastapi==0.141.1
+-starlette==0.49.1         +starlette==1.3.1
+```
+Nothing else touched; `git checkout -- backend/requirements.txt` fully
+reverts it. Build succeeded with no dependency-resolution conflicts
+(`pydantic==2.9.2` satisfies FastAPI 0.141.1's `pydantic>=2.9.0`;
+`httpx==0.27.2` satisfies Starlette 1.3.1's `httpx<0.29.0,>=0.27.0`).
+
+**Verification — real, live:**
+1. Full regression suite: `docker compose exec backend python -m pytest
+   tests/ -q` → **345 passed, 1 skipped, 0 failed** — identical result to
+   Phase 29's final state, zero regressions. One new informational warning
+   appeared (not a failure): `StarletteDeprecationWarning: Using httpx with
+   starlette.testclient is deprecated; install httpx2 instead` — a
+   future-deprecation notice, not a breaking change today; noted, not acted
+   on this phase.
+2. Live re-run of Phase 29's widget CORS/rate-limit flood tests on the
+   upgraded stack:
+```
+=== TIER 1 ITEM 5 FIX VERIFICATION — LIVE HTTP ===
+210 requests, brand-new session each time, IP limiter bypassed to isolate
+the business-wide check, against ONE business_id: 200 succeeded, 10 blocked
+with 429 once the business-wide ceiling (200/60s) was hit.
+
+=== TIER 1 ITEM 5 — DISTRIBUTED FLOOD PROOF ===
+4500 requests against ONE business_id from 500 distinct simulated
+IPs/sessions — ALL allowed, 0 blocked (isolated math proof against the raw
+limiter class, unaffected by the framework bump by construction).
+```
+   Identical numbers to Phase 29's own post-fix run — the middleware
+   behavior change in Starlette 1.3.0 did not regress this protection.
+   Directly spot-checked the actual CORS headers too:
+```
+$ curl -s -i http://localhost:8010/widget.js | grep -i access-control
+access-control-allow-origin: *
+access-control-allow-methods: GET, POST, OPTIONS
+access-control-allow-headers: Content-Type
+
+$ curl -s -i http://localhost:8010/api/v1/health | grep -i access-control
+(nothing — correctly still absent everywhere else)
+```
+3. `pip-audit -r requirements.txt`, before/after:
+```
+BEFORE (starlette 0.49.1): Found 8 known vulnerabilities in 2 packages
+starlette 0.49.1  PYSEC-2026-161/248/249/2281/2280 (5 entries) -> needs 1.0.1–1.3.1
+pytest    8.3.3   PYSEC-2026-1845                               -> 9.0.3
+
+AFTER (starlette 1.3.1): Found 1 known vulnerability in 1 package
+pytest 8.3.3   PYSEC-2026-1845   -> 9.0.3
+```
+   All 5 `starlette` CVEs closed. Only `pytest` remains — dev-only, never
+   shipped in the running container, same pre-existing item Phase 29 already
+   documented as out of scope.
+4. Secrets grep: `git ls-files | grep '\.env$'` and
+   `git log --all --full-history -- '.env'` both empty; the entire diff is
+   two version-number lines, no secret-shaped strings anywhere. Clean.
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real FastAPI/Starlette compatibility check (not guessed) | ✓ Pass — PyPI metadata + GitHub release notes + PR diff |
+| Real changelog-derived breaking-change list, each handled/ruled out | ✓ Pass — 5 changes considered, all confirmed N/A to this codebase |
+| Full regression suite, zero regressions | ✓ Pass — 345 passed, 1 skipped |
+| Live CORS/rate-limit flood re-run post-upgrade | ✓ Pass — identical numbers to Phase 29 |
+| pip-audit before/after, count actually dropped | ✓ Pass — 8 → 1 |
+| Secrets grep clean | ✓ Pass |
+
+**Known issues / punted items:**
+- New informational deprecation warning: Starlette's `TestClient` will
+  eventually want `httpx2` instead of `httpx` — not urgent (httpx 0.27.2 is
+  still fully supported today), but worth tracking before it becomes a hard
+  requirement in a future Starlette release.
+- `pytest` 8.3.3 → 9.0.3 remains open (dev-only, unrelated to this bump,
+  carried over from Phase 29 unchanged).
+- Committed as a dedicated, isolated commit after user confirmation in chat.
