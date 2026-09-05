@@ -1,9 +1,12 @@
+import logging
 import time
 
 import httpx
 
 from app.core.config import settings
 from app.llm.base import ChatProvider, EmbeddingProvider
+
+logger = logging.getLogger(__name__)
 
 # This resource is an Azure AI Foundry endpoint (*.services.ai.azure.com), which
 # uses the unified "/models/..." inference API — a different URL shape than a
@@ -34,6 +37,7 @@ def _post(path: str, body: dict) -> dict:
     url = f"{settings.azure_openai_endpoint}/models/{path}"
     last_response = None
     last_transport_error: httpx.TransportError | None = None
+    start = time.monotonic()
     for attempt in range(_MAX_ATTEMPTS):
         try:
             response = httpx.post(
@@ -50,12 +54,42 @@ def _post(path: str, body: dict) -> dict:
                 continue
             break
         if response.status_code == 200:
+            # Phase 31: real latency + outcome per LLM call, structured (see
+            # app.core.logging.JSONFormatter) so it's genuinely queryable —
+            # never logs the request/response body (could contain business
+            # data) or the endpoint URL, only timing/outcome metadata.
+            logger.info(
+                "llm provider call succeeded",
+                extra={
+                    "llm_path": path,
+                    "llm_outcome": "success",
+                    "llm_attempts": attempt + 1,
+                    "llm_duration_ms": round((time.monotonic() - start) * 1000, 1),
+                },
+            )
             return response.json()
         last_response, last_transport_error = response, None
         if response.status_code == 404 and attempt < _MAX_ATTEMPTS - 1:
             time.sleep(_RETRY_DELAY_SECONDS)
             continue
         break
+    # A transport error (network/DNS) or a repeated 404 is "transient" — Azure-
+    # side, resolved by retrying, and the retry budget was genuinely exhausted.
+    # Any other non-200 status (401, 400, ...) broke out on its FIRST attempt,
+    # never retried — that's a real, permanent failure (bad request/auth/etc.),
+    # not an outage. This is the exact transient-vs-permanent split Phase 6/25c
+    # already reasoned about for retry behavior; now it's also what the metrics
+    # outcome field reports.
+    outcome = "transient_retry_exhausted" if (last_response is None or last_response.status_code == 404) else "permanent_failure"
+    logger.warning(
+        "llm provider call failed",
+        extra={
+            "llm_path": path,
+            "llm_outcome": outcome,
+            "llm_attempts": attempt + 1,
+            "llm_duration_ms": round((time.monotonic() - start) * 1000, 1),
+        },
+    )
     # Deliberately not httpx's raise_for_status(): its exception message embeds
     # the full request URL (our Azure endpoint), which would then propagate into
     # any logger.exception() call an unhandled-error handler makes upstream —

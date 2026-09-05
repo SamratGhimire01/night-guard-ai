@@ -6438,3 +6438,532 @@ pytest 8.3.3   PYSEC-2026-1845   -> 9.0.3
 - `pytest` 8.3.3 → 9.0.3 remains open (dev-only, unrelated to this bump,
   carried over from Phase 29 unchanged).
 - Committed as a dedicated, isolated commit after user confirmation in chat.
+
+---
+
+## Phase 30 — Reliability
+
+**Date:** 2026-09-05
+
+**Note on this write-up:** written up retroactively — the phase's code fix was
+committed (`2ee62ac`) at the end of the session that did this work, but this
+PHASE_STATUS.md entry was never added at the time, breaking this repo's own
+established per-phase documentation convention. Flagged, not hidden; the real
+verification output below is reproduced from that session's actual terminal
+output, not reconstructed from memory.
+
+**Required:** Audit the system's ability to survive real-world failure
+conditions — process restarts, duplicate deliveries, partial failures — as a
+SYSTEM property, not per-feature (notification retries already existed from
+Phase 13, webhook idempotency from Phase 22/26/27). Five areas: server-restart
+recovery mid-transaction (single + group booking), webhook idempotency under a
+real concurrent retry storm, notification retry bounds under a sustained
+outage, DB connection resilience mid-request, and graceful shutdown.
+
+**Baseline:** `345 passed, 1 skipped in 287.66s` before any test began.
+
+**1. Server restart mid-transaction (single + group booking).** Added
+env-gated sleep hooks (no-op unless a specific env var is set, so normal
+operation and the full regression suite are unaffected by default) at each
+real commit point in `booking_service.py`, then genuinely `docker compose
+kill` (SIGKILL) the backend container mid-transaction and restarted it,
+reading real Postgres state after:
+- **Single booking** (`create_appointment`, one commit for Appointment +
+  Notification): killed 3s into the transaction.
+```
+--- appointment count BEFORE kill (mid-sleep) ---
+ count
+-------
+     0
+--- killing backend NOW (SIGKILL, real crash) ---
+ Container night_guard_ai-backend-1 Killing
+ Container night_guard_ai-backend-1 Killed
+```
+  After restart:
+```
+--- appointment rows for this customer AFTER restart (should still be 0) ---
+ count
+-------
+     0
+--- notification rows too (should be 0, same transaction) ---
+ count
+-------
+     0
+```
+  Fully rolled back — never a half-written row.
+- **Group all-or-nothing** (`_create_group_all_or_nothing`, one commit for
+  the whole batch): killed mid-final-commit.
+```
+--- appointment rows for customer2 AFTER restart (should still be 0) ---
+ count
+-------
+     0
+--- participant rows (should also be 0) ---
+ count
+-------
+     0
+```
+  Atomic both-or-neither held under a real kill.
+- **Group partial mode — a real gap found and fixed live.**
+  `_create_group_partial` used **two separate commits**: `create_appointment`'s
+  own commit (Appointment + Notification), then a second, later commit for
+  `AppointmentParticipant`. Killing in that gap left a real, confirmed
+  `Appointment` row with **zero participant rows**:
+```
+--- appointment row AFTER restart (should exist - already committed) ---
+                  id                  |             customer_id              |  status
+ 70af91ec-8812-4196-875f-27a238d3229b | dc9302fc-f437-4d43-a3f8-85d9548f7486  | CONFIRMED
+--- participant rows for it (the real gap) ---
+ appointment_id | name | notes | id
+----------------+------+-------+----
+(0 rows)
+```
+  **Fixed**: `create_appointment(..., _commit=False)` + the participant
+  rows + the notification dispatch now share **one** commit per cluster —
+  the identical pattern `_create_group_all_or_nothing` already used. Each
+  cluster is still its own independent commit, so partial mode's per-person
+  independence is unchanged. Re-ran the identical kill against the fixed
+  code: mid-sleep now shows **0 committed** (the write is flushed, not yet
+  split across two commits), and after restart **0 rows survive** — gap
+  closed. `test_group_booking.py` + `test_booking.py` (19 tests) re-verified
+  green immediately after the fix.
+
+**2. Webhook idempotency under a real concurrent retry storm.** 15 real
+concurrent HTTP POSTs (real HMAC-SHA256-signed WhatsApp payload, identical
+`wamid`) against the live server → all `200 OK`, exactly **1** Message row,
+**1** Conversation. Real backend logs showed 1 `processed` + 14
+`duplicate_skipped` — the app-level pre-check absorbed every duplicate,
+because the webhook route is `async def` but does its DB work inline with no
+threadpool, so this single-worker deployment inherently serializes webhook
+processing; **the DB unique constraint's own `IntegrityError` backstop was
+never actually exercised by this test** — a real, honest architectural
+finding, not swept under the rug. To genuinely stress the constraint itself
+(the actual mechanism Phase 22/26/27 built as the backstop, relevant to any
+future multi-worker deployment), ran 10 real OS threads with independent DB
+sessions forced to the identical instant via a real `threading.Barrier`, each
+inserting a `Message` with the same `external_message_id`:
+```
+thread 0: REJECTED: IntegrityError
+thread 1: REJECTED: IntegrityError
+thread 2: REJECTED: IntegrityError
+thread 3: REJECTED: IntegrityError
+thread 4: REJECTED: IntegrityError
+thread 5: REJECTED: IntegrityError
+thread 6: REJECTED: IntegrityError
+thread 7: REJECTED: IntegrityError
+thread 8: REJECTED: IntegrityError
+thread 9: INSERTED
+```
+Real final DB count for that `external_message_id`: **1**. The unique
+constraint holds under genuine concurrent commit pressure, not just
+sequential retries.
+
+**3. Notification retry bounds under a sustained outage.** A scripted
+provider that fails transiently on **every** call (an outage that never
+ends on its own, not a single flaky failure), driven through the real
+`dispatch_notification`:
+```
+notification_id=... send attempt 1/3 failed transiently, retrying: simulated sustained SMTP outage
+notification_id=... send attempt 2/3 failed transiently, retrying: simulated sustained SMTP outage
+notification_id=... failed: failed after 3 attempt(s): simulated sustained SMTP outage
+```
+Re-dispatch (simulating a cron pickup mid-outage), timed precisely:
+```
+real attempts made: 3
+real elapsed time: 2.01s
+final notification status: NotificationStatus.FAILED
+attempt timestamps (relative to first): [0.0, 1.0, 2.0]
+```
+Bounded at exactly 3 attempts every time, real 1s backoff, never accumulates
+across re-dispatches, never stuck `QUEUED` — always resolves to a real,
+alertable `FAILED`.
+
+**4. DB connection resilience mid-request.** Really stopped the postgres
+container for ~6s while polling the real `/health` endpoint against the live
+backend every 0.5s:
+```
+t=4.0s  status=200  body={"status":"ok","database":"connected"}
+t=4.5s  status=503  body={"error":{"type":"service_unavailable","message":"Database is unreachable."}}
+t=5.0s..10.5s  status=503 (same, real outage window)
+t=11.0s  status=200  body={"status":"ok","database":"connected"}
+```
+Backend container never restarted (`docker compose ps` showed the same
+container uptime throughout, confirming `pool_pre_ping=True` — already in
+place — did its job): clean `503`s during the real outage, transparent
+recovery the moment Postgres returned, no manual intervention.
+
+**5. Graceful shutdown.** No lifespan hook or
+`--timeout-graceful-shutdown` exists in this codebase, and none was added —
+uvicorn's **default** SIGTERM handling already does the right thing. Held a
+real 6s in-flight request open (a temporary, reverted-before-commit
+env-gated sleep in `/health`), sent a real SIGTERM mid-flight:
+```
+INFO:     Shutting down
+INFO:     Waiting for connections to close. (CTRL+C to force quit)
+INFO:     172.20.0.1:58202 - "GET /api/v1/health HTTP/1.1" 200 OK
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1]
+```
+Client-side: `RESPONSE: status=200 elapsed=6.11s`. The in-flight request
+completed before the process exited; container exit code `0`. No gap found,
+no fix needed.
+
+**Regression + cleanup.** All test instrumentation (env-gated sleep hooks in
+`booking_service.py`, the temporary delay in `health.py`, the `.env`
+test-only line) reverted before commit — `git diff` after cleanup showed
+only the real fix. Final suite: `345 passed, 1 skipped`, identical to
+baseline. Lint clean on the touched file. DB left in the same state as
+before the session (no leftover test rows).
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real mid-transaction kill + restart, single and group, DB state pasted | ✓ Pass — both atomic; the partial-mode gap found was fixed and re-verified |
+| Real concurrent (not sequential) webhook retry storm, real request/response + DB count | ✓ Pass — both the HTTP-level storm (revealing single-worker serialization) and the true-concurrent-thread proof of the DB constraint itself |
+| Real sustained-outage notification test, real attempt count + timing | ✓ Pass — bounded at 3, 1s backoff, real `FAILED` terminal state |
+| Real DB-unreachable-mid-request test, real error vs. crash, real recovery | ✓ Pass — clean 503s, no backend crash, transparent recovery |
+| Real findings on graceful shutdown | ✓ Pass — uvicorn's default behavior already correct, no code change needed |
+| Full regression suite, zero regressions | ✓ Pass — 345 passed, 1 skipped, matching baseline |
+
+**Known issues / punted items:**
+- **The webhook route's single-worker serialization means the DB unique
+  constraint's `IntegrityError` backstop is not exercised by real traffic
+  today** — it only matters once this deployment ever runs more than one
+  worker/process, or once the webhook handler's DB work is moved off the
+  event loop thread. Proven live (§2) that the constraint itself is correct
+  and ready for that day; flagging the current single-worker deployment as
+  the reason it isn't naturally exercised yet, not a defect in the
+  constraint.
+- **No true worker/cron exists for `dispatch_queued_notifications`** —
+  unchanged since Phase 13, still a real, deliberate scope boundary.
+- Carried over from every prior phase, still real and still open: no
+  staff-capacity model, fixed 15-minute slot grid, exact-match-only
+  service-name resolution, in-memory rate limiter, no refresh tokens.
+- Committed as `2ee62ac` after user confirmation in chat (the PHASE_STATUS.md
+  write-up itself was, per the note at the top of this entry, added later —
+  in the Phase 31 session — not at commit time).
+
+---
+
+## Phase 31 — Observability
+
+**Date:** 2026-09-05
+
+**Required:** Track real operational health — not a full monitoring stack
+(Prometheus/Grafana would be over-building for this phase's scope) — so a
+real operator can answer "is this system healthy right now, and if not,
+why." Structured metrics for API health, LLM latency/failure, booking
+success/failure (correctly distinguishing Phase 10's expected race-condition
+409s from a genuine failure), per-channel webhook processing, notification
+delivery, and human handoff reason breakdown; a real queryable source for
+all of it; 3-5 alert-worthy conditions with confirmation the underlying data
+exists; an optional small internal health view.
+
+**Design decision — log-based vs. DB-based metrics, split deliberately, not
+uniformly:** reused whichever real source already fits each metric, rather
+than building one new metrics-collection pipeline for everything:
+- **DB-backed** (`GET /api/v1/internal/metrics`) for booking, notification,
+  and handoff outcomes — all three already have (or, for booking, now have)
+  a real persisted status/result column, tenant-scoped by `business_id`,
+  naturally queryable with a `WHERE created_at >= ...` time window.
+- **Structured JSON log lines** for LLM call latency/outcome and per-channel
+  webhook processing counts — both are high-frequency, ephemeral events with
+  no natural persisted home in this schema; inventing a new DB table to
+  duplicate what a real, already-existing JSON logger already carries would
+  be exactly the over-building this phase's own brief warns against.
+- **A genuine system error (an unhandled exception / raw 500) is NOT in the
+  booking metrics breakdown at all** — a real bug bypasses
+  `booking_service`'s own try/except entirely and hits the existing
+  `unhandled_exception_handler` (found live back in Phase 9), which already
+  logs a real structured line (`logger=app.core.exceptions`,
+  `message="unhandled exception on ..."`). This is the actual "something
+  broke" signal, deliberately kept separate from booking's race/validation
+  outcomes so the two can never be conflated.
+- **No new UI page built.** Phase 28's reference UI is explicitly
+  "non-functional, static, placeholder" by its own admission — building a
+  second static mockup page here would add surface area for low functional
+  value next to the real, testable metrics endpoint. Flagging as a
+  deliberate scope call (the ticket left this explicitly optional): a future
+  phase could wire Phase 28's Overview page to `fetch()` this real endpoint
+  with almost no new code.
+
+**Implemented:**
+
+- **`app/core/logging.py`**: `JSONFormatter` extended to propagate any
+  `extra={...}` fields a caller passes into the JSON payload as real
+  top-level keys — previously silently dropped (confirmed by reading the old
+  code: it only ever read `timestamp`/`level`/`logger`/`message`/`exc_info`).
+  This is the one shared, small, high-value fix every other change in this
+  phase builds on: without it, "structured metrics" would mean embedding
+  fields in a message string and regex-parsing them back out, not genuinely
+  queryable structured data. A plain `logger.info("msg")` call (no `extra`)
+  is completely unaffected — proven directly (Verification §1).
+- **`app/llm/azure_openai.py`**: `_post()` now logs one real structured line
+  per real Azure call — `llm_path` (embeddings/chat/completions — safe
+  metadata, never the endpoint URL or a request/response body),
+  `llm_outcome` (`success` / `transient_retry_exhausted` /
+  `permanent_failure`), `llm_attempts`, `llm_duration_ms`. The
+  transient/permanent split reuses the exact classification `_post` already
+  makes internally for its own retry decision (Phase 6/25c): a transport
+  error or a repeated 404 is retried and is "transient" even if the retry
+  budget is ultimately exhausted; any other non-200 status breaks on its
+  first attempt, never retried, and is "permanent." No new retry logic, no
+  behavior change — purely additive logging around the existing decision.
+- **`app/api/routes/webhooks.py`**: replaced the old plain-string summary log
+  line (`"whatsapp webhook processed: %d message(s), outcomes=%s"` — a
+  Python list repr embedded in a message string, not separately queryable)
+  with a shared `_log_webhook_outcome_counts(channel, outcomes)` helper, used
+  by all three routes (WhatsApp/Messenger/Instagram) — one structured line
+  per real delivery: `webhook_channel`, `webhook_received`,
+  `webhook_processed`, `webhook_duplicate_skipped`, `webhook_failed`.
+  `duplicate_skipped` (both the app-level pre-check and the real DB-race
+  backstop) is deliberately never counted as `failed` — Phase 30 already
+  proved this is healthy, expected idempotency working, not an error.
+  `failed` = an unrecognized tenant identifier (`unknown_phone_number_id` /
+  `unknown_page_id` / `unknown_ig_account_id` / `business_not_found`) — the
+  one real "we couldn't even figure out who this is for" outcome.
+- **`app/services/booking_service.py`**: `create_appointment`'s body wrapped
+  in a `try/except (NotFoundError, UnprocessableEntityError, ConflictError)`
+  that records every real outcome via `_record_booking_metric` — reusing
+  Phase 3's existing, general-purpose `AuditLog` model
+  (`action="booking_attempt"`, `result=` one of `success` / `not_found` /
+  `unavailable` / `conflict_race_lost`) rather than a new table. A race-lost
+  booking never writes an `Appointment` row at all, so without this there
+  would be no trace one ever happened — `AuditLog` already exists for
+  exactly this kind of polymorphic "record that something happened" need
+  (previously only used by `reschedule_appointment`).
+  - **A real transactional-safety subtlety, found and fixed before it ever
+    shipped, not live in production first**: recording is gated on
+    `_commit=True`. The all-or-nothing group-booking write path
+    (`_create_group_all_or_nothing`) calls `create_appointment(...,
+    _commit=False)` — if the metric recorder's own `db.commit()` fired there
+    unconditionally, it would durably commit the batch's still-pending,
+    not-yet-finalized Appointment/Notification/Participant rows **ahead of**
+    the batch's own atomic commit/rollback, silently reintroducing exactly
+    the kind of partial-write risk Phase 30 spent a whole phase closing.
+    `_create_group_all_or_nothing` and `_create_group_partial` (which also
+    now uses `_commit=False`, per Phase 30's own fix) each record their own
+    metric explicitly, at the correct point in their own control flow: after
+    their real commit for a success, and — for `_create_group_all_or_nothing`'s
+    race-during-write-pass failure branch specifically — only after an
+    explicit `db.rollback()` first (a safe no-op when `create_appointment`'s
+    own `IntegrityError` handler already rolled back; not a no-op, and
+    therefore load-bearing, for the narrower NotFoundError/
+    UnprocessableEntityError-mid-batch edge case, where no automatic rollback
+    would otherwise have happened before this phase). Re-verified against
+    the full booking/group-booking suite after this change (Verification
+    §2) and reasoned through structurally (a metric's own commit always
+    happens strictly *after* the real booking data's own atomic commit, so a
+    crash between them can only ever drop the metric row, never the booking
+    data itself — the same "best-effort, never blocks the real operation"
+    discipline `dispatch_notification` already established).
+- **`app/api/routes/internal_metrics.py`** (new): `GET /api/v1/internal/metrics?hours=24`
+  (default 24, `1..720` bounded like `/followups/run`), `require_role(["owner","admin"])`,
+  tenant-scoped via `current_user.business_id` — same bar as reports/training
+  room. Real DB aggregation, no new metrics infrastructure:
+  - `booking`: `by_result` (grouped `AuditLog.result` counts),
+    `conflict_race_lost` broken out explicitly, `genuine_failure_count`/
+    `genuine_failure_rate` computed by EXCLUDING `success`/`not_found`/
+    `unavailable`/`conflict_race_lost` from the "genuine failure" bucket —
+    this is the concrete mechanism that keeps a real race loss from ever
+    inflating an alert-worthy error rate.
+  - `notifications`: `by_status` (grouped `Notification.status` counts,
+    reusing Phase 13's real states), `failure_rate`.
+  - `handoffs`: `total` + `by_reason`, bucketed by a stable substring match
+    against the four real reason shapes `handoff_service._handoff_reason`
+    produces (two of which embed dynamic data — similarity score / intent —
+    so exact-string grouping would fragment into one bucket per unique
+    score; substring bucketing keeps this meaningful).
+- **`app/main.py`**: registered the new router (`prefix="/api/v1"`,
+  `tags=["internal"]`).
+
+**Verification — real output, pasted directly:**
+
+1. **JSONFormatter extra-field propagation — real, direct proof:**
+```
+{"timestamp": "2026-09-05T08:04:58.351957+00:00", "level": "INFO", "logger": "test", "message": "plain message no extra"}
+{"timestamp": "2026-09-05T08:04:58.352025+00:00", "level": "INFO", "logger": "test", "message": "structured event", "duration_ms": 123.45, "outcome": "success", "path": "chat/completions"}
+```
+   A plain call (no `extra`) is byte-for-byte unaffected; a call with `extra`
+   gets real top-level JSON keys.
+
+2. **Booking metric transactional safety — full booking/group-booking suite
+   green after the change** (including the two tests that most directly
+   exercise the exact risk described above):
+```
+$ docker compose exec backend python -m pytest tests/integration/test_booking.py tests/integration/test_group_booking.py tests/integration/test_cancel_reschedule.py tests/integration/test_notifications.py -v
+...
+test_concurrent_booking_race_exactly_one_succeeds PASSED
+test_all_or_nothing_race_rolls_back_everything PASSED
+...
+======================= 38 passed, 4 warnings in 42.19s ========================
+```
+
+3. **Real end-to-end demonstration** — one business, real registered
+   customers/services/hours, then real activity generated against the live
+   server: a real successful booking, a real sequential-duplicate 422 (not a
+   race), a genuine concurrent race for the same never-before-booked slot
+   (real `threading.Barrier`-forced simultaneity, same technique Phase 10's
+   own authoritative race test used — the first un-barriered attempt landed
+   on the app-level pre-check as a 422, same known limitation Phase 10's
+   PHASE_STATUS.md already documented; the barrier-forced version reliably
+   produced the real DB-constraint 409 three times in a row):
+```
+request 0: HTTP 409 {"error":{"type":"conflict","message":"This slot was just booked by someone else — please choose another time."}}
+request 1: HTTP 201 {"id":"2eef2785-...",...}
+```
+   Two real conversation turns through the real, unstubbed Azure LLM (a
+   pricing question, answered from the real services list; a business-hours
+   question with no knowledge doc on file, correctly triggering a real
+   Phase 19 handoff) — real structured LLM logs:
+```
+{"logger": "app.llm.azure_openai", "message": "llm provider call succeeded", "llm_path": "embeddings", "llm_outcome": "success", "llm_attempts": 1, "llm_duration_ms": 641.0}
+{"logger": "app.llm.azure_openai", "message": "llm provider call succeeded", "llm_path": "chat/completions", "llm_outcome": "success", "llm_attempts": 1, "llm_duration_ms": 6192.9}
+```
+   A real notification failure — a customer with no email/phone on file at
+   all (Phase 13's real, permanent, zero-network-call "no recipient" path):
+```
+{"level": "ERROR", "logger": "app.services.notifications.dispatch_service", "message": "notification_id=79f0f176-ff00-42b8-a1dd-6211cb3c1244 failed: failed after 1 attempt(s): No recipient email address on file."}
+```
+   **The real metrics endpoint, queried right after all of the above:**
+```
+$ curl "http://localhost:8010/api/v1/internal/metrics?hours=24" -H "Authorization: Bearer <owner token>"
+{
+    "window_hours": 24,
+    "booking": {
+        "total_attempts": 11,
+        "by_result": {"success": 6, "unavailable": 2, "conflict_race_lost": 3},
+        "conflict_race_lost": 3,
+        "genuine_failure_count": 0,
+        "genuine_failure_rate": 0.0
+    },
+    "notifications": {
+        "total": 6,
+        "by_status": {"sent": 5, "failed": 1},
+        "failure_rate": 0.1667
+    },
+    "handoffs": {
+        "total": 1,
+        "by_reason": {"no_knowledge_match": 1}
+    }
+}
+```
+   Matches the real activity exactly: 3 real barrier-forced 409s correctly
+   land in `conflict_race_lost`, not `genuine_failure_count` — **the race
+   losses are provably not conflated with a system failure.**
+
+4. **Cross-tenant isolation — real second business, real second token, real
+   check:**
+```
+$ curl "http://localhost:8010/api/v1/internal/metrics?hours=24" -H "Authorization: Bearer <second business's OWN owner token>"
+{
+    "window_hours": 24,
+    "booking": {"total_attempts": 0, "by_result": {}, "conflict_race_lost": 0, "genuine_failure_count": 0, "genuine_failure_rate": 0.0},
+    "notifications": {"total": 0, "by_status": {}, "failure_rate": 0.0},
+    "handoffs": {"total": 0, "by_reason": {}}
+}
+```
+   All zeros, despite business 1 having 11 booking attempts / 6
+   notifications / 1 handoff at that exact moment — none leaked across.
+
+5. **Webhook processing metrics — real WhatsApp delivery + real duplicate,
+   real structured logs, real `jq` aggregation (genuinely queryable, not
+   just readable):**
+```
+{"logger": "app.api.routes.webhooks", "message": "webhook delivery processed", "webhook_channel": "whatsapp", "webhook_received": 1, "webhook_processed": 1, "webhook_duplicate_skipped": 0, "webhook_failed": 0}
+{"logger": "app.api.routes.webhooks", "message": "webhook delivery processed", "webhook_channel": "whatsapp", "webhook_received": 1, "webhook_processed": 0, "webhook_duplicate_skipped": 1, "webhook_failed": 0}
+
+$ docker compose logs backend --since 1m | grep "webhook delivery processed" | sed 's/^[^{]*//' | jq -s '
+  group_by(.webhook_channel) | map({channel: .[0].webhook_channel,
+    total_received: (map(.webhook_received)|add), total_processed: (map(.webhook_processed)|add),
+    total_duplicate_skipped: (map(.webhook_duplicate_skipped)|add), total_failed: (map(.webhook_failed)|add)})'
+[{"channel": "whatsapp", "total_received": 2, "total_processed": 1, "total_duplicate_skipped": 1, "total_failed": 0}]
+```
+
+6. **LLM latency aggregation — same real `jq` technique:**
+```
+$ docker compose logs backend --since 5m | grep "llm provider call" | sed 's/^[^{]*//' | jq -s '
+  group_by(.llm_path) | map({path: .[0].llm_path, count: length,
+    avg_duration_ms: ((map(.llm_duration_ms)|add)/length), success_count: (map(select(.llm_outcome=="success"))|length)})'
+[{"path":"chat/completions","count":3,"avg_duration_ms":5087.2,"success_count":3},
+ {"path":"embeddings","count":3,"avg_duration_ms":677.83,"success_count":3}]
+```
+
+7. **Secrets grep — clean:**
+```
+$ docker compose logs backend --since 30m | grep -F "<real GMAIL_APP_PASSWORD>" | wc -l   -> 0
+$ docker compose logs backend --since 30m | grep -F "<real AZURE_OPENAI_API_KEY>" | wc -l  -> 0
+$ git grep -nE 'GMAIL_APP_PASSWORD\s*=\s*[A-Za-z0-9]' -- . ':!backend/.env.example'   -> only the placeholder
+$ git grep -nE 'AZURE_OPENAI_API_KEY\s*=\s*[A-Za-z0-9]' -- . ':!backend/.env.example' -> only the placeholder
+$ git ls-files | grep -E '\.env$'   -> none tracked
+```
+
+8. Lint: `docker compose exec backend ruff check app/core/logging.py app/llm/azure_openai.py app/api/routes/webhooks.py app/api/routes/internal_metrics.py app/services/booking_service.py app/main.py` → `All checks passed!`
+
+9. Full regression suite:
+```
+$ docker compose exec backend python -m pytest tests/ -q
+345 passed, 1 skipped, 30 warnings in 287.96s (0:04:47)
+```
+   Identical to this phase's own baseline (`345 passed, 1 skipped`) — zero regressions.
+
+10. DB left clean after all real/manual testing: both demo businesses
+    (and everything hanging off them) deleted; `SELECT count(*) FROM
+    businesses WHERE name LIKE 'Phase31%'` → `0`.
+
+**The 3-5 alert-worthy conditions (this phase does NOT wire up real
+alerting — PagerDuty etc. — only confirms the data exists and is queryable;
+thresholds below are illustrative, a real operator would tune them against
+real baseline traffic):**
+
+| # | Condition | Real, confirmed-queryable source |
+|---|---|---|
+| 1 | **Genuine booking failure rate spike** (excludes race losses) | `GET /internal/metrics` → `booking.genuine_failure_rate` nonzero/rising. In healthy operation this is always `0.0` today (only `success`/`not_found`/`unavailable`/`conflict_race_lost` are ever produced) — confirmed live in §3 with 3 real race losses correctly excluded. |
+| 2 | **Notification failure rate spike** | `GET /internal/metrics` → `notifications.failure_rate` well above the normal "customer gave no contact info" background rate — confirmed real in §3 (1/6 = 16.67% from one real no-contact-info customer). |
+| 3 | **LLM failure rate or latency spike** | Structured logs, `logger=app.llm.azure_openai`, `llm_outcome != "success"`, or `llm_duration_ms` well outside its normal ~0.6–6s range — confirmed real and aggregable in §6. |
+| 4 | **Genuine system error (unhandled exception) rate** | Structured logs, `logger=app.core.exceptions`, `message` starting with `"unhandled exception on"` — the actual "something broke" signal, deliberately kept separate from booking's own race/validation outcomes; this mechanism already exists (found live in Phase 9) and is queryable the identical way. |
+| 5 | **Webhook failed/unrecognized-tenant rate per channel** | Structured logs, `logger=app.api.routes.webhooks`, `webhook_failed` nonzero/rising relative to `webhook_received` — confirmed real and aggregable in §5. |
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real demonstration: real bookings incl. a real 409, real LLM calls, a real notification failure, real metrics pulled | ✓ Pass — §3 |
+| Race-condition 409 correctly NOT counted as a system failure | ✓ Pass — §3, `genuine_failure_rate: 0.0` with 3 real race losses present |
+| Metrics tenant-scoped, cross-tenant check | ✓ Pass — §4 |
+| 3-5 alert-worthy conditions, data confirmed to exist | ✓ Pass — table above, each backed by a real query in §3/§5/§6 |
+| Full regression suite, zero regressions | ✓ Pass — §9 |
+| Secrets grep clean | ✓ Pass — §7 |
+
+**Known issues / punted items:**
+- **No real alerting wired up** (PagerDuty, etc.) — explicitly out of this
+  phase's scope per the ticket; only the underlying queryable data is
+  confirmed to exist.
+- **No new "System Health" UI page** — a deliberate scope call (see "Design
+  decision" above); Phase 28's reference UI remains static/placeholder,
+  unchanged this phase. A future phase wiring its Overview page to
+  `fetch('/api/v1/internal/metrics')` would need very little new code.
+- **The booking metric's own AuditLog commit is best-effort, not
+  transactionally joined to the booking it describes** for the
+  `_commit=True` (single-booking and partial-mode-group) success path — a
+  crash between the real booking's own commit and the metric's separate
+  commit would drop just that one metric row, never the booking itself.
+  Deliberate (same "never let observability break the real operation"
+  discipline as `dispatch_notification`), not an oversight — flagged
+  explicitly rather than hidden.
+- **Handoff reason bucketing is a substring match against today's four real
+  reason strings** (`handoff_service._handoff_reason`) — if that function's
+  wording ever changes, the bucketing would silently fall back to a generic
+  `"other"` bucket rather than breaking; a future phase adding a proper
+  reason-category enum column would make this exact instead of
+  string-matched.
+- **Webhook/LLM metrics are log-based, not DB-based** — deliberate (see
+  "Design decision" above), but means they're only as durable/queryable as
+  wherever container logs are shipped/retained; no new persistence was
+  added for either, matching this phase's own "don't over-build" brief.
+- Carried over from every prior phase, still real and still open: no
+  staff-capacity model, fixed 15-minute slot grid, exact-match-only
+  service-name resolution, in-memory rate limiter, no refresh tokens, no
+  true worker/cron for `dispatch_queued_notifications`.
+- No commit has been made yet — awaiting your confirmation of this
+  verification output per working rule #6.

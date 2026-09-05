@@ -16,6 +16,37 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Phase 31: real "processed" is its own outcome; the DB-idempotency backstop
+# (a genuine concurrent-race duplicate, not just the app-level pre-check) is
+# also folded into duplicate_skipped for metrics purposes — both mean "this
+# exact message was already, or is being, handled," never a real failure.
+_FAILURE_STATUSES = frozenset({"business_not_found"})
+
+
+def _log_webhook_outcome_counts(channel: str, outcomes: list[dict]) -> None:
+    """One structured log line per real webhook delivery with real per-outcome
+    counts — genuinely queryable (e.g. `jq 'select(.webhook_channel=="whatsapp")'`),
+    not just a Python list repr embedded in a message string. `failed` is
+    "we couldn't even resolve who this is for" (an unknown tenant identifier)
+    or any status this module doesn't yet recognize — never conflated with
+    duplicate_skipped, which is healthy, expected idempotency working."""
+    received = len(outcomes)
+    processed = sum(1 for o in outcomes if o["status"] == "processed")
+    duplicate_skipped = sum(1 for o in outcomes if o["status"] == "duplicate_skipped")
+    failed = sum(
+        1 for o in outcomes if o["status"] in _FAILURE_STATUSES or o["status"].startswith("unknown_")
+    )
+    logger.info(
+        "webhook delivery processed",
+        extra={
+            "webhook_channel": channel,
+            "webhook_received": received,
+            "webhook_processed": processed,
+            "webhook_duplicate_skipped": duplicate_skipped,
+            "webhook_failed": failed,
+        },
+    )
+
 
 @router.get("/api/v1/webhooks/whatsapp", response_class=PlainTextResponse)
 def verify_whatsapp_webhook(
@@ -53,7 +84,7 @@ async def receive_whatsapp_webhook(request: Request, db: Session = Depends(get_d
 
     payload = json.loads(raw_body)
     outcomes = process_webhook_payload(db, payload)
-    logger.info("whatsapp webhook processed: %d message(s), outcomes=%s", len(outcomes), [o["status"] for o in outcomes])
+    _log_webhook_outcome_counts("whatsapp", outcomes)
     return {"status": "ok"}
 
 
@@ -90,7 +121,7 @@ async def receive_messenger_webhook(request: Request, db: Session = Depends(get_
 
     payload = json.loads(raw_body)
     outcomes = process_messenger_webhook_payload(db, payload)
-    logger.info("messenger webhook processed: %d message(s), outcomes=%s", len(outcomes), [o["status"] for o in outcomes])
+    _log_webhook_outcome_counts("messenger", outcomes)
     return {"status": "ok"}
 
 
@@ -127,5 +158,5 @@ async def receive_instagram_webhook(request: Request, db: Session = Depends(get_
 
     payload = json.loads(raw_body)
     outcomes = process_instagram_webhook_payload(db, payload)
-    logger.info("instagram webhook processed: %d message(s), outcomes=%s", len(outcomes), [o["status"] for o in outcomes])
+    _log_webhook_outcome_counts("instagram", outcomes)
     return {"status": "ok"}

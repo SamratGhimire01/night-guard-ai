@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -14,6 +15,8 @@ from app.db.models.customer import Customer
 from app.db.models.notification import Notification, NotificationStatus
 from app.services import customer_service, service_service, staff_service
 from app.services.notifications import dispatch_notification
+
+logger = logging.getLogger(__name__)
 
 _CANCELLABLE_STATUSES = (AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED)
 
@@ -187,65 +190,120 @@ def create_appointment(
     (Phase 13). When `_commit=True` it is dispatched for real immediately after
     commit; when `_commit=False` (an all-or-nothing group write), the caller
     dispatches it after the whole group's own outer commit succeeds — see
-    `_create_group_all_or_nothing`."""
-    service = service_service.get_service(db, business_id=business_id, service_id=service_id)
-    if service is None:
-        raise NotFoundError("Service not found.")
-    if staff_id is not None and staff_service.get_staff(db, business_id=business_id, staff_id=staff_id) is None:
-        raise NotFoundError("Staff member not found.")
-    customer = customer_service.get_customer(db, business_id=business_id, customer_id=customer_id)
-    if customer is None:
-        raise NotFoundError("Customer not found.")
+    `_create_group_all_or_nothing`.
 
-    available = get_available_slots(
-        db,
-        business_id=business_id,
-        service_id=service_id,
-        staff_id=staff_id,
-        date_from=scheduled_at.date(),
-        date_to=scheduled_at.date(),
-    )
-    if scheduled_at not in available:
-        raise UnprocessableEntityError(
-            "Requested time is not available (outside business hours, on a closed date, in the "
-            "past, or already booked)."
-        )
-
-    appointment = Appointment(
-        business_id=business_id,
-        customer_id=customer_id,
-        service_id=service_id,
-        staff_id=_resolve_effective_staff_id(service, staff_id),
-        scheduled_at=scheduled_at,
-        duration_minutes=service.duration_minutes,
-        status=AppointmentStatus.CONFIRMED,
-        group_booking_id=group_booking_id,
-    )
-    db.add(appointment)
+    Phase 31: every real outcome (success, or a caught NotFoundError/
+    UnprocessableEntityError/ConflictError) is also recorded as a real
+    AuditLog row (action="booking_attempt") — the metrics endpoint's real,
+    tenant-scoped source for booking success/failure rate, distinguishing a
+    ConflictError ("customer lost a real race for a slot" — expected, not a
+    system failure) from the others. Only recorded when `_commit=True`
+    (every single-booking and partial-mode-group caller): the all-or-nothing
+    group write path (`_commit=False`) records its own metric once for the
+    whole batch instead — see `_create_group_all_or_nothing` — so a metric
+    row is never committed ahead of the batch's own atomic commit/rollback."""
     try:
-        db.flush()
-    except IntegrityError:
-        db.rollback()
-        raise ConflictError("This slot was just booked by someone else — please choose another time.")
+        service = service_service.get_service(db, business_id=business_id, service_id=service_id)
+        if service is None:
+            raise NotFoundError("Service not found.")
+        if staff_id is not None and staff_service.get_staff(db, business_id=business_id, staff_id=staff_id) is None:
+            raise NotFoundError("Staff member not found.")
+        customer = customer_service.get_customer(db, business_id=business_id, customer_id=customer_id)
+        if customer is None:
+            raise NotFoundError("Customer not found.")
 
-    business = db.get(Business, business_id)
-    notification = Notification(
-        business_id=business_id,
-        appointment_id=appointment.id,
-        channel=_notification_channel(business, customer),
-        event_type="booking_confirmed",
-        status=NotificationStatus.QUEUED,
-    )
-    db.add(notification)
+        available = get_available_slots(
+            db,
+            business_id=business_id,
+            service_id=service_id,
+            staff_id=staff_id,
+            date_from=scheduled_at.date(),
+            date_to=scheduled_at.date(),
+        )
+        if scheduled_at not in available:
+            raise UnprocessableEntityError(
+                "Requested time is not available (outside business hours, on a closed date, in the "
+                "past, or already booked)."
+            )
 
-    if _commit:
-        db.commit()
-        db.refresh(appointment)
-        db.refresh(notification)
-        dispatch_notification(db, notification)
+        appointment = Appointment(
+            business_id=business_id,
+            customer_id=customer_id,
+            service_id=service_id,
+            staff_id=_resolve_effective_staff_id(service, staff_id),
+            scheduled_at=scheduled_at,
+            duration_minutes=service.duration_minutes,
+            status=AppointmentStatus.CONFIRMED,
+            group_booking_id=group_booking_id,
+        )
+        db.add(appointment)
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            raise ConflictError("This slot was just booked by someone else — please choose another time.")
+
+        business = db.get(Business, business_id)
+        notification = Notification(
+            business_id=business_id,
+            appointment_id=appointment.id,
+            channel=_notification_channel(business, customer),
+            event_type="booking_confirmed",
+            status=NotificationStatus.QUEUED,
+        )
+        db.add(notification)
+
+        if _commit:
+            db.commit()
+            db.refresh(appointment)
+            db.refresh(notification)
+            dispatch_notification(db, notification)
+        else:
+            db.flush()
+    except (NotFoundError, UnprocessableEntityError, ConflictError) as exc:
+        if _commit:
+            _record_booking_metric(db, business_id=business_id, result=_booking_metric_result(exc))
+        raise
     else:
-        db.flush()
-    return appointment
+        if _commit:
+            _record_booking_metric(db, business_id=business_id, result="success")
+        return appointment
+
+
+_BOOKING_METRIC_RESULTS = {
+    NotFoundError: "not_found",
+    UnprocessableEntityError: "unavailable",
+    ConflictError: "conflict_race_lost",
+}
+
+
+def _booking_metric_result(exc: Exception) -> str:
+    return _BOOKING_METRIC_RESULTS.get(type(exc), "unknown_error")
+
+
+def _record_booking_metric(db: Session, *, business_id: uuid.UUID, result: str) -> None:
+    """Reuses the existing, general-purpose AuditLog model (Phase 3) rather than
+    a new table — a real, DB-queryable, tenant-scoped record of every booking
+    attempt's outcome, including the ones that never write an Appointment row
+    at all (a race loss creates no Appointment, so without this there'd be no
+    trace one ever happened). A self-contained commit: this never touches the
+    caller's own transaction state, and a failure to record it must never
+    break the booking attempt it's describing (never raises)."""
+    try:
+        db.add(
+            AuditLog(
+                business_id=business_id,
+                actor="system",
+                action="booking_attempt",
+                resource_type="appointment",
+                resource_id="n/a",
+                result=result,
+            )
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("failed to record booking_attempt metric for business_id=%s (non-fatal)", business_id)
 
 
 def _cluster_group_people(people: list[dict]) -> list[dict]:
@@ -379,6 +437,12 @@ def _create_group_partial(
                     ),
                 }
             )
+            # Recorded here, not inside create_appointment itself: this call used
+            # _commit=False, so create_appointment's own metric recording (gated
+            # on _commit=True) was skipped — each cluster in partial mode is its
+            # own independent commit/failure, safe to record immediately (unlike
+            # the all-or-nothing batch, no cross-cluster dangling write risk here).
+            _record_booking_metric(db, business_id=business_id, result=_booking_metric_result(exc))
             continue
         # Phase 30 fix: the appointment (+ its queued Notification, both written by
         # create_appointment(_commit=False) above) and its AppointmentParticipant
@@ -395,6 +459,7 @@ def _create_group_partial(
             select(Notification).where(Notification.appointment_id == appointment.id)
         ).scalar_one()
         dispatch_notification(db, notification)
+        _record_booking_metric(db, business_id=business_id, result="success")
         bookings.append(
             {
                 "labels": cluster["labels"],
@@ -458,6 +523,7 @@ def _create_group_all_or_nothing(
             }
             for i, cluster in enumerate(clusters)
         ]
+        _record_booking_metric(db, business_id=business_id, result="unavailable")
         return {"group_booking_id": str(group_booking_id), "all_or_nothing": True, "success": False, "bookings": bookings}
 
     try:
@@ -476,9 +542,17 @@ def _create_group_all_or_nothing(
         ]
     except (NotFoundError, UnprocessableEntityError, ConflictError) as exc:
         # A genuine race: something changed between the pre-check above and this
-        # write pass. Nothing has been committed (create_appointment rolled back
-        # the whole transaction on the flush that failed) — honestly report every
-        # requested slot as not booked, never a partial write.
+        # write pass. A ConflictError means create_appointment's own IntegrityError
+        # handler already rolled back the whole transaction; a NotFoundError/
+        # UnprocessableEntityError from a LATER cluster (a service/staff deleted
+        # mid-batch — narrow, pre-existing edge case) would NOT have — this
+        # explicit rollback (a safe no-op in the already-rolled-back case) is what
+        # makes it safe for _record_booking_metric below to commit: without it,
+        # that commit could accidentally durable-write an earlier cluster's
+        # dangling flushed-but-never-meant-to-be-committed Appointment row.
+        # Nothing has been committed either way — honestly report every requested
+        # slot as not booked, never a partial write.
+        db.rollback()
         bookings = [
             {
                 "labels": cluster["labels"],
@@ -489,6 +563,7 @@ def _create_group_all_or_nothing(
             }
             for cluster in clusters
         ]
+        _record_booking_metric(db, business_id=business_id, result=_booking_metric_result(exc))
         return {"group_booking_id": str(group_booking_id), "all_or_nothing": True, "success": False, "bookings": bookings}
 
     for cluster, appointment in zip(clusters, appointments):
@@ -497,6 +572,7 @@ def _create_group_all_or_nothing(
     db.commit()
     for appointment in appointments:
         db.refresh(appointment)
+    _record_booking_metric(db, business_id=business_id, result="success")
 
     # Each create_appointment(..., _commit=False) call above already queued a
     # booking-confirmation Notification but deliberately didn't dispatch it —

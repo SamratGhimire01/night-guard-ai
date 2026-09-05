@@ -3,9 +3,18 @@ import logging
 import sys
 from datetime import datetime, timezone
 
+# The standard attributes every LogRecord carries regardless of what's logged —
+# anything else on record.__dict__ came from a caller's logger.info(..., extra={...})
+# and is a real, deliberately-structured field (Phase 31: LLM latency, webhook
+# outcome counts, etc.) that must survive into the JSON output, not silently drop.
+_STANDARD_LOG_RECORD_ATTRS = frozenset(vars(logging.LogRecord("", 0, "", 0, "", (), None))) | {"message", "asctime"}
+
 
 class JSONFormatter(logging.Formatter):
-    """Renders log records as single-line JSON for structured log aggregation."""
+    """Renders log records as single-line JSON for structured log aggregation.
+    Any `extra={...}` fields a caller passes are included as top-level keys —
+    real, queryable structured data (e.g. via `jq`), not just embedded in the
+    message string."""
 
     def format(self, record: logging.LogRecord) -> str:
         payload = {
@@ -14,9 +23,12 @@ class JSONFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
+        for key, value in record.__dict__.items():
+            if key not in _STANDARD_LOG_RECORD_ATTRS:
+                payload[key] = value
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
-        return json.dumps(payload)
+        return json.dumps(payload, default=str)
 
 
 def configure_logging(log_level: str = "INFO") -> None:
