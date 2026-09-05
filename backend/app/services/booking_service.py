@@ -635,6 +635,8 @@ def list_appointments(
     date_from: date | None = None,
     date_to: date | None = None,
     group_booking_id: uuid.UUID | None = None,
+    limit: int = 50,
+    offset: int = 0,
 ) -> list[Appointment]:
     filters = [Appointment.business_id == business_id]
     if customer_id is not None:
@@ -653,5 +655,7 @@ def list_appointments(
         if date_to is not None:
             filters.append(Appointment.scheduled_at < datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=tz))
     return list(
-        db.execute(select(Appointment).where(*filters).order_by(Appointment.scheduled_at)).scalars()
+        db.execute(
+            select(Appointment).where(*filters).order_by(Appointment.scheduled_at).limit(limit).offset(offset)
+        ).scalars()
     )

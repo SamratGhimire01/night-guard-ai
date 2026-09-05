@@ -28,8 +28,23 @@ WINDOW_SECONDS = 60
 #     from being used to hammer the endpoint once a session exists, without
 #     punishing every other visitor sharing the same IP (e.g. behind NAT/a
 #     shared office network).
+#   - per-business_id (Phase 29): neither of the above bounds AGGREGATE
+#     volume against one target business. The widget's CORS is intentionally
+#     wildcard (any site can embed it — see WidgetCORSMiddleware), which
+#     means a malicious third-party page can fire this request from every
+#     one of ITS OWN visitors' browsers — each a distinct IP, each (with no
+#     session_token sent) a fresh session, so per-IP/per-session limiting
+#     never engages no matter how large the flood gets. Real, live-verified
+#     gap: see tests/security/test_phase29_widget_distributed_flood.py
+#     (500 simulated distinct IPs, 4,500 requests against one business_id,
+#     zero blocked by the two limiters above). This third limiter catches
+#     that shape directly: total volume for one business_id, regardless of
+#     how many distinct IPs/sessions it's spread across. Ceiling picked well
+#     above any realistic small-business peak (a widget message is a short
+#     chat turn, not a page load) while still bounding worst-case abuse.
 WIDGET_IP_MAX_ATTEMPTS = 20
 WIDGET_SESSION_MAX_ATTEMPTS = 10
+WIDGET_BUSINESS_MAX_ATTEMPTS = 200
 WIDGET_WINDOW_SECONDS = 60
 
 
@@ -58,4 +73,7 @@ login_rate_limiter = RateLimiter()
 widget_ip_rate_limiter = RateLimiter(max_attempts=WIDGET_IP_MAX_ATTEMPTS, window_seconds=WIDGET_WINDOW_SECONDS)
 widget_session_rate_limiter = RateLimiter(
     max_attempts=WIDGET_SESSION_MAX_ATTEMPTS, window_seconds=WIDGET_WINDOW_SECONDS
+)
+widget_business_rate_limiter = RateLimiter(
+    max_attempts=WIDGET_BUSINESS_MAX_ATTEMPTS, window_seconds=WIDGET_WINDOW_SECONDS
 )

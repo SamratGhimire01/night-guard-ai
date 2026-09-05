@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db, require_role
@@ -69,8 +69,11 @@ def submit_training_feedback(
 
 @router.get("/training/history", response_model=list[TrainingQuestionRead])
 def list_training_history(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     current_user: BusinessUser = Depends(require_role(_TRAINING_ROLES)),
     db: Session = Depends(get_db),
 ) -> list[TrainingQuestionRead]:
-    history = training_service.list_history(db, business_id=current_user.business_id)
+    """limit/offset (Phase 29 — Phase 28's F3 flagged this as unbounded)."""
+    history = training_service.list_history(db, business_id=current_user.business_id, limit=limit, offset=offset)
     return [TrainingQuestionRead.model_validate(h) for h in history]

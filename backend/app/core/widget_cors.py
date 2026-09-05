@@ -16,6 +16,19 @@ class WidgetCORSMiddleware(BaseHTTPMiddleware):
     run embedded on ANY third-party website, so it genuinely needs
     cross-origin `fetch()` access from the browser.
 
+    Phase 29 re-assessment: a wildcard origin does let ANY third-party page
+    fire this endpoint using ITS OWN visitors' browsers (distinct IPs,
+    distinct sessions), which could otherwise evade the per-IP/per-session
+    limiters entirely (see rate_limit.py's WIDGET_BUSINESS_MAX_ATTEMPTS and
+    tests/security/test_phase29_widget_distributed_flood.py for the
+    live-verified gap and its fix). That is now closed by a per-business_id
+    limiter. What a wildcard origin does NOT add: CORS is a browser-only
+    restriction, so a non-browser attacker (curl/a bot) could already call
+    this endpoint from any single origin regardless of this header — the
+    wildcard changes nothing for that path. And it grants no read access to
+    another business's data (session tokens are unguessable and scoped by
+    business_id — see widget_service.py's session-isolation reasoning).
+
     Deliberately NOT applied globally: every other endpoint in this codebase
     is bearer-token-authenticated business-dashboard API, never meant to be
     called from arbitrary browser JS on a third-party origin. Auth here is a

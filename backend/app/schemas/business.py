@@ -2,6 +2,12 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from app.schemas.common import safe_str
+
+# description is a Text column (unbounded in the DB) — a DoS/sanity ceiling,
+# not a real business-description-length constraint (Phase 29).
+_MAX_DESCRIPTION_CHARS = 10_000
+
 
 class BusinessRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -26,15 +32,18 @@ class BusinessUpdate(BaseModel):
     are NOT NULL in the DB, so an explicit null on either is rejected with a 422
     rather than reaching the DB as an IntegrityError."""
 
-    name: str | None = None
-    description: str | None = None
-    address: str | None = None
-    phone: str | None = None
-    email: str | None = None
-    website: str | None = None
-    timezone: str | None = None
-    languages: list[str] | None = None
-    tone: str | None = None
+    # max_length values match businesses.*'s real VARCHAR column widths, or
+    # (description) a generous DoS ceiling on its unbounded Text column
+    # (Phase 29 — see app/schemas/common.py).
+    name: safe_str(255) | None = None
+    description: safe_str(_MAX_DESCRIPTION_CHARS) | None = None
+    address: safe_str(500) | None = None
+    phone: safe_str(50) | None = None
+    email: safe_str(255) | None = None
+    website: safe_str(255) | None = None
+    timezone: safe_str(64) | None = None
+    languages: list[safe_str(16)] | None = None
+    tone: safe_str(100) | None = None
     sms_enabled: bool | None = None
     follow_ups_enabled: bool | None = None
 

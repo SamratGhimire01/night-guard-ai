@@ -132,10 +132,14 @@ def submit_feedback(
     return training_question
 
 
-def list_history(db: Session, *, business_id: uuid.UUID) -> list[TrainingQuestion]:
+def list_history(
+    db: Session, *, business_id: uuid.UUID, limit: int = 50, offset: int = 0
+) -> list[TrainingQuestion]:
     stmt = (
         select(TrainingQuestion)
         .where(TrainingQuestion.business_id == business_id)
         .order_by(TrainingQuestion.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     return list(db.execute(stmt).scalars())

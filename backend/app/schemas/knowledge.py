@@ -4,6 +4,16 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.db.models.knowledge import KnowledgeDocumentStatus
+from app.schemas.common import safe_str
+
+# Matches routes/knowledge.py's own _MAX_UPLOAD_BYTES cap for the file-upload
+# path — this manual-entry path (a plain JSON `content` field, not a file)
+# had no size cap at all before Phase 29, which would otherwise let it bypass
+# that same limit trivially. `content` is a Text column (genuinely unbounded
+# in the DB, unlike title's VARCHAR(255)), so this is a DoS/sanity ceiling,
+# not a real-document-size constraint — no legitimate knowledge article gets
+# near 10 million characters.
+_MAX_CONTENT_CHARS = 10 * 1024 * 1024
 
 
 def _not_blank(value: str) -> str:
@@ -13,8 +23,8 @@ def _not_blank(value: str) -> str:
 
 
 class KnowledgeDocumentCreate(BaseModel):
-    title: str
-    content: str
+    title: safe_str(255)
+    content: safe_str(_MAX_CONTENT_CHARS)
 
     @field_validator("title", "content")
     @classmethod
@@ -27,8 +37,8 @@ class KnowledgeDocumentUpdate(BaseModel):
     NOT NULL in the DB, so an explicit null on any of them is rejected with a 422
     rather than reaching the DB as an IntegrityError."""
 
-    title: str | None = None
-    content: str | None = None
+    title: safe_str(255) | None = None
+    content: safe_str(_MAX_CONTENT_CHARS) | None = None
     status: KnowledgeDocumentStatus | None = None
 
     @field_validator("title", "content")

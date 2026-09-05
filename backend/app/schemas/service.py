@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from app.schemas.common import safe_str
+
 
 def _non_negative_price(value: Decimal) -> Decimal:
     if value < 0:
@@ -17,8 +19,10 @@ def _positive_duration(value: int) -> int:
 
 
 class ServiceCreate(BaseModel):
-    name: str
-    description: str | None = None
+    # max_length matches services.name/description's real VARCHAR(255)/
+    # VARCHAR(2000) column widths (Phase 29 — see app/schemas/common.py).
+    name: safe_str(255)
+    description: safe_str(2000) | None = None
     price: Decimal
     duration_minutes: int
     staff_id: uuid.UUID | None = None
@@ -34,8 +38,8 @@ class ServiceUpdate(BaseModel):
     null on any of those is rejected with a 422 rather than reaching the DB as an
     IntegrityError."""
 
-    name: str | None = None
-    description: str | None = None
+    name: safe_str(255) | None = None
+    description: safe_str(2000) | None = None
     price: Decimal | None = None
     duration_minutes: int | None = None
     staff_id: uuid.UUID | None = None

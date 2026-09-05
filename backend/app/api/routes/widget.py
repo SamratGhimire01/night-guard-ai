@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
 from app.core.exceptions import NotFoundError, TooManyRequestsError
-from app.core.rate_limit import widget_ip_rate_limiter, widget_session_rate_limiter
+from app.core.rate_limit import widget_business_rate_limiter, widget_ip_rate_limiter, widget_session_rate_limiter
 from app.schemas.widget import WidgetMessageRequest, WidgetMessageResponse
 from app.services.channels import widget_service
 
@@ -47,9 +47,14 @@ def post_widget_message(
     reasoning (session isolation, rate limiting, cross-business replay,
     business_id enumeration) is in PHASE_STATUS.md Phase 21; summarized here:
 
-    - Rate limiting: real per-IP AND per-session limiters (app/core/
-      rate_limit.py), checked before any DB/LLM work, so a burst is rejected
-      cheaply rather than after spending real LLM budget.
+    - Rate limiting: real per-IP, per-session, AND per-business_id limiters
+      (app/core/rate_limit.py), checked before any DB/LLM work, so a burst is
+      rejected cheaply rather than after spending real LLM budget. The
+      per-business_id limiter (Phase 29) exists specifically because the
+      CORS wildcard below means a flood can be distributed across many
+      distinct visitor IPs/sessions, which the other two limiters can't see
+      in aggregate — see PHASE_STATUS.md Phase 29 and
+      tests/security/test_phase29_widget_distributed_flood.py.
     - Session isolation: session_token is opaque and unguessable (256-bit
       random, hashed at rest — see widget_service.py); a token that doesn't
       resolve to a real, business-scoped identity is silently replaced with a
@@ -63,6 +68,11 @@ def post_widget_message(
       to find OTHER real UUIDs is computationally infeasible regardless of
       this response.
     """
+    business_key = str(business_id)
+    if widget_business_rate_limiter.is_blocked(business_key):
+        raise TooManyRequestsError("Too many messages right now. Please try again shortly.")
+    widget_business_rate_limiter.record_attempt(business_key)
+
     client_ip = request.client.host if request.client else "unknown"
     if widget_ip_rate_limiter.is_blocked(client_ip):
         raise TooManyRequestsError("Too many messages from this connection. Please slow down and try again.")

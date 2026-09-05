@@ -1,4 +1,5 @@
-fastapi==0.115.0
+fastapi==0.121.2
+starlette==0.49.1
 uvicorn[standard]==0.30.6
 sqlalchemy==2.0.35
 psycopg2-binary==2.9.9
@@ -8,11 +9,11 @@ email-validator==2.2.0
 alembic==1.13.3
 pgvector==0.3.5
 bcrypt==4.2.0
-pyjwt==2.9.0
-python-multipart==0.0.9
-pypdf==5.0.1
+pyjwt==2.13.0
+python-multipart==0.0.32
+pypdf==6.17.0
 openpyxl==3.1.5
-jinja2==3.1.4
+jinja2==3.1.6
 ruff==0.6.9
 pytest==8.3.3
 httpx==0.27.2

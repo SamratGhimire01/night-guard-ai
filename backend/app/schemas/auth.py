@@ -3,7 +3,17 @@ import uuid
 
 from pydantic import BaseModel, EmailStr, field_validator
 
+from app.schemas.common import safe_str
+
 _PASSWORD_MIN_LENGTH = 8
+# bcrypt's real hard limit is 72 BYTES — anything past that is silently
+# ignored by the algorithm itself, not a crash, but capping the accepted
+# input here (Phase 29) means the truncation is visible/rejected up front
+# rather than a footgun where two different long passwords quietly hash
+# identically. Also closes the same unbounded-string shape as
+# business_name below (a 200,000-char business_name crashed with a raw 500
+# — see app/schemas/common.py's docstring).
+_PASSWORD_MAX_LENGTH = 72
 
 
 def _validate_password_strength(password: str) -> str:
@@ -17,10 +27,10 @@ def _validate_password_strength(password: str) -> str:
 
 
 class RegisterRequest(BaseModel):
-    business_name: str
-    timezone: str
+    business_name: safe_str(255)
+    timezone: safe_str(64)
     email: EmailStr
-    password: str
+    password: safe_str(_PASSWORD_MAX_LENGTH)
 
     @field_validator("password")
     @classmethod
@@ -37,7 +47,7 @@ class RegisterResponse(BaseModel):
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: safe_str(_PASSWORD_MAX_LENGTH)
 
 
 class TokenResponse(BaseModel):

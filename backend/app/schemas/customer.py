@@ -2,12 +2,17 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
+from app.schemas.common import safe_str
+
 
 class CustomerCreate(BaseModel):
-    name: str
-    phone: str | None = None
-    email: str | None = None
-    preferred_language: str | None = None
+    # max_length values match customers.name/phone/preferred_language's real
+    # VARCHAR(255)/VARCHAR(50)/VARCHAR(32) column widths (Phase 29 — see
+    # app/schemas/common.py's docstring for the real bug this closes).
+    name: safe_str(255)
+    phone: safe_str(50) | None = None
+    email: safe_str(255) | None = None
+    preferred_language: safe_str(32) | None = None
     # Phase 15: explicit SMS consent, settable at creation. Also settable
     # later now via CustomerUpdate (this gap closed for real, see below).
     sms_opt_in: bool = False
@@ -28,10 +33,10 @@ class CustomerUpdate(BaseModel):
     widget visitor who later volunteers their real name/email mid-
     conversation — see the Phase 23 urgent-fix entry in PHASE_STATUS.md)."""
 
-    name: str | None = None
-    phone: str | None = None
+    name: safe_str(255) | None = None
+    phone: safe_str(50) | None = None
     email: EmailStr | None = None
-    preferred_language: str | None = None
+    preferred_language: safe_str(32) | None = None
     sms_opt_in: bool | None = None
 
     @field_validator("name")

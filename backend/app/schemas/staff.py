@@ -2,10 +2,14 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from app.schemas.common import safe_str
+
 
 class StaffCreate(BaseModel):
-    name: str
-    role: str
+    # max_length matches staff.name/role's real VARCHAR(255)/VARCHAR(100)
+    # column widths (Phase 29 — see app/schemas/common.py).
+    name: safe_str(255)
+    role: safe_str(100)
 
     @field_validator("name", "role")
     @classmethod
@@ -20,8 +24,8 @@ class StaffUpdate(BaseModel):
     in the DB (Staff has no nullable field to clear), so an explicit null is rejected
     with a 422 rather than reaching the DB as an IntegrityError."""
 
-    name: str | None = None
-    role: str | None = None
+    name: safe_str(255) | None = None
+    role: safe_str(100) | None = None
 
     @field_validator("name", "role")
     @classmethod

@@ -44,13 +44,21 @@ def list_appointments(
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     group_booking_id: uuid.UUID | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     current_user: BusinessUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[AppointmentRead]:
     """`group_booking_id` (Phase 12) filters down to just the appointments
     written together from one group-booking request — every appointment's own
     `group_booking_id` in the response is enough for a client to group them
-    itself without a separate lookup."""
+    itself without a separate lookup.
+
+    `limit`/`offset` (Phase 29 — Phase 28's F3 flagged this as the highest-risk
+    unbounded list endpoint): ordered by scheduled_at like before, so paging is
+    stable across calls as long as no appointment in the already-returned range
+    is rescheduled. Response shape is unchanged (still a bare list) — a
+    business with fewer than `limit` appointments sees no difference at all."""
     appointments = booking_service.list_appointments(
         db,
         business_id=current_user.business_id,
@@ -59,6 +67,8 @@ def list_appointments(
         date_from=date_from,
         date_to=date_to,
         group_booking_id=group_booking_id,
+        limit=limit,
+        offset=offset,
     )
     return [AppointmentRead.model_validate(a) for a in appointments]
 
