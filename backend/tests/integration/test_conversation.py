@@ -920,7 +920,9 @@ def test_parse_response_extracts_valid_booking_request():
     )
     result = _parse_response(raw)
     assert result.intent == ConversationIntent.BOOKING
-    assert result.booking_request == {"service": "Cleaning", "date": "2026-09-10", "time": "14:00"}
+    assert result.booking_request == {
+        "service": "Cleaning", "date": "2026-09-10", "time": "14:00", "wants_availability": False,
+    }
 
 
 def test_parse_response_extracts_partial_booking_request_with_nulls_for_missing_fields():
@@ -929,7 +931,9 @@ def test_parse_response_extracts_partial_booking_request_with_nulls_for_missing_
     it across turns) — no longer treated as malformed/discarded, which was
     the old, incomplete-extraction-triggers-a-loop behavior."""
     raw = '{"intent": "booking", "response": "hi", "booking_request": {"service": "Cleaning"}}'
-    assert _parse_response(raw).booking_request == {"service": "Cleaning", "date": None, "time": None}
+    assert _parse_response(raw).booking_request == {
+        "service": "Cleaning", "date": None, "time": None, "wants_availability": False,
+    }
 
 
 def test_parse_response_booking_request_missing_key_entirely_is_none():
@@ -945,7 +949,22 @@ def test_parse_response_booking_request_all_null_is_a_valid_empty_dict():
         '{"intent": "booking", "response": "Great!", '
         '"booking_request": {"service": null, "date": null, "time": null}}'
     )
-    assert _parse_response(raw).booking_request == {"service": None, "date": None, "time": None}
+    assert _parse_response(raw).booking_request == {
+        "service": None, "date": None, "time": None, "wants_availability": False,
+    }
+
+
+def test_parse_response_extracts_wants_availability_true():
+    """Phase 33: an under-specified booking ask ("what times do you have")
+    signals wants_availability so the orchestrator can show real slots
+    instead of asking the customer to guess a time."""
+    raw = (
+        '{"intent": "booking", "response": "Let me check.", "booking_request": '
+        '{"service": "Cleaning", "date": null, "time": null, "wants_availability": true}}'
+    )
+    assert _parse_response(raw).booking_request == {
+        "service": "Cleaning", "date": None, "time": None, "wants_availability": True,
+    }
 
 
 def test_parse_response_extracts_valid_cancellation_request():
@@ -1696,13 +1715,20 @@ def test_explicit_language_switch_reverse_direction_nepali(two_businesses, monke
 
 
 def _partial_booking_reply(
-    *, service: str | None = None, date: str | None = None, time: str | None = None, response: str = "ok"
+    *,
+    service: str | None = None,
+    date: str | None = None,
+    time: str | None = None,
+    wants_availability: bool = False,
+    response: str = "ok",
 ) -> str:
     return json.dumps(
         {
             "intent": "booking",
             "response": response,
-            "booking_request": {"service": service, "date": date, "time": time},
+            "booking_request": {
+                "service": service, "date": date, "time": time, "wants_availability": wants_availability,
+            },
         }
     )
 
@@ -2233,3 +2259,203 @@ def test_booking_failure_on_a_fully_closed_day_clears_date_too(two_businesses, m
         assert conversation.booking_draft_service_id == service_id, "the service was never actually invalid"
         assert conversation.booking_draft_date is None, "the whole day is closed — must not be silently kept"
         assert conversation.booking_draft_time is None
+
+
+# --- Phase 33: dynamic available-slot display ----------------------------------
+
+
+def test_wants_availability_shows_real_slots_instead_of_asking_for_a_time(two_businesses, monkeypatch):
+    """The core Phase 33 fix: an under-specified booking ask (service known,
+    no time given, LLM reports wants_availability) must show a real,
+    freshly-computed slot list instead of asking the customer to guess a
+    time — and must never itself write a booking."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    _stub_providers(
+        monkeypatch,
+        _partial_booking_reply(service="Cleaning", date=target_date.isoformat(), wants_availability=True),
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "What times do you have for a cleaning on Monday?"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()["response"]
+    assert "9:00 AM" in body, body  # first real open slot -- business opens 9am, nothing else booked
+    assert "Cleaning" in body
+    assert "what date" not in body.lower() and "what time" not in body.lower()
+
+    with SessionLocal() as db:
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 0, (
+            "proposing real options must never itself write a booking"
+        )
+
+
+def test_wants_availability_without_a_known_service_asks_for_service_first(two_businesses, monkeypatch):
+    """Never show a slot list for an ambiguous "what's available" with no
+    service context — ask for the service first, reusing the exact same
+    missing-slot mechanism as any other incomplete draft."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    _stub_providers(monkeypatch, _partial_booking_reply(wants_availability=True))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "What times do you have available?"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()["response"].lower()
+    assert "which service" in body
+
+    with SessionLocal() as db:
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 0
+
+
+def test_wants_availability_on_a_closed_day_offers_the_next_real_opening(two_businesses, monkeypatch):
+    """Edge case required by the ticket: a fully closed/booked day must never
+    be answered with a silent empty list or an invented slot — an honest
+    statement plus the next REAL available day."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)  # Sunday (day_of_week 6) is closed
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    today = date.today()
+    days_ahead = (6 - today.weekday()) % 7 or 7
+    closed_sunday = today + timedelta(days=days_ahead)
+
+    _stub_providers(
+        monkeypatch,
+        _partial_booking_reply(service="Cleaning", date=closed_sunday.isoformat(), wants_availability=True),
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Do you have anything open this Sunday for a cleaning?"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()["response"].lower()
+    assert "nothing open" in body
+    assert "next real opening" in body
+    assert "sunday" in body  # honestly names the requested (closed) day
+    assert "monday" in body  # the real next open day's slots are offered instead
+
+    with SessionLocal() as db:
+        assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 0
+
+
+def test_wants_availability_then_picking_a_shown_slot_books_correctly(two_businesses, monkeypatch):
+    """Acceptance criterion: a customer who picks one of the proposed options
+    must flow into the exact same booking-completion logic as any other
+    explicitly-given date/time (Phase 25a) — not a parallel mechanism."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    _stub_providers(
+        monkeypatch,
+        _partial_booking_reply(service="Cleaning", date=target_date.isoformat(), wants_availability=True),
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "What times do you have Monday for a cleaning?"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "9:00 AM" in resp.json()["response"]
+
+    _stub_providers(
+        monkeypatch, _booking_reply("Cleaning", target_date.isoformat(), "09:00", response="Great choice!")
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "9am works for me."},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert "9:00 AM" in body["response"]
+
+    with SessionLocal() as db:
+        appointments = db.query(Appointment).filter(Appointment.business_id == business_id_a).all()
+        assert len(appointments) == 1
+        assert appointments[0].service_id == service_id
+        assert appointments[0].scheduled_at.hour == 9
+        assert str(appointments[0].id) in body["response"]
+
+
+def test_wants_availability_never_overrides_an_already_complete_draft(two_businesses, monkeypatch):
+    """Defensive/regression: if a specific date+time is fully given, booking
+    must fire immediately regardless of wants_availability — this phase only
+    ever proposes slots when a time is genuinely missing, never instead of an
+    already-resolvable booking attempt."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    reply = json.dumps(
+        {
+            "intent": "booking",
+            "response": "Let me check.",
+            "booking_request": {
+                "service": "Cleaning", "date": target_date.isoformat(), "time": "09:00",
+                "wants_availability": True,
+            },
+        }
+    )
+    _stub_providers(monkeypatch, reply)
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Book me a cleaning Monday at 9am, and also, what other times are open?"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "you're all set" in resp.json()["response"].lower()
+
+    with SessionLocal() as db:
+        appointments = db.query(Appointment).filter(Appointment.business_id == business_id_a).all()
+        assert len(appointments) == 1
+        assert appointments[0].service_id == service_id
+
+
+def test_wants_availability_absent_in_older_stubbed_reply_keeps_old_missing_slots_behavior(two_businesses, monkeypatch):
+    """Backward-compatibility guard: a booking_request that predates this
+    field (no `wants_availability` key at all) must parse as False and fall
+    back to exactly the pre-Phase-33 "ask what's missing" behavior — this is
+    what keeps every Phase 25a/25a-2 fixture (written before this field
+    existed) passing unmodified."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    reply = json.dumps(
+        {"intent": "booking", "response": "Sure.", "booking_request": {"service": "Cleaning"}}
+    )
+    _stub_providers(monkeypatch, reply)
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "I want a cleaning."},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()["response"].lower()
+    assert "what date" in body and "what time" in body

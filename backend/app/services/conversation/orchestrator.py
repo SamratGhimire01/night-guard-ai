@@ -1,11 +1,12 @@
 import logging
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import NotFoundError
 from app.db.models.business import Business
 from app.db.models.conversation import Conversation, Message, MessageSenderType
 from app.db.models.customer import Customer
@@ -16,7 +17,7 @@ from app.memory import assemble_context
 from app.memory.conversations import get_conversation
 from app.memory.summarization import maybe_summarize_conversation
 from app.schemas.conversation import ConversationIntent, ConversationLanguage
-from app.services import handoff_service, knowledge_service, service_service
+from app.services import booking_service, handoff_service, knowledge_service, service_service
 from app.services.conversation import appointment_tools  # noqa: F401  registers CANCELLATION/RESCHEDULING tools
 from app.services.conversation import booking_tool  # noqa: F401  registers the BOOKING tool
 from app.services.conversation.contact_tool import UpdateContactInfoTool
@@ -76,6 +77,10 @@ def _is_valid_time_str(value: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+def _format_date_only(date_str: str) -> str:
+    return datetime.strptime(date_str, "%Y-%m-%d").strftime("%A, %B %-d")
 
 
 def _merge_booking_draft(conversation: Conversation, services: list[Service], booking_request: dict | None) -> None:
@@ -144,7 +149,7 @@ def _describe_known_booking_slots(conversation: Conversation, services: list[Ser
         if dt is not None:
             when = _format_local(dt, ZoneInfo(business.timezone))
     if when is None and date_str and _is_valid_date_str(date_str):
-        when = datetime.strptime(date_str, "%Y-%m-%d").strftime("%A, %B %-d")
+        when = _format_date_only(date_str)
     elif when is None and time_str and _is_valid_time_str(time_str):
         when = datetime.strptime(time_str, "%H:%M").strftime("%-I:%M %p")
 
@@ -266,6 +271,77 @@ def _format_booking_result(
             "booking_unavailable_with_alts", language, who=who, message=message, service=service.name, options=options
         )
     return render("booking_unavailable_no_alts", language, who=who, message=message, service=service.name)
+
+
+# Phase 33: how many real slots to show back, and how many days ahead to
+# search for them — a chat reply, not a slot-picker UI, same reasoning as
+# BookAppointmentTool._alternatives (booking_tool.py), duplicated here rather
+# than imported for the same reason booking_service._fresh_alternatives
+# duplicates it: this is a small, self-contained piece of formatting logic,
+# not worth a cross-module dependency for two integers.
+_AVAILABILITY_SLOTS_COUNT = 5
+_AVAILABILITY_SEARCH_DAYS = 7
+
+
+def _propose_available_slots(
+    db: Session,
+    *,
+    business_id: uuid.UUID,
+    service: Service,
+    conversation: Conversation,
+    tz: ZoneInfo,
+    language: str | None,
+) -> str:
+    """Phase 33 — the ONLY place a "here's what's open" sentence is composed,
+    same discipline as every other _format_*_result function: real,
+    freshly-computed booking_service.get_available_slots data, never
+    anything the LLM invented. Never books anything itself — the customer
+    still has to pick one, which flows into the exact same booking-completion
+    logic as any other explicitly-given date/time (see the dispatch branch
+    below).
+
+    If the customer already named a specific day (conversation.
+    booking_draft_date, persisted by the normal draft-merge mechanism — see
+    _merge_booking_draft), the search starts there; otherwise it starts
+    today. Either way this is a single get_available_slots call over one
+    contiguous window — the earliest real slots it returns naturally answer
+    both cases: if the requested day itself has openings, they're the first
+    ones back; if not, the first slots back land on whatever the next real
+    open day is, which is exactly the honest "nothing that day, but here's
+    the next real opening" case the ticket requires. An empty result means
+    genuinely no openings anywhere in the window — never presented as a
+    silent empty list."""
+    requested_date_str = conversation.booking_draft_date
+    if requested_date_str and _is_valid_date_str(requested_date_str):
+        search_start = datetime.strptime(requested_date_str, "%Y-%m-%d").date()
+    else:
+        search_start = datetime.now(tz).date()
+
+    try:
+        slots = booking_service.get_available_slots(
+            db,
+            business_id=business_id,
+            service_id=service.id,
+            staff_id=None,
+            date_from=search_start,
+            date_to=search_start + timedelta(days=_AVAILABILITY_SEARCH_DAYS),
+        )
+    except NotFoundError:
+        slots = []
+
+    if not slots:
+        return render("availability_none_no_alts", language, service=service.name)
+
+    options = ", ".join(_format_local(slot, tz) for slot in slots[:_AVAILABILITY_SLOTS_COUNT])
+    if requested_date_str and _is_valid_date_str(requested_date_str) and slots[0].astimezone(tz).date() != search_start:
+        return render(
+            "availability_none_with_next_day",
+            language,
+            service=service.name,
+            requested=_format_date_only(requested_date_str),
+            options=options,
+        )
+    return render("availability_options", language, service=service.name, options=options)
 
 
 def _format_group_booking_result(
@@ -745,6 +821,13 @@ def handle_incoming_message(
         # immediately using everything already collected, never re-asking for
         # service/date/time it already has.
         _merge_booking_draft(conversation, services, classification.booking_request)
+        # Phase 33: a per-turn instruction, not a persisted slot — the LLM's
+        # honest read of whether THIS message is asking to see real options
+        # rather than naming a specific time (intent.py rule 9). Read fresh
+        # off this turn's raw extraction, never stored on the conversation.
+        wants_availability = bool(
+            classification.booking_request and classification.booking_request.get("wants_availability")
+        )
         if not has_contact:
             # Phase 25a-2: dynamic — reflects whatever the draft already has
             # (service/date/time accumulated across turns), never the same
@@ -776,6 +859,28 @@ def handle_incoming_message(
                     "book_appointment tool executed: conversation_id=%s success=%s",
                     conversation_id,
                     result["success"],
+                )
+            elif wants_availability and service is not None:
+                # Phase 33: the customer wants to see real options rather than
+                # guess a time — a real, un-invented list, never a booking
+                # attempt (nothing is written here; the customer still has to
+                # pick one, which flows into the branch above like any other
+                # explicitly-given date/time). Only reachable when a service
+                # is already known — an ambiguous "what's available" with no
+                # service is handled by the missing-slots branch below
+                # instead, same as it always has been.
+                response_text = _propose_available_slots(
+                    db,
+                    business_id=business_id,
+                    service=service,
+                    conversation=conversation,
+                    tz=ZoneInfo(business.timezone),
+                    language=language,
+                )
+                logger.info(
+                    "propose_available_slots: conversation_id=%s service_id=%s",
+                    conversation_id,
+                    service.id,
                 )
             else:
                 # Never a vague "should I go ahead and book that?" — Python (not

@@ -6967,3 +6967,293 @@ real baseline traffic):**
   true worker/cron for `dispatch_queued_notifications`.
 - No commit has been made yet — awaiting your confirmation of this
   verification output per working rule #6.
+
+---
+
+## Phase 33 — Dynamic Available-Slot Display
+
+**Date:** 2026-09-06
+
+**Note on repo state at the start of this phase:** the working tree had real, undocumented,
+uncommitted work sitting on top of Phase 32's commit (an in-progress "business integrations"
+feature — `app/api/routes/integrations.py`, `app/schemas/integration.py`,
+`app/services/integration_service.py`, a migration, plus edits to notifications/reporting/
+email templates and `docker-compose.yml`) — not something this phase touched or requested.
+Per your direction, it was `git stash push -u` before starting (`stash@{0}`,
+message "pre-phase33: uncommitted integrations feature work") rather than discarded, so it's
+still fully recoverable via `git stash pop` whenever you're ready to return to it. Also
+noted: Phase 32's own commit (`d9aad83`) has no corresponding entry in this file — it was
+apparently never written up. Not touched here (out of this phase's scope), flagging so it
+isn't mistaken for something this phase caused.
+
+**Required:** real testing found a genuine UX problem — a customer asking about booking or
+availability without already knowing an exact time (e.g. "what times do you have for a
+cleaning") was met with "what time would you like?", forcing a guess that often got rejected
+as unavailable. This is exactly the gap Phase 25c's "first available recognition" section
+explicitly deferred pending a real product decision. That decision, made now: this phase
+PROPOSES real slots computed by the existing, already-safe `get_available_slots` function —
+it never auto-books from a vague request. The customer still has to explicitly pick one
+before anything is written to the database, so every existing safety guarantee (contact-info
+gate, hallucination-proof confirmation, race-condition protection) is unchanged.
+
+**Implemented:**
+
+1. **A new LLM-reported signal, `wants_availability`, added to the existing `booking_request`
+   object** (`intent.py` rule 9, extended, not a parallel schema): `true` when the customer's
+   current message is a booking-intent message that doesn't state a specific time (covers
+   both explicit "show me options" asks — "what times do you have," "when can I come in,"
+   "what's your soonest opening," "do you have anything tomorrow" — and a plain
+   under-specified ask like "book me for a cleaning" with no time given); `false` when a
+   specific date+time is given (new or corrected) or the message adds nothing about timing at
+   all (a bare "yes"). Like every other field in this object, it's a per-turn observation the
+   LLM reports honestly — Python alone decides what to do with it. Six few-shot examples
+   updated/added to keep the schema consistent and demonstrate the new field, including the
+   "service given, no time → show options, never ask what time" case and the "date given, no
+   service → ask for the service, not the day" case.
+2. **`intent._parse_booking_request` extended**: `wants_availability` is coerced to a plain
+   `bool` (`bool(raw.get("wants_availability"))`) — a missing key (every fixture/stub written
+   before this phase) or a non-bool value parses to `False`, i.e. exactly the pre-Phase-33
+   "ask what's missing" behavior. This is what makes the feature purely additive: no existing
+   caller needs to change for old behavior to keep working.
+3. **`orchestrator.py` — a new branch in the existing single-booking dispatch, not a parallel
+   mechanism** (`handle_incoming_message`, the `intent == BOOKING and group_booking_request is
+   None` arm): after the normal `_merge_booking_draft` call (unchanged — slots still
+   accumulate exactly as Phase 25a built), if the draft is NOT yet a complete, bookable
+   service+datetime AND this turn's `wants_availability` is true AND a service HAS been
+   resolved (from this turn or an earlier one, via the same persisted draft Phase 25a already
+   tracks), a new `_propose_available_slots()` calls `booking_service.get_available_slots`
+   directly — a real read, never a write — and composes the customer-facing list
+   deterministically, exactly like every other `_format_*_result` function in this file (never
+   LLM-authored). If the service isn't known yet, this branch is skipped entirely and control
+   falls through to the pre-existing `render_missing_slots` path, which already asks for
+   "which service" — satisfying "ask for the service first" with zero new code, purely by
+   branch ordering.
+4. **`_propose_available_slots` — one function, one real query, handles every acceptable
+   shape**: search starts at the customer's already-given day (`conversation.
+   booking_draft_date`, if any and valid) or today, and spans a 7-day window
+   (`_AVAILABILITY_SEARCH_DAYS`), taking the first 5 (`_AVAILABILITY_SLOTS_COUNT`) real slots
+   `get_available_slots` returns — same small, fixed "chat reply, not a slot picker" numbers
+   `BookAppointmentTool._alternatives` already uses, duplicated rather than imported for the
+   same reason `booking_service._fresh_alternatives` already duplicates it (small,
+   self-contained formatting logic, not worth a cross-module dependency). Because the function
+   returns slots in chronological order regardless of which day they land on, one call
+   naturally answers every case: if the requested day has real openings, they're the first
+   ones back; if the customer named a day with genuinely nothing open (closed, fully booked),
+   the first slots back land on the real next open day instead — detected by comparing the
+   first returned slot's date against the requested date — and a distinct, honest template
+   (`availability_none_with_next_day`) names the closed/booked day AND offers the real next
+   one, never a silent empty list. If NOTHING is open anywhere in the whole window,
+   `availability_none_no_alts` says so plainly and offers to connect the customer with the
+   team, never an invented slot.
+5. **Three new templates in `response_templates.py`** (`availability_options`,
+   `availability_none_with_next_day`, `availability_none_no_alts`), translated en/ne_deva/
+   ne_roman with the same discipline as every other template in this module (scaffold wording
+   translated, embedded data — service name, formatted times — passed through as-is). A small
+   `_format_date_only` helper was extracted in `orchestrator.py` (previously inlined only in
+   `_describe_known_booking_slots`) and reused by `_propose_available_slots` for the
+   "on {requested day}" phrasing — same one-line formatting logic, no longer duplicated.
+6. **Reuse, not a parallel path, for completion**: when the customer picks one of the shown
+   options in their next message, the LLM extracts a normal `booking_request` with a specific
+   date+time (same as any other explicitly-given time) — Phase 25a's existing merge/resolve/
+   complete-booking logic handles it with zero new code. Confirmed live below.
+
+**A deliberate non-change, considered and rejected:** whether to also show options BEFORE the
+contact-info gate is satisfied. Kept `wants_availability` handling inside the existing
+`has_contact` branch (a peer of the pre-existing "ask what's missing" question, not ahead of
+the gate) — this is the minimal-diff, lowest-risk placement, keeps the contact gate's
+behavior completely unchanged (still Phase 24's `has_contact` check first, exactly as every
+prior phase left it), and nothing in the ticket asked for reordering it. A no-contact-yet
+customer asking "what times do you have" still gets the (now dynamically-worded, Phase 25a-2)
+contact-info ask first, same as any other partial booking request today.
+
+---
+
+### Verification — real Azure LLM, real DB, business "Riverside Dental" (fresh test business,
+`business_id=4c32d571-b7a5-4a35-bb8d-a7ad5bad1024`, Mon–Sat 9am–5pm America/New_York, Sunday
+closed, one $90/30min "Teeth Cleaning" service), `docker compose restart backend` run after
+the code was written (no `--reload`, same documented gotcha every prior phase has hit) —
+every transcript below is post-restart, confirmed-current-code.
+
+**§1 — Customer asks "what times do you have" with no specific time in mind — real slots
+shown immediately, never "what time would you like?" (customer Jordan Blake, contact already
+on file):**
+```
+Customer: "Hi, what times do you have for a cleaning?"
+Assistant: "Here's what's open for Teeth Cleaning: Monday, September 7 at 9:00 AM, Monday,
+September 7 at 9:15 AM, Monday, September 7 at 9:30 AM, Monday, September 7 at 9:45 AM,
+Monday, September 7 at 10:00 AM. Which works for you?"
+intent: booking
+```
+
+**§2 — Customer picks one of the real shown options — books correctly, flowing through the
+exact same Phase 25a completion logic (real DB proof):**
+```
+Customer: "9:15am works for me"
+Assistant: "You're all set, Jordan Blake! I've booked Teeth Cleaning for Monday, September 7
+at 9:15 AM (30 min). Your booking ID is adb5f1c2-12dc-4b8c-b9dc-cc3b7d489714."
+intent: booking
+```
+Real DB row, id matches the response exactly, time matches the exact slot chosen:
+```
+$ SELECT id, scheduled_at, duration_minutes, status FROM appointments
+  WHERE id='adb5f1c2-12dc-4b8c-b9dc-cc3b7d489714';
+adb5f1c2-... | 2026-09-07 13:15:00+00:00 | 30 | AppointmentStatus.CONFIRMED
+```
+(business timezone America/New_York; September is EDT (UTC-4) — 13:15 UTC = 9:15 AM EDT,
+exactly the slot the customer picked and exactly what the confirmation says.)
+
+**§3 — Availability question with NO service mentioned yet (fresh conversation) — asks
+rather than guesses, never shows a slot list for an ambiguous request:**
+```
+Customer: "Hey, what do you have available this week?"
+Assistant: "Sorry, I want to make sure I get this right — could you tell me exactly which
+service, and the date and time you'd like?"
+intent: booking
+```
+No service was ever established in this conversation, so `_propose_available_slots` is never
+reached — Python's existing `render_missing_slots`/`booking_clarify` path (all three of
+service/date/time unresolved) handles it, exactly the "ask for the service first" behavior
+the ticket required, via the pre-existing mechanism.
+
+**§4 — Availability requested for a day that's genuinely closed — honest response, real next
+available day offered, never an empty or invented list (same conversation as §1/§2, service
+already known from context):**
+```
+Customer: "Do you have any teeth cleaning openings this Sunday?"
+Assistant: "There's nothing open for Teeth Cleaning on Sunday, September 6 — the next real
+opening is Monday, September 7 at 9:45 AM, Monday, September 7 at 10:00 AM, Monday, September
+7 at 10:15 AM, Monday, September 7 at 10:30 AM, Monday, September 7 at 10:45 AM. Would any of
+those work?"
+intent: booking
+```
+Sunday is a real closed day for this business (never invented); the offered day (Monday) is
+real, and the offered times correctly start at 9:45 AM, not 9:00 AM — the 9:15 AM appointment
+booked in §2 occupies 9:15–9:45, so `get_available_slots`' real overlap exclusion correctly
+removes 9:00/9:15/9:30 and starts back up at 9:45, proving this is a live, freshly-computed
+query, not a canned list.
+
+**§5 — Regression: a specific date/time given upfront still works exactly as before (new
+customer Taylor Reed, fresh conversation, no ambiguity about which day):**
+```
+Customer: "Book me for a teeth cleaning next Tuesday at 2pm."
+Assistant: "You're all set, Taylor Reed! I've booked Teeth Cleaning for Tuesday, September 8
+at 2:00 PM (30 min). Your booking ID is 1b6454ad-dfd9-48d8-93a5-36d20c9b5f6a."
+intent: booking
+```
+Real DB row:
+```
+1b6454ad-... | 2026-09-08 18:00:00+00:00 | 30 | AppointmentStatus.CONFIRMED
+```
+(18:00 UTC = 2:00 PM EDT — correct.) `wants_availability` played no role here since the LLM
+correctly reported it false for a message giving both a date and a time — the complete-draft
+branch fires first regardless, same precedence Phase 25a always had.
+
+**§6 — Defensive regression test (automated, deterministic): if a stubbed/adversarial reply
+sets `wants_availability: true` on a turn that ALSO gives a complete date+time, the real
+booking still fires immediately — `wants_availability` can never override an
+already-resolvable attempt:**
+```
+$ docker compose exec backend python -m pytest tests/integration/test_conversation.py \
+    -k "wants_availability" -v
+test_parse_response_extracts_wants_availability_true                                    PASSED
+test_wants_availability_shows_real_slots_instead_of_asking_for_a_time                   PASSED
+test_wants_availability_without_a_known_service_asks_for_service_first                  PASSED
+test_wants_availability_on_a_closed_day_offers_the_next_real_opening                    PASSED
+test_wants_availability_then_picking_a_shown_slot_books_correctly                       PASSED
+test_wants_availability_never_overrides_an_already_complete_draft                       PASSED
+test_wants_availability_absent_in_older_stubbed_reply_keeps_old_missing_slots_behavior   PASSED
+7 passed, 62 deselected in 16.39s
+```
+`test_wants_availability_then_picking_a_shown_slot_books_correctly` is the deterministic,
+stubbed-LLM twin of §1+§2 (same shape, no live network dependency). `..._absent_in_older_
+stubbed_reply_keeps_old_missing_slots_behavior` is the explicit backward-compatibility proof:
+a `booking_request` with no `wants_availability` key at all (every fixture written before
+this phase) still produces the exact pre-Phase-33 "what date"/"what time" question.
+
+**§7 — Full `test_conversation.py`, then full regression suite:**
+```
+$ docker compose exec backend python -m pytest tests/integration/test_conversation.py -q
+69 passed, 4 warnings in 106.28s
+
+$ docker compose exec backend python -m pytest tests/ -q
+356 passed, 10 skipped (real-LLM-gated + pre-existing skips), 30 warnings in 300.28s
+```
+356 = 349 pre-existing (Phase 32) + 7 new (1 unit-level `_parse_response` test + 6 integration
+tests in the new `# --- Phase 33` block). Zero pre-existing assertions modified except the 3
+`_parse_response` equality checks that now include the new, always-present
+`wants_availability` key in their expected dict (same "repurposed, not silently changed"
+precedent Phase 25a itself set for `_parse_booking_request`'s own shape change) — every
+Phase 25a/25a-2/25b/25c-authored test (contact gate, draft accumulation/correction, off-intent
+completion, closed-day date-clearing, provider-failure handling, language lock) passed
+unmodified.
+
+**Lint (Phase-33-touched files; full `app/`+`tests/` run also checked — the only 2 findings
+are pre-existing `f"..."` no-placeholder lints in `tests/security/test_phase29_pagination.py`
+from Phase 29, untouched by this phase, confirmed via `git blame`):**
+```
+$ docker compose exec backend ruff check app/services/conversation/intent.py \
+    app/services/conversation/orchestrator.py app/services/conversation/response_templates.py \
+    tests/integration/test_conversation.py
+All checks passed!
+```
+
+**Secrets grep:** clean — `git diff` on every Phase-33-touched file contains no match for
+API keys/secrets/tokens/passwords (checked directly, excluding known-safe test literals like
+`_auth_header`/`correcthorse1`/`access_token`); `.env.example` unchanged.
+
+**Migration reversibility:** not applicable — this phase changes only application logic
+(`intent.py`, `orchestrator.py`, `response_templates.py`) and tests; no schema change, no new
+migration (the booking-draft columns this reuses already exist from Phase 25a).
+
+**Live-test DB cleanup:** the fresh test business (`4c32d571-b7a5-4a35-bb8d-a7ad5bad1024`) and
+everything cascading off it (2 conversations, 3 customers, 1 service, 2 appointments) deleted
+after verification, confirmed gone by re-querying its id (`None`). A second, unrelated
+"Riverside Dental" business already existed in this DB from an earlier phase's own live
+testing (its own `business_id`, `3027173d-...`, per Phase 25a/25b/25c) — left untouched, not
+created or used by this phase.
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| "What times do you have for a cleaning," no specific time in mind → real slot list shown immediately, not "what time would you like?" | ✓ Pass (live-verified) — §1 |
+| Customer picks one from that real list → books correctly, real DB proof | ✓ Pass (live-verified) — §2 |
+| Availability asked with NO service mentioned yet → asks for the service, doesn't guess | ✓ Pass (live-verified) — §3 |
+| Availability asked for a fully booked/closed day → honest response, real next available day offered, never empty/invented | ✓ Pass (live-verified) — §4 |
+| Regression: specific date/time given upfront ("book me... tomorrow at 2pm") still works exactly as before | ✓ Pass (live-verified) — §5 |
+| Doesn't regress Phase 25a/25a-2/25b/25c's existing tests | ✓ Pass (automated-test-verified) — §7, all pre-existing tests unmodified except 3 intentional, documented shape updates |
+| Secrets grep clean, lint clean | ✓ Pass — see above |
+
+**Known issues / punted items:**
+- **`wants_availability` is an LLM judgment call, not a hard rule** — the prompt gives clear
+  trigger examples and few-shot demonstrations, but a real customer's phrasing right at the
+  boundary (is "next Monday" alone an implicit "show me that day's options" or just a partial
+  answer expected to be followed by "what time?") is left to the model's honest read each
+  turn, same "LLM observes, Python decides" discipline as `message_language`/
+  `needs_human_handoff`. This is a deliberate, bounded risk: a false negative (missing an
+  opportunity to show options) simply falls back to the pre-existing, already-correct
+  ask-what's-missing behavior — never a wrong or invented result either way, by construction
+  (see §6).
+- **No auto-inference from "only one service exists for this business"** — the ticket
+  mentioned this as an example of "reasonably inferable" service context; this phase relies
+  entirely on the existing draft mechanism (a service mentioned earlier in the SAME
+  conversation is already remembered and reused, per Phase 25a) rather than adding a
+  business-wide "if there's only one service, assume it" rule, which is a different, wider
+  inference the ticket didn't explicitly require and which risks assuming wrong for a
+  business that adds a second service later. Not built; flagging as a real, deliberate scope
+  boundary, not an oversight.
+- **Showing options happens only after the contact-info gate is satisfied** — see "A
+  deliberate non-change" above; not reordered ahead of Phase 24's gate, since nothing in the
+  ticket asked for that and it would be a materially larger, higher-risk change to gate
+  ordering that's been stable since Phase 25a-2's own regression testing.
+- **The search window is fixed at 7 days / 5 slots shown** (`_AVAILABILITY_SEARCH_DAYS`,
+  `_AVAILABILITY_SLOTS_COUNT`, both in `orchestrator.py`) — same "chat reply, not a slot
+  picker UI" reasoning as the pre-existing `BookAppointmentTool._alternatives` constants;
+  a business needing a longer look-ahead would need this to become configurable.
+- Carried over from every prior phase, still real and still open: no staff-capacity model,
+  fixed 15-minute slot grid, exact-match-only service-name resolution, in-memory rate
+  limiter, no refresh tokens, no true worker/cron for `dispatch_queued_notifications`, and
+  Phase 32's commit still has no write-up in this file (pre-existing gap, not caused by this
+  phase).
+- No commit has been made yet — awaiting your confirmation of this verification output per
+  working rule #6. The stashed pre-existing integrations work (`stash@{0}`) also still needs
+  your direction on how to proceed once this is confirmed.

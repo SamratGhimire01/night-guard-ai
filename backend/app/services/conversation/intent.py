@@ -112,24 +112,37 @@ changing or cancelling an existing one, and not for more than one person (see ru
 extract a `booking_request` object every time: {{"service": "<the exact name of one entry \
 from Available services below, or null if THIS message doesn't mention/change it>", \
 "date": "<YYYY-MM-DD, or null if THIS message doesn't mention/change it>", "time": "<HH:MM \
-in 24-hour time, business-local, or null if THIS message doesn't mention/change it>"}}. \
-Only fill in a field THIS message actually specifies (directly, or unambiguously — resolve \
-relative dates like "tomorrow"/"next Tuesday" using today's date given below) — leave a \
-field null if this message doesn't add or change it, EVEN IF it was already given earlier \
-in this conversation. You are never responsible for remembering or re-deriving earlier \
-turns' slots yourself — a separate, deterministic system (not you) keeps track of \
-everything collected so far across the whole conversation and combines it with whatever \
-you extract here. `booking_request` should essentially always be the object above (never \
-null) for a single-person booking-intent message — including a plain confirmation like \
-"yes" that adds nothing new, where `{{"service": null, "date": null, "time": null}}` is \
-completely normal and expected. CRITICAL: you do NOT decide whether enough information has \
-been collected to book, and you must NEVER ask a vague readiness question in `response` \
-like "should I check availability now?" or "shall I go ahead and book that?" — a separate \
-deterministic system checks the real combined state after every message and either books \
-immediately or asks for the one or two specific pieces still missing; that system's own \
-result or its own specific question will very often override whatever you write in \
-`response` for a booking-intent turn, so just acknowledge naturally and briefly (never \
-claim booked/confirmed, per rule 2) without trying to judge readiness yourself.
+in 24-hour time, business-local, or null if THIS message doesn't mention/change it>", \
+"wants_availability": true or false}}. \
+Only fill in service/date/time when THIS message actually specifies it (directly, or \
+unambiguously — resolve relative dates like "tomorrow"/"next Tuesday" using today's date \
+given below) — leave a field null if this message doesn't add or change it, EVEN IF it was \
+already given earlier in this conversation. You are never responsible for remembering or \
+re-deriving earlier turns' slots yourself — a separate, deterministic system (not you) keeps \
+track of everything collected so far across the whole conversation and combines it with \
+whatever you extract here. `booking_request` should essentially always be the object above \
+(never null) for a single-person booking-intent message — including a plain confirmation \
+like "yes" that adds nothing new, where `{{"service": null, "date": null, "time": null, \
+"wants_availability": false}}` is completely normal and expected. CRITICAL: you do NOT \
+decide whether enough information has been collected to book, and you must NEVER ask a \
+vague readiness question in `response` like "should I check availability now?" or "shall I \
+go ahead and book that?" — a separate deterministic system checks the real combined state \
+after every message and either books immediately, shows real available times, or asks for \
+the one or two specific pieces still missing; that system's own result or its own specific \
+question will very often override whatever you write in `response` for a booking-intent \
+turn, so just acknowledge naturally and briefly (never claim booked/confirmed, per rule 2) \
+without trying to judge readiness yourself.
+`wants_availability`: set to true whenever THIS message is a booking-intent message that \
+does NOT state a specific time for the appointment — this covers explicit requests to see \
+options ("what times do you have," "when can I come in," "what's your soonest opening," "do \
+you have anything tomorrow") just as much as it covers a plain under-specified booking ask \
+("book me for a cleaning" with no time given, or naming only a date with no time). The real \
+system will show the customer a real list of open times instead of asking them to guess one \
+— you never need to ask "what time works for you" yourself when this is true. Set it to \
+false when THIS message states a specific date AND time (a new one, or a correction to one), \
+or when this message adds nothing new about timing at all (a bare "yes", or a message only \
+about something unrelated to timing, like giving contact info). When genuinely unsure, false \
+is the safer default.
 10. When intent is "cancellation" — the customer wants to cancel an EXISTING appointment \
 — identify which one from "Customer's active/upcoming appointments" below (each has an \
 internal "id" — never read this id out loud to the customer, it's for you to copy, not to \
@@ -251,28 +264,50 @@ Example — booking with enough info to extract, response still doesn't claim su
 Today's date: 2026-09-08 (Tuesday). Available services: Cleaning ($90, 30 min).
 Customer: "Can I get a cleaning next Thursday at 2pm?"
 Assistant: {{"intent": "booking", "response": "Let me check that for you.", \
-"booking_request": {{"service": "Cleaning", "date": "2026-09-10", "time": "14:00"}}}}
+"booking_request": {{"service": "Cleaning", "date": "2026-09-10", "time": "14:00", \
+"wants_availability": false}}}}
 
 Example — booking info given gradually across several turns of the SAME conversation; \
 each turn extracts ONLY what is new THIS message, never re-states earlier turns, and \
-never asks a readiness question:
+never asks a readiness question — note `wants_availability` stays true for as long as no \
+specific time has been given, so the real system shows options instead of you asking \
+"what time works for you":
 Today's date: 2026-09-01 (Tuesday). Available services: Cleaning ($90, 30 min).
 Customer (turn 1): "I'd like to book a cleaning."
-Assistant: {{"intent": "booking", "response": "Sure — what date and time work for you?", \
-"booking_request": {{"service": "Cleaning", "date": null, "time": null}}}}
+Assistant: {{"intent": "booking", "response": "Sure, let me see what's open.", \
+"booking_request": {{"service": "Cleaning", "date": null, "time": null, \
+"wants_availability": true}}}}
 Customer (turn 2, later in the same conversation): "Next Monday."
-Assistant: {{"intent": "booking", "response": "Got it.", \
-"booking_request": {{"service": null, "date": "2026-09-07", "time": null}}}}
+Assistant: {{"intent": "booking", "response": "Got it, checking Monday.", \
+"booking_request": {{"service": null, "date": "2026-09-07", "time": null, \
+"wants_availability": true}}}}
 Customer (turn 3, later still): "10am works for me."
 Assistant: {{"intent": "booking", "response": "Great, one moment.", \
-"booking_request": {{"service": null, "date": null, "time": "10:00"}}}}
+"booking_request": {{"service": null, "date": null, "time": "10:00", \
+"wants_availability": false}}}}
 
 Example — customer just confirms with "yes" once everything has already been given; \
 nothing new to extract is completely normal, and you still never judge readiness \
 yourself — a real system already knows the state and will act on it, not you:
 Customer: "Yes, that's right, go ahead."
 Assistant: {{"intent": "booking", "response": "Great!", \
-"booking_request": {{"service": null, "date": null, "time": null}}}}
+"booking_request": {{"service": null, "date": null, "time": null, \
+"wants_availability": false}}}}
+
+Example — customer wants to see real options rather than name a time themselves; the real \
+system will show a real list, so you never ask "what time works for you" here:
+Today's date: 2026-09-01 (Tuesday). Available services: Cleaning ($90, 30 min).
+Customer: "What times do you have for a cleaning?"
+Assistant: {{"intent": "booking", "response": "Let me see what's open for a cleaning.", \
+"booking_request": {{"service": "Cleaning", "date": null, "time": null, \
+"wants_availability": true}}}}
+
+Example — availability asked for a specific day, but with no service named yet — service \
+is asked for first, never a guess, and no options are shown until it's known:
+Customer: "Do you have anything open tomorrow?"
+Assistant: {{"intent": "booking", "response": "Sure — which service would you like to book?", \
+"booking_request": {{"service": null, "date": "2026-09-02", "time": null, \
+"wants_availability": true}}}}
 
 Example — group booking, same service and time for everyone, all information given:
 Today's date: 2026-09-01 (Tuesday). Available services: Cleaning ($90, 30 min).
@@ -363,7 +398,7 @@ Assistant: {{"intent": "follow_up", "response": "Thanks, Jordan! Got it.", \
 Respond with ONLY a single JSON object and nothing else — no markdown fences, no \
 commentary before or after it:
 {{"intent": "<one of the intents above>", "response": "<your reply to the customer>", \
-"booking_request": null or {{"service": "<name or null>", "date": "<YYYY-MM-DD or null>", "time": "<HH:MM or null>"}}, \
+"booking_request": null or {{"service": "<name or null>", "date": "<YYYY-MM-DD or null>", "time": "<HH:MM or null>", "wants_availability": true or false}}, \
 "group_booking_request": null or {{"people": [{{"label": "<who>", "service": "<name>", \
 "date": "<YYYY-MM-DD>", "time": "<HH:MM>"}}, ...], "all_or_nothing": true or false}}, \
 "cancellation_request": null or {{"appointment_id": "<id>"}}, \
@@ -507,14 +542,23 @@ class ClassificationResult(NamedTuple):
 
 
 def _parse_booking_request(data: dict) -> dict | None:
-    """Phase 25a: each field is independently string-or-None — a
-    `booking_request` with only, say, `date` filled in (the other two
+    """Phase 25a: each of service/date/time is independently string-or-None —
+    a `booking_request` with only, say, `date` filled in (the other two
     omitted/null) is a normal, expected PARTIAL extraction now, not a
     malformed one. Only returns None when the LLM didn't emit a
     `booking_request` object at all (e.g. omitted the key, or emitted a
     non-dict); orchestrator._merge_booking_draft is what actually
     accumulates whichever fields show up here across turns — this function's
-    only job is honestly reporting what THIS turn's raw JSON contained."""
+    only job is honestly reporting what THIS turn's raw JSON contained.
+
+    Phase 33: `wants_availability` is a per-turn instruction, not a slot to
+    accumulate into the persisted draft — it's the LLM's honest read of
+    whether THIS message is asking to see real options rather than naming a
+    specific time (see intent.py rule 9). Coerced to a plain bool (never
+    None) since "missing/not a bool" and "explicitly false" mean the exact
+    same thing here: don't show a slot list this turn. An older/stubbed
+    reply that predates this field naturally parses to False, i.e. the
+    original ask-what's-missing behavior, unchanged."""
     raw = data.get("booking_request")
     if not isinstance(raw, dict):
         return None
@@ -522,7 +566,12 @@ def _parse_booking_request(data: dict) -> dict | None:
     def _clean(value: object) -> str | None:
         return value if isinstance(value, str) and value.strip() else None
 
-    return {"service": _clean(raw.get("service")), "date": _clean(raw.get("date")), "time": _clean(raw.get("time"))}
+    return {
+        "service": _clean(raw.get("service")),
+        "date": _clean(raw.get("date")),
+        "time": _clean(raw.get("time")),
+        "wants_availability": bool(raw.get("wants_availability")),
+    }
 
 
 def _parse_group_booking_request(data: dict) -> dict | None:

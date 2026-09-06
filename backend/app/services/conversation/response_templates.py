@@ -282,6 +282,33 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "ne_deva": "बुझें — {summary}। लक गर्न मलाई तपाईंको नाम र फोन नम्बर वा इमेल चाहिन्छ।",
         "ne_roman": "Bujhe — {summary}. Lock garna malai tapaiko naam ra phone number wa email chahincha.",
     },
+    # Phase 33: composed when the customer wants to see real options rather
+    # than name a time themselves (orchestrator._propose_available_slots) —
+    # `options` is a real, freshly-computed get_available_slots list, never
+    # invented. Used when at least one real opening exists in the searched
+    # window and (if the customer named a specific day) that day is one of
+    # the ones actually on offer.
+    "availability_options": {
+        "en": "Here's what's open for {service}: {options}. Which works for you?",
+        "ne_deva": "{service} का लागि यी समयहरू खाली छन्: {options}। कुन मिल्छ?",
+        "ne_roman": "{service} ko lagi yi samaya haru khali chan: {options}. Kun milcha?",
+    },
+    # Phase 33: the honest "that specific day has nothing, here's the real
+    # next opening" case — required so a fully-booked/closed day is never
+    # answered with a silent empty list or an invented slot.
+    "availability_none_with_next_day": {
+        "en": "There's nothing open for {service} on {requested} — the next real opening is {options}. Would any of those work?",
+        "ne_deva": "{requested} मा {service} को लागि केही खाली छैन — अर्को वास्तविक खाली समय {options} हो। यीमध्ये कुनै मिल्छ?",
+        "ne_roman": "{requested} ma {service} ko lagi kehi khali chaina — arko real khali samaya {options} ho. Yi madhye kunai milcha?",
+    },
+    # Phase 33: no real opening at all anywhere in the searched window —
+    # never shown as an empty list, always an honest statement plus a
+    # human-handoff offer instead of inventing a slot.
+    "availability_none_no_alts": {
+        "en": "I don't see any openings for {service} in the next little while — would you like me to connect you with our team instead?",
+        "ne_deva": "अहिलेलाई {service} को लागि कुनै खाली समय देखिँदैन — के म तपाईंलाई हाम्रो टिमसँग जोडिदिऊँ?",
+        "ne_roman": "Ahile lai {service} ko lagi kunai khali samaya dekhindaina — ma tapailai hamro team sanga jodidiu?",
+    },
 }
 
 # Human-readable label for the "this conversation's locked language" line
