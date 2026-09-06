@@ -340,6 +340,9 @@ def send_daily_report_email(db: Session, *, business_id: uuid.UUID, report_date:
     body = _compose_report_email_body(report)
     html_body = render_daily_report_email(
         business_name=business.name,
+        business_address=business.address,
+        business_phone=business.phone,
+        business_email=business.email,
         period_label=f"Report for {report_date.isoformat()}",
         rows=_daily_report_rows(report),
     )

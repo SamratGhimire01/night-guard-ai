@@ -284,6 +284,9 @@ def send_monthly_report_email(db: Session, *, business_id: uuid.UUID, year: int,
     top_services = ", ".join(f"{s['service_name']} ({s['count']})" for s in report["most_requested_services"][:3])
     html_body = render_monthly_report_email(
         business_name=business.name,
+        business_address=business.address,
+        business_phone=business.phone,
+        business_email=business.email,
         period_label=report["period_label"],
         rows=_monthly_report_rows(report),
         busiest_days=top_days,

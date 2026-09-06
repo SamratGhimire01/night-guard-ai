@@ -27,6 +27,11 @@ def compose_followup_email(*, business: Business, customer: Customer, interest_m
     )
 
     html_body = render_followup_email(
-        business_name=business.name, customer_name=customer.name, quoted_message=quoted
+        business_name=business.name,
+        business_address=business.address,
+        business_phone=business.phone,
+        business_email=business.email,
+        customer_name=customer.name,
+        quoted_message=quoted,
     )
     return subject, body, html_body

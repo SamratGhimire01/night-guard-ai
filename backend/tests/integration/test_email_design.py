@@ -137,6 +137,35 @@ def test_compose_email_autoescapes_customer_and_business_names():
     assert "A &amp; B &lt;Dental&gt;" in html
 
 
+def test_compose_email_shows_business_contact_footer_and_patient_contact_in_body():
+    """A patient should be able to call/find the business straight from the
+    email (footer) and should see their own recorded name/contact reflected
+    back so they can catch a data-entry error (Booked for: ...)."""
+    business = Business(
+        name="Samaj Dental Clinic",
+        timezone="Asia/Kathmandu",
+        address="Radhe Radhe, Birgunj, Nepal",
+        phone="+977-51-522345",
+        email="info@samajdentalclinic.example.com",
+    )
+    service = Service(name="Cleaning", price=50, duration_minutes=30)
+    customer = Customer(name="Jordan Lee", phone="9800000000", email="jordan@example.com")
+    appointment = Appointment(
+        id=uuid.uuid4(), scheduled_at=datetime(2026, 9, 7, 14, 0, tzinfo=ZoneInfo("UTC")), duration_minutes=30
+    )
+    _subject, body, html = compose_email(
+        event_type="booking_confirmed", appointment=appointment, business=business, service=service, customer=customer
+    )
+
+    for target in (body, html):
+        assert "Radhe Radhe, Birgunj, Nepal" in target
+        assert "+977-51-522345" in target
+        assert "info@samajdentalclinic.example.com" in target
+        assert "Jordan Lee" in target
+        assert "9800000000" in target
+        assert "jordan@example.com" in target
+
+
 # --- EmailNotificationProvider: real multipart/alternative + attachment structure -------
 
 

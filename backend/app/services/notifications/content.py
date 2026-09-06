@@ -55,6 +55,9 @@ def compose_email(
     else:
         raise ValueError(f"Unknown notification event_type: {event_type!r}")
 
+    customer_contact = ", ".join(filter(None, [customer.phone, customer.email]))
+    business_contact = " · ".join(filter(None, [business.address, business.phone, business.email]))
+
     greeting = f"Hi {customer.name}," if customer.name else "Hi,"
     body = (
         f"{greeting}\n\n{headline}\n\n"
@@ -62,12 +65,20 @@ def compose_email(
         f"Service: {service.name}\n"
         f"When: {when}\n"
         f"Booking ID: {booking_id}\n"
+        f"Booked for: {customer.name}" + (f", {customer_contact}" if customer_contact else "") + "\n"
     )
+    if business_contact:
+        body += f"\n{business.name} · {business_contact}\n"
 
     status_label, status_color, status_bg = _STATUS_STYLE[event_type]
     html_body = render_appointment_email(
         business_name=business.name,
+        business_address=business.address,
+        business_phone=business.phone,
+        business_email=business.email,
         customer_name=customer.name,
+        customer_phone=customer.phone,
+        customer_email=customer.email,
         headline=headline,
         service_name=service.name,
         when=when,

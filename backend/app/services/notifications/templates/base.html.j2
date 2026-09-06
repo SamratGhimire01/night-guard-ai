@@ -24,6 +24,10 @@
 <tr>
 <td style="background-color:#f4f5f7;padding:16px 32px;border-top:1px solid #e5e7eb;border-radius:0 0 8px 8px;">
 <p style="margin:0;color:#8a8f98;font-size:12px;line-height:18px;font-family:Arial,Helvetica,sans-serif;">This is an automated message from {{ business_name }}. Please do not reply directly to this email.</p>
+{% set contact_bits = [business_address, business_phone, business_email] | select | list %}
+{% if contact_bits %}
+<p style="margin:8px 0 0 0;color:#8a8f98;font-size:12px;line-height:18px;font-family:Arial,Helvetica,sans-serif;">{{ business_name }} &middot; {{ contact_bits | join(' · ') }}</p>
+{% endif %}
 </td>
 </tr>
 </table>

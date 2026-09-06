@@ -27,6 +27,11 @@
 <td style="padding:6px 0;font-size:13px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;vertical-align:top;">Booking ID</td>
 <td style="padding:6px 0;font-size:12px;color:#6b7280;font-family:'Courier New',Courier,monospace;">{{ booking_id }}</td>
 </tr>
+{% set customer_contact_bits = [customer_phone, customer_email] | select | list %}
+<tr>
+<td style="padding:6px 0;font-size:13px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;vertical-align:top;">Booked for</td>
+<td style="padding:6px 0;font-size:14px;color:#111827;font-family:Arial,Helvetica,sans-serif;">{{ customer_name or "—" }}{% if customer_contact_bits %}, {{ customer_contact_bits | join(', ') }}{% endif %}</td>
+</tr>
 </table>
 </td>
 </tr>
