@@ -9,6 +9,7 @@ from app.api.routes import (
     followups,
     handoffs,
     health,
+    integrations,
     internal_metrics,
     knowledge,
     reports,
@@ -42,6 +43,7 @@ app.include_router(appointments.router, prefix="/api/v1", tags=["appointments"])
 app.include_router(reports.router, prefix="/api/v1", tags=["reports"])
 app.include_router(followups.router, prefix="/api/v1", tags=["followups"])
 app.include_router(handoffs.router, prefix="/api/v1", tags=["handoffs"])
+app.include_router(integrations.router, prefix="/api/v1", tags=["integrations"])
 app.include_router(training.router, prefix="/api/v1", tags=["training"])
 app.include_router(internal_metrics.router, prefix="/api/v1", tags=["internal"])
 app.include_router(widget.router, tags=["widget"])
