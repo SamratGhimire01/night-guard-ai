@@ -210,6 +210,60 @@ def test_session_rate_limit_is_real_and_returns_429(business):
     assert 429 in statuses[WIDGET_SESSION_MAX_ATTEMPTS:]
 
 
+def test_widget_config_returns_real_default_branding(business):
+    resp = client.get(f"/api/v1/widget/{business}/config")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["name"] == "Widget Test Biz"
+    assert body["brand_color"] == "#2563eb"  # the real DB default, not hardcoded in this test's expectation alone
+    assert body["logo_url"] is None
+
+
+def test_widget_config_reflects_a_real_profile_update(business):
+    with SessionLocal() as db:
+        b = db.get(Business, uuid.UUID(business))
+        b.brand_color = "#16a34a"
+        b.logo_url = "https://example.com/logo.png"
+        db.commit()
+
+    resp = client.get(f"/api/v1/widget/{business}/config")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["brand_color"] == "#16a34a"
+    assert body["logo_url"] == "https://example.com/logo.png"
+
+
+def test_widget_config_never_leaks_another_businesss_branding(business):
+    email_b = _unique_email("widget-owner-branding-b")
+    resp_b = client.post(
+        "/api/v1/auth/register",
+        json={"business_name": "Widget Branding Biz B", "timezone": "UTC", "email": email_b, "password": "correcthorse1"},
+    )
+    business_b = resp_b.json()["business_id"]
+    try:
+        with SessionLocal() as db:
+            a = db.get(Business, uuid.UUID(business))
+            a.brand_color = "#ff0000"
+            db.commit()
+
+        resp = client.get(f"/api/v1/widget/{business_b}/config")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["brand_color"] != "#ff0000"
+        assert resp.json()["name"] == "Widget Branding Biz B"
+    finally:
+        with SessionLocal() as db:
+            b = db.get(Business, uuid.UUID(business_b))
+            if b is not None:
+                db.delete(b)
+            db.commit()
+
+
+def test_widget_config_business_id_that_does_not_exist_returns_a_plain_404():
+    resp = client.get(f"/api/v1/widget/{uuid.uuid4()}/config")
+    assert resp.status_code == 404, resp.text
+    assert resp.json()["error"]["type"] == "not_found"
+
+
 def test_widget_js_serves_real_file_referencing_data_business_id():
     resp = client.get("/widget.js")
     assert resp.status_code == 200
@@ -229,6 +283,11 @@ def test_cors_headers_present_on_widget_endpoints_but_not_elsewhere(business):
 
     js_resp = client.get("/widget.js", headers={"Origin": "https://some-random-business-website.example"})
     assert js_resp.headers.get("access-control-allow-origin") == "*"
+
+    config_resp = client.get(
+        f"/api/v1/widget/{business}/config", headers={"Origin": "https://some-random-business-website.example"}
+    )
+    assert config_resp.headers.get("access-control-allow-origin") == "*"
 
     health_resp = client.get("/api/v1/health", headers={"Origin": "https://some-random-business-website.example"})
     assert "access-control-allow-origin" not in {k.lower() for k in health_resp.headers.keys()}

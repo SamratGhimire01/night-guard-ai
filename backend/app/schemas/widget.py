@@ -29,3 +29,13 @@ class WidgetMessageResponse(BaseModel):
     session_token: str
     response: str
     intent: str
+
+
+class WidgetConfigResponse(BaseModel):
+    """Public branding for the embedded widget — same public-data tier as
+    `business_id` itself (already embedded in the business's own public
+    website source as `data-business-id`), never anything private."""
+
+    name: str
+    brand_color: str
+    logo_url: str | None

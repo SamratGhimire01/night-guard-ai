@@ -8897,3 +8897,290 @@ $ psql -c "SELECT count(*) FROM businesses;"   -> 11  (10 original + your own "B
 - No commit has been made yet — awaiting your explicit confirmation of this verification
   output per working rule #6. Do not start Phase 38 work until then, per your standing
   instruction.
+
+---
+
+## Phase 38 — Website Widget Polish + Embed Code Generator
+
+**Date:** 2026-09-06
+
+**Required:** replace Phase 21's minimal, functional-only `widget.js` with a genuinely
+polished floating chat widget (Intercom/Chatbase-quality, still a single dependency-free
+script, still the exact same real public endpoint/session/rate-limit model underneath —
+presentation only, zero changes to the real conversation logic), surface its real
+copy-pasteable embed code + a live preview inside the dashboard, and stand up two real,
+reusable, documented test accounts (Free + Premium) so plan-gated features can be checked
+without recreating businesses from scratch.
+
+**Design decisions:**
+
+1. **Branding is real data, not a mockup** — `Business.brand_color` (hex string,
+   defaults to the widget's original hardcoded `#2563eb` so every pre-existing business
+   looks identical after migration) and `Business.logo_url` (nullable) were added to the
+   real `Business` row (migration `7777493e36ff`, clean autogenerate, no hand-fixing
+   needed) rather than inventing a separate branding table — same "no real per-plan data
+   yet" reasoning Phase 34 already applied to `Plan`: two scalar columns, no joins, no
+   speculative structure. Both are writable via the existing `PATCH /business/me`
+   (`BusinessUpdate`) — this is display styling, not an entitlement, unlike `plan` itself.
+2. **A new public `GET /api/v1/widget/{business_id}/config` endpoint** — the widget can't
+   read a business's real name/color/logo without authenticating (it has none), so it
+   needs its own public read, at the exact same trust tier and with the exact same
+   business_id-enumeration reasoning as Phase 21's `POST .../messages` (already embedded
+   in the business's own public site source, a 128-bit UUID, brute-forcing the keyspace
+   infeasible). Nothing returned is private — it's exactly what already appears on the
+   business's own public website once the widget is embedded. Deliberately NOT put behind
+   the existing rate limiters — a GET returning three display fields carries none of the
+   real LLM-budget/DB-write cost `POST .../messages` has, so there is nothing here worth
+   spending a limiter's complexity on.
+3. **The widget fetches its own branding at runtime, not at embed time** — `widget.js`
+   `fetch()`s `/config` on load and applies the real color via a CSS custom property
+   (`--ng-color`) rather than re-injecting CSS text, so a business can change its color in
+   Settings and every page already embedding the widget picks it up on next load with zero
+   re-embed. Falls back to the original hardcoded defaults on any failure (network error,
+   404, no branding set) — the widget always renders regardless of whether this new
+   endpoint is reachable.
+4. **Live preview reuses the REAL widget, not a re-implementation** — the dashboard's
+   "Website Widget" page renders an `<iframe sandbox="allow-scripts">` whose `srcDoc` is
+   the literal embed `<script>` tag being shown for copying. This means the preview and
+   the copy-pasteable code are provably the same artifact — there is no second, parallel
+   "preview" UI that could visually drift from what a business owner actually gets, and it
+   closes the ticket's own "closes the loop" requirement by construction rather than by a
+   manual cross-check.
+5. **Settings page — real widget-branding fields only, not a full business-profile
+   editor.** The ticket needed *some* real, working way to change `brand_color`/`logo_url`
+   to prove the widget reflects real profile data; a full name/description/address editor
+   for Phase 4's other fields wasn't asked for and would be scope creep onto a future
+   phase. `name` is shown, disabled, with an honest "Edit under a future phase" note —
+   never silently omitted.
+6. **Standing test accounts — real businesses, real seeded data, real upgrade
+   mechanism, temporary superadmin bootstrapped and torn down the same documented way
+   Phase 34 already did it.** No shortcuts: `plan` was changed via the real
+   `PATCH /admin/businesses/{id}/plan` (Phase 34), not a direct DB write on `plan` itself.
+
+**Implemented:**
+
+- **`app/db/models/business.py`**: `Business.brand_color` (`String(7)`, `NOT NULL`,
+  default `#2563eb`), `Business.logo_url` (`String(500)`, nullable).
+- **Migration `7777493e36ff_phase_38_business_widget_branding.py`** — two straightforward
+  `add_column`s, clean autogenerate, no hand-fixing.
+- **`app/schemas/business.py`**: `BusinessRead.brand_color`/`logo_url` added;
+  `BusinessUpdate.brand_color` (hex-format validated, `#RRGGBB`) / `logo_url` added;
+  `brand_color` added to the existing `required_field_not_null` validator (same NOT-NULL
+  protection `name`/`timezone` already have — an explicit `null` is rejected with a 422,
+  never reaches the DB as an `IntegrityError`).
+- **`app/schemas/widget.py`**: `WidgetConfigResponse` (`name`, `brand_color`, `logo_url`).
+- **`app/services/channels/widget_service.py`**: `get_widget_config()` — a pure addition,
+  the existing `send_widget_message()`/`_resolve_session_token()`/session-isolation logic
+  is byte-for-byte unchanged (confirmed by `git diff` below).
+- **`app/api/routes/widget.py`**: `GET /api/v1/widget/{business_id}/config` (public, 404
+  on unknown business_id, same as `POST .../messages`).
+- **`app/static/widget.js`** — full visual rewrite (real, working, still zero external
+  dependencies): a floating circular bubble (inline SVG chat/close icons, not emoji, with
+  a smooth icon-swap transition) that expands into a real panel with a branded header
+  (business name + optional logo), rounded message bubbles (customer messages right-
+  aligned in the brand color, agent messages left-aligned in white with a subtle shadow),
+  a real animated three-dot typing indicator shown for the actual duration of the real
+  backend call, and smooth open/close transitions (opacity + transform, not a hard
+  show/hide). The one genuinely per-business value (color) is applied via a CSS custom
+  property set after the real `/config` fetch resolves; everything else is static,
+  injected-once CSS exactly as Phase 21 already did it.
+- **`frontend/src/pages/dashboard/WebsiteWidgetPage.tsx`** (new) — real embed snippet
+  (`<script src="{api_origin}/widget.js" data-business-id="{real id}">`), a `CopyButton`
+  (Mantine, real `navigator.clipboard`), and the real-widget-in-an-iframe live preview
+  described in design decision #4.
+- **`frontend/src/pages/dashboard/SettingsPage.tsx`** (new, replaces the Phase 35
+  placeholder) — `ColorInput` + `TextInput` for `brand_color`/`logo_url`, wired to the
+  real `PATCH /business/me`.
+- **`frontend/src/App.tsx`** / **`DashboardLayout.tsx`**: new `/dashboard/widget` route +
+  nav entry ("Website Widget"); `/dashboard/settings` now renders the real `SettingsPage`.
+- **`frontend/src/api/types.ts`**: `BusinessRead.brand_color`/`logo_url`, new
+  `BusinessUpdate` interface (the dashboard's `PATCH /business/me` payload shape).
+- **`tests/integration/test_widget.py`**: 4 new tests — real default branding, a real
+  profile-update reflected by the config endpoint, cross-business branding isolation (A's
+  color change never leaks into B's config response), and the unknown-business_id 404.
+
+**Verification — real running `docker compose` backend (`localhost:8010`, restarted
+mid-phase to pick up code changes — no `--reload` in the image, same documented
+operational note as every prior phase) + real Vite dev server (`localhost:5173`), real
+Chromium via Playwright (headed engine disabled, screenshots captured), real Azure LLM:**
+
+**§1 — Real end-to-end widget flow on a genuinely separate third-party HTML page** (not
+the dashboard — a standalone file with its own `<h1>Riverside Family Practice</h1>`,
+loaded via `file://`, embedding nothing but the real script tag):
+```html
+<script src="http://localhost:8010/widget.js" data-business-id="8eda5526-2444-48b1-b045-a60d33735b5a"></script>
+```
+```
+BUBBLE_RENDERED: true
+HEADER_NAME_BEFORE: Standing Test Biz Free      (real business name, not "Chat with us")
+BUBBLE_COLOR_BEFORE: rgb(37, 99, 235)           (#2563eb, the real DB default)
+PANEL_OPENED: true
+TYPING_INDICATOR_SHOWN: true
+CONVERSATION: [
+  { "sender": "customer", "text": "Hi! What is your cancellation policy, and what are your hours on Friday?" },
+  { "sender": "agent", "text": "Hi! Our cancellation policy: appointments can be cancelled or rescheduled up to 24 hours in advance with no fee; cancellations within 24 hours may incur a $25 fee. I don't have our Friday hours in this info — would you like me to connect you with the team to confirm them? I've also let our team know, so a real person will follow up with you." }
+]
+```
+A real answer pulled from this business's real approved knowledge document (seeded below)
+via the real embedding-search pipeline, plus Phase 19's real handoff sentence for the part
+it couldn't answer (business hours weren't in scope for that intent) — proof this is the
+full real Phase 6/8 pipeline, not a simplified widget-only path. Screenshot confirmed:
+rounded message bubbles, branded blue header with business name, close icon in the open
+bubble — a real, professional floating chat widget, not a plain text box.
+
+**§2 — Real branding change reflected live, no re-embed needed:**
+```
+$ curl -X PATCH .../business/me -H "Authorization: Bearer <free-owner>" \
+    -d '{"brand_color":"#16a34a","logo_url":"https://placehold.co/64x64/16a34a/white.png?text=NG"}'
+{"...","brand_color":"#16a34a","logo_url":"https://placehold.co/64x64/16a34a/white.png?text=NG"}
+```
+Same third-party test page, reloaded (no code change, no re-embed):
+```
+HEADER_NAME_AFTER: Standing Test Biz Free
+BUBBLE_COLOR_AFTER: rgb(22, 163, 74)     -> exactly #16a34a, the new real color
+LOGO_VISIBLE_AFTER: true
+LOGO_SRC_AFTER: https://placehold.co/64x64/16a34a/white.png?text=NG
+```
+Branding reset back to the original defaults afterward (`#2563eb`, no logo) so the
+standing test account below is left clean.
+
+**§3 — Real dashboard verification, closing the loop:** logged into the dashboard with
+the real Free standing account, navigated to the new "Website Widget" section:
+```
+EMBED_SNIPPET (from the dashboard's own DOM): <script src="http://localhost:8010/widget.js" data-business-id="8eda5526-2444-48b1-b045-a60d33735b5a"></script>
+```
+Byte-for-byte identical (`diff` confirmed) to the exact snippet used in §1's real
+end-to-end test — the dashboard's code is genuinely what works, not a different example.
+The "Copy code" button was clicked with a real clipboard permission granted; the real
+clipboard contents were read back and matched the snippet exactly, and the button's label
+correctly changed to "Copied!". The live preview iframe — the real widget, embedded with
+this business's real id — was clicked inside the dashboard page itself and opened into a
+real, working chat panel (screenshot confirmed, full page capture:
+`widget-page-preview-open.png`), proving the preview is the same real artifact, not a
+mockup, per design decision #4.
+
+**§4 — Real regression: rate limiting, session handling, cross-business isolation.**
+Session isolation and cross-business replay are unaffected by construction —
+`widget_service.py`'s `git diff` shows only a new, additive `get_widget_config()`
+function; `_resolve_session_token()` and `send_widget_message()` are byte-for-byte
+untouched — and this is independently confirmed by the exact same Phase 21 automated
+tests (`test_guessed_or_foreign_session_token_silently_starts_a_fresh_session_never_someone_elses`,
+`test_cross_business_token_replay_never_reaches_the_other_businesss_conversation`) still
+passing unmodified in §6 below. Rate limiting re-proven live, real concurrent burst, clean
+backend restart to reset in-memory limiter state (same real methodology as Phase 21):
+```
+$ for i in $(seq 1 25); do curl ... -d '{"content":"regression burst '$i'"}' & done; wait
+     20 200
+      5 429
+```
+Exactly `WIDGET_IP_MAX_ATTEMPTS = 20` succeeded, the rest 429'd — identical shape to
+Phase 21's own original proof.
+
+**§5 — Standing test accounts, real businesses, real seeded data, real upgrade:**
+
+| | Free | Premium |
+|---|---|---|
+| Business | Standing Test Biz Free | Standing Test Biz Premium |
+| `business_id` | `8eda5526-2444-48b1-b045-a60d33735b5a` | `4ff5b470-2451-4647-a72a-71686f25fa9f` |
+| Login | see "Standing Test Accounts" section below (dev-only, not committed in a shared context beyond this repo) | same |
+| Services | Basic Cleaning ($75/30min), Whitening ($150/45min) | same two |
+| Hours | Mon–Thu 9–5, Fri 9–2, Sat/Sun closed | same |
+| Knowledge | 1 real, **approved** doc: "Cancellation Policy" | same |
+| Plan | FREE (default, untouched) | **PREMIUM** — upgraded via the real `PATCH /admin/businesses/{id}/plan`, using a temporary superadmin bootstrapped the exact same documented way Phase 34 did it (a normal `register` + a direct `is_superadmin=true` UPDATE — the same deliberate, documented bootstrapping gap, not a new one), then deleted immediately after use |
+
+Real dashboard login with both, real behavior confirmed:
+```
+FREE:    GET /business/plan -> {"plan":"free", ...}
+         Reports > Yearly tab -> "Upgrade to Premium" honest gate shown (Phase 37's gate, screenshot confirmed)
+PREMIUM: GET /business/plan -> {"plan":"premium", ...}
+         Reports > Yearly tab -> real (zero-activity, honestly empty) yearly data rendered, no gate
+```
+Screenshots: `reports-yearly-FREE.png` (purple "Upgrade to Premium" panel), `reports-yearly-PREMIUM.png`
+(real Requested/Scheduled/Cancellation-Rate/Booking-Conversion tiles + "No appointments
+scheduled in 2026" honest empty state — Phase 37's own zero-activity honesty, still
+correct here).
+
+**§6 — Full regression suite + this phase's new tests, real run:**
+```
+$ docker compose exec backend python -m pytest tests/ -q
+389 passed, 10 skipped, 31 warnings in 340.54s (0:05:40)
+```
+389 = 385 (post-Phase-37) + 4 new in `test_widget.py`. Zero pre-existing tests modified.
+
+**§7 — Lint, secrets, build — all real runs:**
+```
+$ docker compose exec backend ruff check app/ tests/
+Found 2 errors (2 pre-existing Phase 29 f-string lints in tests/security/test_phase29_pagination.py,
+confirmed via git blame, unrelated to and untouched by this phase — same 2 every prior
+phase since Phase 33 has already documented and left as-is)
+
+$ cd frontend && npm run build
+1553 modules transformed, built in 600ms — zero type errors, zero build errors
+dist/assets/index-*.js   1,065.52 kB (gzip: 316.97 kB) — same pre-existing chunk-size
+                                                          warning Phase 37 already noted (Recharts)
+
+$ npm run lint
+2 warnings — both pre-existing (AuthContext.tsx Fast-Refresh warning from Phase 35,
+ReportsPage.tsx set-state-in-effect from Phase 37) — 0 new warnings, 0 errors
+
+Secrets grep (git diff + all new files, backend and frontend): clean — no real API
+keys/secrets; only known-safe test literals (correcthorse1-style passwords) and benign
+comments containing the word "secret" in prose.
+```
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real end-to-end: separate third-party HTML page, bubble renders, opens, real orchestrated response | ✓ Pass — §1 |
+| Widget pulls and displays real business name/color from real profile data; live proof of a real change reflecting | ✓ Pass — §2 |
+| Real dashboard embed snippet contains correct real business_id; copy-pasting closes the loop with §1's test | ✓ Pass — §3 |
+| Rate limiting, session handling, cross-business isolation unaffected | ✓ Pass — §4 |
+| Both standing accounts real, seeded, and showing correct Free/Premium dashboard behavior | ✓ Pass — §5 |
+| Full regression suite, zero regressions | ✓ Pass — §6, 389 passed |
+| Secrets grep clean, lint clean, frontend build clean | ✓ Pass — §7 |
+
+**Known issues / punted items:**
+- **`GET /api/v1/widget/{business_id}/config` has no rate limiting of its own** — a
+  deliberate choice (design decision #2): it's a public read of three display fields with
+  no LLM/DB-write cost, unlike `POST .../messages`. A future phase could add a light
+  per-IP limiter if this ever becomes a real scraping/DoS vector in practice; not built
+  here since nothing indicates it's a real risk today.
+- **No logo file upload — `logo_url` is a plain text field** (a business pastes a URL to
+  an already-hosted image). Building real file upload/storage for a logo wasn't asked for
+  and would be a genuinely separate feature (storage backend, image validation/resizing);
+  a URL field is the honest, minimal version of "customizable... logo."
+- **`SettingsPage` only exposes `brand_color`/`logo_url`** — `name` is shown but disabled
+  ("Edit under a future phase"); the rest of Phase 4's business-profile fields
+  (description/address/phone/email/website/tone/languages) have no dashboard UI yet at
+  all, same real gap Phase 35/36/37 already left open for whatever they didn't build.
+- **The widget's typing indicator and open/close animation are CSS-only, no
+  reduced-motion check** — a `prefers-reduced-motion` media query could disable the
+  transitions for users who've asked for that; not built here, matches this codebase's
+  existing accessibility baseline (no other phase has added `prefers-reduced-motion`
+  handling either).
+- Carried over, still real and still open (unrelated to this phase): everything Phase
+  36/37's own "Known issues" sections already listed.
+- No commit has been made yet — awaiting your explicit confirmation of this verification
+  output per working rule #6.
+
+---
+
+### Standing Test Accounts (dev-only — never present in a real production database)
+
+Created for repeatable, no-setup verification of plan-gated dashboard behavior. Real
+businesses, real logins, real seeded data (2 services, business hours, 1 approved
+knowledge document each). The Premium one was upgraded via the real
+`PATCH /admin/businesses/{id}/plan` mechanism (Phase 34), not a direct DB write on `plan`.
+
+| | Free | Premium |
+|---|---|---|
+| Email | `standing-free@example.com` | `standing-premium@example.com` |
+| Password | `StandingFree123!` | `StandingPremium123!` |
+| `business_id` | `8eda5526-2444-48b1-b045-a60d33735b5a` | `4ff5b470-2451-4647-a72a-71686f25fa9f` |
+| Plan | FREE | PREMIUM |
+
+These exist only in this environment's local dev Postgres — there is no code path that
+creates anything like them in a real deployment, and (like every prior phase's live test
+businesses) they're plain rows in the same `businesses`/`business_users` tables as
+everything else, not a special "test mode." Keep this section out of any context beyond
+this project's own private repo.

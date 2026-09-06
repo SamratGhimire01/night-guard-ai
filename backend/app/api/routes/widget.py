@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_db
 from app.core.exceptions import NotFoundError, TooManyRequestsError
 from app.core.rate_limit import widget_business_rate_limiter, widget_ip_rate_limiter, widget_session_rate_limiter
-from app.schemas.widget import WidgetMessageRequest, WidgetMessageResponse
+from app.schemas.widget import WidgetConfigResponse, WidgetMessageRequest, WidgetMessageResponse
 from app.services.channels import widget_service
 
 router = APIRouter()
@@ -32,6 +32,21 @@ def get_test_chat_page() -> FileResponse:
     """Dev/test-only chat UI for hitting the real widget endpoint by hand.
     Not for production exposure -- see comment at top of test-chat.html."""
     return FileResponse(_TEST_CHAT_PATH, media_type="text/html")
+
+
+@router.get("/api/v1/widget/{business_id}/config", response_model=WidgetConfigResponse)
+def get_widget_config(business_id: uuid.UUID, db: Session = Depends(get_db)) -> WidgetConfigResponse:
+    """Public — same trust tier as `POST .../messages` above (see that
+    route's docstring for the business_id-enumeration reasoning, which
+    applies identically here): the widget script fetches this BEFORE
+    rendering so it can show the business's real name/color/logo instead of
+    a generic default. Nothing returned here is private — it's exactly what
+    already appears on the business's own public website once the widget is
+    embedded."""
+    business = widget_service.get_widget_config(db, business_id=business_id)
+    if business is None:
+        raise NotFoundError("Business not found.")
+    return WidgetConfigResponse(name=business.name, brand_color=business.brand_color, logo_url=business.logo_url)
 
 
 @router.post("/api/v1/widget/{business_id}/messages", response_model=WidgetMessageResponse)

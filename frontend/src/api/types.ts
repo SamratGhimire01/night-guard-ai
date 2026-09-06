@@ -37,6 +37,21 @@ export interface BusinessRead {
   sms_enabled: boolean
   follow_ups_enabled: boolean
   plan: 'free' | 'premium'
+  brand_color: string
+  logo_url: string | null
+}
+
+export interface BusinessUpdate {
+  name?: string
+  description?: string | null
+  address?: string | null
+  phone?: string | null
+  email?: string | null
+  website?: string | null
+  timezone?: string
+  tone?: string | null
+  brand_color?: string
+  logo_url?: string | null
 }
 
 export interface PlanRead {

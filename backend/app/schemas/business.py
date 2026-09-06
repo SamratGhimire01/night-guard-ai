@@ -1,3 +1,4 @@
+import re
 import uuid
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -8,6 +9,8 @@ from app.schemas.common import safe_str
 # description is a Text column (unbounded in the DB) — a DoS/sanity ceiling,
 # not a real business-description-length constraint (Phase 29).
 _MAX_DESCRIPTION_CHARS = 10_000
+
+_HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 
 class BusinessRead(BaseModel):
@@ -30,6 +33,10 @@ class BusinessRead(BaseModel):
     # change_plan, reached only through the superadmin-gated admin endpoints
     # — a business must never be able to upgrade itself via its own PATCH.
     plan: BusinessPlan
+    # Phase 38 — widget branding. Writable via BusinessUpdate below (unlike
+    # plan): this is display styling, not an entitlement.
+    brand_color: str
+    logo_url: str | None
 
 
 class BusinessUpdate(BaseModel):
@@ -52,8 +59,17 @@ class BusinessUpdate(BaseModel):
     tone: safe_str(100) | None = None
     sms_enabled: bool | None = None
     follow_ups_enabled: bool | None = None
+    brand_color: safe_str(7) | None = None
+    logo_url: safe_str(500) | None = None
 
-    @field_validator("name", "timezone")
+    @field_validator("brand_color")
+    @classmethod
+    def valid_hex_color(cls, value: str | None) -> str | None:
+        if value is not None and not _HEX_COLOR_RE.match(value):
+            raise ValueError("Must be a hex color like #2563eb.")
+        return value
+
+    @field_validator("name", "timezone", "brand_color")
     @classmethod
     def required_field_not_null(cls, value: str | None) -> str:
         if value is None:

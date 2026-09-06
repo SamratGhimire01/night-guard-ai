@@ -17,6 +17,7 @@ const NAV_SECTIONS: { label: string; to: string; icon: string }[] = [
   { label: 'Human Handoffs', to: '/dashboard/handoffs', icon: '🧑‍💼' },
   { label: 'Reports', to: '/dashboard/reports', icon: '📊' },
   { label: 'Follow-ups', to: '/dashboard/followups', icon: '🔁' },
+  { label: 'Website Widget', to: '/dashboard/widget', icon: '💬' },
   { label: 'Settings', to: '/dashboard/settings', icon: '⚙️' },
 ]
 

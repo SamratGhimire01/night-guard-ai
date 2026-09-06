@@ -63,6 +63,13 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     plan: Mapped[BusinessPlan] = mapped_column(
         Enum(BusinessPlan, name="business_plan"), nullable=False, default=BusinessPlan.FREE, server_default="FREE"
     )
+    # Phase 38: widget branding, shown to anonymous visitors via the public
+    # widget config endpoint (app/api/routes/widget.py) — same public-data
+    # tier as `name` itself, not a secret. brand_color defaults to the
+    # widget's original hardcoded blue so every pre-existing business keeps
+    # the exact same look after migration.
+    brand_color: Mapped[str] = mapped_column(String(7), nullable=False, default="#2563eb", server_default="#2563eb")
+    logo_url: Mapped[str | None] = mapped_column(String(500))
 
 
 class BusinessUser(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):

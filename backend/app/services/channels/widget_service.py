@@ -59,6 +59,13 @@ def _resolve_session_token(db: Session, *, business_id: uuid.UUID, client_token:
     return token, _hash_token(token)
 
 
+def get_widget_config(db: Session, *, business_id: uuid.UUID) -> Business | None:
+    """Returns the real Business row for public branding lookup, or None if
+    business_id doesn't resolve (route turns that into a 404, same as
+    send_widget_message below)."""
+    return db.get(Business, business_id)
+
+
 def send_widget_message(
     db: Session, *, business_id: uuid.UUID, session_token: str | None, content: str
 ) -> tuple[str, dict] | None:
