@@ -8,6 +8,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Night Guard - Test Chat</title>
 <style>
   :root {
@@ -67,8 +68,8 @@
     flex-direction: column;
     gap: 3px;
   }
-  .config input#backendUrl { width: 260px; }
-  .config input#businessId { width: 300px; }
+  .config label { flex: 1 1 200px; min-width: 0; }
+  .config input { width: 100%; font-size: 16px; }
   .config .status { font-size: 11px; color: var(--text-dim); align-self: flex-end; padding-bottom: 6px; }
 
   #chat {
@@ -80,6 +81,9 @@
     gap: 12px;
   }
   .msg { max-width: 70%; display: flex; flex-direction: column; }
+  @media (max-width: 480px) {
+    .msg { max-width: 88%; }
+  }
   .msg.customer { align-self: flex-end; align-items: flex-end; }
   .msg.agent { align-self: flex-start; align-items: flex-start; }
   .bubble {
@@ -128,7 +132,7 @@
     color: var(--text);
     border-radius: 8px;
     padding: 10px 12px;
-    font-size: 14px;
+    font-size: 16px;
   }
   #content:focus { outline: 1px solid var(--purple); }
   button#send {
@@ -153,7 +157,7 @@
 
   <div class="config">
     <label>Backend URL
-      <input id="backendUrl" value="http://localhost:8000">
+      <input id="backendUrl">
     </label>
     <label>Business ID
       <input id="businessId" placeholder="00000000-0000-0000-0000-000000000000">
@@ -178,6 +182,9 @@
   const backendUrlInput = document.getElementById('backendUrl');
   const businessIdInput = document.getElementById('businessId');
   const statusEl = document.getElementById('status');
+
+  backendUrlInput.value = window.location.origin;
+  businessIdInput.value = 'f0ca2a54-d76b-4c48-b727-1b0a0faea4cd'; // Samaj Dental Clinic
 
   function addMessage(role, text, intent) {
     const wrap = document.createElement('div');
