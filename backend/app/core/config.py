@@ -13,6 +13,13 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
+    # Phase 35 — the business dashboard SPA runs on its own origin (Vite dev
+    # server) and calls this API with a bearer token, not cookies, so this is
+    # ordinary CORS (not the widget's separate wildcard policy in
+    # widget_cors.py, which serves arbitrary third-party embed sites).
+    # Comma-separated; kept narrow (dashboard dev origins only) rather than "*".
+    dashboard_cors_origins: str = "http://localhost:5173,http://localhost:4173"
+
     azure_openai_api_key: str = ""
     azure_openai_endpoint: str = ""
     azure_openai_deployment: str = ""

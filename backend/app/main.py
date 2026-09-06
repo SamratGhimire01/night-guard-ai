@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
     admin,
@@ -32,6 +33,12 @@ app = FastAPI(title=settings.app_name)
 
 register_exception_handlers(app)
 app.add_middleware(WidgetCORSMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in settings.dashboard_cors_origins.split(",") if o.strip()],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])

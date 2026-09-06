@@ -7964,3 +7964,255 @@ The automated test suite's own fixtures clean up their own businesses after ever
   `dispatch_queued_notifications`.
 - No commit has been made yet — awaiting your explicit confirmation of this verification
   output per working rule #6. Do not start Phase 35 work until then, per your instruction.
+
+---
+
+## Phase 35 — Business Dashboard Web App Shell
+
+**Date:** 2026-09-06
+
+**Required:** the real, running foundation of a business-facing web dashboard (Phase
+28's reference UI was explicitly non-functional) — authentication, navigation, layout,
+and the entry landing page. No feature pages yet. Propose and justify a real frontend
+stack first; a single black-background landing page with one centered "Login /
+Register" button; real login/register wired to Phase 3's `/auth/login` and
+`/auth/register`; a real authenticated shell showing the real business name and real
+plan (Phase 34's `GET /business/plan`) with all 11 of Phase 28's sections navigable as
+placeholders; real logout; real expired/invalid-token handling.
+
+**Stack decision — React + TypeScript + Vite, React Router, Mantine UI:**
+Phase 28 already sketched 11 growing dashboard sections (tables, forms, tabs, a chat-like
+Training Room, charts landing in Phase 37) — enough real, recurring UI surface that a
+component framework earns its keep rather than being premature. React + Vite is the
+least-surprising choice for long-term maintenance (huge ecosystem, fast dev server,
+nothing exotic); `frontend/` was an empty placeholder (Phase 28) so there was no existing
+convention to match. Mantine was chosen over hand-rolled Tailwind components because this
+phase alone needed real forms (login/register), navigation (`AppShell`), badges, and
+alerts, with 10+ more feature pages coming that will need tables/modals/notifications —
+Mantine ships all of that plus an official charts wrapper (`@mantine/charts`, built on
+Recharts) that plugs into Phase 37 without a new dependency then. Skipped: Next.js (no
+SSR/SEO need — this is a logged-in SPA, explicitly separate from the marketing landing
+page a teammate is building elsewhere); Redux/Zustand (a React Context for "who's logged
+in, what plan" is enough at this size).
+
+**Token storage decision:** the JWT lives in a React context (in memory) and is mirrored
+to `sessionStorage` (`frontend/src/auth/AuthContext.tsx`) so a page refresh doesn't log
+the owner out. Deliberately not `localStorage` — `sessionStorage` doesn't persist past
+tab/browser close and isn't shared across tabs, shrinking the exposure window under XSS.
+A true `httpOnly` cookie would be stronger still, but Phase 3's login/`get_current_user`
+is bearer-token-only today; switching to cookie-based auth is a real auth-mechanism
+change, out of scope for this shell phase — documented, not silently skipped.
+
+**Backend change required (small, necessary for the SPA to reach the API at all):**
+there was no general CORS policy — only `WidgetCORSMiddleware`, scoped exclusively to
+the public widget routes (`/api/v1/widget/*`, `/widget.js`). A dashboard on its own Vite
+origin (`localhost:5173`) would be blocked by the browser without one.
+- `backend/app/core/config.py` — new `dashboard_cors_origins` setting (comma-separated,
+  defaults to `http://localhost:5173,http://localhost:4173`).
+- `backend/app/main.py` — added `fastapi.middleware.cors.CORSMiddleware`, origins read
+  from that setting; kept deliberately narrow (real dev origins, never `"*"`), separate
+  from and unrelated to the widget's own wildcard policy.
+
+**Implemented (`frontend/`, React 19 + TypeScript + Vite 8):**
+- `src/pages/LandingPage.tsx` — black background, centered "Night Guard AI" wordmark +
+  one "Login / Register" button. No marketing copy, per the explicit design ask.
+- `src/pages/AuthPage.tsx` — one page, a segmented Login/Register toggle, real Mantine
+  forms wired to `POST /auth/login` and `POST /auth/register` (`src/auth/AuthContext.tsx`,
+  `src/api/client.ts`). Register doesn't return a token (Phase 3's real contract) — a
+  successful register immediately calls login with the same credentials so the new owner
+  lands straight in the dashboard, not back at an empty login form.
+- `src/auth/AuthContext.tsx` — owns the token (memory + `sessionStorage` mirror per the
+  decision above), `login`/`register`/`logout`, and a `sessionMessage` shown on the auth
+  page after a forced logout (e.g. session expiry).
+- `src/api/client.ts` — a thin `fetch` wrapper: attaches `Authorization: Bearer`, and on
+  any real `401` response calls a registered handler (wired to `logout()` +
+  session-expired message) before surfacing the error — the single place expiry/invalid-
+  token handling lives, not duplicated per call site.
+- `src/auth/RequireAuth.tsx` — route guard; renders `<Navigate to="/login">` whenever
+  there's no token, wrapping the whole `/dashboard/*` tree.
+- `src/pages/dashboard/DashboardLayout.tsx` — real `AppShell` (Mantine) with a header
+  (business name, plan badge, "Log out") and a sidebar listing all 11 of Phase 28's
+  sections; fetches `GET /business/me` and `GET /business/plan` on mount — the first real
+  UI consumer of Phase 34's plan endpoint.
+- `src/pages/dashboard/PlaceholderPage.tsx` — one shared "coming in a later phase"
+  component, parameterized by title, used for all 11 nav targets (Overview included) —
+  no per-page content yet, per this phase's explicit scope.
+- `src/App.tsx` — route tree: `/` (landing), `/login` + `/register` (same `AuthPage`),
+  `/dashboard/*` (guarded).
+- Backend: see CORS change above.
+
+**Verification — real browser (Playwright-driven Chrome, headed engine, screenshots and
+DOM state captured, not descriptions), real running `docker compose` backend
+(`localhost:8010`) + real Vite dev server (`localhost:5173`), this environment's actual
+dev DB:**
+
+**§1 — Landing page, real rendered pixels:**
+```
+page bg color (computed, real DOM): rgb(0, 0, 0)
+"Night Guard AI" + "Login / Register" button, centered, no marketing copy
+```
+Screenshot confirmed: full-black viewport, centered wordmark + one grape-colored button.
+
+**§2 — Real registration through the actual UI (not curl), then independently verified
+via a direct DB query (not the UI, not the API — the raw table):**
+```
+$ docker compose exec postgres psql -U nightguard -d nightguard -c \
+  "SELECT b.id, b.name, b.plan, bu.email, bu.role, bu.is_superadmin
+   FROM businesses b JOIN business_users bu ON bu.business_id=b.id
+   WHERE b.name LIKE 'Phase35 Test Biz%' ORDER BY b.created_at DESC LIMIT 3;"
+
+                  id                  |            name            | plan |               email                | role  | is_superadmin
+--------------------------------------+----------------------------+------+------------------------------------+-------+---------------
+ f4aa5873-dcc6-4faa-82de-43e17f6f5747 | Phase35 Test Biz 209511017 | FREE | phase35-test-209511017@example.com | OWNER | f
+```
+A genuine `Business` + owner `BusinessUser` row, created by filling in and submitting
+the real on-screen form (business name, timezone, email, password) — not a mock, not a
+curl call.
+
+**§3 — Real login lands on the dashboard shell showing the REAL business name and REAL
+plan (registration auto-logs-in immediately after, so this is the same continuous
+session; a separate explicit logout+login cycle is proven in §4):**
+```
+dashboard URL after register: http://localhost:5173/dashboard
+business name "Phase35 Test Biz 209511017" found on page: 1 match
+plan badge text: "free"
+```
+Screenshot confirmed: topbar reads "Phase35 Test Biz 209511017" next to a gray "Free"
+badge — matching Phase 34's real default plan for a brand-new business exactly.
+
+**§4 — Real logout, then real re-login (separate session, same credentials), confirming
+the guard blocks dashboard routes when logged out:**
+```
+click "Log out" -> redirected to http://localhost:5173/login
+navigate directly to http://localhost:5173/dashboard while logged out
+  -> immediately redirected back to http://localhost:5173/login (RequireAuth guard)
+fill real email+password, submit -> http://localhost:5173/dashboard (real re-login)
+```
+
+**§5 — Real navigation through every one of the 11 listed sections, each confirmed
+rendering (URL + heading) with zero console/page errors at any point in the run:**
+```
+Overview          -> /dashboard              -> heading "Overview"
+Appointments      -> /dashboard/appointments -> heading "Appointments"
+Services          -> /dashboard/services     -> heading "Services"
+Staff             -> /dashboard/staff        -> heading "Staff"
+Business Hours    -> /dashboard/hours        -> heading "Business Hours"
+Knowledge Base    -> /dashboard/knowledge    -> heading "Knowledge Base"
+AI Training Room  -> /dashboard/training     -> heading "AI Training Room"
+Human Handoffs    -> /dashboard/handoffs     -> heading "Human Handoffs"
+Reports           -> /dashboard/reports      -> heading "Reports"
+Follow-ups        -> /dashboard/followups    -> heading "Follow-ups"
+Settings          -> /dashboard/settings     -> heading "Settings"
+```
+Screenshots confirmed (Overview, Settings): sidebar highlights the active section, header
+still shows the real business name + plan badge throughout.
+
+**§6 — Real expired-token handling, TWO separate real proofs:**
+
+(a) A structurally-invalid token (`this.is.not.a.valid.jwt`) written directly into
+`sessionStorage`, then a page reload (forces a real API call with it):
+```
+URL after reload with invalid token: http://localhost:5173/login
+"Your session expired. Please log in again." visible: yes
+```
+
+(b) A genuinely valid-shaped, correctly-HMAC-signed-with-the-real-`SECRET_KEY` JWT whose
+`exp` claim is one hour in the past — minted via the app's own `create_access_token`
+shape, hitting Phase 3's real `jwt.ExpiredSignatureError` path, confirmed independently
+via a direct `curl` first:
+```
+$ curl -i http://localhost:8010/api/v1/business/me -H "Authorization: Bearer <expired>"
+HTTP/1.1 401 Unauthorized
+{"error":{"type":"unauthorized","message":"Token has expired."}}
+```
+Then the same expired token swapped into a real logged-in browser session's
+`sessionStorage`, followed by a reload:
+```
+URL after real-expired-token API call: http://localhost:5173/login
+session storage token cleared: null
+message shown: "Your session expired. Please log in again."
+```
+Screenshot confirmed: a clean, fully-rendered login form with the yellow session-expired
+banner — not a blank page, not a broken state, not a silent failure.
+
+**§7 — CORS proof, real preflight against the real backend:**
+```
+$ curl -i -X OPTIONS http://localhost:8010/api/v1/auth/login \
+    -H "Origin: http://localhost:5173" -H "Access-Control-Request-Method: POST"
+HTTP/1.1 200 OK
+access-control-allow-origin: http://localhost:5173
+access-control-allow-methods: DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT
+```
+
+**§8 — Build/lint, real runs:**
+```
+$ npm run build   (tsc -b && vite build)
+908 modules transformed, built in 338ms — zero type errors, zero build errors
+dist/assets/index-*.js   405.32 kB │ gzip: 124.60 kB
+dist/assets/index-*.css  234.79 kB │ gzip:  34.34 kB
+
+$ npm run lint   (oxlint)
+1 warning (react/only-export-components — AuthContext.tsx exports both the
+  AuthProvider component and the useAuth hook from one file; a common, accepted
+  pattern for context modules, affects Fast Refresh ergonomics only, not correctness)
+0 errors
+```
+
+**Secrets grep:** clean — `grep -rniE "secret|api[_-]?key|password\s*=|token\s*=\s*['\"]ey"`
+across `frontend/src` and `frontend/.env*` returns nothing; no `console.log` anywhere in
+`frontend/src` (checked directly, not assumed). `frontend/.env` (holds only
+`VITE_API_BASE_URL`, not a secret) confirmed git-ignored by the existing root
+`.gitignore`'s `.env` / `.env.*` / `!.env.example` rules — `git status` shows only
+`.env.example` as untracked, never `.env`.
+
+**Live-test cleanup:** both test businesses created during this phase's manual
+verification (`Phase35 Test Biz *`, `Phase35 Expiry Biz *`) were deleted afterward via
+direct DB access (cascade-deleted their `BusinessUser` rows with them); re-queried — the
+DB is back to exactly the original 10 pre-existing businesses:
+```
+$ docker compose exec postgres psql -U nightguard -d nightguard -c "SELECT count(*) FROM businesses;"
+ count
+-------
+    10
+```
+
+**How to view it — two servers, both real:**
+1. Backend: already running via `docker compose up -d` (`localhost:8010`, unchanged this
+   phase except the CORS addition).
+2. Frontend: `cd frontend && npm install && npm run dev` → open
+   `http://localhost:5173/` in a browser. (Currently running in this environment on
+   `localhost:5173` for your own click-through.)
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Stack recommendation and reasoning stated clearly | ✓ Pass — above |
+| Real registration through the actual UI; independently confirmed via direct DB query | ✓ Pass — §2 |
+| Real login lands on dashboard shell showing REAL business name + REAL plan (Free) | ✓ Pass — §3 |
+| Real navigation through every listed section, no crash | ✓ Pass — §5, all 11 |
+| Real logout; dashboard routes blocked afterward until re-login | ✓ Pass — §4 |
+| Real expired-token test handled gracefully (redirect, not blank/broken) | ✓ Pass — §6, both an invalid AND a genuinely-expired-and-correctly-signed token |
+| Told exactly how to view it in a browser | ✓ Pass — above; already running on `localhost:5173` |
+| Secrets grep clean, lint clean | ✓ Pass — §8, secrets grep above |
+
+**Known issues / punted items:**
+- **No feature-page content anywhere** — all 11 dashboard sections are the same shared
+  `PlaceholderPage`, exactly as scoped ("near-empty placeholder... not have real feature
+  content yet"). Phase 36+ replaces these one at a time.
+- **Token in `sessionStorage`, not an `httpOnly` cookie** — a deliberate, documented
+  tradeoff (see Token storage decision above), not an oversight. Revisit if Phase 3's
+  auth mechanism itself is ever redesigned.
+- **No password-reset / "forgot password" flow** — Phase 3 never built a backend
+  endpoint for it, so there's nothing for this shell to wire up yet.
+- **No automatic token refresh** — matches Phase 29's already-documented "no refresh
+  tokens" gap; a session simply ends at the real 30-minute expiry and the user re-logs
+  in, handled gracefully (§6) rather than silently.
+- **CORS origins are a static dev-only list** (`localhost:5173`/`4173`) — a real
+  production frontend origin will need to be added to `dashboard_cors_origins` when one
+  exists; not needed yet since nothing is deployed.
+- **`oxlint`'s one warning is left as-is** — splitting `AuthContext.tsx` into two files
+  purely to silence a Fast-Refresh-ergonomics warning would be churn for a correctness-
+  neutral lint, not a real fix.
+- No commit has been made yet — awaiting your explicit confirmation of this verification
+  output per working rule #6. Do not start Phase 36 work until then, per your standing
+  instruction.
