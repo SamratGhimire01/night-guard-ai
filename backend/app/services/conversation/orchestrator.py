@@ -332,6 +332,19 @@ def _propose_available_slots(
     if not slots:
         return render("availability_none_no_alts", language, service=service.name)
 
+    # Phase 33b — real live testing found picking a shown option purely by time
+    # ("10:30am works") unreliably re-stated the date back (an LLM judgment
+    # call, not always made — see PHASE_STATUS.md). The date of the first real
+    # slot just shown is something Python already knows for certain (it's what
+    # was just searched and displayed) — persisting it here means the next
+    # turn's merge/resolve completes correctly even if the LLM's own
+    # extraction leaves `date` null, same "Python decides, LLM only observes"
+    # discipline as every other persisted draft field. Never overwrites a
+    # date the customer explicitly named this or an earlier turn with anything
+    # false: this IS that exact date whenever requested_date_str was already
+    # set, and is the deterministic, real first-available day otherwise.
+    conversation.booking_draft_date = slots[0].astimezone(tz).strftime("%Y-%m-%d")
+
     options = ", ".join(_format_local(slot, tz) for slot in slots[:_AVAILABILITY_SLOTS_COUNT])
     if requested_date_str and _is_valid_date_str(requested_date_str) and slots[0].astimezone(tz).date() != search_start:
         return render(

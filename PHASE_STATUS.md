@@ -7257,3 +7257,352 @@ created or used by this phase.
 - No commit has been made yet — awaiting your confirmation of this verification output per
   working rule #6. The stashed pre-existing integrations work (`stash@{0}`) also still needs
   your direction on how to proceed once this is confirmed.
+
+---
+
+## Phase 33b — Two Real Bugs Found In Live Testing (Phase 33 follow-up)
+
+**Date:** 2026-09-06
+
+**Required:** real conversation testing on Phase 33 surfaced two genuine bugs: (1) a
+follow-up booking ("book another for my child") that should reuse an already-known
+service from context instead fell back to the pre-Phase-33 three-part question, and (2)
+a specific, clearly-stated time given with typos wasn't recognized, and after a later
+failed attempt the same time vanished from every subsequent alternatives list.
+
+**Investigation — Bug 1 (root cause, real DB proof):** reproduced live against a fresh
+Riverside Dental test business (`business_id=18a0504e-ee4a-4fa8-942b-91ce9fd23754`,
+same Mon–Sat 9–5 America/New_York setup as Phase 33, Teeth Cleaning $90/30min).
+Confirmed the real cause by querying the conversation's persisted booking draft directly
+after a successful booking:
+```
+service_id: None
+date: None
+time: None
+```
+`orchestrator._clear_booking_draft_after_attempt` correctly wipes the ENTIRE draft
+(service included) on a successful booking (by design — Phase 25a-2, so a stray later
+"yes" can't double-book). That's correct for THAT booking, but it also means the
+service is gone for a genuinely NEW, second booking in the same conversation. Rule 9 in
+`intent.py` separately tells the LLM to leave `service` null whenever it was "already
+given earlier in this conversation" (so the deterministic draft, not the LLM, tracks
+continuity) — but once that draft is wiped, nothing tracks it anymore, and the LLM was
+never told it's allowed to look at the one place that still has the answer: "Customer's
+active/upcoming appointments" (already sent to it every turn, per Phase 7/18). Neither
+side was wrong on its own; the fix is a gap between them, not a bug in either
+mechanism.
+
+**Fix (prompt-level, root cause):** `intent.py` rule 9 gets one explicit exception: when
+THIS message is unambiguously starting a NEW, separate booking that references one
+already shown under "Customer's active/upcoming appointments" ("book another for my
+child," "same thing for my husband") and that list makes the service clear, the LLM now
+fills in that service itself — it's the only one who still can, since the deterministic
+system's own memory was already spent completing the earlier appointment. One new
+few-shot example added demonstrating exactly this case. No Python/orchestrator change
+needed for this bug: once the LLM correctly re-supplies "Teeth Cleaning," the existing
+Phase 25a merge + Phase 33 `wants_availability` dispatch handle the rest unchanged.
+
+**Bug 1 — broken (before fix), real transcript:**
+```
+Customer: "Hi, I'd like to book a teeth cleaning for myself, next Monday at 9am."
+Assistant: "You're all set, Jordan Blake! I've booked Teeth Cleaning for Monday,
+September 7 at 9:00 AM (30 min). Your booking ID is 933e0c82-b1e2-455c-ae45-c07255ca00e7."
+
+Customer: "Can you book another for my child?"
+Assistant: "Sorry, I want to make sure I get this right — could you tell me exactly
+which service, and the date and time you'd like?"
+```
+
+**Bug 1 — fixed (after fix), real transcript, same shape, fresh conversation (customer
+Morgan Ellis, already has one confirmed Teeth Cleaning booking on file):**
+```
+Customer: "Hi, what times do you have for a teeth cleaning?"
+Assistant: "Here's what's open for Teeth Cleaning: Monday, September 7 at 10:15 AM,
+Monday, September 7 at 10:30 AM, Monday, September 7 at 10:45 AM, Monday, September 7
+at 11:00 AM, Monday, September 7 at 11:15 AM. Which works for you?"
+Customer: "10:30am works for me"
+Assistant: "You're all set, Morgan Ellis! I've booked Teeth Cleaning for Monday,
+September 7 at 10:30 AM (30 min). Your booking ID is e1c3f340-e4bb-4f98-9c4c-2f32cd020a08."
+
+Customer: "Can you book another for my child?"
+Assistant: "Here's what's open for Teeth Cleaning: Monday, September 7 at 11:00 AM,
+Monday, September 7 at 11:15 AM, Monday, September 7 at 11:30 AM, Monday, September 7
+at 11:45 AM, Monday, September 7 at 12:00 PM. Which works for you?"
+Customer: "11:15 is great"
+Assistant: "You're all set, Morgan Ellis! I've booked Teeth Cleaning for Monday,
+September 7 at 11:15 AM (30 min). Your booking ID is c6c82b5c-a290-47c6-a976-2e06e852ff51."
+```
+Real slots proposed (never invented), and the second booking completes through the
+exact same Phase 25a/33 mechanism as the first — zero new code paths.
+
+**Investigation — Bug 2 (real DB query + real root cause):** reproduced live by
+directly inserting a blocking appointment (9:00 AM–11:45 AM) so 11:45 AM was
+deterministically the first real opening, confirmed via the actual "what times do you
+have" response, then tested the exact reported shape (noisy retry → clean retry).
+
+*(a) Why the noisy input sometimes failed to extract the time at all* — this is a
+genuine, if intermittent, LLM extraction miss, confirmed by replaying the *exact same*
+message against the real Azure model 15 times in a row with identical context:
+```
+'wut abt 1145 avail?'                         -> time='11:45'
+'1145'                                        -> time='11:45'
+'wat about 1145, free?'                       -> time='11:45'
+'can u chek 11 45 am'                         -> time='11:45'
+'hows 11:45am lookin'                         -> time='11:45'
+'wut abt 1145 avail?'                         -> time='11:45'
+'1145'                                        -> time='11:45'
+'wat about 1145, free?'                       -> time='11:45'
+'can u chek 11 45 am'                         -> time='11:45'
+'hows 11:45am lookin'                         -> time=None      <-- the real miss
+'wut abt 1145 avail?'                         -> time='11:45'
+'1145'                                        -> time='11:45'
+'wat about 1145, free?'                       -> time='11:45'
+'can u chek 11 45 am'                         -> time='11:45'
+'hows 11:45am lookin'                         -> time='11:45'
+```
+1 miss out of 15 identical calls — a real, reproducible-but-stochastic gap, not a
+deterministic Python bug (every extracted value that DID come back was already
+correctly formatted 24-hour "HH:MM" — `_is_valid_time_str`/`_merge_booking_draft` were
+never the problem).
+
+*(b) Whether 11:45 AM was ever genuinely booked by something else* — tested directly:
+after showing a real list with 11:45 AM first, a second appointment was inserted at
+that exact slot (simulating a genuine race), then the customer tried to book it:
+```
+Customer: "11:45 am"
+Assistant: "That time isn't available anymore, Jordan Blake — requested time is not
+available (outside business hours, on a closed date, in the past, or already booked).
+Here are some other openings for Teeth Cleaning: Friday, September 11 at 12:15 PM,
+Friday, September 11 at 12:30 PM, Friday, September 11 at 12:45 PM, Friday, September
+11 at 1:00 PM, Friday, September 11 at 1:15 PM. Would any of those work?"
+```
+Real DB row proving the race was genuine:
+```
+scheduled_at (UTC): 2026-09-11 15:45:00+00:00
+scheduled_at (local): 2026-09-11 11:45:00-04:00
+status: AppointmentStatus.CONFIRMED
+duration: 30
+```
+A follow-up "what else do you have that day" returned the identical list every time —
+11:45 AM correctly and consistently excluded because it is genuinely booked, not
+because of a bug. `get_available_slots`/`_alternatives`/`_propose_available_slots` are
+all fresh, real queries every call — there is no persisted "excluded slots" state
+anywhere in this codebase, so a slot can only ever disappear because it's actually
+taken. **Conclusion: no code bug in alternatives computation** — the original live
+incident this ticket describes was most likely a genuine race for that slot (or a
+one-off LLM miss on that exact phrasing), not a defect in slot exclusion.
+
+**Fix — a deterministic regex fallback for (a) only**, since (b) had nothing to fix.
+`intent.py`: a new `_fallback_extract_time()` — an explicit hour + minute + am/pm marker
+("11:45am", "1145 am", "11 45 AM") is never actually ambiguous, so it's never worth
+leaving to LLM chance when regex can answer for certain — same discipline already used
+for `orchestrator._DEVANAGARI_RE`. Deliberately requires an am/pm marker (never bare
+digits like "1145" alone, which could be anything else) to stay a real safety net, not a
+second guesser, and is used ONLY as a fallback when the LLM's own `time` field came back
+null/invalid — it can never override a real LLM-extracted value. `_parse_booking_request`
+and `_parse_response` now take the raw customer message (default `""`, so every existing
+call site/test without it is unaffected) to make this possible.
+
+**Verified deterministically against the exact captured miss above:**
+```
+$ docker compose exec backend python3 -c "
+from app.services.conversation.intent import _fallback_extract_time, _parse_booking_request
+msg = 'hows 11:45am lookin'
+print('fallback:', _fallback_extract_time(msg))
+data = {'booking_request': {'service': None, 'date': None, 'time': None, 'wants_availability': False}}
+print('parsed with fallback:', _parse_booking_request(data, msg))
+"
+fallback: 11:45
+parsed with fallback: {'service': None, 'date': None, 'time': '11:45', 'wants_availability': False}
+```
+
+**A third bug found while verifying "no regression" (fixed in the same pass):** re-running
+Phase 33's own core flow (§1+§2 — "what times do you have" → customer names just a
+time from the shown list) on a fresh conversation exposed that it only ever worked in
+Phase 33's original testing by coincidence (the shown day happened to equal "today").
+`_propose_available_slots` computes and shows a real day's slots but never persists that
+day anywhere — so completing the booking from a bare "10:30am works for me" depended
+entirely on the LLM re-stating the date, which (like Bug 2a) is a real, observed,
+non-guaranteed judgment call:
+```
+Customer: "Hi, what times do you have for a teeth cleaning?"
+Assistant: "Here's what's open for Teeth Cleaning: Monday, September 7 at 10:15 AM, ..."
+Customer: "10:30am works for me"
+Assistant: "Got it — could you tell me what date?"        <-- broken, pre-existing, not caused by Bug 1/2's fixes
+```
+**Fix:** `_propose_available_slots` now persists `conversation.booking_draft_date` from
+the first real slot it just showed — something Python already knows for certain,
+computed by the very query being displayed — so the next turn's merge/resolve completes
+correctly even when the LLM leaves `date` null. Same "Python decides, LLM only observes"
+discipline as every other persisted draft field; never overwrites a real date the
+customer already stated.
+
+**Regression check — all three of Phase 33's core behaviors re-verified after all three
+fixes, real transcripts, fresh conversations:**
+
+*Clean "what times do you have" → pick a time flow (previously flaky, now fixed):*
+```
+Customer: "Hi, what times do you have for a teeth cleaning?"
+Assistant: "Here's what's open for Teeth Cleaning: Monday, September 7 at 10:15 AM,
+Monday, September 7 at 10:30 AM, Monday, September 7 at 10:45 AM, Monday, September 7
+at 11:00 AM, Monday, September 7 at 11:15 AM. Which works for you?"
+Customer: "10:30am works for me"
+Assistant: "You're all set, Morgan Ellis! I've booked Teeth Cleaning for Monday,
+September 7 at 10:30 AM (30 min). Your booking ID is e1c3f340-e4bb-4f98-9c4c-2f32cd020a08."
+```
+Real DB row: `2026-09-07 14:30:00+00:00, 30 min, CONFIRMED` (14:30 UTC = 10:30 EDT ✓).
+
+*Specific date/time given upfront still books directly, no round-trip (fresh customer
+Casey Nguyen):*
+```
+Customer: "Book me for a teeth cleaning next Tuesday at 3pm."
+Assistant: "You're all set, Casey Nguyen! I've booked Teeth Cleaning for Tuesday,
+September 8 at 3:00 PM (30 min). Your booking ID is f105893f-f50f-4e00-8eb5-e4efb0ba29e9."
+```
+
+**Automated regression:**
+```
+$ docker compose exec backend python -m pytest tests/integration/test_conversation.py -q
+69 passed, 4 warnings in 104.02s
+$ docker compose exec backend python -m pytest tests/ -q
+361 passed, 10 skipped, 31 warnings in 324.05s
+```
+Zero pre-existing tests modified.
+
+**Lint:**
+```
+$ docker compose exec backend ruff check app/services/conversation/intent.py app/services/conversation/orchestrator.py
+All checks passed!
+```
+
+**Secrets grep:** clean — `git diff` on both touched files contains no match for API
+keys/secrets/passwords/tokens.
+
+**Live-test DB cleanup:** the fresh test business (`18a0504e-ee4a-4fa8-942b-91ce9fd23754`)
+and everything cascading off it (4 customers, 4 conversations, 1 service, several real +
+several intentionally-inserted blocking appointments) deleted after verification,
+confirmed gone by re-querying its id (`None`).
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Bug 1 real transcript: broken then fixed | ✓ Pass — see above |
+| Bug 2 real investigation: DB query proving 11:45 AM's real state + real root cause of the noisy-parse miss | ✓ Pass — see above (genuine intermittent LLM miss, confirmed 1/15; alternatives computation itself has no bug) |
+| Neither fix regresses Phase 33's core behavior (specific time upfront, clean "what times" flow) | ✓ Pass — see Regression check above (the clean flow was actually separately broken and is now fixed too) |
+| Full regression suite, zero regressions | ✓ Pass — 361 passed, 10 skipped |
+
+**Known issues / punted items:**
+- Bug 2a's regex fallback only ever fires for an explicit am/pm-marked time — it
+  deliberately does not attempt to guess a bare "1145" or a 24-hour-style "14:00" typed
+  without an am/pm marker, since either could plausibly be something other than a time;
+  the LLM remains the only path for those, with the same small, bounded miss-rate
+  documented above.
+- No code change was made for Bug 2b because no code bug was found — flagging this
+  explicitly rather than papering over it with an unnecessary fix.
+- No commit has been made yet — awaiting your confirmation of this verification output.
+
+---
+
+## Known Issues — Tracked for Later Fix
+
+Two more real gaps found live during Phase 33b verification. Not fixed yet — documented
+here so whoever picks them up doesn't have to rediscover them from scratch.
+
+### 1. "Show me times" intent lost across a multi-turn contact-info detour
+
+When a customer asks to see available slots but hasn't given contact info yet, and
+satisfying the contact-info gate (Phase 24) takes more than one back-and-forth turn, the
+original "show me times" intent is lost the moment contact info finally clears — the
+system asks "what date and what time?" instead of resuming the slot-list proposal
+(`orchestrator._propose_available_slots`, Phase 33).
+
+**Root cause (from reading the code, not yet fixed):** `wants_availability`
+(`intent.py` rule 9) is a per-turn signal, read fresh off ONLY the current turn's
+`classification.booking_request` (`orchestrator.py`, `handle_incoming_message`,
+`wants_availability = bool(classification.booking_request and ...)`) — it is
+deliberately never persisted to the draft (Phase 33's own design: "a per-turn
+instruction, not a slot to accumulate"). That's correct for a single-turn ask, but once
+the contact-info exchange stretches across several turns, the turn that finally
+satisfies the gate is usually just "here's my email" — a message that, honestly, isn't
+itself asking to see times, so the LLM correctly reports `wants_availability: false` for
+THAT turn. The system then falls through to the plain "what date/time" question, with no
+memory that the customer's ORIGINAL message, several turns back, already asked to see
+options.
+
+**Real reproduction transcript** (fresh business, fresh customer with no name/phone/email
+on file, real Azure LLM, real DB):
+```
+Customer: "Hi, what times do you have for a teeth cleaning?"
+Assistant: "Got it — Teeth Cleaning. I just need your name and a phone number or email
+to lock that in."
+
+Customer: "It's Jamie Chen, do you need my phone or is email enough?"
+Assistant: "Got it — Teeth Cleaning. I just need your name and a phone number or email
+to lock that in. I've updated your contact info on file."
+
+Customer: "jamie.chen@example.com works, email's fine"
+Assistant: "Got it — could you tell me what date and what time? I've updated your
+contact info on file."
+```
+Service (Teeth Cleaning) and contact info are both genuinely known and satisfied by the
+third turn — the system should have proposed real slots here, exactly as it does when
+"what times do you have" and complete contact info arrive in the same message. Instead
+it asks the pre-Phase-33 two-part question, silently discarding the customer's original
+request.
+
+**Likely fix shape (not implemented):** persist "the customer asked to see availability"
+on the conversation the same way `booking_draft_service_id`/`_date`/`_time` are
+persisted, cleared only once a real slot list is actually shown (or the booking
+completes/fails) — not re-derived fresh from a turn that was never about timing in the
+first place. Needs a real design decision on exactly when that flag should clear, not
+just a mechanical "always persist it" (e.g. an explicit "actually, what time works for
+you" from the customer later in the same conversation should still be able to override it
+back to false).
+
+### 2. "Book another" follow-up defaults to the wrong day
+
+When a customer says "book another [appointment] for [someone else]" without restating a
+date, immediately after a booking was just completed for a specific day, the proposed
+slot list defaults to whatever day is nearest to *today*, not the day just established by
+the appointment the customer is explicitly referencing.
+
+**Root cause (from reading the code, not yet fixed):** `_propose_available_slots`
+(`orchestrator.py`) only ever has two sources for which day to search from:
+`conversation.booking_draft_date` (if the current, still-open draft has one) or
+`datetime.now(tz).date()` ("today") as the fallback. A successful booking clears the
+ENTIRE draft including the date (`_clear_booking_draft_after_attempt`, Phase 25a-2 — by
+design, so a stray later "yes" can't double-book) — so once that first appointment is
+booked, there is no persisted memory anywhere of "the day the customer was just talking
+about," only "today." The Phase 33b fix for Bug 1 (this same file, above) correctly
+restores which *service* carries over for a "book another" follow-up by teaching the LLM
+to re-read it from "Customer's active/upcoming appointments" — but nothing analogous
+was done for the *day*, since the LLM is never asked to look at that list for timing, and
+Python has nowhere left to read it from either.
+
+**Real reproduction transcript** (same fresh Riverside Dental test business used to
+verify the Bug 1 fix above, customer Jordan Blake, real Azure LLM, real DB — "today" was
+Sunday, September 6):
+```
+Customer: "Hi, I'd like to book a teeth cleaning for myself, next Saturday at 9am."
+Assistant: "You're all set, Jordan Blake! I've booked Teeth Cleaning for Saturday,
+September 12 at 9:00 AM (30 min). Your booking ID is b6164772-9671-4733-bc86-9469790b44bf."
+
+Customer: "Can you book another for my child?"
+Assistant: "Here's what's open for Teeth Cleaning: Monday, September 7 at 9:30 AM,
+Monday, September 7 at 9:45 AM, Monday, September 7 at 10:00 AM, Monday, September 7 at
+10:15 AM, Monday, September 7 at 10:30 AM. Which works for you?"
+```
+The just-booked appointment is Saturday, September 12. The proposed list for "another"
+jumps to Monday, September 7 — five days *earlier* than the day the customer's own
+message is referencing, and not a day mentioned anywhere else in the conversation. A
+customer who wanted their child seen on the same trip has to notice this and correct it
+themselves.
+
+**Likely fix shape (not implemented):** when `_propose_available_slots` has no
+`booking_draft_date` to work from, prefer the date of the customer's own most recent
+active/upcoming appointment for this service (already available via the same
+appointment-context data `intent.py` uses for the Bug 1 fix) over a bare "today," before
+falling back to "today" only when the customer has no such appointment at all. Needs a
+real product decision on scope: same day only, or a small window around it (e.g. "later
+that same day, or the day after"), and how this interacts with a business that's fully
+booked on that exact day.

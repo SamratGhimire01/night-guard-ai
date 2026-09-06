@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from datetime import datetime
 from typing import NamedTuple
 from zoneinfo import ZoneInfo
@@ -120,7 +121,14 @@ given below) — leave a field null if this message doesn't add or change it, EV
 already given earlier in this conversation. You are never responsible for remembering or \
 re-deriving earlier turns' slots yourself — a separate, deterministic system (not you) keeps \
 track of everything collected so far across the whole conversation and combines it with \
-whatever you extract here. `booking_request` should essentially always be the object above \
+whatever you extract here. The one exception: if THIS message is unambiguously starting a \
+NEW, SEPARATE booking that explicitly references an appointment already shown under \
+"Customer's active/upcoming appointments" below — "book another for my child," "same thing \
+for my husband," "can you get my daughter in for that too" — and that list makes the service \
+clear, DO fill in that service here. That deterministic system's memory only carries \
+forward within a single still-being-collected booking; it was already used up completing the \
+appointment now sitting in that list, so this is the one place you, not it, are the only one \
+who can supply the service for a brand-new request that merely refers back to it. `booking_request` should essentially always be the object above \
 (never null) for a single-person booking-intent message — including a plain confirmation \
 like "yes" that adds nothing new, where `{{"service": null, "date": null, "time": null, \
 "wants_availability": false}}` is completely normal and expected. CRITICAL: you do NOT \
@@ -300,6 +308,18 @@ Today's date: 2026-09-01 (Tuesday). Available services: Cleaning ($90, 30 min).
 Customer: "What times do you have for a cleaning?"
 Assistant: {{"intent": "booking", "response": "Let me see what's open for a cleaning.", \
 "booking_request": {{"service": "Cleaning", "date": null, "time": null, \
+"wants_availability": true}}}}
+
+Example — a NEW booking that explicitly references one already completed and shown under \
+"Customer's active/upcoming appointments" — the service is filled in here (the one exception \
+above), since the deterministic system's own memory was already spent completing that earlier \
+appointment and has nothing left to contribute for this new one:
+Today's date: 2026-09-01 (Tuesday). Available services: Teeth Cleaning ($90, 30 min).
+Customer's active/upcoming appointments:
+- id=c4a1...: Teeth Cleaning on 2026-09-01T13:00:00+00:00 (confirmed)
+Customer: "Can you book another for my child?"
+Assistant: {{"intent": "booking", "response": "Of course — let me see what's open.", \
+"booking_request": {{"service": "Teeth Cleaning", "date": null, "time": null, \
 "wants_availability": true}}}}
 
 Example — availability asked for a specific day, but with no service named yet — service \
@@ -541,7 +561,35 @@ class ClassificationResult(NamedTuple):
     language_switch_request: str | None
 
 
-def _parse_booking_request(data: dict) -> dict | None:
+# Phase 33b — real live testing found the LLM intermittently (not
+# deterministically — confirmed by replaying the exact same message against
+# the real model repeatedly: 1 miss out of 15 identical calls) fails to
+# extract an explicit, unambiguous "HH:MM am/pm" the customer just typed,
+# especially colloquial/typo'd phrasing ("hows 11:45am lookin"). An hour +
+# minute + am/pm marker is never actually ambiguous — never worth leaving
+# to LLM chance when regex can answer for certain, same discipline as
+# orchestrator._DEVANAGARI_RE. Deliberately requires an am/pm marker (never
+# bare digits like "1145" alone, which could be anything) to keep this a
+# real safety net, not a second guesser — and only ever used as a FALLBACK
+# when the LLM's own `time` came back null/invalid, never overriding a real
+# extracted value.
+_TIME_FALLBACK_RE = re.compile(r"\b(1[0-2]|0?[1-9])(?::?([0-5]\d))?\s*([ap])\.?m\.?\b", re.IGNORECASE)
+
+
+def _fallback_extract_time(message: str) -> str | None:
+    match = _TIME_FALLBACK_RE.search(message)
+    if not match:
+        return None
+    hour = int(match.group(1))
+    minute = int(match.group(2) or 0)
+    if match.group(3).lower() == "a":
+        hour = 0 if hour == 12 else hour
+    else:
+        hour = 12 if hour == 12 else hour + 12
+    return f"{hour:02d}:{minute:02d}"
+
+
+def _parse_booking_request(data: dict, customer_message: str = "") -> dict | None:
     """Phase 25a: each of service/date/time is independently string-or-None —
     a `booking_request` with only, say, `date` filled in (the other two
     omitted/null) is a normal, expected PARTIAL extraction now, not a
@@ -569,7 +617,7 @@ def _parse_booking_request(data: dict) -> dict | None:
     return {
         "service": _clean(raw.get("service")),
         "date": _clean(raw.get("date")),
-        "time": _clean(raw.get("time")),
+        "time": _clean(raw.get("time")) or _fallback_extract_time(customer_message),
         "wants_availability": bool(raw.get("wants_availability")),
     }
 
@@ -649,7 +697,7 @@ def _parse_language_switch_request(data: dict) -> str | None:
     return value if value in _VALID_MESSAGE_LANGUAGES else None
 
 
-def _parse_response(raw: str) -> ClassificationResult:
+def _parse_response(raw: str, customer_message: str = "") -> ClassificationResult:
     text = raw.strip()
     if text.startswith("```"):
         text = text.strip("`").strip()
@@ -665,7 +713,7 @@ def _parse_response(raw: str) -> ClassificationResult:
         return ClassificationResult(
             ConversationIntent(intent_value),
             response_text,
-            _parse_booking_request(data),
+            _parse_booking_request(data, customer_message),
             _parse_group_booking_request(data),
             _parse_cancellation_request(data),
             _parse_reschedule_request(data),
@@ -700,4 +748,4 @@ def classify_and_respond(
         },
     ]
     raw = get_chat_provider().chat(messages)
-    return _parse_response(raw)
+    return _parse_response(raw, customer_message)
