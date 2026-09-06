@@ -17,7 +17,7 @@ from app.services.notifications.base import NotificationDeliveryError
 from app.services.notifications.email_provider import EmailNotificationProvider
 from app.services.notifications.templates.render import render_monthly_report_email
 from app.services.reporting.excel_export import monthly_report_to_xlsx_bytes
-from app.services.reporting.report_service import _name_maps
+from app.services.reporting.report_service import REVENUE_ESTIMATE_DEFINITION, _name_maps, _sum_service_prices
 
 _RESCHEDULE_ACTION = "appointment_rescheduled"
 _WEEKDAY_NAMES = list(calendar.day_name)  # ["Monday", ..., "Sunday"]
@@ -151,6 +151,7 @@ def generate_monthly_report(db: Session, *, business_id: uuid.UUID, year: int, m
     _customers, services, _staff = _name_maps(
         db, business_id=business_id, customer_ids=set(), service_ids=set(service_counts), staff_ids=set()
     )
+    revenue_estimate = _sum_service_prices(active_rows, services)
 
     busiest_days = [
         {"day": day, "count": day_counts.get(day, 0)}
@@ -219,6 +220,11 @@ def generate_monthly_report(db: Session, *, business_id: uuid.UUID, year: int, m
                 "persist per-conversation intent classification (no `intent` column exists on "
                 "Message/Conversation), so true 'booking-intent conversations' can't be queried directly."
             ),
+        },
+        "revenue_estimate": {
+            "value": str(revenue_estimate),
+            "appointment_count": len(active_rows),
+            "definition": REVENUE_ESTIMATE_DEFINITION,
         },
         "busiest_days": busiest_days,
         "busiest_hours": busiest_hours,

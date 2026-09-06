@@ -11,9 +11,11 @@ import ServicesPage from './pages/dashboard/ServicesPage'
 import StaffPage from './pages/dashboard/StaffPage'
 import HoursPage from './pages/dashboard/HoursPage'
 import KnowledgePage from './pages/dashboard/KnowledgePage'
+import ReportsPage from './pages/dashboard/ReportsPage'
 
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
+import '@mantine/charts/styles.css'
 
 export default function App() {
   return (
@@ -36,7 +38,7 @@ export default function App() {
                 <Route path="knowledge" element={<KnowledgePage />} />
                 <Route path="training" element={<PlaceholderPage title="AI Training Room" />} />
                 <Route path="handoffs" element={<PlaceholderPage title="Human Handoffs" />} />
-                <Route path="reports" element={<PlaceholderPage title="Reports" />} />
+                <Route path="reports" element={<ReportsPage />} />
                 <Route path="followups" element={<PlaceholderPage title="Follow-ups" />} />
                 <Route path="settings" element={<PlaceholderPage title="Settings" />} />
               </Route>

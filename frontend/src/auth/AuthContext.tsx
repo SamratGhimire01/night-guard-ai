@@ -39,9 +39,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => sessionStorage.getItem(STORAGE_KEY))
   const [sessionMessage, setSessionMessage] = useState<string | null>(null)
 
-  useEffect(() => {
-    setTokenGetter(() => token)
-  }, [token])
+  // Set synchronously during render, NOT in a useEffect: React runs effects
+  // child-first, parent-last on mount, so a child several levels down (e.g.
+  // DashboardLayout, which fires its own apiFetch calls in ITS OWN mount
+  // effect) would otherwise run before this effect ever set the real token —
+  // apiFetch would see the module's default no-op getter, send an
+  // unauthenticated request, get a real 401, and the global 401 handler would
+  // log a genuinely-still-valid session out with a false "session expired"
+  // message. This was a real, reproducible bug: any hard reload or direct
+  // navigation into a dashboard route (not just a client-side <Link> click)
+  // hit it every time. Calling this directly in the render body (a plain
+  // module-level variable assignment, not a React state update) means the
+  // getter is always correct before ANY child even starts rendering.
+  setTokenGetter(() => token)
 
   const logout = useCallback((message: string | null = null) => {
     sessionStorage.removeItem(STORAGE_KEY)

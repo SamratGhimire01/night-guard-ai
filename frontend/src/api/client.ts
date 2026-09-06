@@ -51,3 +51,33 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   }
   return res.json() as Promise<T>
 }
+
+/** Downloads a real file response (e.g. a report's .xlsx) — apiFetch always
+ * does res.json(), which would corrupt binary content, so this is a small,
+ * separate fetch that reuses the same auth/401 handling and saves the real
+ * bytes via a throwaway <a> + object URL (revoked immediately after). */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const token = getToken()
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+
+  if (res.status === 401) {
+    onUnauthorized?.()
+    throw new ApiError(401, 'Session expired.')
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new ApiError(res.status, body?.error?.message ?? `Download failed (${res.status}).`)
+  }
+
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}

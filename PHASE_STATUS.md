@@ -8539,3 +8539,361 @@ $ psql -c "SELECT count(*) FROM businesses;"   -> 10
 - No commit has been made yet — awaiting your explicit confirmation of this verification
   output per working rule #6. Do not start Phase 37 work until then, per your
   instruction.
+
+---
+
+## Phase 37 — Analytics & Reports UI
+
+**Date:** 2026-09-06
+
+**Required:** the real Reports/Analytics dashboard page — Daily & Monthly report views
+wired to Phase 16/17's real endpoints with real charts, a date/month picker, an Excel
+download button; a genuinely NEW Yearly report (backend + UI), gated to Premium via
+Phase 34's `require_plan`, with an honest "Upgrade to Premium" state for Free-plan
+businesses (real 402, not a UI-only hide); a simple, precisely-labeled revenue/money
+view since Services have real prices; zero-activity handled honestly everywhere.
+
+**Note on working-tree state at the start of this phase:** Phase 36 was fully
+implemented and verified but never committed (per your own standing instruction to wait
+for explicit confirmation before every commit). This phase was built directly on top of
+that uncommitted Phase 36 work in the working tree — nothing from Phase 36 was
+discarded or altered beyond what Phase 37 itself needed.
+
+**Design decisions made and justified:**
+
+1. **Revenue estimate lives as a new top-level `revenue_estimate` key, never inside
+   `summary`.** Checked first: `test_daily_reports.py::test_report_zero_activity_day_is_honest_empty`
+   asserts `report["summary"] == {...}` with exact dict equality — adding a field inside
+   `summary` would have broken a committed Phase 16 test for no real reason. Added as a
+   sibling key on the daily, monthly, AND yearly report dicts instead — zero regressions,
+   same information available.
+2. **Revenue is honestly labeled an ESTIMATE of billed value, never "revenue."** Checked
+   first (by grep, matching Phase 16/17's own established discipline): `AppointmentStatus.
+   COMPLETED` still has zero real producers anywhere in this codebase — nothing has ever
+   marked an appointment completed. Using "completed appointments × price" as the ticket's
+   own example would always honestly read $0.00, which would understate real scheduled
+   work without being false — but presenting that as "the" revenue number, with no
+   context, would let the UI imply more certainty than the data supports (the opposite of
+   what this ticket explicitly asked for). Instead, `revenue_estimate` sums the real
+   `Service.price` (Phase 4) of every appointment in the period whose status is NOT
+   CANCELLED (the same "meaningful, non-cancelled population" precedent Phase 17's own
+   `busiest_days`/`most_requested_services` already established) — a real, non-zero,
+   honestly-labeled number. Its `definition` field spells out, in the API response itself
+   (not just this doc), that it is an estimate of billed value, not confirmed collected
+   revenue, not reduced for discounts/taxes/no-shows, and will become precise once a real
+   completion/payment-tracking system exists (e.g. Phase 41).
+3. **Yearly report built by calling `generate_monthly_report` 12 times and aggregating
+   its real output — not a new set of queries.** Directly per this ticket's own "Phase
+   17's monthly logic is the template — reuse its patterns, don't reinvent" instruction.
+   This also guarantees `GET /reports/yearly` can never disagree with what `GET /reports/
+   monthly` already shows for any individual month of that year — there is exactly one
+   place each underlying query lives. Marked with a `ponytail:` comment noting the real
+   ceiling (24 monthly aggregations per yearly request when year-over-year pulls in the
+   prior year too) — fine at this app's real data volume; a future phase should collapse
+   this into dedicated year-range queries if it ever measurably matters.
+4. **Year-over-year is only shown when the prior year has real recorded activity.**
+   `_aggregate_year` returns `(report, has_real_activity)`; if the prior year's
+   `requested`/`scheduled_for_year`/`conversations`/`new_customers` are all genuinely
+   zero, `year_over_year` is `{"available": false, "note": "..."}` instead of a fabricated
+   comparison against an empty baseline (a `+∞%` or misleading 0% change) — directly per
+   this ticket's own "don't fabricate a comparison with no real prior data." The recursive
+   call for the prior year passes `_include_year_over_year=False` so this can only ever
+   recurse one level deep.
+5. **Real premium gate, not a second scaffold.** `GET /reports/yearly` and `GET /reports/
+   yearly/excel` stack `Depends(require_role(["owner","admin"]))` AND `Depends(require_plan(
+   BusinessPlan.PREMIUM))` — the exact mechanism Phase 34 built and previously only proved
+   against two synthetic scaffolds (`premium_test.py`, an orchestrator trigger phrase).
+   Those scaffolds were explicitly documented as "delete once Phase 35+ builds a real
+   premium feature" — **left in place, not deleted, this phase**: removing them would
+   require rewriting Phase 34's own committed test file (`test_plan_entitlement.py`
+   references `/premium-test/ping` directly), which is unrequested scope this ticket never
+   asked for and adds real regression risk for zero benefit. Flagging as a real, safe
+   cleanup a future phase could do.
+6. **Charts: added `@mantine/charts` + `recharts` — the dependency Phase 35's own design
+   notes already named ("plugs into Phase 37 without a new dependency then") but never
+   actually installed.** Checked first: no chart library existed anywhere in this repo.
+   Native platform/CSS cannot draw a real bar/pie chart; Mantine already anchors this
+   dashboard's whole component system, and `@mantine/charts` is its official
+   Recharts-based wrapper — the least-surprising choice already anticipated by name in
+   Phase 35's own writeup, not a fresh library evaluation.
+7. **A real, pre-existing bug found and fixed: `AuthContext`'s token-getter was wired via
+   `useEffect`, not set synchronously during render.** Found while browser-testing this
+   phase's own Reports page: React runs effects child-first, parent-last on mount, so
+   `DashboardLayout`'s own mount effect (which fires `apiFetch` calls, and now
+   `ReportsPage`'s effect too) ran BEFORE `AuthProvider`'s effect had set the real token
+   getter — every `apiFetch` call on a fresh mount went out with no `Authorization` header,
+   got a real 401, and the global 401 handler logged an actually-still-valid session out
+   with a false "Your session expired" message. Reproduced independently of this phase's
+   own changes (a plain `page.reload()` on `/dashboard/services`, a Phase 36 page, showed
+   the identical bug) — this directly defeated Phase 35's own stated design goal for
+   `sessionStorage` ("so a page refresh doesn't log the owner out"). Fixed by calling
+   `setTokenGetter(() => token)` directly in `AuthProvider`'s render body instead of inside
+   a `useEffect` — a plain module-level variable assignment, safe and idempotent to run on
+   every render, and always correct before any child even starts rendering. Same category
+   of "real regression found and fixed while testing this phase's own work, not required
+   by the ticket" as Phase 36's own CORS middleware-order fix.
+
+**Implemented — backend:**
+
+- **`app/services/reporting/report_service.py`**: `REVENUE_ESTIMATE_DEFINITION` (shared
+  wording, daily/monthly/yearly all use the identical text) and `_sum_service_prices(rows,
+  services)` (new shared helper — real `Service.price` lookup, never fabricates a price for
+  an unresolvable `service_id`). `_appointments_scheduled` now also returns a real revenue
+  Decimal alongside its existing row list. `generate_daily_report` gained a top-level
+  `revenue_estimate: {value, appointment_count, definition}` key.
+- **`app/services/reporting/monthly_report_service.py`**: same `revenue_estimate` key,
+  computed from the `active_rows`/`services` maps the function already built for
+  `busiest_days`/`most_requested_services` — no new query.
+- **`app/services/reporting/yearly_report_service.py`** (new module): `generate_yearly_report(
+  db, *, business_id, year)` — the real new capability. `_aggregate_year` runs the 12 real
+  monthly reports and sums `requested`/`scheduled_for_year`/`cancelled_of_scheduled`/
+  `completed`/`rescheduled`/`revenue_estimate`/`new_customers`, re-aggregates
+  `most_requested_services` across all 12 months, and derives a real `cancellation_rate`/
+  `booking_conversion` from the summed numerator/denominator (never an average of monthly
+  rates, which would silently misbehave — same discipline as the monthly report's own
+  `cancellation_rate` methodology). `month_by_month` is a real 12-row trend. `year_over_year`
+  is the graceful comparison described in design decision #4.
+- **`app/services/reporting/excel_export.py`**: `build_yearly_report_workbook`/
+  `yearly_report_to_xlsx_bytes` — 3 sheets (Summary, Month by Month, Most Requested
+  Services), same "reads the exact dict the JSON endpoint returns" discipline as the daily/
+  monthly builders. Daily and monthly Summary sheets both gained a Revenue Estimate row +
+  its definition.
+- **`app/api/routes/reports.py`**: `GET /reports/yearly` and `GET /reports/yearly/excel` —
+  both stack `require_role(["owner","admin"])` AND `require_plan(BusinessPlan.PREMIUM)` as
+  separate `Depends` on `current_user`, so a staff login gets 403 (role) even on a Premium
+  business, and a Free-plan owner/admin gets 402 (plan) — never the wrong one masking the
+  other.
+- **No migration this phase** — no new columns/tables; the yearly report is pure
+  aggregation over data that already exists. Confirmed via `alembic check`.
+
+**Implemented — frontend (`frontend/src/`):**
+
+- **`pages/dashboard/ReportsPage.tsx`** (new, replaces the Phase 35 placeholder): a
+  `Tabs` (Daily / Monthly / Yearly), each tab independently fetching its own report on a
+  native `<input type="date">` / `<input type="month">` / Mantine `NumberInput` (year)
+  change — no new date-picker dependency, per "native platform feature before a library."
+  - **Daily**: stat cards (scheduled/cancellations/reschedules/new leads/human review),
+    a `RevenueCallout`, a `BarChart` of appointments-by-hour (hour resolved in the
+    business's own timezone via `Intl.DateTimeFormat`, not the browser's), a `PieChart` of
+    status mix, an Excel download button. Zero appointments → an honest "No appointments
+    scheduled for this day." / "No activity to chart for this day." message in place of
+    each chart, never an empty/fabricated chart.
+  - **Monthly**: stat cards (requested/scheduled/cancellation rate/booking conversion), a
+    `RevenueCallout`, a `BarChart` of `busiest_days` (server-computed, reused as-is), a
+    `PieChart` of `most_requested_services` (service mix), an Excel download button. Same
+    honest-empty handling.
+  - **Yearly**: always calls the real `GET /reports/yearly` (never gates client-side off
+    the cached `plan` context alone — a stale client-side flag could show the wrong state
+    right after a real upgrade/downgrade); a real `402 ApiError` renders an "Upgrade to
+    Premium" `Alert` instead of a broken page or a raw error toast. On success: stat cards,
+    `RevenueCallout`, a `BarChart` of the real 12-month trend, a `YearOverYearCard` (real
+    current/prior/% change per metric when available, or the honest "No `<year>` data" note
+    when not), an Excel download button.
+- **`api/client.ts`**: `downloadFile(path, filename)` — a small, separate `fetch` (apiFetch
+  always does `res.json()`, which would corrupt binary `.xlsx` bytes) that reuses the same
+  token/401 handling and saves the real response bytes via a throwaway `<a>` + object URL.
+- **`api/types.ts`**: `RevenueEstimate`, `DailyReport`, `MonthlyReport`, `YearlyReport`,
+  `YearOverYear` — full real response shapes, matching this codebase's existing
+  fully-typed convention.
+- **`auth/AuthContext.tsx`**: the real pre-existing race-condition fix, design decision #7.
+- **`App.tsx`**: `/dashboard/reports` now routes to `ReportsPage`; added `@mantine/charts/
+  styles.css`.
+- **New dependencies: `@mantine/charts@9.6.0`, `recharts@^3.10.1`** (its required peer) —
+  justified in design decision #6.
+
+**Verification — real Docker Postgres + backend, real Vite dev server, a real headless-
+Chrome Playwright browser driving the actual running app (this environment has no
+display, so headless — same real DOM/network/screenshot verification as prior phases'
+headed runs, just not visually headed; screenshots sent to you directly):**
+
+**§1 — Real daily/monthly numbers cross-checked against a direct DB/API check:** A fresh
+business ("Phase37 Reports A") registered via the real API, real service ($50.00, 30 min),
+2 real customers, 2 real appointments booked via `POST /appointments` on the same future
+day, one cancelled via `PATCH .../cancel`. Real UI login, real click into Reports:
+```
+DAILY TAB (date=2026-09-08):
+  Scheduled: 2   Cancellations: 0   Reschedules: 0   New Leads: 0   Human Review Open: 0
+  ESTIMATED BILLED VALUE: $50.00 — "Based on 1 non-cancelled appointment. ..."
+  Appointments by hour: bar at 11:00 = 1 (real, matches the confirmed appointment's hour)
+  Status mix: pie showing 1 confirmed / 1 cancelled
+
+MONTHLY TAB (month=2026-09):
+  Requested: 2   Scheduled: 2   Cancellation Rate: 50.0%   Booking Conversion: N/A
+  ESTIMATED BILLED VALUE: $50.00
+  Busiest days: Tue(1), rest 0   Service mix: Cleaning(1)
+```
+Independently re-derived: 2 appointments requested/scheduled (real DB count), 1 of 2
+cancelled → 50.0% (real DB count), revenue = 1 non-cancelled × $50.00 real `Service.price`
+= $50.00 — every number on screen matches a direct check exactly.
+
+**§2 — Free-plan Yearly: real 402 confirmed independently of the UI, real honest upgrade
+state rendered (not the UI just hiding a working feature):**
+```
+$ curl .../reports/yearly?year=2026 -H "Authorization: Bearer <ownerA, still FREE>"
+HTTP 402 {"error":{"type":"plan_required","message":"This feature requires the premium plan (current plan: free)."}}
+```
+Same real business, same moment, in the browser: the Yearly tab renders a grape "Upgrade
+to Premium" alert quoting that exact message — screenshot sent, confirming this is the
+real API's own answer surfacing in the UI, not a client-side plan-flag hiding a feature
+that would otherwise work.
+
+**§3 — Real upgrade via Phase 34's actual mechanism, real AuditLog row, Yearly now
+renders real data:**
+```
+$ curl -X PATCH .../admin/businesses/<A>/plan -H "Authorization: Bearer <real superadmin>" -d '{"plan":"premium"}'
+HTTP 200 {"plan":"premium",...}
+
+$ psql: SELECT actor, action, result FROM audit_logs WHERE business_id='<A>' AND action='plan_changed';
+ phase37-superadmin-...@example.com | plan_changed | from=free to=premium
+```
+Real UI re-login (same business, same credentials), Yearly tab, same year, no other
+change:
+```
+Requested: 2   Scheduled: 2   Cancellation Rate: 50.0%   Booking Conversion: N/A
+ESTIMATED BILLED VALUE: $50.00 (identical to §1's monthly figure — same real underlying data)
+Month-by-month: September bar = 2, all 11 other months = 0
+Year-over-year: "No 2025 data" — "No real activity recorded for 2025 — a year-over-year
+  comparison is not shown rather than fabricated against an empty baseline."
+```
+Screenshot sent — confirms this is the real, working feature now rendering, not a mock.
+
+**§4 — Real Excel download, byte-for-byte cross-checked against the UI's own numbers, not
+just "it downloaded":**
+```
+Real browser download event: yearly_report_2026.xlsx, 7208 bytes
+$ python (openpyxl) load_workbook on the actual downloaded file:
+  Summary: Business=Phase37 Reports A..., Year=2026, Appointments Scheduled This Year=2,
+    Cancelled=1, Cancellation Rate=0.5, Revenue Estimate="50.00",
+    Year-over-Year Available=False, YoY Prior Year=2025, YoY Note="No real activity
+    recorded for 2025 — ..."
+  Month by Month: September row = (2 requested, 2 scheduled, 1 cancelled, "50.00"),
+    all 11 other months = (0, 0, 0, "0.00")
+```
+Every value matches the on-screen UI in §3 exactly.
+
+**§5 — Zero-activity day, honest empty state, not fabricated:**
+```
+Daily tab, date=2030-01-01:
+  Scheduled: 0  Cancellations: 0  Reschedules: 0  New Leads: 0  Human Review Open: 0
+  ESTIMATED BILLED VALUE: $0.00 — "Based on 0 non-cancelled appointments. ..."
+  "No appointments scheduled for this day." (chart area, in place of an empty bar chart)
+  "No activity to chart for this day." (in place of an empty pie chart)
+```
+Screenshot sent — a real honest-empty render, not a broken page or a fabricated zero-bar
+chart.
+
+**§6 — Cross-tenant isolation, including the Reports page specifically:** A second real
+business ("Phase37 Reports B") with zero appointments of its own, real UI login, real
+click into Reports:
+```
+Business B Daily tab: Scheduled: 0, Revenue: $0.00 (its own genuine empty state — it has
+  no data, not a copy of A's numbers), page contains Business A's name: false
+```
+Business B's own plan badge still correctly reads "Free" (unaffected by A's real upgrade
+in §3 — plan changes are per-business, never global).
+
+**§7 — Real, pre-existing bug found + fixed (design decision #7), reproduced both before
+and after the fix, independent of this phase's own new pages:**
+```
+BEFORE the fix — real login, then a real page.reload() on /dashboard/services (a Phase 36
+  page, not touched by this phase otherwise):
+  URL after reload: http://localhost:5173/login   (bounced out, false "session expired")
+
+AFTER the fix — identical steps:
+  URL after direct navigation to /dashboard/services: .../dashboard/services (stayed)
+  URL after page.reload(): .../dashboard/services (stayed)
+```
+
+**§8 — Full backend regression suite, zero regressions:**
+```
+$ docker compose exec backend python -m pytest tests/ -q
+385 passed, 10 skipped, 31 warnings in 337.77s (0:05:37)
+```
+385 = 376 pre-existing (post-Phase-36) + 9 new (`test_yearly_reports.py`): plan-gating
+(402→upgrade→200, staff 403 regardless of plan), real DB-matched aggregation, honest
+zero-activity year, cross-tenant isolation, a real year-over-year comparison (built via
+the same direct-ORM-`Appointment(...)`-insert-then-call-the-function-directly technique
+`test_monthly_reports.py`'s own `test_month_boundary_uses_business_local_timezone_not_utc`
+already established, since the live booking API structurally cannot create a past-dated
+appointment), a real Excel export cross-check, and a revenue_estimate cross-check on the
+existing daily/monthly endpoints. Zero pre-existing tests modified.
+
+**§9 — Lint, typecheck, build, migration, secrets — all real runs:**
+```
+$ docker compose exec backend ruff check <every Phase-37-touched backend file>
+All checks passed!
+# full-repo ruff: only the 2 pre-existing Phase-29 f-string lints (unrelated, confirmed
+# via git blame in Phase 34/36 already), untouched by this phase.
+
+$ docker compose exec backend alembic check
+No new upgrade operations detected.   (expected — no schema change this phase)
+
+$ cd frontend && npx tsc -b --noEmit    -> zero errors
+$ npm run build                         -> 1551 modules, built in 742ms, zero errors
+                                            (one chunk-size-limit warning — recharts is a
+                                            real, sizeable library; not worth code-splitting
+                                            for this internal dashboard, not fixed)
+$ npm run lint                          -> 0 errors; 3 warnings total:
+                                            1 pre-existing (AuthContext.tsx, Phase 35,
+                                            already documented/accepted), 2 new
+                                            (react/set-state-in-effect on ReportsPage's
+                                            Daily/Monthly panels) — both are the standard,
+                                            necessary "refetch on date/month change"
+                                            pattern (unlike Phase 36's pages, which only
+                                            load once on mount), not a real bug; left as-is
+                                            rather than restructuring a correct pattern to
+                                            silence a stylistic lint.
+```
+Secrets grep across every Phase-37-touched file (backend + frontend): clean — the only
+"password"-shaped literal is the established safe test string `hashed_password="unused"`
+(same convention every prior phase's fixtures use); no `console.log` in any new frontend
+file.
+
+**Live-test cleanup:** all Phase-37 test businesses ("Phase37 Reports A/B", "Phase37
+Verify Ops (internal)", "Reload Check") deleted via direct DB access afterward. Re-queried
+— the DB is back to exactly the 10 original pre-existing businesses **plus one real
+business ("BRN", a personal Gmail-addressed account created 2026-09-06 08:13, after Phase
+36 finished and before this session started) that this phase did not create and left
+untouched**, since it reads as your own manual testing between phases, not test residue:
+```
+$ psql -c "SELECT count(*) FROM businesses;"   -> 11  (10 original + your own "BRN")
+```
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real daily report, chart numbers match a direct API/DB check exactly | ✓ Pass — §1 |
+| Real monthly report, same | ✓ Pass — §1 |
+| Free-plan business viewing Yearly: honest "Premium required" UI state + real underlying 402 | ✓ Pass — §2 |
+| Upgrade to Premium via Phase 34's mechanism; Yearly now renders real data | ✓ Pass — §3 |
+| Real Excel download; contents match the UI's displayed numbers | ✓ Pass — §4 |
+| Zero-activity period: honest empty state, not fabricated | ✓ Pass — §5 |
+| Cross-tenant: Business A's numbers never shown to Business B | ✓ Pass — §6 |
+| Full regression suite, zero regressions | ✓ Pass — §8, 385 passed |
+| Secrets grep clean, lint clean, frontend build clean | ✓ Pass — §9 |
+
+**Known issues / punted items:**
+- **`premium_test.py` and the orchestrator's `_PREMIUM_TEST_TRIGGER` scaffold (Phase 34)
+  were left in place, not deleted** — see design decision #5. A real, safe cleanup a
+  future phase could do once `test_plan_entitlement.py` is updated to stop depending on
+  them directly.
+- **No yearly report EMAIL** (`POST /reports/yearly/send`) — not asked for by this ticket
+  (requirement 1's email-reuse language was scoped to daily/monthly, which already had it
+  since Phase 16/17); only the JSON + Excel endpoints were built for yearly, gated the
+  same way.
+- **`generate_yearly_report` runs 12 (or 24, with year-over-year) real monthly
+  aggregations per request** — explicitly marked with a `ponytail:` comment; fine at this
+  app's real data volume, a real, deliberate ceiling to revisit with dedicated year-range
+  queries if a business's appointment volume ever makes this measurably slow.
+- **Recharts adds ~250KB gzipped to the dashboard bundle** (build's own chunk-size
+  warning) — not code-split; a real, minor, accepted tradeoff for an internal
+  owner/admin-only dashboard, not a public marketing page where load time matters more.
+- **No table of individual appointments on the Reports page** — the ticket asked for
+  charts, a date/month/year picker, and an Excel download; a full appointments table
+  wasn't requested and the Excel export already gives full per-row detail.
+- Carried over, still real and still open (unrelated to this phase): everything Phase 36's
+  own "Known issues" section already listed, plus the still-uncommitted Phase 36 work this
+  phase was built on top of.
+- No commit has been made yet — awaiting your explicit confirmation of this verification
+  output per working rule #6. Do not start Phase 38 work until then, per your standing
+  instruction.

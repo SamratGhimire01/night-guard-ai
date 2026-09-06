@@ -1,6 +1,7 @@
 import uuid
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -20,6 +21,29 @@ from app.services.notifications.templates.render import render_daily_report_emai
 from app.services.reporting.excel_export import report_to_xlsx_bytes
 
 _RESCHEDULE_ACTION = "appointment_rescheduled"
+
+# Shared wording (daily/monthly/yearly all use this exact text) — deliberately
+# not called "revenue": no payment/completion-tracking system exists anywhere
+# in this codebase (AppointmentStatus.COMPLETED has zero real producers,
+# confirmed by grep — see monthly_report_service's own note), so this is
+# honestly labeled as an ESTIMATE of billed value, never presented as
+# confirmed collected revenue.
+REVENUE_ESTIMATE_DEFINITION = (
+    "Estimated billed value of non-cancelled appointments (any status except CANCELLED) at each "
+    "appointment's service list price (Service.price, Phase 4). This is an ESTIMATE of billed "
+    "value, not confirmed collected revenue — this codebase has no appointment-completion or "
+    "payment-tracking system yet (AppointmentStatus.COMPLETED has no real producer anywhere; a "
+    "future phase, e.g. Phase 41's payment gateway, would make this precise). Not reduced for "
+    "discounts, taxes, or no-shows."
+)
+
+
+def _sum_service_prices(rows, services: dict) -> Decimal:
+    """rows: an iterable of Appointment-like objects with .service_id. Caller
+    decides which population to pass in (e.g. already excluding cancelled) —
+    this just sums real Service.price values, never fabricates one for a
+    service_id it can't resolve."""
+    return sum((services[r.service_id].price for r in rows if r.service_id in services), Decimal("0.00"))
 
 
 def _day_bounds(business: Business, report_date: date) -> tuple[datetime, datetime]:
@@ -53,7 +77,9 @@ def _name_maps(db: Session, *, business_id: uuid.UUID, customer_ids: set, servic
     return customers, services, staff
 
 
-def _appointments_scheduled(db: Session, *, business_id: uuid.UUID, start: datetime, end: datetime) -> list[dict]:
+def _appointments_scheduled(
+    db: Session, *, business_id: uuid.UUID, start: datetime, end: datetime
+) -> tuple[list[dict], Decimal]:
     appointments = list(
         db.execute(
             select(Appointment)
@@ -72,7 +98,7 @@ def _appointments_scheduled(db: Session, *, business_id: uuid.UUID, start: datet
         service_ids={a.service_id for a in appointments},
         staff_ids={a.staff_id for a in appointments if a.staff_id},
     )
-    return [
+    rows = [
         {
             "id": str(a.id),
             "scheduled_at": a.scheduled_at.isoformat(),
@@ -84,6 +110,10 @@ def _appointments_scheduled(db: Session, *, business_id: uuid.UUID, start: datet
         }
         for a in appointments
     ]
+    revenue_estimate = _sum_service_prices(
+        (a for a in appointments if a.status != AppointmentStatus.CANCELLED), services
+    )
+    return rows, revenue_estimate
 
 
 def _appointments_cancelled(db: Session, *, business_id: uuid.UUID, start: datetime, end: datetime) -> list[dict]:
@@ -249,7 +279,7 @@ def generate_daily_report(db: Session, *, business_id: uuid.UUID, report_date: d
         raise NotFoundError("Business not found.")
 
     start, end = _day_bounds(business, report_date)
-    appointments = _appointments_scheduled(db, business_id=business_id, start=start, end=end)
+    appointments, revenue_estimate = _appointments_scheduled(db, business_id=business_id, start=start, end=end)
     cancellations = _appointments_cancelled(db, business_id=business_id, start=start, end=end)
     reschedules = _appointments_rescheduled(db, business_id=business_id, start=start, end=end)
     new_leads = _new_leads(db, business_id=business_id, start=start, end=end)
@@ -269,6 +299,11 @@ def generate_daily_report(db: Session, *, business_id: uuid.UUID, report_date: d
         "reschedules": reschedules,
         "new_leads": new_leads,
         "human_review": human_review,
+        "revenue_estimate": {
+            "value": str(revenue_estimate),
+            "appointment_count": sum(1 for a in appointments if a["status"] != "cancelled"),
+            "definition": REVENUE_ESTIMATE_DEFINITION,
+        },
         "summary": {
             "appointments_scheduled": len(appointments),
             "appointments_by_status": dict(status_counts),

@@ -71,6 +71,8 @@ def build_report_workbook(report: dict) -> Workbook:
         ["Human Review — Open Count", summary["human_review_open_count"]],
         ["Human Review — Feature Implemented", report["human_review"]["implemented"]],
         ["Human Review — Note", report["human_review"]["note"]],
+        ["Revenue Estimate", report["revenue_estimate"]["value"]],
+        ["Revenue Estimate — Definition", report["revenue_estimate"]["definition"]],
     ]
     _write_sheet(ws, ["Metric", "Value"], rows)
 
@@ -119,6 +121,8 @@ def build_monthly_report_workbook(report: dict) -> Workbook:
             ["Completed (real count)", a["completed"]["count"]],
             ["Completed — Feature Implemented", a["completed"]["implemented"]],
             ["Completed — Note", a["completed"]["note"]],
+            ["Revenue Estimate", report["revenue_estimate"]["value"]],
+            ["Revenue Estimate — Definition", report["revenue_estimate"]["definition"]],
         ],
     )
 
@@ -140,6 +144,84 @@ def build_monthly_report_workbook(report: dict) -> Workbook:
 
 def monthly_report_to_xlsx_bytes(report: dict) -> bytes:
     wb = build_monthly_report_workbook(report)
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
+def build_yearly_report_workbook(report: dict) -> Workbook:
+    """Same pattern as build_monthly_report_workbook — real openpyxl workbook
+    from the exact dict generate_yearly_report produces. Sheets: Summary,
+    Month by Month, Most Requested Services."""
+    wb = Workbook()
+    a = report["appointments"]
+    cr = report["cancellation_rate"]
+    bc = report["booking_conversion"]
+    rev = report["revenue_estimate"]
+
+    ws = wb.active
+    ws.title = "Summary"
+    rows = [
+        ["Business", report["business_name"]],
+        ["Year", report["year"]],
+        ["Timezone", report["timezone"]],
+        ["Conversations", report["conversations"]["total"]],
+        ["New Customers", report["customers"]["new"]],
+        ["Appointments Requested", a["requested"]],
+        ["Appointments Scheduled This Year", a["scheduled_for_year"]],
+        ["Cancelled (of scheduled-for-year)", a["cancelled_of_scheduled"]],
+        ["Cancellation Rate", cr["value"]],
+        ["Cancellation Rate — Definition", cr["definition"]],
+        ["Booking Conversion", bc["value"]],
+        ["Booking Conversion — Definition", bc["definition"]],
+        ["Reschedule Events", a["rescheduled"]["events"]],
+        ["Completed (real count)", a["completed"]["count"]],
+        ["Completed — Feature Implemented", a["completed"]["implemented"]],
+        ["Revenue Estimate", rev["value"]],
+        ["Revenue Estimate — Definition", rev["definition"]],
+    ]
+    yoy = report.get("year_over_year")
+    if yoy:
+        rows.append(["Year-over-Year Available", yoy["available"]])
+        if yoy["available"]:
+            rows += [
+                ["YoY Prior Year", yoy["prior_year"]],
+                ["YoY Appointments Scheduled (current)", yoy["appointments_scheduled"]["current"]],
+                ["YoY Appointments Scheduled (prior)", yoy["appointments_scheduled"]["prior"]],
+                ["YoY Appointments Change %", yoy["appointments_scheduled"]["change_pct"]],
+                ["YoY Revenue Estimate (current)", yoy["revenue_estimate"]["current"]],
+                ["YoY Revenue Estimate (prior)", yoy["revenue_estimate"]["prior"]],
+                ["YoY Revenue Change %", yoy["revenue_estimate"]["change_pct"]],
+                ["YoY New Customers (current)", yoy["new_customers"]["current"]],
+                ["YoY New Customers (prior)", yoy["new_customers"]["prior"]],
+                ["YoY New Customers Change %", yoy["new_customers"]["change_pct"]],
+            ]
+        else:
+            rows += [["YoY Prior Year", yoy["prior_year"]], ["Year-over-Year Note", yoy["note"]]]
+    _write_sheet(ws, ["Metric", "Value"], rows)
+
+    ws = wb.create_sheet("Month by Month")
+    _write_sheet(
+        ws,
+        ["Month", "Requested", "Scheduled", "Cancelled", "Revenue Estimate"],
+        [
+            [m["month_name"], m["appointments_requested"], m["appointments_scheduled"], m["cancelled"], m["revenue_estimate"]]
+            for m in report["month_by_month"]
+        ],
+    )
+
+    ws = wb.create_sheet("Most Requested Services")
+    _write_sheet(
+        ws,
+        ["Service", "Count", "Service ID"],
+        [[s["service_name"], s["count"], s["service_id"]] for s in report["most_requested_services"]],
+    )
+
+    return wb
+
+
+def yearly_report_to_xlsx_bytes(report: dict) -> bytes:
+    wb = build_yearly_report_workbook(report)
     buffer = io.BytesIO()
     wb.save(buffer)
     return buffer.getvalue()
