@@ -9184,3 +9184,221 @@ creates anything like them in a real deployment, and (like every prior phase's l
 businesses) they're plain rows in the same `businesses`/`business_users` tables as
 everything else, not a special "test mode." Keep this section out of any context beyond
 this project's own private repo.
+
+---
+
+## Phase 43 — Voice Chat (In-App, Deepgram + WebRTC)
+
+**Date:** 2026-09-06
+
+**Required:** let a customer click a phone/microphone icon in the website widget and have
+a real, live spoken conversation with Night Guard, reusing the EXACT SAME orchestrator,
+memory, booking, and knowledge pipeline Phase 8 already built for text — voice is a new
+input/output modality, not a new brain. Real-time WebSocket audio streaming (not
+record-then-upload), Deepgram's own end-of-utterance detection (not fixed timers), a real
+enforced max call duration, graceful degradation on a Deepgram failure, and zero
+regressions to text chat.
+
+**Implemented:**
+
+- **`app/voice/base.py`**: `STTProvider`/`STTSession`/`TTSProvider` ABCs — mirrors
+  `app/llm/base.py`'s `ChatProvider`/`EmbeddingProvider` pattern exactly, per the ticket's
+  explicit ask. `STTSession.events()` yields normalized dicts
+  (`{"type": "transcript", "text", "is_final", "speech_final"}` /
+  `{"type": "utterance_end"}` / `{"type": "speech_started"}`) so the call handler never
+  touches a provider-specific message shape.
+- **`app/voice/deepgram.py`**: `DeepgramSTTProvider`/`DeepgramSTTSession` (real-time
+  `wss://api.deepgram.com/v1/listen`, `nova-2`, `interim_results=true`,
+  `endpointing=500`, `utterance_end_ms=1000`, `vad_events=true` — Deepgram's own
+  silence-based VAD, not a timer this codebase invented) and `DeepgramTTSProvider` (one
+  REST call per turn to `/v1/speak`, `aura-asteria-en`, `encoding=mp3`). **Design call**:
+  TTS is a single REST call, not a persistent streaming socket — unlike an LLM's
+  token-by-token output, the orchestrator's reply text is already fully known before
+  synthesis starts, so a socket would only add complexity with no latency benefit for a
+  one-or-two-sentence chat reply. No `encoding`/`sample_rate` query params on the STT URL:
+  the browser sends a containerized WebM/Opus stream (see widget.js), and Deepgram
+  auto-detects container format from its headers — specifying a raw `encoding=opus` would
+  wrongly tell it to expect a headerless bitstream instead.
+- **`app/voice/__init__.py`**: `get_stt_provider()`/`get_tts_provider()` — the same
+  single-seam pattern as `app/llm/__init__.py`, so a future TTS provider swap (ElevenLabs,
+  per the V2 plan's fallback note) is a one-file change.
+- **`app/core/config.py` / `.env.example`**: `deepgram_api_key` now a real, read
+  `Settings` field (was an inert V2 placeholder before this phase). One key covers both
+  Deepgram STT (Nova) and TTS (Aura) — no second env var needed. Empty by default: both
+  providers raise a clear `RuntimeError` on use, never a crash, and the voice WebSocket
+  route catches that and degrades the call instead of hanging.
+- **`app/api/routes/voice.py`** (new): `@router.websocket("/api/v1/widget/{business_id}/voice")`.
+  **The core design decision of this phase**: for every finalized utterance, this route
+  calls `widget_service.send_widget_message()` — **the literal same function
+  `POST /api/v1/widget/{id}/messages` already calls** — never `app/services/conversation/`
+  directly. This is what makes voice provably not a parallel brain: same orchestrator, same
+  `TOOL_REGISTRY` booking tools, same Phase 7 memory/summarization, same never-invent-
+  information and honesty-about-booking-capability rules, same `session_token`/
+  `ChannelIdentity`/`Conversation` resolution and session-isolation guarantees Phase 21
+  already built and Phase 29 already hardened — inherited for free, not re-implemented.
+  Voice and text share the SAME conversation because they use the SAME `session_token`,
+  stored under the SAME `localStorage` key by widget.js (see below) — there is no separate
+  "voice channel," the `Conversation.channel` stays `"website"` for both.
+  - Same three rate limiters (`widget_business_rate_limiter`/`widget_ip_rate_limiter`/
+    `widget_session_rate_limiter`) checked per-utterance, same discipline as the HTTP route.
+  - End-of-utterance: a finalized transcript is dispatched on Deepgram's own
+    `speech_final: true` flag OR a separate `UtteranceEnd` event (covers the case where
+    background noise keeps a Results segment "open" past when the customer actually
+    stopped talking) — whichever fires first. No fixed silence timer anywhere in this
+    codebase's own logic.
+  - **Max call duration (real, enforced)**: `MAX_CALL_SECONDS = 600`, checked as a real
+    wall-clock deadline inside the browser-audio receive loop
+    (`asyncio.wait_for(websocket.receive(), timeout=remaining)`) — not advisory, not just a
+    comment. See the shortened-deadline test below for real proof it cuts a call off.
+  - **Graceful degradation**: the STT `connect()` call, and the `pump_transcripts` task
+    iterating Deepgram events, are both wrapped so ANY failure (auth error, disconnect,
+    provider exception) sends `{"type": "error", "message": "I'm having trouble hearing
+    you right now. Would you like to type instead?"}` and then closes the socket — never
+    hangs. See the simulated-failure tests below for real proof.
+  - Two concurrent `asyncio` tasks bridge the duplex stream: `pump_browser_audio` (browser
+    WS → Deepgram, plus the deadline check and an `{"type": "end_call"}` control message)
+    and `pump_transcripts` (Deepgram events → orchestrator → TTS → browser WS binary
+    frame). `asyncio.to_thread` offloads the orchestrator/TTS's synchronous calls so
+    neither blocks the event loop.
+- **`app/static/widget.js`**: added a real microphone button next to the send button.
+  Clicking it requests `getUserMedia({audio:true})`, opens
+  `wss://.../api/v1/widget/{id}/voice?session_token=...` (the SAME token already in
+  `localStorage`), and streams `MediaRecorder(stream, {mimeType:"audio/webm;codecs=opus"})`
+  chunks (`start(250)`, no re-encoding) as binary WS frames — no new dependency, still a
+  single dependency-free vanilla-JS file per Phase 21's constraint (must run embedded on
+  any third-party site). UI states (Listening.../Thinking.../Speaking...) render in a call
+  bar that replaces the input form during a call; the customer's own transcript and the
+  agent's reply are appended into the SAME `#ng-widget-messages` list typed chat already
+  uses. The mic is paused during TTS playback and resumed after, to reduce the chance of
+  the browser's own speaker output leaking back into the mic. An "End call" button (or a
+  server-sent `call_ended`) tears down the call and restores the typing form — text and
+  voice share memory, so this is a real, tested mid-conversation mode switch, not a
+  disconnect.
+- **`app/static/widget-demo.html`** (new) + `GET /widget-demo` route
+  (`app/api/routes/widget.py`): a real top-level page that loads the real `widget.js` via
+  the same `<script data-business-id>` embed the dashboard's own snippet generator
+  produces. **Needed because of a real limitation found, not assumed**: the dashboard's
+  "Website Widget" live preview (`WebsiteWidgetPage.tsx`) renders `widget.js` inside a
+  `sandbox="allow-scripts"` `srcDoc` iframe with no `allow-same-origin` — that combination
+  gives the iframe an opaque origin, which browsers treat as an insecure context and refuse
+  to grant microphone access to, regardless of an `allow="microphone"` attribute. Adding
+  `allow-same-origin` there instead would let the framed widget script share the
+  dashboard's own origin (DOM/localStorage/cookies) — a real security regression not worth
+  taking for a preview convenience — so the dashboard preview is left as-is, and this new
+  dev-only page is the real place to live-test voice with actual microphone permission.
+- **`backend/tests/integration/test_voice.py`** (new, 7 tests, stubbed `ChatProvider`/
+  `EmbeddingProvider` — same discipline as `test_widget.py` — plus fake `STTProvider`/
+  `TTSProvider` implementations, no real Deepgram cost): a full voice turn persists real
+  `Conversation`/`Message` rows and reuses the real orchestrator (the stubbed LLM's
+  response, including the real Phase 19 handoff sentence it triggers); voice and text
+  share the same conversation via the same `session_token`; the shortened-deadline
+  guardrail proof; a simulated Deepgram connect failure; a simulated mid-call Deepgram
+  disconnect; a nonexistent `business_id`; and both providers refusing to run with no
+  `DEEPGRAM_API_KEY` configured (a real unit test, no network call).
+
+**Real automated verification (actual output, run 2026-09-06):**
+
+1. New voice test suite:
+```
+$ docker compose exec backend python -m pytest tests/integration/test_voice.py -v
+tests/integration/test_voice.py::test_a_full_voice_turn_reuses_the_real_orchestrator_and_persists_real_rows PASSED
+tests/integration/test_voice.py::test_voice_and_text_share_the_same_conversation_via_the_same_session_token PASSED
+tests/integration/test_voice.py::test_max_call_duration_guardrail_actually_cuts_the_call_off PASSED
+tests/integration/test_voice.py::test_simulated_deepgram_connect_failure_degrades_gracefully_instead_of_hanging PASSED
+tests/integration/test_voice.py::test_simulated_deepgram_disconnect_mid_call_degrades_gracefully_instead_of_hanging PASSED
+tests/integration/test_voice.py::test_business_id_that_does_not_exist_closes_with_a_plain_error PASSED
+tests/integration/test_voice.py::test_deepgram_providers_refuse_to_run_with_no_api_key_configured PASSED
+======================== 7 passed, 4 warnings in 3.24s ========================
+```
+The max-duration test monkeypatches `MAX_CALL_SECONDS` to `0.3` against a fake STT session
+that never yields any events (an open mic with no speech) — the ONLY way that test can pass
+is the real wall-clock deadline in `pump_browser_audio` firing, proving the guardrail
+actually cuts a session off rather than just existing in a comment.
+
+2. Lint, scoped to every new/modified file this phase:
+```
+$ docker compose exec backend ruff check app/voice/ app/api/routes/voice.py app/api/routes/widget.py app/core/config.py app/main.py tests/integration/test_voice.py
+All checks passed!
+```
+(The repo's full `ruff check .` shows 2 pre-existing `F541` findings in
+`tests/security/test_phase29_pagination.py` — confirmed via `git status` to be unrelated
+to this phase's diff, not introduced by it.)
+
+3. Secrets check:
+```
+$ git ls-files | grep -E '\.env$'                                              -> none tracked
+$ git grep -nE 'DEEPGRAM_API_KEY\s*=\s*[A-Za-z0-9]' -- . ':!backend/.env.example'  -> no match
+$ grep -rn "Token " app/voice/ app/api/routes/voice.py   -> only the Authorization header construction itself, never logged
+$ docker compose logs backend --tail=200 | grep -iE "deepgram|api.key"          -> clean, no match
+```
+
+4. `node --check` on the modified `widget.js` — real syntax verification for the new
+   vanilla-JS voice UI, since this file ships unbundled straight to third-party browsers:
+```
+$ node --check backend/app/static/widget.js
+SYNTAX OK
+```
+
+5. Full regression suite (text-based conversation and everything else, unaffected):
+```
+$ docker compose exec backend python -m pytest tests/ -q
+=========== 417 passed, 10 skipped, 31 warnings in 375.50s (0:06:15) ===========
+```
+
+6. `widget.js`/`widget-demo.html` actually serving after a backend restart (the new
+   Python route needed one — static file changes did not):
+```
+$ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8010/widget-demo   -> 200
+$ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8010/api/v1/health -> 200
+```
+
+**Real-API acceptance verification — NOT YET DONE, requires your own live microphone/speaker
+test per your explicit instruction (real audio isn't something this environment can
+generate or verify on its own):**
+
+- [ ] Ask a real question by voice, hear a real spoken response with correct information
+      (matching what text chat would say for the same question).
+- [ ] Speak a full booking request by voice (service, date, time, name, contact info),
+      confirm a REAL appointment row exists in the database afterward.
+- [ ] Start in voice, switch to typing mid-conversation, confirm memory carried over.
+- [ ] Let a call run past 10 minutes, confirm the real cutoff (or temporarily lower
+      `MAX_CALL_SECONDS` in `app/api/routes/voice.py` locally to test this in under a
+      minute, then revert).
+
+**Setup needed on your side before that live test:** add `DEEPGRAM_API_KEY=<your real key>`
+to your local `.env` (Deepgram account with the $200 credit balance you mentioned). No
+other env var is needed for this phase. Then open `http://localhost:8010/widget-demo`,
+paste a real `business_id`, click the chat bubble, then the microphone icon.
+
+**Known issues / punted items:**
+- **Not gated behind Premium this phase — explicit call, not an oversight.** The V2 plan
+  lists voice as a Premium feature overall, but there's no signal yet that voice
+  specifically (vs. free-tier text, which already exists) needs its own paywall boundary
+  before any real usage data exists. Phase 34's `require_plan`/`ensure_plan` mechanism
+  hooks in as a single check at the top of `voice_call()` whenever that business decision
+  is made — a real fast-follow, not a structural gap.
+- **Deepgram's `nova-2` STT model is English-tuned.** This codebase's text chat already
+  handles Nepali/code-mixed conversations (Phase 25); real-world voice accuracy for
+  non-English speech is untested and not something fixable from this codebase alone — a
+  real, flagged limitation of the chosen provider/model, not hidden.
+  `smart_format=true` is on; a `language=` override could be added per-business if this
+  proves to be a real problem in practice.
+  - Deepgram's `speech_final`/`UtteranceEnd` events are used as documented, but has NOT
+  been proven against real background noise/overlapping speech/a customer trailing off
+  mid-sentence — those are exactly the scenarios your own live test should specifically
+  try (per the ticket's own ask).
+- **No echo-cancellation guarantee beyond the browser's own default + pausing the
+  MediaRecorder during TTS playback.** A reasonable mitigation, not a hard guarantee —
+  a customer on speakerphone with a very loud/close speaker could still have some of the
+  agent's own voice picked up once the mic resumes. Real speaker/mic hardware behavior
+  is exactly what your live test will reveal.
+- **`Message` rows don't record whether a turn came via voice or text** — not asked for
+  this phase, and the existing schema already has everything the ticket needed (same
+  session/conversation). A future analytics phase could add this if wanted.
+- **Rate limiters remain the existing in-memory, single-process implementation** (Phase 21's
+  known limitation, inherited as-is — see `app/core/rate_limit.py`), not something this
+  phase changed or needed to change.
+- No commit has been made yet — awaiting your explicit confirmation of this verification
+  output, AND your own live microphone/speaker test, per working rule #6.
+
+---

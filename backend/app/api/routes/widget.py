@@ -15,6 +15,7 @@ router = APIRouter()
 
 _WIDGET_JS_PATH = Path(__file__).resolve().parents[2] / "static" / "widget.js"
 _TEST_CHAT_PATH = Path(__file__).resolve().parents[2] / "static" / "test-chat.html"
+_WIDGET_DEMO_PATH = Path(__file__).resolve().parents[2] / "static" / "widget-demo.html"
 
 
 @router.get("/widget.js", include_in_schema=False)
@@ -32,6 +33,16 @@ def get_test_chat_page() -> FileResponse:
     """Dev/test-only chat UI for hitting the real widget endpoint by hand.
     Not for production exposure -- see comment at top of test-chat.html."""
     return FileResponse(_TEST_CHAT_PATH, media_type="text/html")
+
+
+@router.get("/widget-demo", include_in_schema=False)
+def get_widget_demo_page() -> FileResponse:
+    """Dev/test-only page that loads the REAL widget.js as a top-level page
+    (not a sandboxed iframe) -- needed for a real live microphone test of
+    Phase 43's voice call, since the dashboard's own widget preview is a
+    sandboxed srcDoc iframe that cannot be granted microphone access. Not
+    for production exposure -- see comment at top of widget-demo.html."""
+    return FileResponse(_WIDGET_DEMO_PATH, media_type="text/html")
 
 
 @router.get("/api/v1/widget/{business_id}/config", response_model=WidgetConfigResponse)

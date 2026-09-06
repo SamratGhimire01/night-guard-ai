@@ -1,0 +1,61 @@
+<!--
+  DEV/TEST TOOL ONLY. Loads the REAL widget.js exactly as a business's own
+  website would (same <script data-business-id> embed), as a real top-level
+  page -- unlike the dashboard's "Website Widget" live preview (a sandboxed
+  srcDoc iframe with no allow-same-origin), which cannot grant microphone
+  access at all, since that sandbox makes it an opaque/insecure origin.
+  Use THIS page for a real live voice-call test. Not for production exposure.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Night Guard - Widget Demo</title>
+<style>
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f4f4f7;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+  h1 { font-size: 16px; color: #333; margin: 0; }
+  p { font-size: 13px; color: #777; margin: 0; max-width: 380px; text-align: center; }
+  #biz-form { display: flex; gap: 8px; }
+  #biz-input { padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; width: 320px; }
+  #biz-form button { padding: 8px 14px; border: none; border-radius: 6px; background: #2563eb; color: #fff; font-size: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>Night Guard AI &mdash; Widget Demo</h1>
+<p>Paste a real business_id (from the dashboard's Website Widget page, or the "business_id" field
+   returned by registration) and load the real widget. Click the chat bubble in the bottom-right
+   corner, then the microphone icon for a real voice call.</p>
+<form id="biz-form">
+  <input id="biz-input" type="text" placeholder="business_id (UUID)" autocomplete="off" />
+  <button type="submit">Load widget</button>
+</form>
+
+<script>
+document.getElementById("biz-form").addEventListener("submit", function (event) {
+  event.preventDefault();
+  var businessId = document.getElementById("biz-input").value.trim();
+  if (!businessId) return;
+  var existing = document.getElementById("ng-widget-loader");
+  if (existing) existing.remove();
+  var el = document.querySelector("#ng-widget-root");
+  if (el) el.remove();
+  var script = document.createElement("script");
+  script.id = "ng-widget-loader";
+  script.src = "/widget.js";
+  script.setAttribute("data-business-id", businessId);
+  document.body.appendChild(script);
+});
+</script>
+</body>
+</html>

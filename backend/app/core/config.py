@@ -83,6 +83,27 @@ class Settings(BaseSettings):
     instagram_verify_token: str = ""
     instagram_api_version: str = "v20.0"
 
+    # Google Calendar OAuth (app/services/google_calendar_service.py, Phase 40).
+    # Empty by default — no real Google Cloud OAuth client exists until configured.
+    # google_redirect_uri must be registered VERBATIM (exact string match) as an
+    # Authorized redirect URI on that OAuth client, and must equal wherever
+    # app/api/routes/google_calendar.py's callback route is actually reachable —
+    # see PHASE_STATUS.md Phase 40 for the exact Cloud Console steps.
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = ""
+
+    # Phase 40: the callback redirects the user's browser back to the dashboard
+    # SPA (not this API) after a real Google consent flow completes.
+    dashboard_base_url: str = "http://localhost:5173"
+
+    # Deepgram (real-time STT + TTS for voice chat, app/voice/deepgram.py,
+    # Phase 43). One key covers both -- Deepgram's Nova (speech-to-text) and
+    # Aura (text-to-speech) products share the same account/API key. Empty by
+    # default: app/voice/deepgram.py raises a clear, caught error (never a
+    # crash) if a voice call is attempted with no key configured.
+    deepgram_api_key: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

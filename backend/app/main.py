@@ -9,6 +9,7 @@ from app.api.routes import (
     conversations,
     customers,
     followups,
+    google_calendar,
     handoffs,
     health,
     integrations,
@@ -19,6 +20,7 @@ from app.api.routes import (
     services,
     staff,
     training,
+    voice,
     webhooks,
     widget,
 )
@@ -62,9 +64,11 @@ app.include_router(reports.router, prefix="/api/v1", tags=["reports"])
 app.include_router(followups.router, prefix="/api/v1", tags=["followups"])
 app.include_router(handoffs.router, prefix="/api/v1", tags=["handoffs"])
 app.include_router(integrations.router, prefix="/api/v1", tags=["integrations"])
+app.include_router(google_calendar.router, prefix="/api/v1", tags=["google-calendar"])
 app.include_router(training.router, prefix="/api/v1", tags=["training"])
 app.include_router(internal_metrics.router, prefix="/api/v1", tags=["internal"])
 app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 app.include_router(premium_test.router, prefix="/api/v1", tags=["premium-test"])
 app.include_router(widget.router, tags=["widget"])
+app.include_router(voice.router, tags=["voice"])
 app.include_router(webhooks.router, tags=["webhooks"])
