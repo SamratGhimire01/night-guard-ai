@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.routes import (
+    admin,
     appointments,
     auth,
     business,
@@ -12,6 +13,7 @@ from app.api.routes import (
     integrations,
     internal_metrics,
     knowledge,
+    premium_test,
     reports,
     services,
     staff,
@@ -46,5 +48,7 @@ app.include_router(handoffs.router, prefix="/api/v1", tags=["handoffs"])
 app.include_router(integrations.router, prefix="/api/v1", tags=["integrations"])
 app.include_router(training.router, prefix="/api/v1", tags=["training"])
 app.include_router(internal_metrics.router, prefix="/api/v1", tags=["internal"])
+app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
+app.include_router(premium_test.router, prefix="/api/v1", tags=["premium-test"])
 app.include_router(widget.router, tags=["widget"])
 app.include_router(webhooks.router, tags=["webhooks"])

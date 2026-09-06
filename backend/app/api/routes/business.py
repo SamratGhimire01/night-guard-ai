@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db, require_role
+from app.core.entitlements import PLAN_FEATURES
 from app.core.exceptions import NotFoundError
 from app.db.models.business import BusinessUser
 from app.schemas.business import BusinessRead, BusinessUpdate
@@ -13,6 +14,7 @@ from app.schemas.business_hours import (
     HolidayExceptionCreate,
     HolidayExceptionRead,
 )
+from app.schemas.plan import PlanRead
 from app.services import business_hours_service, business_service
 
 router = APIRouter()
@@ -24,6 +26,20 @@ def get_my_business(
 ) -> BusinessRead:
     business = business_service.get_business(db, business_id=current_user.business_id)
     return BusinessRead.model_validate(business)
+
+
+@router.get("/business/plan", response_model=PlanRead)
+def get_my_plan(
+    current_user: BusinessUser = Depends(get_current_user), db: Session = Depends(get_db)
+) -> PlanRead:
+    """Phase 34, requirement #5 — any authenticated business user (not just
+    owner/admin, same read-access bar as GET /business/me) can see their own
+    real plan and what it includes. This is the real data endpoint a future
+    dashboard "billing" screen will read from — no dashboard exists yet
+    (frontend/ is still a placeholder, per Phase 28), so this is the whole
+    deliverable for now."""
+    business = business_service.get_business(db, business_id=current_user.business_id)
+    return PlanRead(business_id=business.id, plan=business.plan, features=PLAN_FEATURES[business.plan])
 
 
 @router.patch("/business/me", response_model=BusinessRead)

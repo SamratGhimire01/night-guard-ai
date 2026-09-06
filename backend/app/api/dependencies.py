@@ -5,12 +5,13 @@ from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.entitlements import ensure_plan
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import decode_access_token
 from app.db.database import get_db
-from app.db.models.business import BusinessUser
+from app.db.models.business import Business, BusinessPlan, BusinessUser
 
-__all__ = ["get_db", "get_current_user", "require_role"]
+__all__ = ["get_db", "get_current_user", "require_role", "require_plan", "require_superadmin"]
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -63,3 +64,37 @@ def require_role(allowed_roles: list[str]):
         return current_user
 
     return _check_role
+
+
+def require_plan(minimum: BusinessPlan):
+    """Dependency factory gating a route to businesses whose plan meets
+    `minimum` (Phase 34). Always re-checks the REAL, current
+    `current_user.business_id`'s own Business row on every request — never
+    cached, never trusted from the JWT (the token carries no plan claim at
+    all), so a downgrade takes effect on the very next request. Raises
+    `PlanRequiredError` (402) via the same `ensure_plan` the conversation
+    orchestrator's test hook also calls — one real gating function, two
+    callers.
+
+    Usage: Depends(require_plan(BusinessPlan.PREMIUM))
+    """
+
+    def _check_plan(
+        current_user: BusinessUser = Depends(get_current_user), db: Session = Depends(get_db)
+    ) -> BusinessUser:
+        business = db.get(Business, current_user.business_id)
+        ensure_plan(business, minimum)
+        return current_user
+
+    return _check_plan
+
+
+def require_superadmin(current_user: BusinessUser = Depends(get_current_user)) -> BusinessUser:
+    """Gates a route to a PLATFORM-level admin (Business.is_superadmin),
+    completely independent of `role`/`business_id` — see BusinessUser.
+    is_superadmin's docstring. Used only by the admin plan-management
+    endpoints (app/api/routes/admin.py); nothing else in this codebase should
+    ever need it."""
+    if not current_user.is_superadmin:
+        raise ForbiddenError("You do not have permission to perform this action.")
+    return current_user

@@ -53,6 +53,17 @@ class ForbiddenError(NightGuardError):
     error_type = "forbidden"
 
 
+class PlanRequiredError(NightGuardError):
+    """Raised when an authenticated, tenant-scoped action requires a higher
+    subscription plan than the business currently has (Phase 34). 402 Payment
+    Required is the real, standard HTTP status for exactly this case — never
+    403 (that's for "not your data/role"), since a plan gap is honestly
+    resolvable by paying, not a permissions error."""
+
+    status_code = status.HTTP_402_PAYMENT_REQUIRED
+    error_type = "plan_required"
+
+
 class TooManyRequestsError(NightGuardError):
     """Raised when a client exceeds a rate limit (e.g. login attempts)."""
 

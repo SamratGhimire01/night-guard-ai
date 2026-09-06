@@ -7606,3 +7606,361 @@ falling back to "today" only when the customer has no such appointment at all. N
 real product decision on scope: same day only, or a small window around it (e.g. "later
 that same day, or the day after"), and how this interacts with a business that's fully
 booked on that exact day.
+
+---
+
+## Phase 34 — Subscription & Plan Entitlement System
+
+**Date:** 2026-09-06
+
+**Required:** the gating mechanism every V2 premium feature (Google Calendar, payments,
+voice, yearly reports) will depend on, built BEFORE any of them — a Plan model, a real
+entitlement check usable from both API routes and the conversation orchestrator, real
+audit logging of plan changes, admin endpoints to view/change a business's plan, and a
+self-serve "what plan am I on" endpoint.
+
+**Design decisions made and justified:**
+
+1. **`Business.plan` — a plain enum column, not a separate `Plan` table.** The ticket
+   explicitly floated both ("Basic/Standard/Pro per the pricing analysis, or a simpler
+   free/premium boolean... your call, justify it"). There is no real per-plan DATA to
+   store today — no price, no numeric limits, nothing beyond a name — so a `Plan` table
+   would just be a table wrapping this same enum with an extra join for no real benefit
+   (the classic premature-abstraction trap). `require_plan("premium")` needs a stable
+   identifier to compare against; an enum provides exactly that. Named `BusinessPlan`
+   (`FREE`/`PREMIUM`) rather than inventing Basic/Standard/Pro tier names not backed by
+   any pricing document available to this phase. If a real third tier ever needs its own
+   configuration (not just a name), converting this into a proper table then is a normal,
+   contained migration — not a rewrite, since nothing else in the codebase references the
+   enum's internals, only `business.plan` and the ranking table in `entitlements.py`.
+2. **Platform-admin access — reuse the ENTIRE existing auth system via a new
+   `BusinessUser.is_superadmin` flag, not a second parallel admin-auth system.** There is
+   no platform-level admin concept anywhere in this codebase today (Phase 28's "Admin
+   Dashboard" is a BUSINESS's own owner/admin/staff roles, tenant-scoped like everything
+   else — confirmed by reading `docs/frontend-api-contract.md` and every existing RBAC
+   check). Building a whole second user table + register/login + JWT variant for a
+   "temporary until Phase 42's self-serve flow" tool would be real, unjustified extra
+   surface area. Instead: a superadmin is simply a `BusinessUser` row (still belonging to
+   some ordinary business, for login purposes only) with `is_superadmin=True`, checked by
+   a new `require_superadmin` dependency that is completely independent of `role`/
+   `business_id`. This reuses password hashing, login, rate limiting, and — critically —
+   `get_current_user`'s existing "refetch the real row from the DB every request" behavior,
+   which is also what makes a downgrade take effect immediately (see Test 3 below): no JWT
+   claim carries plan or superadmin status, so there is nothing to go stale.
+   **Deliberate, documented gap: there is no API anywhere to grant `is_superadmin`.**
+   Bootstrapping the first platform admin is an out-of-band operation (direct DB access —
+   see Verification below for exactly how this phase did it), the same category of gap
+   this codebase already has for granting the first `BusinessUser` role at all (Phase 3's
+   own "no staff-invite endpoint exists" limitation) — building a self-granting admin API
+   would itself be a real privilege-escalation risk, not a convenience worth adding.
+3. **HTTP status for a plan gap — 402 Payment Required, not 403 Forbidden.** A new
+   `PlanRequiredError` (`app/core/exceptions.py`) — 403 already means "you're not allowed,
+   permanently, by role"; a plan gap is honestly resolvable by upgrading, which is exactly
+   what 402 exists for. Reuses the same `NightGuardError`/`night_guard_exception_handler`
+   machinery as every other error type — zero new error-handling code needed.
+4. **One real gating function, two callers, not two implementations.** `app/core/
+   entitlements.py` is deliberately plain Python with zero FastAPI imports:
+   `ensure_plan(business, minimum)` raises `PlanRequiredError` or returns. `require_plan`
+   (`app/api/dependencies.py`) is a thin FastAPI-Depends wrapper around it for routes; the
+   conversation orchestrator's test hook (below) calls the exact same function directly,
+   with no Depends/HTTP layer involved at all — satisfying "usable on both API routes AND
+   inside the conversation orchestrator's tool logic" by construction, not by convention.
+5. **No real premium feature exists yet to gate — simulated with two minimal, explicitly
+   labeled test scaffolds**, per the ticket's own suggestion: `GET /api/v1/premium-test/ping`
+   (a whole new tiny route file, `Depends(require_plan(BusinessPlan.PREMIUM))`) proves the
+   HTTP-layer gate; a literal, deterministic trigger phrase (`"test premium feature"`,
+   matched in `orchestrator.handle_incoming_message` BEFORE the real knowledge-search/LLM-
+   classification call — so it never costs a real API call or risks LLM misclassification)
+   proves the orchestrator-layer gate, reachable through a genuinely real conversation via
+   `POST /conversations/{id}/messages`. Both are explicitly commented as scaffolds to
+   delete once a real premium feature (Phase 35+) exists to demonstrate the mechanism
+   instead of a fake one.
+
+**Implemented:**
+
+- **`app/db/models/business.py`**: `BusinessPlan(str, enum.Enum)` (`FREE`/`PREMIUM`);
+  `Business.plan` (`NOT NULL`, `default=FREE`, `server_default='FREE'`) — never settable
+  via `BusinessUpdate`/`PATCH /business/me` (that schema has no `plan` field at all, so a
+  client sending one is silently dropped by Pydantic, never reaches the DB — see Test 3);
+  `BusinessUser.is_superadmin` (`NOT NULL`, `default=False`).
+- **Migration `1b540231b5fa_phase_34_subscription_plan_entitlement.py`**: autogenerate
+  needed one real fix — `ADD COLUMN ... business_plan` fails with `type "business_plan"
+  does not exist` unless the enum TYPE is created explicitly first (true for `ALTER TABLE`
+  on an existing table, unlike a brand-new `CREATE TABLE`, which emits the type inline) —
+  added `sa.Enum(...).create(op.get_bind(), checkfirst=True)` before the `add_column`
+  calls, and the matching `.drop(..., checkfirst=True)` in `downgrade()` (same fix the
+  initial schema migration already applies for its own enum columns, `371630166e11`).
+- **`app/core/exceptions.py`**: `PlanRequiredError` (402, `error_type="plan_required"`).
+- **`app/core/entitlements.py`** (new): `_PLAN_RANK` (ordinal, so a future third tier can
+  slot in without every call site changing), `plan_meets_minimum`, `ensure_plan` (fails
+  closed on `business=None`), `PLAN_FEATURES` — a real, honest static feature list per
+  plan (PREMIUM only promises "priority access to upcoming premium features," since none
+  exist yet — never invents a capability that isn't real).
+- **`app/api/dependencies.py`**: `require_plan(minimum)` (route dependency, wraps
+  `ensure_plan`), `require_superadmin` (checks `is_superadmin`, reuses `ForbiddenError`).
+- **`app/services/plan_service.py`** (new): `get_business`, `list_businesses` (small,
+  unpaginated — same "naturally small in practice, revisit if it grows" reasoning Phase 28
+  already applied to services/staff/knowledge/handoffs), `change_plan` — the ONLY writer of
+  `Business.plan`, writes a real `AuditLog` row (`actor`=the real superadmin's email, never
+  `"system"`; `result="from=<old> to=<new>"`, the same free-text transition convention
+  `booking_service.reschedule_appointment` already established for `moved_from=...`).
+- **`app/schemas/plan.py`** (new): `PlanRead`, `AdminPlanUpdate` (plan is required, not
+  `| None`, so an explicit null is already a 422 from Pydantic with no hand-written
+  validator needed), `AdminBusinessRead`.
+- **`app/api/routes/admin.py`** (new): `GET /admin/businesses` (small list, id/name/plan),
+  `GET` + `PATCH /admin/businesses/{business_id}/plan` — all three `require_superadmin`.
+- **`app/api/routes/business.py`**: `GET /business/plan` — any authenticated role (same
+  read bar as `GET /business/me`), requirement #5's real data endpoint.
+- **`app/api/routes/premium_test.py`** (new, scaffold) + **`orchestrator.py`**
+  (`_PREMIUM_TEST_TRIGGER`, `_handle_premium_test_message`) — the two proof surfaces
+  described in design decision #5.
+- **`app/schemas/business.py`**: `BusinessRead.plan` added (read-only reflection).
+- **`app/main.py`**: registered `admin.router` and `premium_test.router`.
+- **`tests/integration/test_plan_entitlement.py`** (new, 11 tests).
+
+---
+
+### Verification — real Docker Postgres, real HTTP, this environment's actual dev DB
+(which already had 10 real leftover test businesses from prior phases — used directly as
+the "existing businesses" proof rather than manufacturing fresh ones, since they were
+already there).
+
+**§1 — Migration: existing businesses before, during, and after, real queries:**
+```
+-- BEFORE (10 real pre-existing businesses, from Phase 3/12/15/25a/25b/25c/28/29/30):
+$ psql -c "SELECT id, name FROM businesses ORDER BY created_at;"
+ 3421eb20-... | Test Chat Biz
+ f7842486-... | Monthly Report A
+ e436d41a-... | Cross Tenant Test
+ 3027173d-... | Riverside Dental
+ 6c07ae5e-... | Conv A
+ aa9e52d1-... | Conv B
+ 7e0295dc-... | Willow Creek Family Dentistry
+ 936c32d1-... | Willow Creek Family Dentistry 2
+ ccc0ddd3-... | Rate Limit Fix Co
+ f0ca2a54-... | Samaj Dental Clinic
+(10 rows)
+
+$ docker compose exec backend alembic upgrade head
+INFO  Running upgrade 5aa289d64419 -> 1b540231b5fa, phase 34 subscription plan entitlement
+
+-- AFTER — every single one defaulted to FREE, real query, real result:
+$ psql -c "SELECT id, name, plan FROM businesses ORDER BY created_at;"
+ 3421eb20-... | Test Chat Biz                   | FREE
+ f7842486-... | Monthly Report A                | FREE
+ e436d41a-... | Cross Tenant Test               | FREE
+ 3027173d-... | Riverside Dental                | FREE
+ 6c07ae5e-... | Conv A                          | FREE
+ aa9e52d1-... | Conv B                          | FREE
+ 7e0295dc-... | Willow Creek Family Dentistry   | FREE
+ 936c32d1-... | Willow Creek Family Dentistry 2 | FREE
+ ccc0ddd3-... | Rate Limit Fix Co               | FREE
+ f0ca2a54-... | Samaj Dental Clinic             | FREE
+(10 rows)
+
+$ psql -c "SELECT plan, count(*) FROM businesses GROUP BY plan;"
+ plan | count
+------+-------
+ FREE |    10
+
+$ psql -c "SELECT is_superadmin, count(*) FROM business_users GROUP BY is_superadmin;"
+ is_superadmin | count
+---------------+-------
+ f             |    10
+```
+Zero silent breakage, zero accidental superadmin grants on any pre-existing user.
+
+**§2 — Migration reversibility, full real round-trip:**
+```
+$ docker compose exec backend alembic downgrade -1
+INFO  Running downgrade 1b540231b5fa -> 5aa289d64419, phase 34 subscription plan entitlement
+$ psql -c "\d businesses" | grep -i plan            -> (no output — column gone)
+$ psql -c "\d business_users" | grep -i superadmin   -> (no output — column gone)
+$ psql -c "SELECT typname FROM pg_type WHERE typname='business_plan';"  -> (0 rows — type gone too)
+
+$ docker compose exec backend alembic upgrade head
+INFO  Running upgrade 5aa289d64419 -> 1b540231b5fa, phase 34 subscription plan entitlement
+$ psql -c "\d businesses" | grep -i plan
+ plan           | business_plan               |           | not null | 'FREE'::business_plan
+$ psql -c "\d business_users" | grep -i superadmin
+ is_superadmin  | boolean                     |           | not null | false
+$ psql -c "SELECT plan, count(*) FROM businesses GROUP BY plan;"   -> FREE | 10   (still correct after the round-trip)
+$ docker compose exec backend alembic check
+No new upgrade operations detected.
+```
+
+**§3 — Real Basic(free)-plan business blocked, both surfaces, then upgraded, then
+downgraded — real HTTP throughout (Business A/B registered fresh for this test; a real
+superadmin minted the only way it can happen, a direct ORM insert with
+`is_superadmin=True`, documented above as a deliberate gap):**
+```
+$ curl .../business/plan -H "Authorization: Bearer <ownerA>"
+{"business_id":"65db6619-...","plan":"free","features":["AI-powered customer conversations (booking, rescheduling, cancellation, Q&A)","Automated email notifications and reminders","Daily and monthly reports"]}
+
+-- API-layer block:
+$ curl -i .../premium-test/ping -H "Authorization: Bearer <ownerA>"
+HTTP/1.1 402 Payment Required
+{"error":{"type":"plan_required","message":"This feature requires the premium plan (current plan: free)."}}
+
+-- real conversation, same business, same gate:
+$ curl -X POST .../conversations/<conv>/messages -H "Authorization: Bearer <ownerA>" -d '{"content":"test premium feature"}'
+{"intent":"unknown","response":"This feature isn't available on your current plan. This feature requires the premium plan (current plan: free).","customer_message_id":"...","agent_message_id":"..."}
+
+-- cross-tenant: Business B's own real owner token cannot view or change Business A's plan:
+$ curl -i .../admin/businesses/<business_A>/plan -H "Authorization: Bearer <ownerB>"
+HTTP/1.1 403 Forbidden
+$ curl -i -X PATCH .../admin/businesses/<business_A>/plan -H "Authorization: Bearer <ownerB>" -d '{"plan":"premium"}'
+HTTP/1.1 403 Forbidden
+$ curl .../business/plan -H "Authorization: Bearer <ownerA>"   -> still "free" (B's attempt never touched A)
+
+-- real superadmin upgrades Business A:
+$ curl -i -X PATCH .../admin/businesses/<business_A>/plan -H "Authorization: Bearer <superadmin>" -d '{"plan":"premium"}'
+HTTP/1.1 200 OK
+{"business_id":"65db6619-...","plan":"premium","features":["Everything in Free","Priority access to upcoming premium features (Google Calendar sync, online payments, voice booking, yearly analytics reports) as they ship"]}
+
+-- real AuditLog row, real query:
+$ psql -c "SELECT business_id, actor, action, resource_type, resource_id, result, created_at FROM audit_logs WHERE business_id='65db6619-...';"
+ 65db6619-... | platform-admin-1788670063@nightguard.internal | plan_changed | business | 65db6619-... | from=free to=premium | 2026-09-06 04:48:13.714267
+
+-- same action now succeeds, both surfaces, same tokens, no re-login:
+$ curl -i .../premium-test/ping -H "Authorization: Bearer <ownerA>"
+HTTP/1.1 200 OK
+{"message":"Premium feature executed."}
+$ curl -X POST .../conversations/<conv>/messages -H "Authorization: Bearer <ownerA>" -d '{"content":"test premium feature"}'
+{"intent":"unknown","response":"Premium feature executed.","customer_message_id":"...","agent_message_id":"..."}
+
+-- real superadmin downgrades Business A back to free:
+$ curl -i -X PATCH .../admin/businesses/<business_A>/plan -H "Authorization: Bearer <superadmin>" -d '{"plan":"free"}'
+HTTP/1.1 200 OK  {"plan":"free",...}
+
+-- IMMEDIATELY, same already-issued owner token, no re-login, no cache to clear:
+$ curl -i .../premium-test/ping -H "Authorization: Bearer <ownerA>"
+HTTP/1.1 402 Payment Required
+$ curl -X POST .../conversations/<conv>/messages -H "Authorization: Bearer <ownerA>" -d '{"content":"test premium feature"}'
+{"intent":"unknown","response":"This feature isn't available on your current plan. ...","..."}
+
+-- second real AuditLog row, real query:
+$ psql -c "SELECT actor, action, result, created_at FROM audit_logs WHERE business_id='65db6619-...' ORDER BY created_at;"
+ platform-admin-...@nightguard.internal | plan_changed | from=free to=premium | 2026-09-06 04:48:13.714267
+ platform-admin-...@nightguard.internal | plan_changed | from=premium to=free | 2026-09-06 04:48:32.212489
+```
+
+**§4 — Defense in depth: a business cannot self-upgrade via its own PATCH:**
+```
+$ curl -i -X PATCH .../business/me -H "Authorization: Bearer <ownerA>" -d '{"plan":"premium"}'
+HTTP/1.1 200 OK   -> {"...","plan":"free"}   -- silently ignored (BusinessUpdate has no plan field), never wrote through
+```
+
+**§5 — RBAC/auth edge cases, all real:**
+```
+-- any authenticated role (not just owner/admin) can read its own plan:
+$ curl .../business/plan -H "Authorization: Bearer <staff-of-A>"   -> HTTP/1.1 200 OK, plan:"free"
+
+-- non-superadmin (even a real, valid owner of another business) rejected from admin list:
+$ curl -i .../admin/businesses -H "Authorization: Bearer <staff-of-A>"   -> HTTP/1.1 403 Forbidden
+
+-- unauthenticated rejected:
+$ curl -i .../admin/businesses   -> HTTP/1.1 401 Unauthorized
+
+-- nonexistent business_id honestly 404s, not a silent no-op:
+$ curl -i -X PATCH .../admin/businesses/00000000-.../plan -H "Authorization: Bearer <superadmin>" -d '{"plan":"premium"}'
+HTTP/1.1 404 Not Found  {"error":{"type":"not_found","message":"Business not found."}}
+```
+
+**§6 — Automated regression, new tests + full suite:**
+```
+$ docker compose exec backend python -m pytest tests/integration/test_plan_entitlement.py -v
+test_new_business_defaults_to_free_plan                                      PASSED
+test_business_plan_readable_by_any_authenticated_role                        PASSED
+test_plan_cannot_be_set_via_own_business_patch                               PASSED
+test_premium_gated_route_blocks_free_then_allows_after_admin_upgrade          PASSED
+test_downgrade_reengages_gate_immediately_same_token                         PASSED
+test_plan_change_writes_real_audit_log_row                                   PASSED
+test_non_superadmin_cannot_view_or_change_any_business_plan                  PASSED
+test_admin_list_businesses_rejects_non_superadmin                            PASSED
+test_admin_endpoints_reject_unauthenticated                                  PASSED
+test_admin_plan_change_404s_for_nonexistent_business                         PASSED
+test_orchestrator_blocks_premium_test_message_for_free_plan_business         PASSED
+11 passed, 4 warnings in 11.77s
+
+$ docker compose exec backend python -m pytest tests/ -q
+372 passed, 10 skipped, 31 warnings in 325.92s (0:05:25)
+```
+372 = 361 pre-existing (post-Phase-33b) + 11 new this phase. Zero pre-existing tests
+modified. `test_orchestrator_blocks_premium_test_message_for_free_plan_business` is the
+deterministic, stubbed-embedding twin of §3's live orchestrator proof — no LLM stub even
+needed, since the literal trigger phrase is matched before `classify_and_respond` is ever
+called.
+
+**§7 — Lint, this phase's files only (clean); full `app/`+`tests/` run also checked (the
+only 2 findings are pre-existing Phase 29 `f"..."` no-placeholder lints, confirmed via
+`git blame` — commit `8ded0c6b`, 2026-09-05, before this phase, same 2 findings Phase 33
+already documented and left untouched):**
+```
+$ docker compose exec backend ruff check app/db/models/business.py app/core/exceptions.py \
+    app/core/entitlements.py app/api/dependencies.py app/services/plan_service.py \
+    app/schemas/plan.py app/schemas/business.py app/api/routes/admin.py \
+    app/api/routes/business.py app/api/routes/premium_test.py app/main.py \
+    app/services/conversation/orchestrator.py tests/integration/test_plan_entitlement.py
+All checks passed!
+```
+
+**Secrets grep:** clean — `git diff`/new-file grep for API keys/secrets/passwords/tokens
+across every Phase-34-touched file turns up only known-safe test literals
+(`correcthorse1`, `not-used-in-this-test`) and one benign comment containing the word
+"token" in prose (never a real credential).
+
+**Live-test cleanup:** the two fresh test businesses (Phase34 Test A/B) and the internal
+superadmin-hosting business created during manual verification were deleted afterward;
+re-queried — the DB is back to exactly the original 10 pre-existing businesses, all still
+`FREE`, untouched by this phase's testing:
+```
+$ psql -c "SELECT count(*) FROM businesses;"           -> 10
+$ psql -c "SELECT name FROM businesses ORDER BY created_at;"  -> the same original 10 names
+```
+The automated test suite's own fixtures clean up their own businesses after every test
+(same `two_businesses`/`superadmin_token` teardown pattern every prior phase's tests use).
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Basic-plan business's premium-gated action honestly blocked, both an API call AND a real conversation | ✓ Pass — §3 |
+| Upgrade to Premium via admin endpoint; real AuditLog row; same action now succeeds | ✓ Pass — §3 |
+| Downgrade back to Basic; gate re-engages immediately, not cached/stale | ✓ Pass — §3 (same already-issued token, no re-login) |
+| Cross-tenant: Business A's plan can't be viewed/changed via Business B's credentials | ✓ Pass — §3 |
+| Every existing test business got a real, correct default plan after migration | ✓ Pass — §1, real query, all 10 → FREE |
+| Full regression suite, zero regressions | ✓ Pass — §6, 372 passed |
+| Secrets grep clean, lint clean, migration reversible | ✓ Pass — §7, secrets grep above, §2 |
+
+**Known issues / punted items:**
+- **No API exists to grant `is_superadmin` to anyone — a deliberate, documented
+  bootstrapping gap, not an oversight** (see design decision #2). The first (and every)
+  platform admin must be created via direct DB/ORM access, exactly how this phase's own
+  superadmin was created for testing. A future phase could add a narrow, break-glass CLI
+  script for this if manual `psql`/ORM access becomes genuinely inconvenient — not built
+  here since nothing in the ticket asked for it and it would need its own careful
+  authorization story (who can run it, from where) to not just move the privilege-
+  escalation risk somewhere else.
+- **`app/api/routes/premium_test.py` and the orchestrator's `_PREMIUM_TEST_TRIGGER` are
+  explicitly temporary scaffolds** — they exist only to prove `require_plan`/`ensure_plan`
+  work at both layers before any real premium feature exists. Both are commented as such;
+  delete them once Phase 35+ builds the first real premium feature and can demonstrate the
+  same mechanism against something real.
+- **`PLAN_FEATURES` is a static, hand-written Python dict, not a DB-backed catalog** —
+  matches "no real per-plan data to store yet" (design decision #1); if a future phase
+  needs per-plan config that changes without a code deploy (e.g. a numeric quota an
+  operator can tune live), that's the point to promote `BusinessPlan` into a real table.
+- **`list_businesses` has no pagination** — same "naturally small in practice" reasoning
+  Phase 28 (F3) already applied elsewhere; revisit if the real business count ever grows
+  enough to matter.
+- **No `GET /admin/audit-log` or similar viewing endpoint was built** — not asked for by
+  the ticket, and matches existing precedent (`booking_attempt`/`appointment_rescheduled`
+  AuditLog rows have never had a dedicated viewing endpoint either, per Phase 31's
+  `internal/metrics` — they're verified directly against the DB, same as this phase's own
+  verification above).
+- Carried over from every prior phase, still real and still open: no staff-capacity
+  model, fixed 15-minute slot grid, exact-match-only service-name resolution, in-memory
+  rate limiter, no refresh tokens, no true worker/cron for
+  `dispatch_queued_notifications`.
+- No commit has been made yet — awaiting your explicit confirmation of this verification
+  output per working rule #6. Do not start Phase 35 work until then, per your instruction.

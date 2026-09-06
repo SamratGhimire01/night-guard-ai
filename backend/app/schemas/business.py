@@ -2,6 +2,7 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from app.db.models.business import BusinessPlan
 from app.schemas.common import safe_str
 
 # description is a Text column (unbounded in the DB) — a DoS/sanity ceiling,
@@ -24,6 +25,11 @@ class BusinessRead(BaseModel):
     tone: str | None
     sms_enabled: bool
     follow_ups_enabled: bool
+    # Phase 34 — read-only here on purpose: intentionally absent from
+    # BusinessUpdate below. The only writer is app.services.plan_service.
+    # change_plan, reached only through the superadmin-gated admin endpoints
+    # — a business must never be able to upgrade itself via its own PATCH.
+    plan: BusinessPlan
 
 
 class BusinessUpdate(BaseModel):

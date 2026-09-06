@@ -15,6 +15,22 @@ class BusinessUserRole(str, enum.Enum):
     STAFF = "staff"
 
 
+class BusinessPlan(str, enum.Enum):
+    """Phase 34: the real subscription tier every V2 premium feature (Google
+    Calendar, payments, voice, yearly reports) will gate on. Two tiers, not a
+    separate `Plan` table with its own rows — there is no real per-plan data
+    to store yet (no price, no numeric limits; those aren't real requirements
+    today, only speculative ones), so a table would just be wrapping this
+    same enum with extra indirection. See `app.core.entitlements` for the
+    ranking/gating logic and `PHASE_STATUS.md` Phase 34 for the full
+    reasoning. If a third tier ever needs its own real configuration (not
+    just a name), converting this into a proper table then is a normal,
+    contained migration — not a rewrite."""
+
+    FREE = "free"
+    PREMIUM = "premium"
+
+
 class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     """A tenant. Every other tenant-owned table hangs off this via business_id."""
 
@@ -29,14 +45,24 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     website: Mapped[str | None] = mapped_column(String(255))
     languages: Mapped[list[str] | None] = mapped_column(ARRAY(String(16)))
     tone: Mapped[str | None] = mapped_column(String(100))
-    # Phase 15: premium-tier toggle. Off by default — enabling it alone still
-    # doesn't send a real text to any given customer unless that customer has
-    # ALSO opted in (Customer.sms_opt_in) — see that column's comment for why.
+    # Phase 15: a raw, business-configurable feature toggle — NOT gated by
+    # Business.plan below. Off by default — enabling it alone still doesn't
+    # send a real text to any given customer unless that customer has ALSO
+    # opted in (Customer.sms_opt_in) — see that column's comment for why.
     sms_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     # Phase 18: follow-up messages carry real spam risk (an unwanted "are you still
     # interested" nudge), so — same as sms_enabled — this defaults OFF and requires
     # explicit opt-in, never on by default.
     follow_ups_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Phase 34: the real subscription tier — every existing business defaults
+    # to FREE (the lowest tier) on migration, never silently upgraded. Never
+    # settable via BusinessUpdate/PATCH /business/me — the only writer is
+    # app.services.plan_service.change_plan, reached only through the
+    # superadmin-gated admin endpoints, so a business can never upgrade
+    # itself for free.
+    plan: Mapped[BusinessPlan] = mapped_column(
+        Enum(BusinessPlan, name="business_plan"), nullable=False, default=BusinessPlan.FREE, server_default="FREE"
+    )
 
 
 class BusinessUser(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):
@@ -55,6 +81,17 @@ class BusinessUser(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):
     role: Mapped[BusinessUserRole] = mapped_column(
         Enum(BusinessUserRole, name="business_user_role"), nullable=False
     )
+    # Phase 34: a PLATFORM-level admin — unrelated to `role` above (owner/
+    # admin/staff are scoped to this user's own single business; this is
+    # scoped to nothing, it can act on ANY business). Deliberately reuses the
+    # entire existing BusinessUser/login/JWT mechanism rather than a second
+    # parallel auth system — a superadmin is just a BusinessUser row with
+    # this flag set, still belonging to some ordinary business for login
+    # purposes, but checked independently by `require_superadmin` (see
+    # app/api/dependencies.py). Off by default; there is deliberately no API
+    # to grant this to anyone — see PHASE_STATUS.md Phase 34 for why that's
+    # an explicit, documented bootstrapping gap, not an oversight.
+    is_superadmin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
 
 _VALID_HOURS_RANGE_SQL = "closed OR (open_time IS NOT NULL AND close_time IS NOT NULL AND close_time > open_time)"

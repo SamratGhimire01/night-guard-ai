@@ -6,8 +6,9 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError
-from app.db.models.business import Business
+from app.core.entitlements import ensure_plan
+from app.core.exceptions import NotFoundError, PlanRequiredError
+from app.db.models.business import Business, BusinessPlan
 from app.db.models.conversation import Conversation, Message, MessageSenderType
 from app.db.models.customer import Customer
 from app.db.models.notification import NotificationStatus
@@ -649,6 +650,60 @@ def _handle_provider_failure(
     }
 
 
+# Phase 34 — a deliberately synthetic, literal trigger phrase, matched BEFORE
+# the real knowledge-search/LLM-classification call (skipped entirely for
+# this path, so a test doesn't cost a real API call or risk the LLM
+# misclassifying it). No real premium feature exists in this codebase yet
+# to gate for real (see app/api/routes/premium_test.py, the HTTP-layer twin
+# of this same proof) — this is the "usable ... inside the conversation
+# orchestrator's tool logic" half of the acceptance criteria: it calls the
+# exact same `ensure_plan` the FastAPI `require_plan` dependency calls,
+# proving one real gating function backs both surfaces, not two. Remove this
+# once a real premium feature exists to demonstrate the mechanism instead —
+# see PHASE_STATUS.md Phase 34.
+_PREMIUM_TEST_TRIGGER = "test premium feature"
+
+
+def _handle_premium_test_message(
+    db: Session,
+    *,
+    business: Business | None,
+    conversation_id: uuid.UUID,
+    content: str,
+    external_message_id: str | None,
+) -> dict:
+    try:
+        ensure_plan(business, BusinessPlan.PREMIUM)
+        response_text = "Premium feature executed."
+    except PlanRequiredError as exc:
+        response_text = f"This feature isn't available on your current plan. {exc.message}"
+
+    customer_message = Message(
+        conversation_id=conversation_id,
+        sender_type=MessageSenderType.CUSTOMER,
+        content=content,
+        detected_intent=ConversationIntent.UNKNOWN.value,
+        external_message_id=external_message_id,
+    )
+    db.add(customer_message)
+    db.commit()
+    db.refresh(customer_message)
+
+    agent_message = Message(
+        conversation_id=conversation_id, sender_type=MessageSenderType.AGENT, content=response_text
+    )
+    db.add(agent_message)
+    db.commit()
+    db.refresh(agent_message)
+
+    return {
+        "intent": ConversationIntent.UNKNOWN,
+        "response": response_text,
+        "customer_message_id": customer_message.id,
+        "agent_message_id": agent_message.id,
+    }
+
+
 def handle_incoming_message(
     db: Session,
     *,
@@ -684,6 +739,16 @@ def handle_incoming_message(
     context = assemble_context(db, conversation_id=conversation_id, business_id=business_id)
 
     business = db.get(Business, business_id)
+
+    if content.strip().lower() == _PREMIUM_TEST_TRIGGER:
+        return _handle_premium_test_message(
+            db,
+            business=business,
+            conversation_id=conversation_id,
+            content=content,
+            external_message_id=external_message_id,
+        )
+
     services = service_service.list_services(db, business_id=business_id)
 
     # Urgent fix (real 500 found live, PHASE_STATUS.md): `_post` (app/llm/
