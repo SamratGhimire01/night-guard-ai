@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,6 +23,12 @@ class KnowledgeDocumentStatus(str, enum.Enum):
 
 class KnowledgeDocument(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     __tablename__ = "knowledge_documents"
+    __table_args__ = (
+        # Phase 36: lets ServiceKnowledgeDocument enforce, at the database level,
+        # that a knowledge_document_id it references belongs to the same
+        # business_id — same pattern Service already uses for staff_id.
+        UniqueConstraint("id", "business_id", name="uq_knowledge_documents_id_business_id"),
+    )
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     # Phase 5: the raw ingested text (typed manually or extracted from an uploaded

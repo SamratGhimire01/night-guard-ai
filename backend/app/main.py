@@ -32,13 +32,22 @@ configure_logging(settings.log_level)
 app = FastAPI(title=settings.app_name)
 
 register_exception_handlers(app)
-app.add_middleware(WidgetCORSMiddleware)
+# Order matters: Starlette makes the LAST-added middleware the OUTERMOST one, so it
+# sees a request first. WidgetCORSMiddleware must be outermost — it fully owns CORS
+# for widget paths (including handling their OPTIONS preflight itself with a
+# wildcard origin) and passes every other path straight through via call_next.
+# Added the other way around once (Phase 35), which broke the real widget: the
+# dashboard's CORSMiddleware ran first, saw the widget's arbitrary third-party
+# origin wasn't in its own narrow allowlist, and rejected the preflight with a
+# raw 400 before WidgetCORSMiddleware ever got a chance to handle it (caught by
+# tests/integration/test_widget.py::test_cors_headers_present_on_widget_endpoints_but_not_elsewhere).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.dashboard_cors_origins.split(",") if o.strip()],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(WidgetCORSMiddleware)
 
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])

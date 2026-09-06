@@ -22,8 +22,11 @@ export function setTokenGetter(fn: () => string | null) {
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
+  const isFormData = options.body instanceof FormData
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    // FormData (file upload) must NOT set Content-Type manually — the browser
+    // needs to add its own multipart boundary, which we can't know in advance.
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string> | undefined),
   }
   if (token) {

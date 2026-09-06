@@ -16,6 +16,7 @@ from app.db.models.integration import Integration
 from app.db.models.knowledge import KnowledgeChunk, KnowledgeDocument, KnowledgeDocumentStatus
 from app.db.models.notification import Notification, NotificationStatus
 from app.db.models.service import Service
+from app.db.models.service_knowledge import ServiceKnowledgeDocument
 from app.db.models.staff import Staff
 from app.db.models.training import TrainingQuestion
 
@@ -43,6 +44,7 @@ __all__ = [
     "Notification",
     "NotificationStatus",
     "Service",
+    "ServiceKnowledgeDocument",
     "Staff",
     "TrainingQuestion",
 ]

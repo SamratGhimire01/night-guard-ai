@@ -8216,3 +8216,326 @@ $ docker compose exec postgres psql -U nightguard -d nightguard -c "SELECT count
 - No commit has been made yet — awaiting your explicit confirmation of this verification
   output per working rule #6. Do not start Phase 36 work until then, per your standing
   instruction.
+
+---
+
+## Phase 36 — Services / Staff / Hours / Knowledge Management UI
+
+**Date:** 2026-09-06
+
+**Required:** replace Phase 35's placeholder pages for Services, Staff, Business Hours,
+and Knowledge Base with real UI wired to the real Phase 4/5/6 APIs — full CRUD for
+services/staff, a weekly-hours editor + holiday exceptions, knowledge document
+list/create/upload/approve/archive, RBAC-respecting (staff read-only), plus a NEW
+per-service knowledge-document attachment feature (design a real backend link if
+needed, framed explicitly as a dashboard-only organizational convenience that does not
+change Phase 6's RAG search scope).
+
+**New backend feature — service ↔ knowledge-document attachment:**
+Checked first: `KnowledgeDocument` had no `service_id` (or any) link to `Service` — a
+real, new many-to-many relationship was needed, not just a UI-side filter over existing
+data. Built as a new join table, `service_knowledge_documents`
+(`app/db/models/service_knowledge.py`), not a new field on either side, since a document
+can reasonably describe more than one service and vice versa. Same composite-FK-to-a-
+same-tenant-unique-constraint pattern `Service.staff_id` already uses (`fk_services_
+staff_same_tenant`) — added on both sides here (`fk_skd_service_same_tenant`,
+`fk_skd_knowledge_document_same_tenant`), which required a new `UniqueConstraint(id,
+business_id)` on `knowledge_documents` (services already had one; knowledge_documents
+did not). New routes on `app/api/routes/services.py`: `GET/POST /services/{id}/
+knowledge-documents` (any role / owner-admin) and `DELETE /services/{id}/knowledge-
+documents/{knowledge_document_id}` (owner/admin) — 404 for a nonexistent service or
+document (tenant-scoped both ways), 409 on a duplicate attach. **Explicitly framed, in
+code comments and the UI itself, as a dashboard-only organizational convenience** — it
+does not touch `knowledge_service.search_chunks` or any Phase 6 RAG code path at all;
+the AI still searches every approved document for the business regardless of any
+attachment made here.
+
+**Migration** `a0ec080bbff5_phase_36_service_knowledge_document_.py` — autogenerate
+emitted the new unique constraint *after* `create_table`, which fails immediately
+(`InvalidForeignKey: there is no unique constraint matching given keys` — the composite
+FK needs the constraint to already exist). Hand-fixed the ordering: unique constraint
+created before the table in `upgrade()`, table dropped before the unique constraint in
+`downgrade()` (reverse dependency order). Real failure, real fix, verified live below.
+
+**Real regression found and fixed while running the full suite (required by this
+phase's own acceptance criteria, not previously run in Phase 35):** `tests/integration/
+test_widget.py::test_cors_headers_present_on_widget_endpoints_but_not_elsewhere` failed
+— a genuine bug introduced in Phase 35, not by this phase's own changes, just never
+caught because Phase 35 didn't run the backend suite. Starlette makes the *last*-added
+middleware the *outermost* one; Phase 35 added `WidgetCORSMiddleware` first and the
+dashboard's `CORSMiddleware` second, making the dashboard's narrow allowlist run first
+on every request — including the widget's own OPTIONS preflight from an arbitrary
+third-party origin, which it correctly rejected with a raw `400` before
+`WidgetCORSMiddleware` ever got a chance to handle it. This would have broken the real
+embeddable widget on every third-party site the moment a real browser sent a real
+preflight request (any `Content-Type: application/json` POST triggers one). Fixed by
+swapping the `add_middleware` order in `app/main.py` (`CORSMiddleware` first,
+`WidgetCORSMiddleware` last/outermost) — verified both directions still work correctly
+below.
+
+**Implemented — frontend (`frontend/src/pages/dashboard/`):**
+- **`ServicesPage.tsx`** — real table (name/price/duration/assigned staff/documents),
+  Add/Edit modals (`GET/POST/PATCH/DELETE /services`), a staff dropdown sourced from
+  `GET /staff`, and a "Manage" per-row action opening a modal that lists/attaches/
+  detaches knowledge documents via the new endpoints above — with an explicit note in
+  the modal itself ("does not change what the AI searches..."). `staff` role: "Add
+  service" renders disabled inside a `Tooltip` ("Owners and admins only"), same for the
+  edit/delete icons — chosen over hiding entirely per the ticket's own "or see them
+  disabled with a clear reason" option, since a disabled control with a reason is more
+  informative than an element that silently isn't there.
+- **`StaffPage.tsx`** — identical pattern, wired to `/staff`.
+- **`HoursPage.tsx`** — 7-row weekly table (native `<input type="time">`, no new
+  date/time-picker dependency), a closed-checkbox per day, "Save weekly hours" →
+  `PUT /business/hours` (sends `null` times for any day marked closed, matching the
+  API's own validation rule). A separate holiday/exception section: list + add (date +
+  closed toggle + optional custom hours) + delete, wired to `POST`/`DELETE
+  /business/hours/exceptions`. `staff` role: every control disabled/hidden, matching the
+  Services/Staff pattern.
+- **`KnowledgePage.tsx`** — table (title/status badge/source/version), "New document"
+  modal (title+content → `POST /knowledge`), "Upload file" (hidden native `<input
+  type="file" accept=".pdf,.txt">`, `multipart/form-data` → `POST /knowledge/upload`),
+  per-row Approve/Archive buttons (→ `PATCH .../{id}` with `status`) with a per-row
+  `loading` state on the button itself while the request is in flight — a real "nice
+  touch" the ticket suggested, since approving genuinely blocks on Phase 6's chunk+embed
+  call server-side, not a fake spinner. Clicking a title opens a view/edit modal
+  (read-only for `staff`, editable title/content for owner/admin — reuses the same
+  `PATCH` endpoint, not new API surface).
+- **`api/client.ts`**: `apiFetch` now skips setting `Content-Type` when the body is a
+  real `FormData` (file upload) — the browser must set its own multipart boundary,
+  which can't be predicted in advance; previously it unconditionally forced
+  `application/json`, which would have silently broken every file upload.
+- **`auth/AuthContext.tsx`**: added a `role` field, decoded from the JWT's own `role`
+  claim (`atob` on the payload segment — no new dependency). Explicitly commented as
+  **UI-only** — it only ever decides which buttons render; the actual security boundary
+  remains the backend's `require_role` on every write endpoint, proven by the direct-API
+  bypass test below.
+- **`App.tsx`**: the four placeholder routes now point at the real pages.
+
+**Verification — real browser (Playwright, headed Chrome, screenshots captured), real
+running `docker compose` backend, real dev DB, this environment's actual `localhost:5173`
++ `localhost:8010`:**
+
+**§1 — Full Business-A UI walkthrough, real screen-by-screen (what actually renders):**
+A fresh business ("Phase36 A Dental \<rand\>") was registered through the real UI (not
+curl), then, all through real clicks/fills/submits in a real Chrome window:
+- **Services**: clicked "Add service", filled Name/Description/Price/Duration in a real
+  Mantine modal, submitted — the row "Root Canal Treatment | $500.00 | 60 min" appeared
+  in the table immediately. Edited it (price → $550) via the pencil icon — the table
+  cell updated to "$550.00" live, no page reload. Added a second service ("Temp
+  Whitening") to delete later.
+- **Staff**: added "Dr. Elena Kapoor / Dentist", edited role → "Lead Dentist" — table
+  updated live.
+- **Business Hours**: rendered as a real 7-row table with native browser time-pickers
+  (screenshot confirmed: "09:00 AM"/"05:00 PM" showing as real `<input type=time>`
+  widgets, not styled text). Checked Monday's "Closed" box, changed Tuesday to 08:30 AM
+  – 04:30 PM, clicked "Save weekly hours" — a real green "Business hours saved."
+  notification toast appeared (screenshot captured). Added a Dec-25 holiday exception —
+  appeared in the exceptions table immediately.
+- **Knowledge Base**: created "Root Canal — What to Expect" via "New document" (title +
+  content textarea) — appeared as a gray "Draft" badge, source "manual". Clicked "Upload
+  file", chose a real `hours-faq.txt` fixture through a real OS file-chooser event — a
+  second row appeared, "Draft", source "upload". Clicked "Approve" on the manual
+  document — the button showed a loading spinner for the real duration of the server-
+  side chunk+embed call, then a real notification: `"Root Canal — What to Expect"
+  approved — chunked and embedded for search.` and the badge turned green "Approved"
+  (screenshot captured, confirms this is real rendered UI, not a description).
+- **Attach a document to a service**: clicked "Manage" on the Root Canal Treatment row
+  — a modal opened titled "Attached documents — Root Canal Treatment" with the exact
+  "does not change what the AI searches" disclosure text visible, an "Attach a
+  document" dropdown showing the other draft doc, empty attached list. Selected the
+  now-approved "Root Canal — What to Expect (approved)" from the dropdown — it
+  immediately appeared in the attached list with a "Detach" button (screenshot
+  confirmed both before/after states).
+- **Delete**: confirmed a real native `window.confirm()` dialog appeared with the text
+  `Delete "Temp Whitening"? This cannot be undone.`, accepted it — the row disappeared
+  from the table and a real `"Temp Whitening" deleted.` toast appeared (screenshot
+  confirmed the row is gone).
+
+**§2 — Independent verification via direct DB queries (not the UI, not curl-through-the-
+app — raw tables), confirming every UI action above actually persisted:**
+```
+-- services (price reflects the UI edit, $500 -> $550):
+ id | name | price | duration_minutes
+ 6a9fc47b-... | Root Canal Treatment | 550.00 | 60
+
+-- staff (role reflects the UI edit):
+ id | name | role
+ a910ff44-... | Dr. Elena Kapoor | Lead Dentist
+
+-- business_hours (Monday really closed, Tuesday really 08:30-16:30):
+ day_of_week | closed | open_time | close_time
+ 0 | t |          |
+ 1 | f | 08:30:00 | 16:30:00
+ 2 | f | 09:00:00 | 17:00:00
+ ... (3,4 unchanged 09-17) ...
+ 5 | t |          |
+ 6 | t |          |
+
+-- business_hours_exceptions:
+ date       | closed
+ 2026-12-25 | t
+
+-- knowledge_documents (both real, correct source/status):
+ title                        | source | status   | version
+ hours-faq.txt                | upload | DRAFT    | 1
+ Root Canal — What to Expect  | manual | APPROVED | 1
+
+-- knowledge_chunks (REAL Phase-6 chunking/embedding actually ran on approval):
+ content_preview                                    | has_vector | dims
+ After a root canal, mild soreness is normal for a  | t          | 1536
+
+-- service_knowledge_documents (the new attachment, real join row):
+ service               | document
+ Root Canal Treatment  | Root Canal — What to Expect
+```
+Every single UI action in §1 is independently confirmed here — this is not "the API call
+succeeded," this is the literal row in Postgres.
+
+**§3 — RBAC: a real staff-role login (real bcrypt-hashed password minted via
+`hash_password`, not the test-only "unused" placeholder other fixtures use, so this
+account can actually log in through the real UI) — real screen-by-screen:**
+- Logged in as `phase36-staff@example.com` through the real login form.
+- **Services page**: "Add service" button rendered visibly grayed-out
+  (`disabled: true`, confirmed programmatically, not just visually); the pencil/trash
+  icons on the existing row are likewise disabled, both wrapped in a tooltip reading
+  "Owners and admins only". The table itself still shows the real "Root Canal
+  Treatment" row (read access intact).
+- **Staff page**: "Add staff member" disabled, same pattern.
+- **Business Hours page**: every checkbox and time input rendered `disabled` — the real
+  saved schedule (Monday closed, Tuesday 08:30–16:30) still visibly renders, just
+  uneditable; the entire "add exception" form is absent from the page (not just
+  disabled) since it's gated behind `canWrite &&`, screenshot confirmed.
+- **Knowledge Base page**: "New document"/"Upload file" buttons entirely absent (same
+  `canWrite &&` gating); each row shows "Read-only" instead of action buttons.
+- **Direct API bypass, using this exact real staff session's own extracted token** —
+  confirming the block is real server-side enforcement, not merely a hidden UI control:
+```
+GET  /services                                  (staff token) -> 200   (read allowed)
+POST /services            {"name":"Hacked..."}  (staff token) -> 403
+POST /staff                {"name":"Hacked..."} (staff token) -> 403
+PUT  /business/hours       {...}                 (staff token) -> 403
+PATCH /knowledge/{id}      {"status":"draft"}    (staff token) -> 403
+POST /services/{id}/knowledge-documents          (staff token) -> 403
+```
+Re-queried the DB directly afterward: still exactly 1 service (the blocked "Hacked
+Service" POST never landed), the knowledge document's status is still `APPROVED` (the
+blocked attempt to revert it to `draft` never took effect).
+
+**§4 — Cross-tenant isolation, including the explicit "does the UI cache/leak across
+logout/login" check the ticket asked for:**
+- Registered a second business ("Phase36 B Orthodontics") through the real UI.
+  Business B's dashboard header correctly showed its own real name and did NOT show
+  Business A's name anywhere on the page.
+- Business B's Services/Staff/Knowledge Base pages: all rendered their own real empty
+  states ("No services yet." etc.) — zero rows, zero trace of any of Business A's data
+  (screenshot confirmed the empty Services table with Business B's own name in the
+  header, proving this isn't a generic empty-state screenshot but this business's own
+  real render).
+- Business B's Business Hours page: Monday's checkbox was unchecked (its own default),
+  not Business A's saved "closed" state.
+- **Logged out of B, logged back into A** (a real logout + a real fresh login, not a
+  page reload) — Business A's header correctly showed "Phase36 A Dental \<rand\>"
+  again, the Services page correctly showed A's real "Root Canal Treatment" service,
+  and Business B's name appeared nowhere on any A page. No stale cache, no leaked
+  state, no cross-contamination in either direction across a real logout/login cycle.
+
+**§5 — Full backend regression suite, before and after the Phase-35 CORS regression fix:**
+```
+# before the fix (this phase's own required first full-suite run — never run in Phase 35):
+1 failed, 371 passed, 10 skipped, ...
+FAILED tests/integration/test_widget.py::test_cors_headers_present_on_widget_endpoints_but_not_elsewhere
+
+# after the middleware-order fix:
+$ docker compose exec backend python -m pytest tests/integration/test_widget.py -v
+9 passed
+
+# final full suite, clean:
+$ docker compose exec backend python -m pytest tests/ -q
+376 passed, 10 skipped, 31 warnings in 327.00s (0:05:27)
+```
+376 = 372 pre-existing (post-Phase-34) + 4 new (`test_service_knowledge_documents.py`:
+full attach/list/detach cycle incl. duplicate-409 and detach-404, cross-tenant, RBAC).
+Zero pre-existing tests modified; the widget test itself needed no change — the bug was
+in `main.py`, not the test.
+
+**§6 — Migration reversibility, real round-trip:**
+```
+$ docker compose exec backend alembic downgrade -1
+Running downgrade a0ec080bbff5 -> 1b540231b5fa, phase 36 service knowledge document attachment
+$ psql -c "\d service_knowledge_documents"   -> "Did not find any relation" (table gone)
+$ docker compose exec backend alembic upgrade head
+Running upgrade 1b540231b5fa -> a0ec080bbff5, phase 36 service knowledge document attachment
+$ docker compose exec backend alembic check
+No new upgrade operations detected.
+```
+
+**§7 — Lint + typecheck + build, all real runs:**
+```
+$ docker compose exec backend ruff check app/db/models/service_knowledge.py app/db/models/knowledge.py \
+    app/db/models/__init__.py app/schemas/service_knowledge.py app/services/service_knowledge_service.py \
+    app/api/routes/services.py app/main.py app/core/config.py tests/integration/test_service_knowledge_documents.py
+All checks passed!
+# full-repo ruff: only the 2 pre-existing Phase-29 f-string lints (test_phase29_pagination.py),
+# confirmed via git blame unrelated to this phase, same as Phase 34 already documented.
+
+$ cd frontend && npx tsc -b --noEmit    -> zero errors
+$ npm run lint                          -> 0 errors, 1 pre-existing harmless warning (AuthContext.tsx, Phase 35)
+$ npm run build                         -> 912 modules, built in 415ms, zero errors
+```
+
+**Secrets grep:** clean — `grep -rniE "secret|api[_-]?key|password\s*=\s*['\"][^'\"]"` across
+every new/changed file (frontend and backend) returns nothing; the only "password"-shaped
+literal anywhere is the established safe test string `correcthorse1`/`correcthorse123`.
+
+**Live-test cleanup:** the 2 UI-driven test businesses ("Phase36 A Dental \*", "Phase36 B
+Orthodontics \*") and the manually-inserted staff test user were deleted afterward.
+Also cleaned up 3 businesses (`BRN`, `Follow-up Test A`, `Follow-up Test B`) left behind
+when an earlier *mid-development* background `pytest` run was interrupted by a
+`docker compose restart backend` (needed to pick up the CORS middleware-order fix) —
+self-inflicted process-management residue during this session, not a test-code defect;
+confirmed the affected fixture (`test_followups.py`) has correct `yield`-based teardown.
+Re-queried — the DB is back to exactly the original 10 pre-existing businesses:
+```
+$ psql -c "SELECT count(*) FROM businesses;"   -> 10
+```
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Add/edit/delete a service through the UI; confirmed via direct DB check | ✓ Pass — §1, §2 |
+| Same for staff | ✓ Pass — §1, §2 |
+| Set business hours (incl. a closed day) through the UI; confirmed via DB | ✓ Pass — §1, §2 |
+| Create + upload + approve a knowledge document via UI; DB confirms real chunking/embedding | ✓ Pass — §1, §2 (real 1536-dim vector) |
+| Attach a document to a service via UI; relationship persists correctly | ✓ Pass — §1, §2 |
+| RBAC: staff sees read-only UI, AND is blocked server-side even bypassing the UI | ✓ Pass — §3 |
+| Cross-tenant: zero leakage, including across a real logout/login cycle | ✓ Pass — §4 |
+| Full regression suite, zero regressions | ✓ Pass — §5, 376 passed (after fixing a real pre-existing Phase-35 CORS bug this phase's own testing surfaced) |
+| Secrets grep clean, lint clean, frontend build clean (0 type errors) | ✓ Pass — §7 |
+
+**Known issues / punted items:**
+- **The Phase-35 widget/dashboard CORS middleware-order bug was a real, previously-
+  undiscovered regression** — fixed this phase (see above), not carried forward.
+- **No bulk actions** (e.g. multi-select delete/approve) — not asked for, each row acts
+  independently.
+- **Knowledge document editing has no re-chunk indicator in the UI** — editing an
+  already-approved document's content does trigger Phase 6's real re-chunk/re-embed
+  server-side (existing backend behavior, unchanged), but the frontend's edit-and-save
+  modal doesn't show a loading/processing state for that specific save the way Approve
+  does; a real gap, small, flagged for a future pass if it proves confusing.
+- **`ServicesPage`'s attach dropdown re-fetches the full document list on page load
+  only** — attaching/detaching from one service's modal doesn't refresh the shared
+  `documents` list state used by other services' "available to attach" dropdowns until
+  the page reloads; correct on first use, a minor staleness edge case for a single
+  session managing multiple services' attachments back-to-back without a reload.
+- **`ServicesPage`/`StaffPage`/`HoursPage`/`KnowledgePage` share no common CRUD
+  abstraction** — each is a plain, independent component; three near-identical files is
+  an acceptable, explicit tradeoff over a premature shared "resource table" component
+  for exactly four call sites (per this project's stated preference for simplicity over
+  early abstraction).
+- Carried over, still real and still open (unrelated to this phase): no staff-invite
+  endpoint, `BusinessHours` exceptions have no PATCH (delete+recreate only), naive vs.
+  tz-aware timestamp inconsistency (Phase 28 F8), in-memory rate limiter, no refresh
+  tokens.
+- No commit has been made yet — awaiting your explicit confirmation of this verification
+  output per working rule #6. Do not start Phase 37 work until then, per your
+  instruction.

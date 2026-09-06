@@ -7,6 +7,10 @@ import LandingPage from './pages/LandingPage'
 import AuthPage from './pages/AuthPage'
 import DashboardLayout from './pages/dashboard/DashboardLayout'
 import PlaceholderPage from './pages/dashboard/PlaceholderPage'
+import ServicesPage from './pages/dashboard/ServicesPage'
+import StaffPage from './pages/dashboard/StaffPage'
+import HoursPage from './pages/dashboard/HoursPage'
+import KnowledgePage from './pages/dashboard/KnowledgePage'
 
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
@@ -26,10 +30,10 @@ export default function App() {
               <Route path="/dashboard" element={<DashboardLayout />}>
                 <Route index element={<PlaceholderPage title="Overview" />} />
                 <Route path="appointments" element={<PlaceholderPage title="Appointments" />} />
-                <Route path="services" element={<PlaceholderPage title="Services" />} />
-                <Route path="staff" element={<PlaceholderPage title="Staff" />} />
-                <Route path="hours" element={<PlaceholderPage title="Business Hours" />} />
-                <Route path="knowledge" element={<PlaceholderPage title="Knowledge Base" />} />
+                <Route path="services" element={<ServicesPage />} />
+                <Route path="staff" element={<StaffPage />} />
+                <Route path="hours" element={<HoursPage />} />
+                <Route path="knowledge" element={<KnowledgePage />} />
                 <Route path="training" element={<PlaceholderPage title="AI Training Room" />} />
                 <Route path="handoffs" element={<PlaceholderPage title="Human Handoffs" />} />
                 <Route path="reports" element={<PlaceholderPage title="Reports" />} />

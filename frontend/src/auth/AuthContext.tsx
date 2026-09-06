@@ -5,8 +5,22 @@ import type { LoginRequest, RegisterRequest, RegisterResponse, TokenResponse } f
 
 const STORAGE_KEY = 'ngai_token'
 
+/** UI-only convenience (which buttons to show) — never a security boundary.
+ * The role also travels in the JWT the backend already validates on every
+ * request, so a tampered/decoded-wrong value here can only ever change what
+ * renders, never what a `require_role(["owner","admin"])` route will accept. */
+function decodeRole(token: string): string | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return typeof payload.role === 'string' ? payload.role : null
+  } catch {
+    return null
+  }
+}
+
 interface AuthContextValue {
   token: string | null
+  role: string | null
   sessionMessage: string | null
   login: (payload: LoginRequest) => Promise<void>
   register: (payload: RegisterRequest) => Promise<RegisterResponse>
@@ -58,9 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearSessionMessage = useCallback(() => setSessionMessage(null), [])
 
+  const role = useMemo(() => (token ? decodeRole(token) : null), [token])
+
   const value = useMemo(
-    () => ({ token, sessionMessage, login, register, logout: () => logout(null), clearSessionMessage }),
-    [token, sessionMessage, login, register, logout, clearSessionMessage],
+    () => ({ token, role, sessionMessage, login, register, logout: () => logout(null), clearSessionMessage }),
+    [token, role, sessionMessage, login, register, logout, clearSessionMessage],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
