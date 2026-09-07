@@ -60,6 +60,15 @@ export interface PlanRead {
   features: string[]
 }
 
+export interface GoogleCalendarStatus {
+  connected: boolean
+  calendar_name: string | null
+}
+
+export interface GoogleCalendarAuthorizationURL {
+  authorization_url: string
+}
+
 export interface ServiceRead {
   id: string
   business_id: string

@@ -18,6 +18,7 @@ const NAV_SECTIONS: { label: string; to: string; icon: string }[] = [
   { label: 'Reports', to: '/dashboard/reports', icon: '📊' },
   { label: 'Follow-ups', to: '/dashboard/followups', icon: '🔁' },
   { label: 'Website Widget', to: '/dashboard/widget', icon: '💬' },
+  { label: 'Google Calendar', to: '/dashboard/google-calendar', icon: '📆' },
   { label: 'Settings', to: '/dashboard/settings', icon: '⚙️' },
 ]
 

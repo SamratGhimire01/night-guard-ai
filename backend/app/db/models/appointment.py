@@ -95,6 +95,17 @@ class Appointment(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMix
     # about Phase 10/11's booking path changes.
     group_booking_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
 
+    # Phase 40: best-effort Google Calendar reflection, same non-authoritative
+    # discipline as Notification (Phase 13) — a plain nullable String, not a new
+    # Postgres enum, since this is an internal diagnostic field with exactly two
+    # real values ("synced"/"failed") and no DB-level constraint depends on it.
+    # NULL means "not applicable" (free plan, or no connected calendar) — never
+    # conflated with a real sync failure. google_calendar_event_id is what lets
+    # reschedule/cancel update or delete the SAME Google event instead of ever
+    # creating a duplicate.
+    google_calendar_event_id: Mapped[str | None] = mapped_column(String(255))
+    calendar_sync_status: Mapped[str | None] = mapped_column(String(20))
+
 
 class AppointmentParticipant(UUIDPrimaryKeyMixin, Base):
     """An extra named participant on an appointment. No business_id: inherited via appointment_id."""

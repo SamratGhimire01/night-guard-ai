@@ -42,3 +42,15 @@ class IntegrationRead(BaseModel):
     type: str
     config: dict
     enabled: bool
+
+    @model_validator(mode="after")
+    def redact_google_calendar_secrets(self) -> "IntegrationRead":
+        """Phase 40: config for type="google_calendar" holds real OAuth
+        access/refresh tokens — never returned in ANY API response, including
+        this generic listing. The dedicated status endpoint
+        (GET /integrations/google-calendar/status) is the real way to check
+        connection state; this just makes sure the pre-existing generic list
+        route can never leak a token even if a google_calendar row exists."""
+        if self.type == "google_calendar":
+            self.config = {"calendar_id": self.config.get("calendar_id")}
+        return self

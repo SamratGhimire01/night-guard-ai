@@ -48,3 +48,32 @@ def create_access_token(
 def decode_access_token(token: str) -> dict:
     """Raises jwt.PyJWTError (or a subclass) if the token is invalid/expired/tampered."""
     return jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+
+
+_OAUTH_STATE_PURPOSE = "google_oauth_state"
+
+
+def create_oauth_state_token(business_id: uuid.UUID) -> str:
+    """Signs a short-lived, single-purpose token carrying business_id through
+    Google's real OAuth redirect round-trip (Phase 40) — Google's callback
+    request carries no Authorization header, so this (not a normal access
+    token, which would otherwise double as live API credentials if it ever
+    leaked via a referrer header) is how the callback learns which business
+    initiated the connection. A distinct `purpose` claim keeps this from ever
+    being accepted by decode_access_token's callers or vice versa."""
+    now = datetime.now(timezone.utc)
+    payload = {
+        "business_id": str(business_id),
+        "purpose": _OAUTH_STATE_PURPOSE,
+        "iat": now,
+        "exp": now + timedelta(minutes=10),
+    }
+    return jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)
+
+
+def decode_oauth_state_token(token: str) -> uuid.UUID:
+    """Raises jwt.PyJWTError (or a subclass) if invalid/expired/tampered/wrong-purpose."""
+    payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+    if payload.get("purpose") != _OAUTH_STATE_PURPOSE:
+        raise jwt.InvalidTokenError("Token is not a valid OAuth state token.")
+    return uuid.UUID(payload["business_id"])

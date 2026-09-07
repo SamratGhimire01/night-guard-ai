@@ -13,6 +13,7 @@ import HoursPage from './pages/dashboard/HoursPage'
 import KnowledgePage from './pages/dashboard/KnowledgePage'
 import ReportsPage from './pages/dashboard/ReportsPage'
 import WebsiteWidgetPage from './pages/dashboard/WebsiteWidgetPage'
+import GoogleCalendarPage from './pages/dashboard/GoogleCalendarPage'
 import SettingsPage from './pages/dashboard/SettingsPage'
 
 import '@mantine/core/styles.css'
@@ -43,6 +44,7 @@ export default function App() {
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="followups" element={<PlaceholderPage title="Follow-ups" />} />
                 <Route path="widget" element={<WebsiteWidgetPage />} />
+                <Route path="google-calendar" element={<GoogleCalendarPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
             </Route>
