@@ -20,7 +20,7 @@ import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch, ApiError } from '../../api/client'
-import type { KnowledgeDocumentRead, ServiceRead, ServiceWrite, StaffRead } from '../../api/types'
+import type { BusinessRead, KnowledgeDocumentRead, ServiceRead, ServiceWrite, StaffRead } from '../../api/types'
 
 export default function ServicesPage() {
   const { role } = useAuth()
@@ -29,6 +29,10 @@ export default function ServicesPage() {
   const [services, setServices] = useState<ServiceRead[]>([])
   const [staff, setStaff] = useState<StaffRead[]>([])
   const [documents, setDocuments] = useState<KnowledgeDocumentRead[]>([])
+  // The business's own real currency (e.g. "USD", "NPR") — read once here
+  // rather than hardcoding "$" for every business regardless of what they
+  // actually price in. Defaults to "USD" only until the real value loads.
+  const [currency, setCurrency] = useState('USD')
   const [loading, setLoading] = useState(true)
 
   const [editing, setEditing] = useState<ServiceRead | null>(null)
@@ -54,6 +58,7 @@ export default function ServicesPage() {
 
   useEffect(() => {
     loadAll()
+    apiFetch<BusinessRead>('/business/me').then((b) => setCurrency(b.currency))
   }, [])
 
   const form = useForm<ServiceWrite>({
@@ -189,7 +194,7 @@ export default function ServicesPage() {
             {services.map((service) => (
               <Table.Tr key={service.id}>
                 <Table.Td>{service.name}</Table.Td>
-                <Table.Td>${service.price}</Table.Td>
+                <Table.Td>{currency} {service.price}</Table.Td>
                 <Table.Td>{service.duration_minutes} min</Table.Td>
                 <Table.Td>{staffName(service.staff_id)}</Table.Td>
                 <Table.Td>
@@ -244,7 +249,7 @@ export default function ServicesPage() {
               min={0}
               decimalScale={2}
               fixedDecimalScale
-              prefix="$"
+              prefix={`${currency} `}
               value={form.values.price === '' ? '' : Number(form.values.price)}
               onChange={(v) => form.setFieldValue('price', String(v))}
             />

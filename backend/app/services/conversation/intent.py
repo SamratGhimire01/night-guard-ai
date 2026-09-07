@@ -469,10 +469,10 @@ def _format_appointments(label: str, appointments: list[dict], tz: ZoneInfo) -> 
     return f"{label}:\n{lines}"
 
 
-def _format_services(services: list[Service]) -> str:
+def _format_services(services: list[Service], currency: str) -> str:
     if not services:
         return "No services are configured for this business yet."
-    return "\n".join(f"- {s.name} (${s.price}, {s.duration_minutes} min)" for s in services)
+    return "\n".join(f"- {s.name} ({currency} {s.price}, {s.duration_minutes} min)" for s in services)
 
 
 def _build_user_prompt(
@@ -483,6 +483,7 @@ def _build_user_prompt(
     today: str,
     tz: ZoneInfo,
     locked_language: str | None,
+    currency: str,
 ) -> str:
     parts = []
 
@@ -520,7 +521,7 @@ def _build_user_prompt(
 
     parts.append(f"Retrieved knowledge:\n{_format_knowledge(knowledge_results)}")
     parts.append(f"Today's date: {today}")
-    parts.append(f"Available services:\n{_format_services(services)}")
+    parts.append(f"Available services:\n{_format_services(services, currency)}")
     parts.append(f"New customer message to respond to:\n{customer_message}")
 
     return "\n\n".join(parts)
@@ -738,12 +739,13 @@ def classify_and_respond(
 ) -> ClassificationResult:
     tz = ZoneInfo(business.timezone) if business and business.timezone else ZoneInfo("UTC")
     today = datetime.now(tz).strftime("%Y-%m-%d (%A)")
+    currency = business.currency if business and business.currency else "USD"
     messages = [
         {"role": "system", "content": _build_system_prompt(business)},
         {
             "role": "user",
             "content": _build_user_prompt(
-                context, knowledge_results, customer_message, services or [], today, tz, locked_language
+                context, knowledge_results, customer_message, services or [], today, tz, locked_language, currency
             ),
         },
     ]

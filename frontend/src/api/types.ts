@@ -32,6 +32,7 @@ export interface BusinessRead {
   email: string | null
   website: string | null
   timezone: string
+  currency: string
   languages: string[] | null
   tone: string | null
   sms_enabled: boolean

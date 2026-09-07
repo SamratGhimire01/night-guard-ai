@@ -38,6 +38,18 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     timezone: Mapped[str] = mapped_column(String(64), nullable=False)
+    # A real, business-owned currency code (e.g. "USD", "NPR") — a plain
+    # freeform string, not an enum/ISO-4217-validated column, same "store
+    # what's actually needed, no premature validation" precedent `timezone`
+    # above already sets (that isn't checked against the IANA tz database
+    # either). Defaults to "USD" so every pre-existing business's price
+    # display is unchanged after migration; the LLM prompt and every price
+    # display in chat/dashboard reads this instead of a hardcoded "$" — see
+    # PHASE_STATUS.md for the real bug this fixes (a business's real prices
+    # were shown with a hardcoded "$" regardless of this field's value,
+    # because until this column existed there was no per-business currency
+    # concept to read from at all).
+    currency: Mapped[str] = mapped_column(String(10), nullable=False, default="USD", server_default="USD")
     description: Mapped[str | None] = mapped_column(Text)
     address: Mapped[str | None] = mapped_column(String(500))
     phone: Mapped[str | None] = mapped_column(String(50))

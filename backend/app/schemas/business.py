@@ -24,6 +24,7 @@ class BusinessRead(BaseModel):
     email: str | None
     website: str | None
     timezone: str
+    currency: str
     languages: list[str] | None
     tone: str | None
     sms_enabled: bool
@@ -55,6 +56,7 @@ class BusinessUpdate(BaseModel):
     email: safe_str(255) | None = None
     website: safe_str(255) | None = None
     timezone: safe_str(64) | None = None
+    currency: safe_str(10) | None = None
     languages: list[safe_str(16)] | None = None
     tone: safe_str(100) | None = None
     sms_enabled: bool | None = None
@@ -69,7 +71,7 @@ class BusinessUpdate(BaseModel):
             raise ValueError("Must be a hex color like #2563eb.")
         return value
 
-    @field_validator("name", "timezone", "brand_color")
+    @field_validator("name", "timezone", "currency", "brand_color")
     @classmethod
     def required_field_not_null(cls, value: str | None) -> str:
         if value is None:
