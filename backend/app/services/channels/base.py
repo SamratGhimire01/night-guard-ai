@@ -93,6 +93,7 @@ class ChannelAdapter(ABC):
         external_customer_ref: str,
         content: str,
         external_message_id: str | None = None,
+        force_language: str | None = None,
     ) -> dict | None:
         """Returns the same dict handle_incoming_message returns
         ({"intent", "response", "customer_message_id", "agent_message_id"}),
@@ -101,7 +102,12 @@ class ChannelAdapter(ABC):
         `external_message_id` (Phase 22): optional — only channels with a
         real webhook-delivery id (WhatsApp's message id) pass this, for the
         real DB-level idempotency guarantee on Message.external_message_id.
-        Channels without that concept (website) simply never pass it."""
+        Channels without that concept (website) simply never pass it.
+
+        `force_language` (Phase 43h): optional — only the website widget's
+        voice-message route ever passes this (a spoken-Nepali override, see
+        widget_service.send_widget_message). Every other caller leaves it
+        None, unaffected."""
         raise NotImplementedError
 
 
@@ -116,6 +122,7 @@ class WebsiteChannelAdapter(ChannelAdapter):
         external_customer_ref: str,
         content: str,
         external_message_id: str | None = None,
+        force_language: str | None = None,
     ) -> dict | None:
         conversation = get_or_create_conversation(
             db,
@@ -132,4 +139,5 @@ class WebsiteChannelAdapter(ChannelAdapter):
             business_id=business_id,
             content=content,
             external_message_id=external_message_id,
+            force_language=force_language,
         )

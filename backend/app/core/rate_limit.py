@@ -47,7 +47,6 @@ WIDGET_SESSION_MAX_ATTEMPTS = 10
 WIDGET_BUSINESS_MAX_ATTEMPTS = 200
 WIDGET_WINDOW_SECONDS = 60
 
-
 class RateLimiter:
     def __init__(self, max_attempts: int = MAX_ATTEMPTS, window_seconds: int = WINDOW_SECONDS):
         self.max_attempts = max_attempts

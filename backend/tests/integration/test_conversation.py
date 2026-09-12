@@ -1463,16 +1463,60 @@ def test_resolve_message_language_devanagari_deterministic_override():
     this that's mechanically checkable, so it always overrides positively
     (real script beats any LLM claim) and suppresses a false positive claim
     (an unbacked "ne_deva" self-report is dropped to no signal, never
-    trusted and never guessed at) — see orchestrator._resolve_message_language."""
+    trusted and never guessed at) — see orchestrator._resolve_message_language.
+
+    "Namaste, kasto cha?" now resolves to "ne_roman" regardless of the false
+    "ne_deva" claim (was `None` before the urgent fix below added real
+    Romanized-Nepali detection — this is a strict improvement, not a
+    regression: the message genuinely IS Romanized Nepali, previously
+    discarded as "no signal" only because the old code had no way to
+    recognize it)."""
     from app.services.conversation.orchestrator import _resolve_message_language
 
     assert _resolve_message_language("नमस्ते", "en") == "ne_deva"
     assert _resolve_message_language("नमस्ते", None) == "ne_deva"
     assert _resolve_message_language("What are your business hours?", "ne_deva") is None
-    assert _resolve_message_language("Namaste, kasto cha?", "ne_deva") is None
+    assert _resolve_message_language("Namaste, kasto cha?", "ne_deva") == "ne_roman"
     assert _resolve_message_language("What are your business hours?", "en") == "en"
     assert _resolve_message_language("Namaste, kasto cha?", "ne_roman") == "ne_roman"
     assert _resolve_message_language("some text", None) is None
+
+
+def test_resolve_message_language_ambiguous_greeting_is_no_signal_not_a_lock():
+    """Urgent fix (real bug found live, PHASE_STATUS.md): a customer's first
+    message being a short, generic greeting ("hlo") must never establish a
+    confident language lock — there's too little real signal in it,
+    regardless of what the LLM confidently self-reports. A real Nepali/
+    Romanized-Nepali greeting ("namaste") is NOT swallowed by this guard —
+    that IS real signal, deliberately excluded from the ambiguous set."""
+    from app.services.conversation.orchestrator import _resolve_message_language
+
+    assert _resolve_message_language("hlo", "en") is None
+    assert _resolve_message_language("hi", "ne_roman") is None
+    assert _resolve_message_language("Hey!", "en") is None  # punctuation stripped, still just one token
+    assert _resolve_message_language("ok", "en") is None
+    assert _resolve_message_language("namaste", "ne_roman") == "ne_roman"  # real signal, not swallowed
+    assert _resolve_message_language("hi, cleaning ko price kati ho?", "ne_roman") == "ne_roman"  # real content present
+
+
+def test_resolve_message_language_roman_nepali_deterministic_override_beats_anchoring():
+    """Urgent fix (real bug found live, PHASE_STATUS.md): Phase 25 documented
+    the LLM's message_language self-report can anchor to the CURRENT lock
+    even when the raw text doesn't back it up, and flagged (but didn't fix)
+    the lack of an equivalent deterministic check for en/ne_roman/mixed. This
+    proves the new curated-word override actually breaks that anchoring: a
+    message containing 2+ real Romanized-Nepali words is forced to
+    "ne_roman" even when the LLM keeps (wrongly) self-reporting "en"."""
+    from app.services.conversation.orchestrator import _resolve_message_language
+
+    # The anchoring bug itself: LLM says "en" despite substantial real
+    # Nepali content, because the conversation is currently locked to "en".
+    assert _resolve_message_language("Malai tapaiko cleaning ko price kati ho?", "en") == "ne_roman"
+    assert _resolve_message_language("Aaitabar bihana dherai ramro huncha malai", "en") == "ne_roman"
+    # A single incidental match must NOT override — needs real, sustained evidence.
+    assert _resolve_message_language("Can I get a cha (chai tea) after my appointment?", "en") == "en"
+    # Genuine English with zero matches is completely unaffected.
+    assert _resolve_message_language("What time do you open on Friday?", "en") == "en"
 
 
 def test_resolve_locked_language_ignores_one_off_drift_but_relocks_after_sustained_streak():
@@ -1510,8 +1554,62 @@ def test_resolve_locked_language_ignores_one_off_drift_but_relocks_after_sustain
     assert conversation.detected_language == "en", "but the lock itself has now moved for the NEXT turn"
     assert conversation.language_switch_streak == 0
 
-    # And the next turn actually uses the new lock.
-    assert _resolve_locked_language(conversation, "en") == "en"
+
+def test_hlo_then_genuine_roman_nepali_relocks_within_a_few_messages_not_stuck_in_english():
+    """End-to-end reproduction of the exact real bug reported live: a
+    customer's first message is a short, ambiguous greeting ("hlo") that
+    used to establish a false, confident English lock instantly — and then
+    never correctly re-detected Nepali even after several genuine Romanized-
+    Nepali messages, because the LLM's own message_language self-report kept
+    anchoring to whatever the conversation was already locked to (Phase 25's
+    own documented, previously-unmitigated limitation).
+
+    Combines both real fixes: (1) "hlo" is too little signal to lock
+    anything (_resolve_message_language's ambiguous-greeting guard), so the
+    conversation correctly stays unlocked rather than falsely pinning to
+    English; (2) once genuine, substantial Romanized Nepali messages arrive,
+    the curated-word deterministic override reports "ne_roman" even if an
+    anchored LLM would have kept claiming "en" — reaching the lock within a
+    couple of real messages, never "stuck in English indefinitely"."""
+    from types import SimpleNamespace
+
+    from app.services.conversation.orchestrator import _resolve_locked_language, _resolve_message_language
+
+    conversation = SimpleNamespace(detected_language=None, language_switch_streak=0)
+
+    # Turn 1: "hlo" — even if an LLM confidently self-reports "en" for this
+    # (exactly the real bug), the deterministic guard must drop it to no
+    # signal, so nothing locks yet.
+    message_language = _resolve_message_language("hlo", "en")
+    assert message_language is None
+    language = _resolve_locked_language(conversation, message_language)
+    assert conversation.detected_language is None, "must NOT have locked to English from a bare greeting"
+    assert language is None
+
+    # Turn 2: a real, substantial Romanized-Nepali message. Simulates the
+    # worst case of the anchoring bug: the LLM has nothing to anchor to yet
+    # (no lock exists), but even if it still mis-self-reported "en" here, the
+    # curated-word override must correctly force "ne_roman" from the real
+    # content — and this becomes the lock immediately (first clear signal).
+    message_language = _resolve_message_language("Malai tapaiko cleaning ko price kati ho?", "en")
+    assert message_language == "ne_roman"
+    language = _resolve_locked_language(conversation, message_language)
+    assert conversation.detected_language == "ne_roman"
+    assert language == "ne_roman"
+
+    # Turn 3: another genuine Nepali message — stays locked, streak stays 0,
+    # confirming this isn't a fluke single-turn override.
+    message_language = _resolve_message_language("Aaitabar bihana dherai ramro huncha malai", "ne_roman")
+    language = _resolve_locked_language(conversation, message_language)
+    assert conversation.detected_language == "ne_roman"
+    assert language == "ne_roman"
+    assert conversation.language_switch_streak == 0
+
+    # A single later stray English message must still not flip the new,
+    # correctly-established Nepali lock — the passive-drift streak
+    # protection (Phase 25) applies here exactly as it always did.
+    assert _resolve_locked_language(conversation, "en") == "ne_roman"
+    assert conversation.detected_language == "ne_roman"
 
 
 # --- Phase 25b urgent fix: explicit language-switch override + self-awareness -
@@ -2459,3 +2557,68 @@ def test_wants_availability_absent_in_older_stubbed_reply_keeps_old_missing_slot
     assert resp.status_code == 201, resp.text
     body = resp.json()["response"].lower()
     assert "what date" in body and "what time" in body
+
+
+# --- Real bug fix: business's real currency, never a hardcoded "$" -------------
+
+
+def test_available_services_prompt_uses_the_business_real_currency_not_a_hardcoded_dollar(
+    two_businesses, monkeypatch
+):
+    """Real bug found live: `intent._format_services` hardcoded a literal "$"
+    in the "Available services" list injected into the LLM's prompt every
+    turn, regardless of what currency the business actually prices in — a
+    Nepali business's real NPR prices were silently presented to the model as
+    dollars. `Business.currency` (new field) is now threaded through
+    `classify_and_respond` -> `_build_user_prompt` -> `_format_services`, so
+    the real prompt reflects the business's own real currency."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    resp = client.patch(
+        "/api/v1/business/me", headers=_auth_header(token_a), json={"currency": "NPR"}
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["currency"] == "NPR"
+
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    stub = _stub_providers(
+        monkeypatch, json.dumps({"intent": "pricing_question", "response": "It's NPR 50."})
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "How much is a cleaning?"},
+    )
+    assert resp.status_code == 201, resp.text
+
+    real_prompt_sent_to_llm = stub.calls[0][1]["content"]
+    assert "NPR 50.00" in real_prompt_sent_to_llm, real_prompt_sent_to_llm
+    assert "$50.00" not in real_prompt_sent_to_llm
+
+
+def test_available_services_prompt_defaults_to_usd_for_a_business_that_never_set_currency(
+    two_businesses, monkeypatch
+):
+    """Backward-compatibility: every pre-existing business defaulted to USD on
+    migration (see the real migration's `server_default='USD'`) — this proves
+    that default actually reaches the real prompt unchanged, not just the DB
+    column, for a business that never touched the new field."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    stub = _stub_providers(
+        monkeypatch, json.dumps({"intent": "pricing_question", "response": "It's $50."})
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "How much is a cleaning?"},
+    )
+    assert resp.status_code == 201, resp.text
+
+    real_prompt_sent_to_llm = stub.calls[0][1]["content"]
+    assert "USD 50.00" in real_prompt_sent_to_llm, real_prompt_sent_to_llm

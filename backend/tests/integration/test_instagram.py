@@ -241,6 +241,58 @@ def test_incoming_message_flows_through_the_real_shared_orchestrator(business_wi
         assert "I've also let our team know, so a real person will follow up with you." in agent_msg.content
 
 
+def _build_changes_shape_payload(*, ig_account_id: str, igsid: str, message_id: str, text: str) -> dict:
+    """The second real envelope shape Instagram delivers for the `messages`
+    field — entry[].changes[] with {"field": "messages", "value": {...}},
+    confirmed via Meta's own "Send to My Server" test tool against this exact
+    endpoint. Messenger has never been observed sending this shape, so this
+    helper is Instagram-only, mirroring instagram_webhook.py's own
+    _extract_from_changes_shape."""
+    return {
+        "object": "instagram",
+        "entry": [
+            {
+                "id": ig_account_id,
+                "time": 1690000000000,
+                "changes": [
+                    {
+                        "field": "messages",
+                        "value": {
+                            "sender": {"id": igsid},
+                            "recipient": {"id": ig_account_id},
+                            "timestamp": "1690000000000",
+                            "message": {"mid": message_id, "text": text},
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def test_changes_field_shape_from_meta_test_button_is_also_parsed(business_with_instagram):
+    """Real regression for the payload shape Meta's own "Send to My Server"
+    test tool sent against this endpoint — entry[].changes[] with a
+    {"field": "messages", "value": {...}} wrapper, structurally different
+    from entry[].messaging[]. Must flow through the identical real
+    orchestrator pipeline as the messaging[] shape."""
+    igsid = "igsid-changes-0001"
+    message_id = f"ig.mid.{uuid.uuid4().hex}"
+    payload = _build_changes_shape_payload(
+        ig_account_id=business_with_instagram["ig_account_id"], igsid=igsid, message_id=message_id, text="Do you offer teeth whitening?"
+    )
+    status, body = _post_webhook(payload)
+    assert status == 200, body
+
+    with SessionLocal() as db:
+        conversations = db.query(Conversation).filter(Conversation.business_id == business_with_instagram["business_id"]).all()
+        assert len(conversations) == 1
+        assert conversations[0].channel == "instagram"
+        messages = db.query(Message).filter(Message.conversation_id == conversations[0].id).order_by(Message.created_at).all()
+        assert len(messages) == 2
+        assert messages[0].external_message_id == message_id
+
+
 def test_message_echo_of_our_own_send_is_ignored_not_processed(business_with_instagram):
     """Instagram, like Messenger, echoes the account's own outgoing sends
     (message.is_echo=true) — must never be treated as a new incoming

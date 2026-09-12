@@ -97,11 +97,27 @@ class Settings(BaseSettings):
     # SPA (not this API) after a real Google consent flow completes.
     dashboard_base_url: str = "http://localhost:5173"
 
-    # Deepgram (real-time STT + TTS for voice chat, app/voice/deepgram.py,
-    # Phase 43). One key covers both -- Deepgram's Nova (speech-to-text) and
-    # Aura (text-to-speech) products share the same account/API key. Empty by
+    # Phase 39: real multi-LLM provider selection. USING_LLM picks which
+    # ChatProvider app/llm/__init__.py's get_chat_provider() returns -- "azure"
+    # (default), "grok"/"xai", or "groq". Embeddings stay on Azure regardless
+    # of this setting -- neither xAI nor Groq offers an embeddings API this
+    # phase (see app/llm/__init__.py).
+    using_llm: str = "azure"
+    xai_api_key: str = ""
+    xai_endpoint: str = "https://api.x.ai/v1"
+    xai_chat_model: str = "grok-4"
+    # Groq (api.groq.com, fast inference for open-weight models) -- a
+    # DIFFERENT company/product from xAI's "Grok" above despite the
+    # near-identical name; real model catalog confirmed via GET
+    # {groq_endpoint}/models (see PHASE_STATUS.md Phase 39).
+    groq_api_key: str = ""
+    groq_endpoint: str = "https://api.groq.com/openai/v1"
+    groq_chat_model: str = "openai/gpt-oss-120b"
+
+    # Deepgram (pre-recorded/batch speech-to-text for the widget's
+    # push-to-talk voice input, app/voice/deepgram.py, Phase 43h). Empty by
     # default: app/voice/deepgram.py raises a clear, caught error (never a
-    # crash) if a voice call is attempted with no key configured.
+    # crash) if a voice message is sent with no key configured.
     deepgram_api_key: str = ""
 
     model_config = SettingsConfigDict(

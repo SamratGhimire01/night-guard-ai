@@ -13,7 +13,7 @@ from app.db.models.audit_log import AuditLog
 from app.db.models.business import Business, BusinessHours, BusinessHoursException
 from app.db.models.customer import Customer
 from app.db.models.notification import Notification, NotificationStatus
-from app.services import customer_service, service_service, staff_service
+from app.services import customer_service, google_calendar_service, service_service, staff_service
 from app.services.notifications import dispatch_notification
 
 logger = logging.getLogger(__name__)
@@ -155,6 +155,21 @@ def get_available_slots(
 
         current_date += timedelta(days=1)
 
+    if not _ignore_conflicts:
+        # Phase 40: real Google Calendar busy time, ONLY for Premium businesses
+        # with a connected calendar — an additional signal on top of the
+        # Postgres logic above, never a replacement for it. Skipped entirely
+        # when _ignore_conflicts=True (reschedule_appointment's structural-only
+        # pre-check) for the same reason existing-appointment conflicts are
+        # skipped there: this is a soft availability signal, not the real
+        # race-proof guarantee (Phase 10's EXCLUDE constraint). Degrades to
+        # `slots` unchanged on any Google API failure — see
+        # google_calendar_service.exclude_google_busy_slots.
+        slots = google_calendar_service.exclude_google_busy_slots(
+            db, business=business, slots=slots, duration_minutes=service.duration_minutes,
+            date_from=date_from, date_to=date_to,
+        )
+
     return slots
 
 
@@ -258,6 +273,7 @@ def create_appointment(
             db.refresh(appointment)
             db.refresh(notification)
             dispatch_notification(db, notification)
+            google_calendar_service.sync_appointment_created(db, appointment)
         else:
             db.flush()
     except (NotFoundError, UnprocessableEntityError, ConflictError) as exc:
@@ -459,6 +475,7 @@ def _create_group_partial(
             select(Notification).where(Notification.appointment_id == appointment.id)
         ).scalar_one()
         dispatch_notification(db, notification)
+        google_calendar_service.sync_appointment_created(db, appointment)
         _record_booking_metric(db, business_id=business_id, result="success")
         bookings.append(
             {
@@ -585,6 +602,8 @@ def _create_group_all_or_nothing(
     ).scalars()
     for notification in notifications:
         dispatch_notification(db, notification)
+    for appointment in appointments:
+        google_calendar_service.sync_appointment_created(db, appointment)
 
     bookings = [
         {
@@ -628,6 +647,7 @@ def cancel_appointment(db: Session, *, business_id: uuid.UUID, appointment_id: u
     db.refresh(appointment)
     db.refresh(notification)
     dispatch_notification(db, notification)
+    google_calendar_service.sync_appointment_cancelled(db, appointment)
     return appointment
 
 
@@ -706,6 +726,7 @@ def reschedule_appointment(
     db.refresh(appointment)
     db.refresh(notification)
     dispatch_notification(db, notification)
+    google_calendar_service.sync_appointment_rescheduled(db, appointment)
     return appointment
 
 

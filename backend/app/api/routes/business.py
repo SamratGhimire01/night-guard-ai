@@ -7,7 +7,7 @@ from app.api.dependencies import get_current_user, get_db, require_role
 from app.core.entitlements import PLAN_FEATURES
 from app.core.exceptions import NotFoundError
 from app.db.models.business import BusinessUser
-from app.schemas.business import BusinessRead, BusinessUpdate
+from app.schemas.business import _AVAILABLE_TIMEZONES, SUPPORTED_CURRENCIES, BusinessRead, BusinessUpdate
 from app.schemas.business_hours import (
     BusinessHoursUpdate,
     BusinessHourRead,
@@ -26,6 +26,22 @@ def get_my_business(
 ) -> BusinessRead:
     business = business_service.get_business(db, business_id=current_user.business_id)
     return BusinessRead.model_validate(business)
+
+
+@router.get("/business/reference-data")
+def get_business_reference_data(current_user: BusinessUser = Depends(get_current_user)) -> dict:
+    """Timezone/currency option lists for the Business Profile Settings page's
+    dropdowns — served from the exact same sets `BusinessUpdate` validates
+    against (app/schemas/business.py), not re-derived client-side from the
+    browser's own Intl API. Real, live-found bug this avoids: Chromium's
+    `Intl.supportedValuesOf('timeZone')` returns the OLD IANA alias
+    "Asia/Katmandu", while Python's `zoneinfo.available_timezones()` (what
+    the backend actually validates against) only recognizes the canonical
+    "Asia/Kathmandu" — dozens of such aliases genuinely diverge between a
+    browser's ICU data and the server's tzdata. Serving the backend's own
+    validated set as the dropdown's data guarantees the two can never
+    disagree, no matter how either side's timezone database drifts."""
+    return {"timezones": sorted(_AVAILABLE_TIMEZONES), "currencies": sorted(SUPPORTED_CURRENCIES)}
 
 
 @router.get("/business/plan", response_model=PlanRead)

@@ -261,7 +261,13 @@ def test_maybe_summarize_conversation_below_threshold_is_noop(two_businesses, mo
     assert stub.calls == []
 
 
-def test_maybe_summarize_conversation_folds_older_messages_and_advances_incrementally(two_businesses, monkeypatch):
+def test_maybe_summarize_conversation_folds_older_messages_and_advances_in_batches(two_businesses, monkeypatch):
+    """Urgent perf fix (real live evidence, PHASE_STATUS.md): a full extra LLM
+    summarization call must NOT fire on every single turn once a
+    conversation passes DEFAULT_THRESHOLD — only once a real backlog of at
+    least DEFAULT_KEEP_RECENT newly-aged-out messages has accumulated. This
+    replaces the old test's assertion of the exact bug being fixed here (it
+    previously proved a 3-message trickle re-triggered a real LLM call)."""
     import app.memory.summarization as summarization_module
 
     stub = _StubChatProvider(reply="Customer asked about hours; confirmed open Mon-Fri.")
@@ -290,27 +296,43 @@ def test_maybe_summarize_conversation_folds_older_messages_and_advances_incremen
     assert result2.summarized_message_count == expected_boundary
     assert len(stub.calls) == 1  # still 1 — not called again
 
-    # 3 more messages arrive; only the NEWLY aged-out ones should be summarized,
-    # combined with the existing summary (not the whole history re-sent).
+    # THE REAL BUG THIS FIX CLOSES: a small trickle of new messages (fewer
+    # than DEFAULT_KEEP_RECENT newly aged-out) must NOT re-trigger a real LLM
+    # call — the old code fired on backlog>=1 (effectively every turn, since
+    # each turn ages out ~2 messages), which is what produced the observed
+    # 12-20s-per-turn regression live.
     for i in range(3):
         _add_message(conversation_id, MessageSenderType.CUSTOMER, f"followup {i}")
+    with SessionLocal() as db:
+        result_trickle = maybe_summarize_conversation(db, conversation_id=conversation_id, business_id=business_id_a)
+    assert result_trickle.summarized_message_count == expected_boundary  # unchanged — did not fire
+    assert len(stub.calls) == 1  # still 1 — no wasted LLM call for a 3-message trickle
+
+    # Once the backlog reaches a real batch (DEFAULT_KEEP_RECENT newly-old
+    # messages total), it fires exactly once, folding in the WHOLE batch —
+    # not the 3 "followup" messages above alone, and not the whole history.
+    more_needed = DEFAULT_KEEP_RECENT - 3
+    for i in range(more_needed):
+        _add_message(conversation_id, MessageSenderType.CUSTOMER, f"batch2 {i}")
 
     with SessionLocal() as db:
         result3 = maybe_summarize_conversation(db, conversation_id=conversation_id, business_id=business_id_a)
 
-    assert result3.summarized_message_count == expected_boundary + 3
+    assert result3.summarized_message_count == expected_boundary + DEFAULT_KEEP_RECENT
     assert len(stub.calls) == 2
     second_call_content = stub.calls[1][1]["content"]
     assert "Existing summary" in second_call_content
-    # The 3 newly aged-out messages are the ones that just fell out of the
-    # keep_recent window (msg 15/16/17) — NOT the 3 brand-new "followup"
-    # messages, which are still within the fresh keep_recent(10) window. This
-    # is the incremental-boundary behavior working correctly, not the whole
-    # 28-message history being re-sent.
-    for i in range(expected_boundary, expected_boundary + 3):
+    # newly_old spans positions [expected_boundary, expected_boundary+10) in
+    # the full ordered history — that's "msg 15".."msg 24", the tail of the
+    # ORIGINAL 25 messages that sat in the keep_recent window right after the
+    # first summarization (not yet the followup/batch2 messages, which are
+    # further out and still within the current recent window) — proves this
+    # fires on a real accumulated batch, not on the trickle that triggered it.
+    for i in range(expected_boundary, total_initial):
         assert f"msg {i}" in second_call_content
     assert "followup" not in second_call_content
-    assert second_call_content.count("customer: msg") == 3  # exactly 3 newly-old messages, nothing more
+    assert "batch2" not in second_call_content
+    assert second_call_content.count("customer:") == DEFAULT_KEEP_RECENT
 
 
 def test_maybe_summarize_conversation_cross_tenant_returns_none(two_businesses, monkeypatch):

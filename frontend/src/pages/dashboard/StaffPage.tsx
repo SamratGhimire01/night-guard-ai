@@ -1,5 +1,18 @@
 import { useEffect, useState } from 'react'
-import { ActionIcon, Button, Group, Modal, Stack, Table, Text, TextInput, Title, Tooltip } from '@mantine/core'
+import {
+  ActionIcon,
+  Button,
+  Center,
+  Group,
+  Loader,
+  Modal,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+  Tooltip,
+} from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { useAuth } from '../../auth/AuthContext'
@@ -27,7 +40,13 @@ export default function StaffPage() {
     load()
   }, [])
 
-  const form = useForm<StaffWrite>({ initialValues: { name: '', role: '' } })
+  const form = useForm<StaffWrite>({
+    initialValues: { name: '', role: '' },
+    validate: {
+      name: (v) => (v.trim() ? null : 'Name is required.'),
+      role: (v) => (v.trim() ? null : 'Role is required.'),
+    },
+  })
 
   function openCreate() {
     setEditing(null)
@@ -98,6 +117,15 @@ export default function StaffPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
+            {loading && (
+              <Table.Tr>
+                <Table.Td colSpan={3}>
+                  <Center py="md">
+                    <Loader size="sm" />
+                  </Center>
+                </Table.Td>
+              </Table.Tr>
+            )}
             {!loading && staff.length === 0 && (
               <Table.Tr>
                 <Table.Td colSpan={3}>
@@ -150,8 +178,8 @@ export default function StaffPage() {
       <Modal opened={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit staff member' : 'Add staff member'}>
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="sm">
-            <TextInput label="Name" required {...form.getInputProps('name')} />
-            <TextInput label="Role" placeholder="e.g. Dentist, Hygienist" required {...form.getInputProps('role')} />
+            <TextInput label="Name" withAsterisk {...form.getInputProps('name')} />
+            <TextInput label="Role" placeholder="e.g. Dentist, Hygienist" withAsterisk {...form.getInputProps('role')} />
             <Button type="submit" mt="xs">
               {editing ? 'Save changes' : 'Add staff member'}
             </Button>

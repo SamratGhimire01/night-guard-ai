@@ -39,10 +39,13 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     timezone: Mapped[str] = mapped_column(String(64), nullable=False)
     # A real, business-owned currency code (e.g. "USD", "NPR") — a plain
-    # freeform string, not an enum/ISO-4217-validated column, same "store
-    # what's actually needed, no premature validation" precedent `timezone`
-    # above already sets (that isn't checked against the IANA tz database
-    # either). Defaults to "USD" so every pre-existing business's price
+    # string column, no Postgres enum, so growing the supported set never
+    # needs a migration. Validated at the API layer instead
+    # (BusinessUpdate.valid_currency / valid_timezone, app/schemas/
+    # business.py) against a curated allowlist / the real IANA tz database —
+    # added by the Business Profile Settings page (2026-09-07) to close the
+    # free-text-typo class of bug. Defaults to "USD" so every pre-existing
+    # business's price
     # display is unchanged after migration; the LLM prompt and every price
     # display in chat/dashboard reads this instead of a hardcoded "$" — see
     # PHASE_STATUS.md for the real bug this fixes (a business's real prices

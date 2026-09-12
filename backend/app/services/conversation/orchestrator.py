@@ -1,5 +1,6 @@
 import logging
 import re
+import time
 import uuid
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -521,10 +522,66 @@ _VALID_LANGUAGES = {v.value for v in ConversationLanguage}
 # judgment, so that anchoring risk remains a documented, known limitation.
 _DEVANAGARI_RE = re.compile(r"[ऀ-ॿ]")
 
+# Urgent fix (real bug found live, PHASE_STATUS.md): a customer's first
+# message being a short, generic, cross-language-ambiguous greeting ("hlo",
+# "hi", "hey"...) was getting a confident message_language self-report from
+# the LLM (often "en", since these are English-alphabet fillers) that then
+# locked the WHOLE conversation the instant it arrived — _resolve_locked_
+# language locks immediately on the first clear signal, with no concept of
+# "too little real signal to decide yet". None of these tokens carries any
+# real evidence of which language the customer actually wants; a real
+# Nepali/Romanized-Nepali greeting ("namaste", "dhanyabad", ...) is
+# deliberately NOT in this set, since that IS real signal. Only applies when
+# the message reduces to exactly this ONE token — "hi, cleaning ko price?"
+# still carries real content and is unaffected.
+_AMBIGUOUS_GREETING_TOKENS = {
+    "hi", "hlo", "hllo", "hello", "hey", "heya", "heyy", "yo", "yoo", "sup", "hola", "hii", "oi", "ok", "okay",
+}
+_WORD_RE = re.compile(r"[a-zA-Z]+")
+
+# Urgent fix (real bug found live, PHASE_STATUS.md): Phase 25 already
+# documented that the LLM's own message_language self-report can anchor to
+# whatever the conversation is currently locked to, and that there is "no
+# equivalent deterministic check for en vs ne_roman vs mixed" the way
+# _DEVANAGARI_RE provides for Devanagari — flagged then as a known,
+# deliberately-unmitigated limitation. Real live testing now shows this
+# anchoring genuinely blocks the sustained-switch streak (Phase 25b) from
+# ever firing for a customer who organically switches to substantial
+# Romanized Nepali after a wrong English lock. This curated set of common,
+# essentially Nepali-only function/particle words (drawn from this project's
+# own real, already-verified live transcripts — Phase 25 §1/§4) is the
+# second deterministic signal that postmortem floated: 2+ distinct matches
+# is real, mechanical evidence of Romanized Nepali content that no anchoring
+# bias can suppress, the same override philosophy as Devanagari. A single
+# match is not enough (some overlap with English is possible for any one
+# short token) — requiring 2 keeps false positives on genuine English
+# sentences vanishingly unlikely.
+_ROMAN_NEPALI_WORDS = {
+    "cha", "chha", "chaina", "huncha", "hunchha", "garna", "garnu", "garne", "garchu", "garcha",
+    "malai", "tapai", "tapaiko", "timro", "mero", "hamro", "paryo", "bhayo", "vayo",
+    "sakchu", "sakincha", "dinuhos", "lagcha", "lagchha", "parcha", "parxa",
+    "chahanchu", "chahanu", "kati", "kina", "kasari", "kaha", "kahile", "kun",
+    "aaitabar", "sombar", "mangalbar", "budhabar", "bihibar", "sukrabar", "sanibar",
+    "dhanyabad", "namaste", "kripaya", "ramro", "bhanuhos", "bhannuhos", "madat",
+    "samaya", "ahile", "milcha", "maile", "arko", "malum", "madhyam", "chahincha",
+    "huncha", "bujhe", "pugyo", "vaneko", "vannu",
+}
+
 
 def _resolve_message_language(content: str, llm_reported: str | None) -> str | None:
     if _DEVANAGARI_RE.search(content):
         return ConversationLanguage.NE_DEVA.value
+
+    words = _WORD_RE.findall(content)
+    if len(words) == 1 and words[0].lower() in _AMBIGUOUS_GREETING_TOKENS:
+        # Too little real signal to decide anything from — never locks,
+        # never counts toward (or against) an existing streak.
+        return None
+
+    roman_signal_count = sum(1 for w in words if w.lower() in _ROMAN_NEPALI_WORDS)
+    if roman_signal_count >= 2:
+        return ConversationLanguage.NE_ROMAN.value
+
     if llm_reported == ConversationLanguage.NE_DEVA.value:
         # Live testing also caught the LLM claiming "ne_deva" for a message
         # that provably contains no Devanagari at all (the same anchoring
@@ -594,6 +651,7 @@ def _handle_provider_failure(
     conversation_id: uuid.UUID,
     content: str,
     external_message_id: str | None,
+    force_language: str | None = None,
 ) -> dict:
     """Urgent fix (real 500 found live, PHASE_STATUS.md): the LLM/embedding
     provider call failed even after its own internal retries
@@ -613,7 +671,7 @@ def _handle_provider_failure(
     honestly-labeled reason (`is_provider_failure`, `_handoff_reason`) so
     staff reviewing handoffs later see the real cause, not a fabricated
     "customer asked for a human"."""
-    language = conversation.detected_language
+    language = force_language or conversation.detected_language
     handoff_service.maybe_create_handoff(
         db, business_id=business_id, conversation_id=conversation_id,
         intent=ConversationIntent.UNKNOWN, best_similarity=None, is_provider_failure=True,
@@ -647,6 +705,7 @@ def _handle_provider_failure(
         "response": response_text,
         "customer_message_id": customer_message.id,
         "agent_message_id": agent_message.id,
+        "detected_language": language,
     }
 
 
@@ -701,6 +760,10 @@ def _handle_premium_test_message(
         "response": response_text,
         "customer_message_id": customer_message.id,
         "agent_message_id": agent_message.id,
+        # Phase 34's synthetic test trigger never loads a real Conversation
+        # here -- no lock to report, and voice.py's TTS-language routing
+        # already treats None as "speak it in English."
+        "detected_language": None,
     }
 
 
@@ -711,6 +774,7 @@ def handle_incoming_message(
     business_id: uuid.UUID,
     content: str,
     external_message_id: str | None = None,
+    force_language: str | None = None,
 ) -> dict | None:
     """The full orchestration flow for one customer message: load context (Phase
     7) -> knowledge search (Phase 6) -> classify intent + draft response + extract
@@ -726,6 +790,16 @@ def handle_incoming_message(
     prior caller (website widget, the direct testing endpoint) leaves this
     None, unaffected.
 
+    `force_language` (Phase 43h): optional — only the widget's voice-message
+    route passes this, and only when the customer's SPOKEN input was detected
+    as Nepali (always "ne_roman"). Overrides both what the LLM is told to
+    write in and every deterministic sentence THIS turn renders in, regardless
+    of what conversation.detected_language's own Phase 25/25b lock says —
+    never mutates the persisted lock itself, so a later TYPED message still
+    sees exactly the lock it would have without this turn ever happening.
+    None (every typed-text caller) means completely unchanged Phase 25b
+    behavior.
+
     Returns None if the conversation doesn't exist / isn't this business's (the
     route turns that into a 404, same IDOR-safe pattern as every prior phase).
     """
@@ -733,10 +807,19 @@ def handle_incoming_message(
     if conversation is None:
         return None
 
+    # Urgent perf investigation (real 12-14s turns reported live): per-stage
+    # wall-clock timing for one turn, logged as one structured line so it's
+    # queryable the same way Phase 31's llm_duration_ms already is — never
+    # printed inline/blocking, just wraps each stage that was a live suspect
+    # (context assembly, knowledge search, the LLM call itself).
+    _t0 = time.perf_counter()
+
     # Fold in anything that aged out since the last turn so this turn's context
     # stays bounded (Phase 7) rather than growing with every message.
     maybe_summarize_conversation(db, conversation_id=conversation_id, business_id=business_id)
+    _t1 = time.perf_counter()
     context = assemble_context(db, conversation_id=conversation_id, business_id=business_id)
+    _t2 = time.perf_counter()
 
     business = db.get(Business, business_id)
 
@@ -759,17 +842,32 @@ def handle_incoming_message(
     # this can only ever catch a real LLM/embedding provider failure, never
     # mask an unrelated bug in knowledge search or classification itself.
     try:
+        _t3 = time.perf_counter()
         query_vector = get_embedding_provider().embed([content])[0]
+        _t4 = time.perf_counter()
         knowledge_results = knowledge_service.search_chunks(
             db, business_id=business_id, query_vector=query_vector, top_k=KNOWLEDGE_TOP_K
         )
+        _t5 = time.perf_counter()
         classification = classify_and_respond(
             business=business,
             context=context,
             knowledge_results=knowledge_results,
             customer_message=content,
             services=services,
-            locked_language=conversation.detected_language,
+            locked_language=force_language or conversation.detected_language,
+        )
+        _t6 = time.perf_counter()
+        logger.info(
+            "conversation turn stage timing",
+            extra={
+                "turn_summarize_ms": round((_t1 - _t0) * 1000, 1),
+                "turn_context_assembly_ms": round((_t2 - _t1) * 1000, 1),
+                "turn_embed_ms": round((_t4 - _t3) * 1000, 1),
+                "turn_knowledge_search_ms": round((_t5 - _t4) * 1000, 1),
+                "turn_llm_chat_ms": round((_t6 - _t5) * 1000, 1),
+                "turn_total_pre_dispatch_ms": round((_t6 - _t0) * 1000, 1),
+            },
         )
     except RuntimeError:
         logger.exception(
@@ -784,6 +882,7 @@ def handle_incoming_message(
             conversation_id=conversation_id,
             content=content,
             external_message_id=external_message_id,
+            force_language=force_language,
         )
     intent, response_text = classification.intent, classification.response
 
@@ -793,12 +892,27 @@ def handle_incoming_message(
     # this turn (dispatch branches, contact-update/handoff addenda) renders
     # in, resolved deterministically from the customer's message, never left
     # to the LLM to remember on its own. See _resolve_locked_language.
-    message_language = _resolve_message_language(content, classification.message_language)
-    # Phase 25b: an explicit, unambiguous "switch to X" request (as opposed to
-    # passive drift) overrides the lock immediately, this same turn — see
-    # _resolve_locked_language's docstring.
-    is_explicit_language_switch = classification.language_switch_request in _VALID_LANGUAGES
-    language = _resolve_locked_language(conversation, message_language, classification.language_switch_request)
+    #
+    # Phase 43h: force_language (a voice turn whose SPOKEN input was detected
+    # as Nepali) bypasses this resolution/lock-mutation step ENTIRELY, not
+    # just its result — a voice transcript is real Devanagari text (Deepgram's
+    # Nepali STT always transcribes to that script), and letting it feed
+    # _resolve_message_language/_resolve_locked_language as-is would silently
+    # shift conversation.detected_language to ne_deva off the back of one
+    # voice turn, changing how a LATER TYPED message renders even though the
+    # customer never typed anything Nepali. force_language is used only for
+    # THIS turn's own rendering; the persisted lock — and every typed-text
+    # caller, which never sets force_language — is completely untouched.
+    if force_language:
+        language = force_language
+        is_explicit_language_switch = False
+    else:
+        message_language = _resolve_message_language(content, classification.message_language)
+        # Phase 25b: an explicit, unambiguous "switch to X" request (as opposed
+        # to passive drift) overrides the lock immediately, this same turn —
+        # see _resolve_locked_language's docstring.
+        is_explicit_language_switch = classification.language_switch_request in _VALID_LANGUAGES
+        language = _resolve_locked_language(conversation, message_language, classification.language_switch_request)
 
     # Phase 23 urgent fix: a customer volunteering their name/email/phone
     # mid-conversation (e.g. an anonymous widget "Website Visitor" who never
@@ -1148,4 +1262,9 @@ def handle_incoming_message(
         "response": response_text,
         "customer_message_id": customer_message.id,
         "agent_message_id": agent_message.id,
+        # Phase 43b: the real, just-updated Phase 25 lock for THIS turn --
+        # voice.py uses it to decide whether Aura TTS can actually speak the
+        # reply (English) or has to fall back to a text-only Nepali reply
+        # with a spoken caveat (see _TTS_LANGUAGES there).
+        "detected_language": conversation.detected_language,
     }

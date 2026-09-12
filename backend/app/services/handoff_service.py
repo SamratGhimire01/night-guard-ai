@@ -174,14 +174,23 @@ def maybe_create_handoff(
 
 
 def list_handoffs(
-    db: Session, *, business_id: uuid.UUID, status_filter: Literal["open", "resolved", "all"] = "open"
+    db: Session,
+    *,
+    business_id: uuid.UUID,
+    status_filter: Literal["open", "resolved", "all"] = "open",
+    limit: int = 50,
+    offset: int = 0,
 ) -> list[HumanHandoff]:
+    """limit/offset — this endpoint had none at all (genuinely unbounded,
+    unlike every other list endpoint since Phase 29's audit); added while
+    building the real Human Handoffs dashboard page rather than shipping a
+    second unbounded list."""
     stmt = select(HumanHandoff).where(HumanHandoff.business_id == business_id)
     if status_filter == "open":
         stmt = stmt.where(HumanHandoff.resolved_at.is_(None))
     elif status_filter == "resolved":
         stmt = stmt.where(HumanHandoff.resolved_at.is_not(None))
-    stmt = stmt.order_by(HumanHandoff.created_at.desc())
+    stmt = stmt.order_by(HumanHandoff.created_at.desc()).limit(limit).offset(offset)
     return list(db.execute(stmt).scalars())
 
 

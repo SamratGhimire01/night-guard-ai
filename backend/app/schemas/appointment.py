@@ -49,3 +49,18 @@ class AppointmentRead(BaseModel):
     status: AppointmentStatus
     created_at: datetime
     group_booking_id: uuid.UUID | None
+
+
+class AppointmentListItem(AppointmentRead):
+    """GET /appointments only — same fields as AppointmentRead plus the
+    denormalized names the dashboard's Appointments page needs to render a
+    table (customer/service/staff) without the client fetching a full,
+    separately-unbounded customer list just to build a name lookup (there is
+    no GET /customers list endpoint at all, deliberately not added for this —
+    see the route). Resolved via a single follow-up query scoped to just the
+    IDs present on this one page (bounded by the same limit as the page
+    itself), not a per-row query."""
+
+    customer_name: str
+    service_name: str | None
+    staff_name: str | None

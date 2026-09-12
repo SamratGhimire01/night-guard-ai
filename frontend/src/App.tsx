@@ -6,11 +6,15 @@ import RequireAuth from './auth/RequireAuth'
 import LandingPage from './pages/LandingPage'
 import AuthPage from './pages/AuthPage'
 import DashboardLayout from './pages/dashboard/DashboardLayout'
-import PlaceholderPage from './pages/dashboard/PlaceholderPage'
+import AppointmentsPage from './pages/dashboard/AppointmentsPage'
 import ServicesPage from './pages/dashboard/ServicesPage'
 import StaffPage from './pages/dashboard/StaffPage'
 import HoursPage from './pages/dashboard/HoursPage'
 import KnowledgePage from './pages/dashboard/KnowledgePage'
+import TrainingRoomPage from './pages/dashboard/TrainingRoomPage'
+import HandoffsPage from './pages/dashboard/HandoffsPage'
+import FollowUpsPage from './pages/dashboard/FollowUpsPage'
+import OverviewPage from './pages/dashboard/OverviewPage'
 import ReportsPage from './pages/dashboard/ReportsPage'
 import WebsiteWidgetPage from './pages/dashboard/WebsiteWidgetPage'
 import GoogleCalendarPage from './pages/dashboard/GoogleCalendarPage'
@@ -33,16 +37,16 @@ export default function App() {
 
             <Route element={<RequireAuth />}>
               <Route path="/dashboard" element={<DashboardLayout />}>
-                <Route index element={<PlaceholderPage title="Overview" />} />
-                <Route path="appointments" element={<PlaceholderPage title="Appointments" />} />
+                <Route index element={<OverviewPage />} />
+                <Route path="appointments" element={<AppointmentsPage />} />
                 <Route path="services" element={<ServicesPage />} />
                 <Route path="staff" element={<StaffPage />} />
                 <Route path="hours" element={<HoursPage />} />
                 <Route path="knowledge" element={<KnowledgePage />} />
-                <Route path="training" element={<PlaceholderPage title="AI Training Room" />} />
-                <Route path="handoffs" element={<PlaceholderPage title="Human Handoffs" />} />
+                <Route path="training" element={<TrainingRoomPage />} />
+                <Route path="handoffs" element={<HandoffsPage />} />
                 <Route path="reports" element={<ReportsPage />} />
-                <Route path="followups" element={<PlaceholderPage title="Follow-ups" />} />
+                <Route path="followups" element={<FollowUpsPage />} />
                 <Route path="widget" element={<WebsiteWidgetPage />} />
                 <Route path="google-calendar" element={<GoogleCalendarPage />} />
                 <Route path="settings" element={<SettingsPage />} />

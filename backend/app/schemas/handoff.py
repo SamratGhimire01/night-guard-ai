@@ -16,6 +16,16 @@ class HumanHandoffRead(BaseModel):
     created_at: datetime
 
 
+class HumanHandoffListItem(HumanHandoffRead):
+    """GET /handoffs only — adds the customer name/channel a real queue view
+    needs, resolved via one bounded follow-up query (see the route), same
+    pattern as AppointmentListItem — never a bare conversation_id UUID with
+    no context for who's waiting."""
+
+    customer_name: str
+    channel: str
+
+
 class HumanHandoffUpdate(BaseModel):
     """The only real transition today is marking a handoff resolved — there's
     no "reopen"/"unresolve" action, so this deliberately only accepts that one

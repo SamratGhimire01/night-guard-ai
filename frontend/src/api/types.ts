@@ -50,6 +50,7 @@ export interface BusinessUpdate {
   email?: string | null
   website?: string | null
   timezone?: string
+  currency?: string
   tone?: string | null
   brand_color?: string
   logo_url?: string | null
@@ -59,6 +60,11 @@ export interface PlanRead {
   business_id: string
   plan: 'free' | 'premium'
   features: string[]
+}
+
+export interface BusinessReferenceData {
+  timezones: string[]
+  currencies: string[]
 }
 
 export interface GoogleCalendarStatus {
@@ -98,6 +104,35 @@ export interface StaffRead {
 export interface StaffWrite {
   name: string
   role: string
+}
+
+export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed'
+
+export interface AppointmentListItem {
+  id: string
+  business_id: string
+  customer_id: string
+  service_id: string
+  staff_id: string | null
+  scheduled_at: string
+  duration_minutes: number
+  status: AppointmentStatus
+  created_at: string
+  group_booking_id: string | null
+  customer_name: string
+  service_name: string | null
+  staff_name: string | null
+}
+
+export interface HandoffListItem {
+  id: string
+  conversation_id: string
+  reason: string
+  status: string
+  resolved_at: string | null
+  created_at: string
+  customer_name: string
+  channel: string
 }
 
 export interface BusinessHourDay {

@@ -376,10 +376,15 @@ def test_unknown_phone_number_id_is_acked_and_skipped_not_a_crash():
 # ---------------------------------------------------------------------------
 
 
-def test_send_message_gracefully_simulates_when_no_access_token_configured():
+def test_send_message_gracefully_simulates_when_no_access_token_configured(monkeypatch):
     from app.services.channels.whatsapp import WhatsAppChannelAdapter
 
-    assert settings.whatsapp_access_token == ""  # true in this test/dev environment — no real Meta account
+    # Force the empty-token state directly rather than asserting on the
+    # ambient settings.whatsapp_access_token — a real token configured in
+    # this environment (dev or prod) must not make this test flaky/fail,
+    # since the fallback behavior being tested applies whenever unset,
+    # regardless of what happens to be in .env right now.
+    monkeypatch.setattr(settings, "whatsapp_access_token", "")
     adapter = WhatsAppChannelAdapter()
     detail = adapter.send_message(to="15551234567", text="hello", phone_number_id="whatever")
     assert "simulated" in detail

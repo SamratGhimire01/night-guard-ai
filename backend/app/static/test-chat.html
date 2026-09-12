@@ -147,6 +147,45 @@
   }
   button#send:hover { background: var(--purple-dim); }
   button#send:disabled { opacity: 0.5; cursor: not-allowed; }
+  button#mic {
+    background: var(--agent-bubble);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 44px;
+    flex: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  button#mic svg { width: 18px; height: 18px; }
+  button#mic.ng-recording { background: #ef4444; border-color: #ef4444; color: #fff; animation: ng-pulse 1.2s infinite; }
+  button#mic:disabled { opacity: 0.5; cursor: not-allowed; }
+  @keyframes ng-pulse { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
+
+  #typing {
+    display: none;
+    align-self: flex-start;
+    background: var(--agent-bubble);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    border-bottom-left-radius: 4px;
+    padding: 10px 14px;
+    width: fit-content;
+  }
+  #typing.ng-visible { display: block; }
+  #typing span {
+    display: inline-block;
+    width: 6px; height: 6px;
+    margin: 0 1px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    animation: ng-typing 1.2s infinite;
+  }
+  #typing span:nth-child(2) { animation-delay: .15s; }
+  #typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes ng-typing { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-3px); opacity: 1; } }
 </style>
 </head>
 <body>
@@ -166,9 +205,16 @@
   </div>
 
   <div id="chat"></div>
+  <div id="typing"><span></span><span></span><span></span></div>
 
   <form id="composer">
     <input id="content" placeholder="Type a message..." autocomplete="off">
+    <button id="mic" type="button" title="Start voice message" aria-label="Start voice message">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" stroke="currentColor" stroke-width="2"/>
+        <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <button id="send" type="submit">Send</button>
   </form>
 
@@ -179,6 +225,8 @@
   const form = document.getElementById('composer');
   const contentInput = document.getElementById('content');
   const sendBtn = document.getElementById('send');
+  const micBtn = document.getElementById('mic');
+  const typingEl = document.getElementById('typing');
   const backendUrlInput = document.getElementById('backendUrl');
   const businessIdInput = document.getElementById('businessId');
   const statusEl = document.getElementById('status');
@@ -203,6 +251,21 @@
     chat.scrollTop = chat.scrollHeight;
   }
 
+  // ---- Phase 43h: real feedback shown immediately after ANY message is
+  // sent (typed or voice), removed the moment the real response arrives --
+  // same behavior widget.js already has for typed chat (Phase 38), added
+  // here since this page never had it.
+  function setTyping(visible) {
+    typingEl.classList.toggle('ng-visible', visible);
+    if (visible) chat.scrollTop = chat.scrollHeight;
+  }
+
+  function setSending(disabled) {
+    contentInput.disabled = disabled;
+    sendBtn.disabled = disabled;
+    micBtn.disabled = disabled;
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const content = contentInput.value.trim();
@@ -216,7 +279,8 @@
 
     addMessage('customer', content);
     contentInput.value = '';
-    sendBtn.disabled = true;
+    setSending(true);
+    setTyping(true);
     statusEl.textContent = 'Sending...';
 
     try {
@@ -241,9 +305,128 @@
       addMessage('system', 'Network error: ' + err.message);
       statusEl.textContent = 'Network error';
     } finally {
-      sendBtn.disabled = false;
+      setTyping(false);
+      setSending(false);
       contentInput.focus();
     }
+  });
+
+  // ---- Phase 43h: push-to-talk voice input, same backend path widget.js
+  // uses (POST /api/v1/widget/{id}/voice-message) -- click the mic to
+  // record ONE clip, click again to stop and upload it. No separate voice
+  // logic: the transcript goes through the exact same orchestrator turn as
+  // typed text, over the SAME sessionToken, and the reply renders as a
+  // normal text bubble. No live call, no spoken audio output.
+
+  let mediaRecorder = null;
+  let mediaStream = null;
+  let recordedChunks = [];
+  let isRecording = false;
+
+  function stopMediaStream() {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((track) => track.stop());
+      mediaStream = null;
+    }
+  }
+
+  async function sendVoiceRecording(blob) {
+    const businessId = businessIdInput.value.trim();
+    const backendUrl = backendUrlInput.value.trim().replace(/\/$/, '');
+    setSending(true);
+    setTyping(true);
+    statusEl.textContent = 'Transcribing...';
+
+    const formData = new FormData();
+    formData.append('audio', blob, 'voice-message.webm');
+    if (sessionToken) formData.append('session_token', sessionToken);
+
+    try {
+      const res = await fetch(`${backendUrl}/api/v1/widget/${businessId}/voice-message`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        addMessage('system', `Error ${res.status}: ${errBody}`);
+        statusEl.textContent = `Last request failed (${res.status})`;
+        return;
+      }
+
+      const data = await res.json();
+      if (data.session_token) sessionToken = data.session_token;
+      if (data.transcript) addMessage('customer', data.transcript);
+      addMessage('agent', data.response, data.intent);
+      statusEl.textContent = sessionToken ? 'session: ' + sessionToken.slice(0, 8) + '...' : '';
+    } catch (err) {
+      addMessage('system', 'Network error: ' + err.message);
+      statusEl.textContent = 'Network error';
+    } finally {
+      setTyping(false);
+      setSending(false);
+    }
+  }
+
+  function startRecording() {
+    if (isRecording) return;
+    const businessId = businessIdInput.value.trim();
+    if (!businessId) {
+      statusEl.textContent = 'Set a business_id first.';
+      return;
+    }
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      addMessage('system', 'Voice messages are not supported in this browser.');
+      return;
+    }
+
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => {
+        mediaStream = stream;
+        recordedChunks = [];
+        const options = { mimeType: 'audio/webm;codecs=opus' };
+        try {
+          mediaRecorder = window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(options.mimeType)
+            ? new MediaRecorder(stream, options)
+            : new MediaRecorder(stream);
+        } catch (e) {
+          mediaRecorder = new MediaRecorder(stream);
+        }
+        mediaRecorder.addEventListener('dataavailable', (event) => {
+          if (event.data && event.data.size > 0) recordedChunks.push(event.data);
+        });
+        mediaRecorder.addEventListener('stop', () => {
+          stopMediaStream();
+          const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+          recordedChunks = [];
+          if (blob.size > 0) sendVoiceRecording(blob);
+        });
+        mediaRecorder.start();
+        isRecording = true;
+        micBtn.classList.add('ng-recording');
+        micBtn.setAttribute('aria-label', 'Stop recording');
+      })
+      .catch(() => {
+        addMessage('system', 'Microphone access was denied, so voice messages are not available.');
+      });
+  }
+
+  function stopRecording() {
+    if (!isRecording) return;
+    isRecording = false;
+    micBtn.classList.remove('ng-recording');
+    micBtn.setAttribute('aria-label', 'Start voice message');
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    } else {
+      stopMediaStream();
+    }
+  }
+
+  micBtn.addEventListener('click', () => {
+    if (isRecording) stopRecording();
+    else startRecording();
   });
 </script>
 </body>

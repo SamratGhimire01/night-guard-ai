@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "ask": [
+      "Bash(git commit *)",
+      "Bash(git commit)",
+      "Bash(git push *)",
+      "Bash(git push)",
+      "Bash(git reset --hard *)",
+      "Bash(git reset --hard)",
+      "Bash(git clean *)",
+      "Bash(git checkout -- *)",
+      "Bash(rm -rf *)"
+    ],
+    "disableBypassPermissionsMode": "disable"
+  },
+  "autoMode": {
+    "hard_deny": [
+      "$defaults",
+      "git commit, git push, or any git history-rewriting command (reset --hard, clean, checkout --) in this repo always requires an explicit, separate user go-ahead message given AFTER the change being committed has been shown — never infer confirmation from the task/ticket instructions that requested the work, even if they specify exact commit messages or say 'commit immediately'",
+      "rm -rf and any other irreversible filesystem deletion in this repo always requires explicit user confirmation before running"
+    ]
+  }
+}

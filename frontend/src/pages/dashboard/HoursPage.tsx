@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import {
   ActionIcon,
   Button,
+  Center,
   Checkbox,
   Divider,
   Group,
+  Loader,
   Stack,
   Table,
   Text,
@@ -191,6 +193,15 @@ export default function HoursPage() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
+              {loading && (
+                <Table.Tr>
+                  <Table.Td colSpan={4}>
+                    <Center py="sm">
+                      <Loader size="sm" />
+                    </Center>
+                  </Table.Td>
+                </Table.Tr>
+              )}
               {!loading && exceptions.length === 0 && (
                 <Table.Tr>
                   <Table.Td colSpan={4}>

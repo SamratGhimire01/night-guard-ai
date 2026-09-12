@@ -65,10 +65,15 @@ export default function WebsiteWidgetPage() {
           {business.logo_url ? ' · Logo set' : ' · No logo set (Settings)'}
         </Alert>
         <Paper withBorder radius="md" style={{ position: 'relative', height: 420, overflow: 'hidden' }}>
+          {/* allow-forms: the widget's message box is a real <form>; without
+              this the browser silently blocks its submit event and typing a
+              message here does nothing. Still no allow-same-origin (keeps
+              the preview's origin opaque/sandboxed — mic access for voice
+              still requires the separate widget-demo.html page, Phase 38). */}
           <iframe
             title="Website widget preview"
             srcDoc={previewHtml}
-            sandbox="allow-scripts"
+            sandbox="allow-scripts allow-forms"
             style={{ width: '100%', height: '100%', border: 'none' }}
           />
         </Paper>

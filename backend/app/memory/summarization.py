@@ -53,7 +53,22 @@ def maybe_summarize_conversation(
     LLM (Phase 6's ChatProvider — never a hardcoded Azure call), and advances
     summarized_message_count so those messages are never re-summarized on a later
     call. No-op if not yet due, or if nothing new needs summarizing. None if the
-    conversation doesn't exist / isn't this business's."""
+    conversation doesn't exist / isn't this business's.
+
+    Urgent perf fix (real live evidence, PHASE_STATUS.md): once a conversation
+    passes `threshold`, `boundary` (= total - keep_recent) advances by exactly
+    2 on every subsequent turn (one customer + one agent message), which is
+    also exactly how much `summarized_message_count` advances each time this
+    fires — so the OLD unconditional `boundary <= summarized_message_count`
+    check meant this fired a REAL, full extra LLM completion call on EVERY
+    SINGLE TURN forever, for any conversation once past 20 messages, not just
+    "periodically" as the docstring above already promised. Measured live:
+    this one call alone took 12.8-19.7s per turn, dwarfing the main
+    classification call (5.9-15.3s) and the embedding call (0.6-4.8s)
+    combined — the actual dominant cause of the reported 12-14s+ turns.
+    Batching the trigger on a real backlog (not just "2 new old messages")
+    restores the docstring's actual intent: fold in a real batch every few
+    turns, not an LLM call every single turn."""
     conversation = get_conversation(db, conversation_id=conversation_id, business_id=business_id)
     if conversation is None:
         return None
@@ -65,7 +80,8 @@ def maybe_summarize_conversation(
         return conversation
 
     boundary = total - keep_recent
-    if boundary <= conversation.summarized_message_count:
+    backlog = boundary - conversation.summarized_message_count
+    if backlog < keep_recent:
         return conversation
 
     newly_old = list(

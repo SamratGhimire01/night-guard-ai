@@ -1,7 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Alert, Badge, Button, Group, NumberInput, Paper, SimpleGrid, Stack, Tabs, Text, Title } from '@mantine/core'
+import {
+  Alert,
+  Badge,
+  Button,
+  Center,
+  Group,
+  Loader,
+  NumberInput,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Tabs,
+  Text,
+  Title,
+} from '@mantine/core'
 import { BarChart, PieChart } from '@mantine/charts'
 import { notifications } from '@mantine/notifications'
 import { apiFetch, ApiError, downloadFile } from '../../api/client'
@@ -186,6 +200,12 @@ function DailyReportPanel({ business }: { business: BusinessRead | null }) {
         </Button>
       </Group>
 
+      {loading && !report && (
+        <Center py="xl">
+          <Loader />
+        </Center>
+      )}
+
       {report && !loading && (
         <>
           <SimpleGrid cols={{ base: 2, sm: 5 }}>
@@ -216,7 +236,7 @@ function DailyReportPanel({ business }: { business: BusinessRead | null }) {
                 Status mix
               </Text>
               {statusData.length > 0 ? (
-                <PieChart data={statusData} withLabels withTooltip size={220} />
+                <PieChart data={statusData} withLabels withTooltip withLegend size={220} />
               ) : (
                 <Text c="dimmed" ta="center" py="xl">
                   No activity to chart for this day.
@@ -290,6 +310,12 @@ function MonthlyReportPanel() {
           Download Excel
         </Button>
       </Group>
+
+      {loading && !report && (
+        <Center py="xl">
+          <Loader />
+        </Center>
+      )}
 
       {report && !loading && (
         <>
@@ -422,6 +448,12 @@ function YearlyReportPanel() {
           </Button>
         )}
       </Group>
+
+      {loading && !report && (
+        <Center py="xl">
+          <Loader />
+        </Center>
+      )}
 
       {report && !loading && (
         <>

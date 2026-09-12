@@ -38,10 +38,11 @@ def get_test_chat_page() -> FileResponse:
 @router.get("/widget-demo", include_in_schema=False)
 def get_widget_demo_page() -> FileResponse:
     """Dev/test-only page that loads the REAL widget.js as a top-level page
-    (not a sandboxed iframe) -- needed for a real live microphone test of
-    Phase 43's voice call, since the dashboard's own widget preview is a
-    sandboxed srcDoc iframe that cannot be granted microphone access. Not
-    for production exposure -- see comment at top of widget-demo.html."""
+    (not a sandboxed iframe) -- needed for a real live microphone test of the
+    push-to-talk voice input (Phase 43h), since the dashboard's own widget
+    preview is a sandboxed srcDoc iframe that cannot be granted microphone
+    access. Not for production exposure -- see comment at top of
+    widget-demo.html."""
     return FileResponse(_WIDGET_DEMO_PATH, media_type="text/html")
 
 

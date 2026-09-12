@@ -13,6 +13,7 @@
   var apiBase = new URL(scriptEl.src).origin;
   var configEndpoint = apiBase + "/api/v1/widget/" + encodeURIComponent(businessId) + "/config";
   var messagesEndpoint = apiBase + "/api/v1/widget/" + encodeURIComponent(businessId) + "/messages";
+  var voiceMessageEndpoint = apiBase + "/api/v1/widget/" + encodeURIComponent(businessId) + "/voice-message";
   var storageKey = "nightguard_widget_session_" + businessId;
 
   // Defaults used until (or if) the real branding fetch below resolves —
@@ -85,15 +86,8 @@
     "#ng-widget-voice{border:none;background:none;color:var(--ng-color);padding:0 4px 0 14px;cursor:pointer;}" +
     "#ng-widget-voice:disabled{opacity:.4;cursor:default;}" +
     "#ng-widget-voice svg{width:19px;height:19px;}" +
-    "#ng-widget-callbar{display:none;align-items:center;justify-content:space-between;gap:10px;" +
-    "padding:13px 14px;border-top:1px solid #e8e8ea;background:#fff;font-size:12.5px;color:#444;}" +
-    "#ng-widget-callbar.ng-visible{display:flex;}" +
-    "#ng-widget-call-status{display:flex;align-items:center;gap:8px;}" +
-    "#ng-widget-call-dot{width:8px;height:8px;border-radius:50%;background:var(--ng-color);flex:none;" +
-    "animation:ng-pulse 1.2s infinite;}" +
-    "@keyframes ng-pulse{0%,100%{opacity:.35;}50%{opacity:1;}}" +
-    "#ng-widget-endcall{border:none;background:#ef4444;color:#fff;border-radius:14px;padding:6px 12px;" +
-    "font-size:12px;cursor:pointer;flex:none;}" +
+    "#ng-widget-voice.ng-recording{color:#ef4444;animation:ng-pulse 1.2s infinite;}" +
+    "@keyframes ng-pulse{0%,100%{opacity:.4;}50%{opacity:1;}}" +
     "#ng-widget-branding{text-align:center;font-size:10px;color:#b0b3b8;padding:4px 0 8px;background:#fff;}" +
     "@media (max-width:400px){#ng-widget-panel{width:calc(100vw - 32px);right:-4px;}}";
   document.head.appendChild(style);
@@ -123,13 +117,9 @@
     '<div id="ng-widget-header-status">Typically replies in a few minutes</div></div></div>' +
     '<div id="ng-widget-messages"></div>' +
     '<div id="ng-widget-typing"><span></span><span></span><span></span></div>' +
-    '<div id="ng-widget-callbar">' +
-    '<div id="ng-widget-call-status"><span id="ng-widget-call-dot"></span><span id="ng-widget-call-text">Listening&hellip;</span></div>' +
-    '<button id="ng-widget-endcall" type="button">End call</button>' +
-    "</div>" +
     '<form id="ng-widget-form">' +
     '<input id="ng-widget-input" type="text" placeholder="Type a message..." autocomplete="off" />' +
-    '<button id="ng-widget-voice" type="button" aria-label="Start voice call">' + MIC_ICON + "</button>" +
+    '<button id="ng-widget-voice" type="button" aria-label="Start voice message">' + MIC_ICON + "</button>" +
     '<button id="ng-widget-send" type="submit" aria-label="Send">' + SEND_ICON + "</button>" +
     "</form>" +
     '<div id="ng-widget-branding">Powered by Night Guard AI</div>' +
@@ -144,6 +134,7 @@
   var formEl = root.querySelector("#ng-widget-form");
   var inputEl = root.querySelector("#ng-widget-input");
   var sendEl = root.querySelector("#ng-widget-send");
+  var voiceBtn = root.querySelector("#ng-widget-voice");
   var headerNameEl = root.querySelector("#ng-widget-header-name");
   var logoEl = root.querySelector("#ng-widget-logo");
 
@@ -188,6 +179,12 @@
          still gets a fully working, generically-branded widget */
     });
 
+  function setSending(disabled) {
+    inputEl.disabled = disabled;
+    sendEl.disabled = disabled;
+    voiceBtn.disabled = disabled;
+  }
+
   formEl.addEventListener("submit", function (event) {
     event.preventDefault();
     var content = inputEl.value.trim();
@@ -195,8 +192,7 @@
 
     appendMessage(content, "customer");
     inputEl.value = "";
-    inputEl.disabled = true;
-    sendEl.disabled = true;
+    setSending(true);
     setTyping(true);
 
     fetch(messagesEndpoint, {
@@ -218,56 +214,27 @@
         appendMessage("Sorry, something went wrong. Please try again in a moment.", "agent");
       })
       .finally(function () {
-        inputEl.disabled = false;
-        sendEl.disabled = false;
+        setSending(false);
         inputEl.focus();
       });
   });
 
-  // ---- Phase 43: in-app voice call. Speech-to-text/text-to-speech happen
-  // entirely server-side (Deepgram) -- this code only ever streams raw mic
-  // audio out and plays synthesized speech audio back. The transcribed text
-  // and the agent's reply are the SAME orchestrator turn the typed chat
-  // above produces, rendered into the SAME #ng-widget-messages list, over
-  // the SAME session_token -- so switching between voice and typing
-  // mid-conversation is just "which button you press next," not a separate
-  // mode with separate memory. ----
+  // ---- Phase 43h: push-to-talk voice input. Click the mic to start
+  // recording (MediaRecorder), click it again to stop -- the ONE recorded
+  // clip is uploaded as a single blob to the backend, which transcribes it
+  // (Deepgram pre-recorded STT) and runs it through the EXACT SAME
+  // orchestrator turn typed text does (widget_service.send_widget_message).
+  // The reply always comes back as plain text and renders into the SAME
+  // #ng-widget-messages list, over the SAME session_token as typed chat --
+  // there is no live call, no persistent connection, and no spoken audio
+  // output anywhere in this flow. ----
 
-  var voiceBtn = root.querySelector("#ng-widget-voice");
-  var callBarEl = root.querySelector("#ng-widget-callbar");
-  var callTextEl = root.querySelector("#ng-widget-call-text");
-  var endCallEl = root.querySelector("#ng-widget-endcall");
-
-  var voiceWs = null;
   var mediaRecorder = null;
   var mediaStream = null;
-  var inCall = false;
+  var recordedChunks = [];
+  var isRecording = false;
 
-  function setCallStatus(text) {
-    callTextEl.textContent = text;
-  }
-
-  function enterCallUI() {
-    inCall = true;
-    formEl.style.display = "none";
-    callBarEl.classList.add("ng-visible");
-  }
-
-  function exitCallUI() {
-    inCall = false;
-    formEl.style.display = "";
-    callBarEl.classList.remove("ng-visible");
-  }
-
-  function stopMedia() {
-    if (mediaRecorder) {
-      try {
-        if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
-      } catch (e) {
-        /* already stopped */
-      }
-      mediaRecorder = null;
-    }
+  function stopMediaStream() {
     if (mediaStream) {
       mediaStream.getTracks().forEach(function (track) {
         track.stop();
@@ -276,92 +243,39 @@
     }
   }
 
-  function endCall() {
-    if (!inCall && !voiceWs) return;
-    stopMedia();
-    if (voiceWs) {
-      var ws = voiceWs;
-      voiceWs = null;
-      try {
-        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "end_call" }));
-      } catch (e) {
-        /* ignore */
-      }
-      try {
-        ws.close();
-      } catch (e) {
-        /* ignore */
-      }
-    }
-    exitCallUI();
+  function sendVoiceRecording(blob) {
+    setSending(true);
+    setTyping(true);
+
+    var formData = new FormData();
+    formData.append("audio", blob, "voice-message.webm");
+    var token = getSessionToken();
+    if (token) formData.append("session_token", token);
+
+    fetch(voiceMessageEndpoint, { method: "POST", body: formData })
+      .then(function (res) {
+        if (!res.ok) throw new Error("request failed: " + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        setTyping(false);
+        if (data.session_token) setSessionToken(data.session_token);
+        if (data.transcript) appendMessage(data.transcript, "customer");
+        appendMessage(data.response, "agent");
+      })
+      .catch(function () {
+        setTyping(false);
+        appendMessage("Sorry, something went wrong with that voice message. Please try again.", "agent");
+      })
+      .finally(function () {
+        setSending(false);
+      });
   }
 
-  function playAgentAudio(blob) {
-    var url;
-    try {
-      url = window.URL.createObjectURL(blob);
-    } catch (e) {
-      return;
-    }
-    if (mediaRecorder && mediaRecorder.state === "recording") {
-      try {
-        mediaRecorder.pause();
-      } catch (e) {
-        /* ignore */
-      }
-    }
-    var audio = new Audio(url);
-    function resume() {
-      window.URL.revokeObjectURL(url);
-      if (mediaRecorder && mediaRecorder.state === "paused") {
-        try {
-          mediaRecorder.resume();
-        } catch (e) {
-          /* ignore */
-        }
-      }
-      if (inCall) setCallStatus("Listening...");
-    }
-    audio.addEventListener("ended", resume);
-    audio.addEventListener("error", resume);
-    audio.play().catch(resume);
-  }
-
-  function handleVoiceMessage(event) {
-    if (typeof event.data !== "string") {
-      playAgentAudio(event.data);
-      return;
-    }
-    var msg;
-    try {
-      msg = JSON.parse(event.data);
-    } catch (e) {
-      return;
-    }
-    if (msg.type === "transcript") {
-      appendMessage(msg.text, "customer");
-    } else if (msg.type === "agent_text") {
-      if (msg.session_token) setSessionToken(msg.session_token);
-      appendMessage(msg.text, "agent");
-    } else if (msg.type === "state") {
-      if (msg.value === "listening") setCallStatus("Listening...");
-      else if (msg.value === "thinking") setCallStatus("Thinking...");
-      else if (msg.value === "speaking") setCallStatus("Speaking...");
-    } else if (msg.type === "error") {
-      appendMessage(msg.message || "Sorry, something went wrong with the call.", "agent");
-    } else if (msg.type === "call_ended") {
-      appendMessage(
-        msg.reason === "max_duration" ? "This call reached its time limit and has ended." : "The call has ended.",
-        "agent"
-      );
-      endCall();
-    }
-  }
-
-  function startCall() {
-    if (inCall) return;
-    if (!window.WebSocket || !navigator.mediaDevices || !window.MediaRecorder) {
-      appendMessage("Sorry, voice chat isn't supported in this browser. You can keep typing instead.", "agent");
+  function startRecording() {
+    if (isRecording) return;
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      appendMessage("Sorry, voice messages aren't supported in this browser. You can keep typing instead.", "agent");
       return;
     }
 
@@ -369,52 +283,51 @@
       .getUserMedia({ audio: true })
       .then(function (stream) {
         mediaStream = stream;
-        enterCallUI();
-        setCallStatus("Connecting...");
-
-        var wsUrl =
-          apiBase.replace(/^http/, "ws") + "/api/v1/widget/" + encodeURIComponent(businessId) + "/voice";
-        var token = getSessionToken();
-        if (token) wsUrl += "?session_token=" + encodeURIComponent(token);
-
-        voiceWs = new WebSocket(wsUrl);
-
-        voiceWs.addEventListener("open", function () {
-          setCallStatus("Listening...");
-          var options = { mimeType: "audio/webm;codecs=opus" };
-          try {
-            mediaRecorder = window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(options.mimeType)
-              ? new MediaRecorder(stream, options)
-              : new MediaRecorder(stream);
-          } catch (e) {
-            mediaRecorder = new MediaRecorder(stream);
-          }
-          mediaRecorder.addEventListener("dataavailable", function (event) {
-            if (event.data && event.data.size > 0 && voiceWs && voiceWs.readyState === WebSocket.OPEN) {
-              voiceWs.send(event.data);
-            }
-          });
-          mediaRecorder.start(250);
+        recordedChunks = [];
+        var options = { mimeType: "audio/webm;codecs=opus" };
+        try {
+          mediaRecorder = window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(options.mimeType)
+            ? new MediaRecorder(stream, options)
+            : new MediaRecorder(stream);
+        } catch (e) {
+          mediaRecorder = new MediaRecorder(stream);
+        }
+        mediaRecorder.addEventListener("dataavailable", function (event) {
+          if (event.data && event.data.size > 0) recordedChunks.push(event.data);
         });
-
-        voiceWs.addEventListener("message", handleVoiceMessage);
-
-        voiceWs.addEventListener("close", function () {
-          if (inCall) endCall();
+        mediaRecorder.addEventListener("stop", function () {
+          stopMediaStream();
+          var blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+          recordedChunks = [];
+          if (blob.size > 0) sendVoiceRecording(blob);
         });
-
-        voiceWs.addEventListener("error", function () {
-          if (inCall) {
-            appendMessage("The voice call was disconnected. You can keep typing instead.", "agent");
-            endCall();
-          }
-        });
+        mediaRecorder.start();
+        isRecording = true;
+        voiceBtn.classList.add("ng-recording");
+        voiceBtn.setAttribute("aria-label", "Stop recording");
       })
       .catch(function () {
-        appendMessage("Microphone access was denied, so voice chat isn't available. You can keep typing instead.", "agent");
+        appendMessage(
+          "Microphone access was denied, so voice messages aren't available. You can keep typing instead.",
+          "agent"
+        );
       });
   }
 
-  voiceBtn.addEventListener("click", startCall);
-  endCallEl.addEventListener("click", endCall);
+  function stopRecording() {
+    if (!isRecording) return;
+    isRecording = false;
+    voiceBtn.classList.remove("ng-recording");
+    voiceBtn.setAttribute("aria-label", "Start voice message");
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
+    } else {
+      stopMediaStream();
+    }
+  }
+
+  voiceBtn.addEventListener("click", function () {
+    if (isRecording) stopRecording();
+    else startRecording();
+  });
 })();

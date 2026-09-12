@@ -3,7 +3,9 @@ import {
   ActionIcon,
   Badge,
   Button,
+  Center,
   Group,
+  Loader,
   Modal,
   Stack,
   Table,
@@ -50,7 +52,13 @@ export default function KnowledgePage() {
     load()
   }, [])
 
-  const createForm = useForm({ initialValues: { title: '', content: '' } })
+  const createForm = useForm({
+    initialValues: { title: '', content: '' },
+    validate: {
+      title: (v) => (v.trim() ? null : 'Title is required.'),
+      content: (v) => (v.trim() ? null : 'Content is required.'),
+    },
+  })
   const editForm = useForm({ initialValues: { title: '', content: '' } })
 
   async function handleCreate(values: typeof createForm.values) {
@@ -179,6 +187,15 @@ export default function KnowledgePage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
+            {loading && (
+              <Table.Tr>
+                <Table.Td colSpan={5}>
+                  <Center py="md">
+                    <Loader size="sm" />
+                  </Center>
+                </Table.Td>
+              </Table.Tr>
+            )}
             {!loading && documents.length === 0 && (
               <Table.Tr>
                 <Table.Td colSpan={5}>
@@ -249,8 +266,8 @@ export default function KnowledgePage() {
       <Modal opened={createOpen} onClose={() => setCreateOpen(false)} title="New knowledge document" size="lg">
         <form onSubmit={createForm.onSubmit(handleCreate)}>
           <Stack gap="sm">
-            <TextInput label="Title" required {...createForm.getInputProps('title')} />
-            <Textarea label="Content" required autosize minRows={6} {...createForm.getInputProps('content')} />
+            <TextInput label="Title" withAsterisk {...createForm.getInputProps('title')} />
+            <Textarea label="Content" withAsterisk autosize minRows={6} {...createForm.getInputProps('content')} />
             <Button type="submit">Create as draft</Button>
           </Stack>
         </form>

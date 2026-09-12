@@ -7,13 +7,56 @@ from sqlalchemy.orm import Session
 from app.db.models.conversation import Message
 from app.db.models.integration import Integration
 from app.services.channels.instagram import InstagramChannelAdapter
-from app.services.channels.meta_messaging_webhook import extract_incoming_text_messages
+from app.services.channels.meta_messaging_webhook import (
+    extract_incoming_text_messages as _extract_from_messaging_shape,
+)
 
 logger = logging.getLogger(__name__)
 
 _adapter = InstagramChannelAdapter()
 
 __all__ = ["extract_incoming_text_messages", "process_webhook_payload"]
+
+
+def _extract_from_changes_shape(payload: dict) -> list[dict]:
+    """Instagram-only second envelope shape: Meta's Graph API "Test" button
+    for the `messages` field (confirmed via a real "Send to My Server" test
+    against this endpoint) delivers `entry[].changes[]` with
+    `{"field": "messages", "value": {...}}` instead of `entry[].messaging[]`
+    — the message data (sender/recipient/message.mid/message.text) lives
+    under `value` rather than directly on the event. Same normalized output
+    shape as the shared parser. Messenger's real captured traffic has only
+    ever used `entry[].messaging[]`, so this stays local to Instagram rather
+    than folded into meta_messaging_webhook.py's shared parser."""
+    results = []
+    for entry in payload.get("entry", []) or []:
+        account_id = entry.get("id")
+        for change in entry.get("changes", []) or []:
+            if change.get("field") != "messages":
+                continue
+            value = change.get("value") or {}
+            message = value.get("message") or {}
+            if not message or message.get("is_echo"):
+                continue
+            text = message.get("text")
+            sender_id = (value.get("sender") or {}).get("id")
+            message_id = message.get("mid")
+            if not (account_id and sender_id and message_id and text):
+                continue
+            results.append(
+                {"account_id": account_id, "sender_id": sender_id, "message_id": message_id, "text": text}
+            )
+    return results
+
+
+def extract_incoming_text_messages(payload: dict) -> list[dict]:
+    """Instagram accepts both real envelope shapes Meta has been observed to
+    send for the `messages` field: the shared `entry[].messaging[]` shape
+    (meta_messaging_webhook.py) and `entry[].changes[]` with
+    `{"field": "messages", "value": {...}}` (confirmed via Meta's own "Send
+    to My Server" test tool). Messenger keeps using only the shared parser
+    directly — this dual handling is Instagram-specific."""
+    return _extract_from_messaging_shape(payload) + _extract_from_changes_shape(payload)
 
 
 def _resolve_integration(db: Session, *, ig_account_id: str) -> Integration | None:

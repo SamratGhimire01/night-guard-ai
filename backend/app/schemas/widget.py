@@ -31,6 +31,18 @@ class WidgetMessageResponse(BaseModel):
     intent: str
 
 
+class WidgetVoiceMessageResponse(BaseModel):
+    """Phase 43h: push-to-talk voice input. `session_token`/`intent` are
+    None on the (rare) failure paths that never reach the real orchestrator
+    at all -- a transcription failure, or a recording with no detectable
+    speech in it -- since there's no real turn to report an intent for."""
+
+    session_token: str | None = None
+    transcript: str
+    response: str
+    intent: str | None = None
+
+
 class WidgetConfigResponse(BaseModel):
     """Public branding for the embedded widget — same public-data tier as
     `business_id` itself (already embedded in the business's own public

@@ -98,6 +98,58 @@ def test_business_profile_crud(two_businesses):
     assert reread.json()["languages"] == ["en"]
 
 
+def test_business_profile_settings_page_fields_persist(two_businesses):
+    """Phase — Business Profile Settings page: name/address/phone/email/website/
+    timezone/currency, real end-to-end PATCH + re-fetch, matching the dashboard's
+    own field set exactly."""
+    token_a = two_businesses["token_a"]
+
+    update = client.patch(
+        "/api/v1/business/me",
+        json={
+            "name": "Renamed Dental Clinic",
+            "address": "123 Main St",
+            "phone": "555-1234",
+            "email": "front-desk@example.com",
+            "website": "https://renamed.example",
+            "timezone": "Asia/Kathmandu",
+            "currency": "NPR",
+        },
+        headers=_auth_header(token_a),
+    )
+    assert update.status_code == 200, update.text
+
+    reread = client.get("/api/v1/business/me", headers=_auth_header(token_a)).json()
+    assert reread["name"] == "Renamed Dental Clinic"
+    assert reread["address"] == "123 Main St"
+    assert reread["phone"] == "555-1234"
+    assert reread["email"] == "front-desk@example.com"
+    assert reread["website"] == "https://renamed.example"
+    assert reread["timezone"] == "Asia/Kathmandu"
+    assert reread["currency"] == "NPR"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"email": "not-an-email"},
+        {"timezone": "Mars/Colony_One"},
+        {"currency": "XYZ"},
+    ],
+)
+def test_business_profile_rejects_malformed_settings_fields(two_businesses, body):
+    token_a = two_businesses["token_a"]
+
+    before = client.get("/api/v1/business/me", headers=_auth_header(token_a)).json()
+
+    rejected = client.patch("/api/v1/business/me", json=body, headers=_auth_header(token_a))
+    assert rejected.status_code == 422, rejected.text
+
+    # confirm the rejected request did not mutate anything
+    after = client.get("/api/v1/business/me", headers=_auth_header(token_a)).json()
+    assert after == before
+
+
 def test_service_full_crud_cycle(two_businesses):
     token_a = two_businesses["token_a"]
 

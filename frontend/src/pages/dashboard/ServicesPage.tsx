@@ -3,7 +3,9 @@ import {
   ActionIcon,
   Badge,
   Button,
+  Center,
   Group,
+  Loader,
   Modal,
   MultiSelect,
   NumberInput,
@@ -63,6 +65,14 @@ export default function ServicesPage() {
 
   const form = useForm<ServiceWrite>({
     initialValues: { name: '', description: '', price: '', duration_minutes: 30, staff_id: null },
+    // withAsterisk (visual only, no native "required" attribute) + this
+    // validate config replaces the browser's own "Please fill out this
+    // field" tooltip with a real styled inline Mantine error.
+    validate: {
+      name: (v) => (v.trim() ? null : 'Name is required.'),
+      price: (v) => (v !== '' && Number(v) >= 0 ? null : 'Enter a valid, non-negative price.'),
+      duration_minutes: (v) => (v && Number(v) > 0 ? null : 'Duration must be a positive number of minutes.'),
+    },
   })
 
   function openCreate() {
@@ -182,6 +192,15 @@ export default function ServicesPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
+            {loading && (
+              <Table.Tr>
+                <Table.Td colSpan={6}>
+                  <Center py="md">
+                    <Loader size="sm" />
+                  </Center>
+                </Table.Td>
+              </Table.Tr>
+            )}
             {!loading && services.length === 0 && (
               <Table.Tr>
                 <Table.Td colSpan={6}>
@@ -241,21 +260,22 @@ export default function ServicesPage() {
       <Modal opened={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit service' : 'Add service'}>
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="sm">
-            <TextInput label="Name" required {...form.getInputProps('name')} />
+            <TextInput label="Name" withAsterisk {...form.getInputProps('name')} />
             <Textarea label="Description" autosize minRows={2} {...form.getInputProps('description')} />
             <NumberInput
               label="Price"
-              required
+              withAsterisk
               min={0}
               decimalScale={2}
               fixedDecimalScale
               prefix={`${currency} `}
               value={form.values.price === '' ? '' : Number(form.values.price)}
               onChange={(v) => form.setFieldValue('price', String(v))}
+              error={form.errors.price}
             />
             <NumberInput
               label="Duration (minutes)"
-              required
+              withAsterisk
               min={1}
               {...form.getInputProps('duration_minutes')}
             />
