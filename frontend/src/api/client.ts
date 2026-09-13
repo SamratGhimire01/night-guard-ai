@@ -27,6 +27,15 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     // FormData (file upload) must NOT set Content-Type manually — the browser
     // needs to add its own multipart boundary, which we can't know in advance.
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    // Real, documented ngrok behavior (found live testing the mobile check-in
+    // scanner, Phase 46): ngrok's free tier shows an HTML "you're about to
+    // visit..." interstitial for ANY request with a real browser User-Agent,
+    // including a cross-origin fetch() — not just a top-level page
+    // navigation — which silently breaks every API call when the API itself
+    // is tunneled. This header is ngrok's own documented bypass; harmless
+    // and ignored by every other host (production, plain localhost), so
+    // it's safe to always send rather than only during ngrok testing.
+    'ngrok-skip-browser-warning': 'true',
     ...(options.headers as Record<string, string> | undefined),
   }
   if (token) {

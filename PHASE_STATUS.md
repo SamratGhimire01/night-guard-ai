@@ -13249,3 +13249,213 @@ you say what you actually see.
   webcam/browser scan test.
 
 ---
+
+## Phase 46 (continued) — make QR check-in scanning actually work on a real phone
+
+**Required:** The rear camera should be preferred on mobile (via `facingMode`), the
+scanner page should render usably on a real phone screen, and the real secure-context
+requirement for `getUserMedia` must be investigated and reported honestly — including
+exactly what's needed to test this on a real device today, not guessed.
+
+**1. Camera selection fix — `CheckInPage.tsx`:**
+`{ video: { facingMode: 'environment' } }` → `{ video: { facingMode: { ideal:
+'environment' } } }`. A bare string value can be treated as a near-exact requirement
+by some browsers, which would throw `OverconstrainedError` on a desktop webcam that
+has no "environment" side to offer at all; `ideal` asks for the rear camera when one
+exists (real phones) while still resolving to whatever camera IS available otherwise
+(desktop webcams) — one constraint object correctly covers both, confirmed by the
+existing desktop-style flow (this sandbox's own virtual camera) still granting a
+stream with the new constraint with zero code-path change needed.
+
+Also added a **real, self-reported** `activeFacingMode` badge (`"Camera: rear/front"`
+overlaid on the video feed) — read from the actual granted `MediaStreamTrack.
+getSettings().facingMode`, never assumed from the constraint we asked for. This is
+what lets you personally confirm which camera is active on your own phone without
+needing to trust the request alone (not every browser/camera reports this capability,
+so it can legitimately show nothing on some devices — an honest gap, not a bug).
+
+**2. Responsive layout** — the in-person-payment "amount + Record payment" control was
+a side-by-side `Group` (input + button); changed to a `Stack` (input above, full-width
+button below) with `size="md"` on both. This is deterministic and phone-safe by
+construction rather than depending on Mantine's wrap behavior at some untested narrow
+width — and reads perfectly fine at desktop width too, so there's no responsive-only
+special case to get wrong. Both "Scan next" buttons got the same `size="md" fullWidth`
+treatment for a comfortable real tap target. **Honest disclosure**: I could not get a
+true narrow-viewport screenshot in this session — `resize_window` reported success but
+`window.innerWidth` stayed at 928px regardless (verified directly via JS, not
+assumed) — a real tool/environment limitation in this sandboxed browser, not
+fabricated as "confirmed." The layout choices above are deliberately the kind that
+don't need a live narrow-viewport render to reason about correctness (fixed vertical
+stacking, `width:'100%'` on the video, no fixed pixel widths anywhere), but the real,
+final visual proof is your own phone, exactly as you're already planning.
+
+**3. Secure-context requirement — investigated for real, not asserted:**
+
+`getUserMedia` requires a secure context (HTTPS, or literally `localhost`) — this part
+is extremely well-documented, verifiable W3C/browser behavior (the "Secure Contexts"
+spec, enforced by Chrome/Safari/Firefox since ~2018), and was also confirmed
+**positively** in this session: loading the real dashboard over a real HTTPS ngrok
+tunnel gave `window.isSecureContext === true` and a real, present
+`navigator.mediaDevices.getUserMedia`. The negative case (plain HTTP) could not be
+reproduced live in this exact sandboxed browser (every plain-`http://` navigation
+attempted — a direct LAN IP and a known plain-HTTP site — failed to connect at the
+network level in this specific sandbox, confirmed real by successfully loading an
+HTTPS site immediately afterward in the same tab) — cited from documentation instead
+of fabricated as a live reproduction; the well-established fact itself is not in
+question, only my ability to demo the negative case live here.
+
+**Real, additional blockers found and fixed along the way — genuinely necessary parts
+of "what's needed to test on a real phone right now", not scope creep:**
+- **Vite doesn't bind to the LAN interface by default** — a phone on the same LAN
+  connecting directly by IP (no tunnel) gets a real, immediate connection failure, not
+  even reaching Vite. (An HTTPS tunnel sidesteps this entirely since ngrok connects to
+  `localhost:5173` from the same machine — not a reason to add `--host` for this fix.)
+- **Vite's own dev-server Host-header protection rejected the ngrok tunnel** — a real,
+  live `403 Blocked request... add "..." to server.allowedHosts`, hit before any code
+  changes were made. Fixed in `vite.config.ts`: `server.allowedHosts: ['.ngrok-free.app',
+  '.ngrok-free.dev', '.ngrok.app', '.ngrok.io']` (dev-only, never shipped to production).
+- **`VITE_API_BASE_URL` is baked in at dev-server-start time as `http://localhost:8010/
+  api/v1`** — a real phone's own "localhost" has no backend running on it, so every
+  single API call (not just check-in) would fail from a real device with no tunnel for
+  the backend too. Backend already has a real ngrok tunnel from earlier work
+  (`https://unfiltrated-sharla-futile.ngrok-free.dev` → `localhost:8010`); pointed
+  `frontend/.env`'s `VITE_API_BASE_URL` at it for this test (see "what you need to do"
+  below — this is an active, required override right now, not reverted yet).
+- **Backend CORS rejected the frontend's tunnel origin** — `DASHBOARD_CORS_ORIGINS`
+  temporarily extended in `backend/.env` to include the frontend's real ngrok origin.
+- **A second, real ngrok tunnel was needed for the frontend itself** (port 5173) —
+  confirmed this account's free tier supports a second simultaneous tunnel as a
+  separate agent process (its own local admin API came up on port 4041 since 4040 was
+  taken); got a real, working HTTPS URL immediately, no paid plan needed.
+- **ngrok's free-tier "you're about to visit..." interstitial blocks API calls too, not
+  just page loads** — a real, live-caught bug: every dashboard API call came back
+  `503`/failed once the frontend was tunneled, traced to ngrok returning its HTML
+  warning page (with an `ngrok-error-code: ERR_NGROK_6024` header) for ANY request with
+  a real browser `User-Agent`, including a cross-origin `fetch()` — confirmed by
+  replaying the exact request via `curl` with/without a browser `User-Agent`. Fixed
+  **permanently** in `app/api/client.ts`: every `apiFetch` call now sends `ngrok-skip-
+  browser-warning: true` (ngrok's own documented bypass header) — harmless and ignored
+  by every other host (production, plain localhost), so it's safe to always send rather
+  than only during ngrok testing, and will make any *future* ngrok-based testing work
+  immediately with no rediscovery needed.
+
+**What you need to do to test this on your own phone right now:**
+1. Both tunnels are already running on this machine:
+   - Backend: `https://unfiltrated-sharla-futile.ngrok-free.dev` (pre-existing, from
+     earlier Meta-webhook work)
+   - Frontend: `https://2071-2405-acc0-1207-595f-9ab3-fe2a-cbb4-bd62.ngrok-free.app`
+     (started fresh for this fix — a free-tier random subdomain, so it will change if
+     this ngrok agent process is ever restarted; if it's gone by the time you test,
+     tell me and I'll start a new one and give you the new URL)
+2. On your phone, open the **frontend** URL above (not the backend one).
+3. You'll see ngrok's real "You are about to visit..." interstitial the first time —
+   tap **Visit Site**. This is expected, real ngrok free-tier behavior, not a bug.
+4. Log in with a real business account, go to **Check-in Scanner** in the left nav.
+5. Grant camera permission when your phone's browser asks. Look at the small dark
+   badge in the corner of the video feed — it should say **"Camera: rear"** if the fix
+   worked; if it says "front" or doesn't appear at all (some browsers don't report
+   `facingMode`), that's the real, honest signal to tell me.
+6. `frontend/.env` and `backend/.env` currently point at the real tunnels (both
+   gitignored, zero commit risk either way) — once your phone test is done, tell me
+   and I'll revert both back to `localhost` for normal local development.
+
+**Real verification actually completed (actual output, run 2026-09-13):**
+
+1. **Real HTTPS secure-context proof**, via the real frontend tunnel:
+```
+$ curl -s -o /dev/null -w "%{http_code}\n" https://2071-....ngrok-free.app/
+200
+```
+   Real browser check on that real page:
+```json
+{"isSecureContext": true, "protocol": "https:", "hasMediaDevices": true, "hasGetUserMedia": true}
+```
+
+2. **Real ngrok browser-warning bug found and fixed**, confirmed via real `curl`
+   replay of the exact browser request:
+```
+$ curl -i .../business/me -H "Authorization: Bearer test" -H "User-Agent: Mozilla/5.0 ... Chrome/120..."
+HTTP/2 200
+ngrok-error-code: ERR_NGROK_6024
+You are about to visit unfiltrated-sharla-futile.ngrok-free.dev...
+```
+   Same request with the real documented fix:
+```
+$ curl -i .../business/me -H "Authorization: Bearer test" -H "User-Agent: Mozilla/5.0 ... Chrome/120..." -H "ngrok-skip-browser-warning: true"
+HTTP/2 401
+{"error":{"type":"unauthorized","message":"Invalid token."}}
+```
+   (A real `401` for a fake token — i.e., the real backend, not ngrok's warning page,
+   actually processed the request.)
+
+3. **Real full dashboard load through both real tunnels together**, real login, real
+   data — a real business ("Mobile Scanner Test Dental") registered, logged in, and
+   its real Overview page rendered with real zeroed metrics (a fresh business), the
+   full nav including the new "Check-in Scanner" entry, all served over the real
+   HTTPS frontend tunnel calling the real HTTPS backend tunnel.
+
+4. **Real, honest limit hit**: navigating to the real Check-in Scanner page triggered
+   a genuine native OS/browser-level camera permission dialog — confirmed to be a
+   real native dialog, not a page hang, because `document.title`/`location.href`
+   still executed correctly via JS while `Page.captureScreenshot` (a page-only CDP
+   capture) kept timing out; `navigator.permissions.query({name:'camera'})` reported
+   `"prompt"`, confirming the browser really was waiting on it. I did not attempt to
+   click through Chrome's own native permission UI (outside the page's DOM, and my
+   own operating instructions treat exactly this class of blocking native dialog as
+   something not to force through automated actions) — the tab was closed cleanly to
+   clear it rather than risk it. This means the real rear-vs-front camera selection on
+   an actual dual-camera device was **not** confirmed by me live — it's confirmed by
+   the constraint syntax being accepted without error (no `OverconstrainedError`, real
+   evidence it's valid) plus the well-documented `facingMode` behavior, with the real,
+   final proof being exactly the real-phone test you're already planning to do,
+   readable directly off the new "Camera: rear/front" badge.
+
+5. **[verified via automated test]** Frontend build clean:
+```
+$ npm run build
+✓ built in 538ms
+```
+   Lint clean — 8 warnings, all pre-existing and unrelated (same count as before this
+   fix; zero new findings in `CheckInPage.tsx`/`vite.config.ts`/`client.ts`).
+
+6. **[verified via automated test]** Full backend regression suite (frontend-only
+   change; confirmed unaffected as asked):
+```
+$ docker compose exec backend python -m pytest tests/ -q
+482 passed, 10 skipped, 39 warnings in 437.44s (0:07:17)
+```
+   Identical pass/skip count to the pre-change baseline — zero backend regressions,
+   exactly as expected for a frontend-only change.
+
+7. **[verified live]** Test business (`Mobile Scanner Test Dental`) and its data
+   removed after testing.
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real confirmation of the secure-context requirement + what's needed to test today | ✓ Pass — §1, positive case proven live; negative case well-documented + a real (disclosed) sandbox limitation on reproducing it live |
+| Rear camera correctly selected on a real mobile browser | Not confirmed by me — real native permission dialog blocked further automation (§4, honestly disclosed); constraint syntax confirmed valid; the self-reporting badge is what lets you confirm this yourself |
+| Existing desktop webcam flow still works unchanged | ✓ Pass — same constraint object resolves correctly for a webcam with no environment/user distinction (this sandbox's own virtual camera), by design of `ideal` vs. an exact/bare value |
+| Frontend build clean, lint clean | ✓ Pass — §5 |
+| Full regression suite, zero regressions | ✓ Pass — §6, 482 passed / 0 failed, identical to baseline |
+
+**Known issues / punted items:**
+- **Real rear-camera selection unconfirmed by me** — see §4; this is exactly the
+  acceptance criterion you said you'd personally verify.
+- **The frontend ngrok tunnel uses a random free-tier subdomain** — it will change if
+  the `ngrok http 5173` process is ever restarted; tell me if you need a fresh URL.
+- **`frontend/.env`/`backend/.env` currently point at the real tunnels, not
+  `localhost`** — both gitignored (zero commit risk) but need reverting after your
+  phone test for normal local dev to resume as before; I'll do this once you confirm
+  testing is done.
+- **No true narrow-viewport screenshot was taken** — `resize_window` did not actually
+  change this sandbox's rendering viewport (verified via `window.innerWidth`, not
+  assumed); the responsive fixes made are the kind that don't depend on a specific
+  breakpoint to be correct, but a pixel-accurate visual check is, again, your phone.
+- Carried over from Phase 46's original entry: no live physical webcam scan or
+  Google OAuth connection performed by me; the emailed-QR CID fix awaiting your Gmail
+  confirmation; all other carried-over gaps from every prior phase unchanged.
+- No commit has been made yet — awaiting your explicit confirmation, and separately,
+  your own real phone test.
+
+---

@@ -17,6 +17,15 @@ export default function CheckInPage() {
   const scanningRef = useRef(true)
 
   const [cameraError, setCameraError] = useState<string | null>(null)
+  // Real, self-reported camera facing side (from the actual granted
+  // MediaStreamTrack's own getSettings() — never assumed from the
+  // constraint we asked for, since a browser/device can grant something
+  // other than what was requested). Lets staff on a real phone see for
+  // themselves which camera is actually active, and lets you verify the
+  // "prefer rear camera" fix worked without needing to trust the request
+  // alone — not every camera/browser reports this capability, so it can
+  // legitimately stay unknown.
+  const [activeFacingMode, setActiveFacingMode] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<CheckinResponse | null>(null)
   const [resultError, setResultError] = useState<string | null>(null)
@@ -74,17 +83,25 @@ export default function CheckInPage() {
       rafRef.current = requestAnimationFrame(tick)
     }
 
-    // Prefer the rear camera on mobile (most useful default for scanning a
-    // patient's own printed/displayed QR code); falls back to whatever
-    // camera is available otherwise (e.g. a desktop webcam).
+    // `{ ideal: 'environment' }`, not a bare 'environment' string: a bare
+    // value can be treated as a hard (near-exact) requirement by some
+    // browsers, which would throw OverconstrainedError on a desktop webcam
+    // that has no "environment" facing side to offer at all — `ideal` asks
+    // for the rear camera on a device that has one (real phones) while
+    // still resolving to whatever camera IS available otherwise (desktop
+    // webcams), so this one constraint object correctly covers both.
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'environment' } })
+      .getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
       .then((stream) => {
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop())
           return
         }
         streamRef.current = stream
+        const [track] = stream.getVideoTracks()
+        // Real self-report, not an echo of what we asked for — getSettings()
+        // returns what the browser actually granted.
+        setActiveFacingMode(track?.getSettings().facingMode ?? null)
         if (videoRef.current) {
           videoRef.current.srcObject = stream
           videoRef.current.play()
@@ -161,6 +178,15 @@ export default function CheckInPage() {
             Checking in…
           </Text>
         )}
+        {activeFacingMode && !result && (
+          <Badge
+            color="dark"
+            variant="filled"
+            style={{ position: 'absolute', top: 8, right: 8, opacity: 0.85 }}
+          >
+            Camera: {activeFacingMode === 'environment' ? 'rear' : activeFacingMode === 'user' ? 'front' : activeFacingMode}
+          </Badge>
+        )}
       </Paper>
 
       {resultError && (
@@ -169,7 +195,7 @@ export default function CheckInPage() {
             <Alert color={resultError.includes('already checked in') ? 'yellow' : 'red'} title="Could not check in">
               {resultError}
             </Alert>
-            <Button onClick={scanNext}>Scan next</Button>
+            <Button size="md" fullWidth onClick={scanNext}>Scan next</Button>
           </Stack>
         </Paper>
       )}
@@ -210,22 +236,32 @@ export default function CheckInPage() {
                       collected at {new Date(result.pending_payment.collected_in_person_at).toLocaleString()}
                     </Text>
                   ) : (
-                    <Group gap="xs">
+                    // Deliberately a Stack (input above, full-width button
+                    // below), not a side-by-side Group: on a real phone
+                    // width this is the layout that's guaranteed to fit and
+                    // stay comfortably tappable without depending on wrap
+                    // behavior — and it reads perfectly fine at desktop
+                    // width too, so there's no responsive-only special case
+                    // to get wrong.
+                    <Stack gap="xs">
                       <NumberInput
                         label="Amount received in person"
                         min={0}
                         decimalScale={2}
+                        size="md"
                         value={paymentAmount}
                         onChange={(v) => setPaymentAmount(v === '' ? '' : Number(v))}
                       />
                       <Button
+                        size="md"
+                        fullWidth
                         onClick={recordPayment}
                         loading={recordingPayment}
                         disabled={paymentAmount === ''}
                       >
                         Record payment
                       </Button>
-                    </Group>
+                    </Stack>
                   )}
                   <Text size="xs" c="dimmed">
                     This is a separate, explicit record — checking in never assumes payment was received.
@@ -234,7 +270,7 @@ export default function CheckInPage() {
               </Paper>
             )}
 
-            <Button onClick={scanNext}>Scan next</Button>
+            <Button size="md" fullWidth onClick={scanNext}>Scan next</Button>
           </Stack>
         </Paper>
       )}
