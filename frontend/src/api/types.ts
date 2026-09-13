@@ -76,6 +76,28 @@ export interface GoogleCalendarAuthorizationURL {
   authorization_url: string
 }
 
+export type ChannelType = 'whatsapp' | 'messenger' | 'instagram'
+
+export interface IntegrationRead {
+  id: string
+  type: ChannelType | 'google_calendar'
+  // Secrets (access_token / page_access_token) are stripped by the backend
+  // before this ever reaches the dashboard — write-only, like a password.
+  config: Record<string, string>
+  enabled: boolean
+}
+
+export interface IntegrationUpsert {
+  type: ChannelType
+  config: Record<string, string>
+  enabled?: boolean
+}
+
+export interface IntegrationTestResult {
+  ok: boolean
+  detail: string
+}
+
 export interface ServiceRead {
   id: string
   business_id: string

@@ -11877,3 +11877,262 @@ since they existed only as a side effect of probing Part A's booking→calendar 
   output.
 
 ---
+
+## Phase — Dashboard Channel Integration Setup UI
+
+**Date:** 2026-09-13
+
+**Required:** let a business owner connect WhatsApp, Messenger, and Instagram through the
+dashboard by pasting already-obtained credentials into a real form — replacing the curl-based
+registration a business currently needs — wired to the existing `POST /api/v1/integrations`
+endpoint. Explicitly out of scope: app secrets/verify tokens (stay platform-level `.env`
+settings) and a "Connect with Facebook" OAuth flow (the separate Embedded Signup project).
+
+**Real architecture conflict found before writing any UI, flagged and resolved with you
+first:** the ticket asked for a WhatsApp "Access Token" field, but Phase 22 deliberately built
+WhatsApp on one shared platform-wide `WHATSAPP_ACCESS_TOKEN` env var — `Integration.config` for
+`type="whatsapp"` only ever stored `phone_number_id`; `WhatsAppChannelAdapter.send_message` read
+`settings.whatsapp_access_token` directly, never `config`. Messenger/Instagram, by contrast,
+already stored real per-business tokens in `config` (`page_access_token`/`access_token`) because
+their Send APIs are structurally per-Page/per-account. Building a WhatsApp "Access Token" input
+without a backend change would have been a fake field — saved, but silently never read by the
+send path. You chose to add real per-business WhatsApp token support (matching Messenger/
+Instagram), so this phase includes that backend change, not just a UI.
+
+**Implemented:**
+
+- **`app/services/channels/whatsapp.py`** — `send_message` gained `access_token: str = ""`,
+  used as `access_token or settings.whatsapp_access_token` — a saved per-business token now
+  takes priority, with the platform-wide env var kept only as a fallback for rows that predate
+  this phase (or a deliberately shared token). Proven live (§4 below): a real customer message
+  through a business's freshly-saved WhatsApp credentials produced a real `HTTP 401` from Meta
+  using *that* token, not the ambient (also-fake, leftover-from-earlier-testing)
+  `WHATSAPP_ACCESS_TOKEN` in this environment's `.env` and not a `SIMULATED` no-token log line —
+  the override genuinely took effect.
+- **`app/services/channels/whatsapp_webhook.py`** — `_resolve_business_id` renamed
+  `_resolve_integration`, now returns the full `Integration` row (matching Messenger/Instagram's
+  existing pattern) so `process_webhook_payload` can pass
+  `(integration.config or {}).get("access_token") or ""` into `send_message`.
+- **`app/schemas/integration.py`**:
+  - `_REQUIRED_CONFIG_KEYS["whatsapp"]` extended to `{"phone_number_id", "access_token"}` —
+    matches Messenger/Instagram's existing per-type-required-keys shape, one line.
+  - New `_SECRET_CONFIG_KEYS` map (`whatsapp→access_token`, `messenger→page_access_token`,
+    `instagram→access_token`). `IntegrationRead`'s validator — previously named
+    `redact_google_calendar_secrets` and special-casing only `type="google_calendar"` — renamed
+    `redact_secrets` and generalized: for any of the three channel types it now strips the
+    secret key(s) out of `config` before the row is ever serialized, on **every** route that
+    returns an `IntegrationRead` (list, upsert). Before this phase, `GET`/`POST /integrations`
+    returned a channel's raw `page_access_token`/`access_token` in full — a real, pre-existing
+    gap (not introduced by this phase, but found and fixed here since the ticket explicitly
+    required write-only tokens).
+  - New `IntegrationTestResult` (`ok: bool`, `detail: str`) for the test-connection response.
+- **`app/services/channels/graph_api.py`** (new) — `test_graph_credentials(object_id,
+  access_token, api_version)`: the one mechanism genuinely identical across all three channels
+  (a real `GET /{api_version}/{object_id}?access_token=...` against Meta's actual Graph API).
+  Never raises; never logs the access token (it only ever appears in the outgoing request URL).
+  Returns Meta's own real error message on failure (e.g. "Invalid OAuth access token") or a
+  short success summary.
+- **`app/services/integration_service.py`** — new `test_connection(db, business_id, type_)`:
+  loads *this business's own already-saved* Integration row (never credentials from the
+  request), maps its config to `(object_id, access_token, api_version)` per type (a small
+  per-type dict of lambdas — WhatsApp falls back to the platform-wide setting the same way
+  `send_message` does), and calls `test_graph_credentials`. Returns a clear "not connected yet"
+  message rather than attempting a call when nothing's saved.
+- **`app/api/routes/integrations.py`**:
+  - `GET /integrations` changed from `get_current_user` (any role) to
+    `require_role(["owner","admin"])` — the ticket's explicit RBAC requirement is stricter than
+    this codebase's existing convention (Settings/Staff pages let any role view, gate only
+    writes); a channel credential's connection state is sensitive enough to gate the whole page,
+    not just the save action.
+  - New `POST /integrations/{type}/test-connection` (owner/admin only) → `integration_service.
+    test_connection` → `IntegrationTestResult`.
+- **Frontend — new `src/pages/dashboard/ChannelsPage.tsx`**: one form section per channel
+  (WhatsApp: Phone Number ID + Access Token; Messenger: Page ID + Page Access Token; Instagram:
+  Instagram Account ID + Access Token), each with a real Connected/Not-connected badge (from the
+  real `enabled` flag), a Save button wired straight to `POST /integrations`, and a Test
+  connection button wired to the new endpoint. Token fields render as Mantine `PasswordInput`
+  (masked, same posture as a password field) and always start blank — after a save, only the
+  secret field(s) reset to blank; the non-secret id field keeps showing what was just saved,
+  since it isn't sensitive. Inline copy explicitly states this page never asks for app secrets
+  or verify tokens. Route: `/dashboard/channels`. `DashboardLayout.tsx`'s nav list gained a
+  `Channels` entry filtered out entirely for non-owner/admin roles (mirrors the backend gate,
+  not a substitute for it). `ChannelsPage` itself also renders "Not authorized" and skips the
+  `GET /integrations` call entirely for a non-owner/admin role, in case of direct navigation.
+  New types in `api/types.ts`: `ChannelType`, `IntegrationRead`, `IntegrationUpsert`,
+  `IntegrationTestResult`.
+
+**Real end-to-end acceptance verification (actual output, run 2026-09-13; backend restarted via
+`docker compose restart backend` first to load the new route — the first `test-connection` call
+genuinely 404'd before that restart, confirmed and fixed, not hidden):**
+
+1. **Real UI walkthrough** (Chrome, real dev server on :5173 against the real backend on
+   :8010) — registered a real business "Channels Demo Dental", logged in as its real owner,
+   opened `/dashboard/channels`:
+   - Entered `live-pnid-demo-0001` / `demo-wa-access-token-xyz` under WhatsApp, clicked Save →
+     toast "WhatsApp credentials saved.", badge flipped to **CONNECTED**.
+   - Full page reload afterward still showed `live-pnid-demo-0001` in the Phone Number ID field
+     (real value re-fetched from `GET /integrations`) while the Access Token field showed only
+     "Saved — enter a new value to replace it" — never the real value.
+   - Repeated for Messenger (`live-page-demo-1002` / `demo-page-access-token`) and Instagram
+     (`live-ig-demo-778899` / `demo-ig-access-token`) — both saved, both flipped to CONNECTED.
+   - Clicked **Test connection** on WhatsApp: toast showed **"Invalid OAuth access token -
+     Cannot parse access token"** — Meta's own real error, from a real network round trip to
+     `graph.facebook.com`, not a fake/local check (confirmed via `read_network_requests`: a real
+     `POST .../whatsapp/test-connection` returning `200` with that real Meta-sourced `detail`).
+
+2. **Real DB proof — credentials actually persisted, not just displayed:**
+```
+$ docker compose exec backend python -c "... query Integration rows for 'Channels Demo Dental' ..."
+whatsapp   {'access_token': 'demo-wa-access-token-xyz', 'phone_number_id': 'live-pnid-demo-0001'} True
+messenger  {'page_id': 'live-page-demo-1002', 'page_access_token': 'demo-page-access-token'} True
+instagram  {'access_token': 'demo-ig-access-token', 'ig_account_id': 'live-ig-demo-778899'} True
+```
+
+3. **RBAC — real staff login, real 403s, checked at the backend directly (not just the
+   frontend gate):**
+```
+$ curl .../integrations                              (staff bearer token)   -> 403
+$ curl -X POST .../integrations                       (staff bearer token)  -> 403
+$ curl -X POST .../integrations/whatsapp/test-connection (staff bearer)     -> 403
+```
+   In the real browser as the real staff login: the "Channels" nav item never renders; direct
+   navigation to `/dashboard/channels` renders "Not authorized" and the browser's network log
+   confirms zero `GET /integrations` request was even attempted client-side.
+
+4. **Real end-to-end WhatsApp message through the just-saved credentials** — a correctly
+   HMAC-signed webhook simulating Meta, addressed to `phone_number_id="live-pnid-demo-0001"`
+   (the number just connected through the dashboard):
+```
+$ curl -i -X POST .../webhooks/whatsapp -H "X-Hub-Signature-256: <real, valid>" --data-binary @wa_channels_demo_payload.json
+HTTP/1.1 200 OK
+{"status":"ok"}
+```
+   Real DB — a real Conversation/Message created under this business, the real orchestrator's
+   real contact-info-gate response (Phase 23/24 logic, unmodified, firing identically through
+   this newly-connected number):
+```
+CUSTOMER  Do you have any openings this week?          wamid.channelsdemo0001
+AGENT     Before I can get that booked, I'll need a way to reach you to confirm it — could you give me your na...
+```
+   Real backend log — the outgoing send used THIS business's own just-saved
+   `demo-wa-access-token-xyz`, not the ambient (also fake) `WHATSAPP_ACCESS_TOKEN` already
+   sitting in this environment's `.env`, and not the "SIMULATED" no-token fallback:
+```
+{"logger": "app.services.channels.whatsapp", "level": "WARNING", "message": "WhatsApp send failed: HTTP 401"}
+```
+   (A real `HTTP 401` from Meta's real Send API — proof the per-business override actually took
+   effect; a `SIMULATED` log line would have meant it silently fell through to the old global
+   setting instead. No production Meta account exists to send a real WhatsApp message with, so
+   an HTTP-level real rejection is the honest ceiling here, same as every other WhatsApp/
+   Messenger/Instagram phase before this one.)
+
+5. **Cross-tenant isolation, real second business:**
+```
+$ curl .../integrations   (Business B's own real owner token, after Business A saved 3 channels) -> []
+```
+
+6. **Secret redaction — real API responses inspected directly, not just described:**
+```
+POST /integrations {"type":"messenger", ...} response.config -> {"page_id": "111"}         (no page_access_token)
+POST /integrations {"type":"whatsapp", ...}  response.config -> {"phone_number_id": "555"}  (no access_token)
+POST /integrations {"type":"instagram", ...} response.config -> {"ig_account_id": "abc"}    (no access_token)
+```
+   True even on the response to the SAME request that just saved the token — never shown back
+   even once.
+
+7. **[verified via automated test]** `tests/integration/test_integrations.py`, 8 tests (4
+   pre-existing updated for the new redaction/RBAC behavior, 4 new — real DB, real network call
+   to Meta's actual Graph API in the test-connection test, not mocked):
+```
+$ docker compose exec backend python -m pytest tests/integration/test_integrations.py -v
+test_create_then_replace_messenger_integration_upserts_not_accumulates PASSED
+test_missing_required_config_key_rejected_422 PASSED
+test_whatsapp_requires_access_token_key PASSED
+test_whatsapp_and_instagram_secrets_never_returned PASSED
+test_staff_role_cannot_read_or_write PASSED
+test_integration_is_tenant_scoped PASSED
+test_test_connection_without_a_saved_integration_reports_not_connected PASSED
+test_test_connection_makes_a_real_graph_api_call_with_saved_credentials PASSED
+======================== 8 passed in ... ========================
+```
+
+8. **[verified via automated test]** Phase 22/26/27's full WhatsApp/Messenger/Instagram
+   suites, unmodified apart from the `_resolve_business_id`→`_resolve_integration` rename
+   (behaviorally identical), still green:
+```
+$ docker compose exec backend python -m pytest tests/integration/test_integrations.py tests/integration/test_whatsapp.py tests/integration/test_messenger.py tests/integration/test_instagram.py -v
+======================== 48 passed in 18.90s ========================
+```
+
+9. **[verified via automated test]** Full backend regression suite, zero failures, run twice
+   for stability:
+```
+$ docker compose exec backend python -m pytest tests/ -q
+447 passed, 10 skipped, 35 warnings in 356-357s   (both runs, identical count)
+```
+
+10. Lint: `ruff check` on every file touched this phase → clean (the only `ruff check .`
+    findings across the whole repo are 2 pre-existing `F541` warnings in
+    `tests/security/test_phase29_pagination.py`, untouched by this phase — confirmed via `git
+    diff --stat` showing that file absent from this phase's changes).
+
+11. No migration — confirmed via `alembic check` → `No new upgrade operations detected.`
+    (`Integration.config`'s JSONB shape absorbed the new `access_token` key with zero schema
+    change, same reuse Phase 26/27 already established).
+
+12. **Secrets grep** — every real token used in this phase's UI/API testing
+    (`demo-wa-access-token-xyz`, `demo-page-access-token`, `demo-ig-access-token`, plus the
+    pytest-generated fake tokens) grepped against 5000 lines of real backend logs → no match.
+    Every `logger.*` call in every file this phase touched inspected directly → none pass a
+    token/config dict to a logger.
+
+13. Frontend: `npm run build` (`tsc -b && vite build`) → clean. `npm run lint` (oxlint) → zero
+    findings in any file this phase touched; the only warnings anywhere in the repo are
+    pre-existing `set-state-in-effect`/`only-export-components` warnings in unrelated files
+    (`AppointmentsPage.tsx`, `HandoffsPage.tsx`, `ReportsPage.tsx`, `TrainingRoomPage.tsx`,
+    `AuthContext.tsx`), unchanged by this phase.
+
+14. **[verified live]** DB left clean after all real/manual UI testing: the two demo businesses
+    (`Channels Demo Dental`, `Channels Demo B`) and their real Integration/Conversation/Message
+    rows fully removed (cascade via `Business` delete), confirmed `count() == 0` afterward.
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real end-to-end: enter real WhatsApp credentials through the UI, save, confirm via direct DB/API check | ✓ Pass — §1, §2 |
+| ...and confirm a real customer message through that number now actually works end-to-end | ✓ Pass — §4 (real webhook → real orchestrator response → real outgoing send attempt using the just-saved per-business token; a real Meta-level rejection is the honest ceiling with no production Meta account, same as every prior channel phase) |
+| Same for Messenger | ✓ Pass — §1, §2 (Messenger's send path already read per-business tokens before this phase; UI/redaction proven the same way) |
+| Dashboard never displays a previously-saved raw token back to the user | ✓ Pass — §1, §6 (true even on the same request that just saved it — a real, pre-existing gap found and fixed this phase, not merely already-satisfied) |
+| RBAC: staff-role login cannot access or edit this page | ✓ Pass — §3, backend-verified directly (not just the frontend gate) across all three endpoints |
+| Cross-tenant test: Business A's saved credentials never visible to Business B | ✓ Pass — §5 |
+| Full regression suite, zero regressions | ✓ Pass — §9, 447 passed / 0 failed, run twice |
+| Secrets grep clean, lint clean, frontend build clean | ✓ Pass — §10, §12, §13 |
+
+**Known issues / punted items:**
+- **No production Meta account exists for any of the three channels** — identical, carried-over
+  honest gap from Phase 22/26/27. This phase's UI is real and its save/redaction/RBAC/
+  test-connection paths are all proven against the real backend; only the very last hop (a real
+  message actually delivered by Meta to a real WhatsApp/Messenger/Instagram user) remains
+  unprovable without a real Meta Business/App, exactly as already documented for the curl-based
+  registration path this phase replaces.
+- **"Test connection" is a real, generically-reusable Graph API read** (fetch the object by id
+  with the saved token) for all three channels — not WhatsApp-only as the ticket allowed
+  ("if this isn't cheaply feasible... skip it"); it turned out cheap and real for Messenger/
+  Instagram too, so all three got it rather than leaving two channels without a check.
+- **No "disconnect" / delete button on the dashboard** — `integration_service.delete_integration`
+  already exists (used by nothing yet) but the ticket didn't ask for a disconnect flow here;
+  not built, to avoid unrequested scope. A future phase could wire a `DELETE` button to it in a
+  few lines.
+- **`WHATSAPP_ACCESS_TOKEN` (the pre-existing platform-wide env var) is still read as a
+  fallback** when a business has no per-business token saved — deliberate, not a leftover: it
+  keeps any pre-this-phase WhatsApp `Integration` row (created via the old direct-DB-insert
+  path) working unchanged.
+- Carried over from every prior phase, still real and still open: no staff-capacity model,
+  fixed 15-minute slot grid, exact-match-only service-name resolution, no refresh tokens, no
+  worker/cron for the several "run this later" functions, no real Twilio account tested
+  against, `page_access_token`/`access_token` still stored as plain JSONB (not separately
+  encrypted at rest) — same already-flagged gap as Phase 26/27, not new here.
+- No commit has been made yet — awaiting your explicit confirmation of this verification
+  output per working rule #6.
+
+---

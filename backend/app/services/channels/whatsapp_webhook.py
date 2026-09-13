@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -60,25 +59,23 @@ def extract_incoming_text_messages(payload: dict) -> list[dict]:
     return results
 
 
-def _resolve_business_id(db: Session, *, phone_number_id: str) -> uuid.UUID | None:
+def _resolve_integration(db: Session, *, phone_number_id: str) -> Integration | None:
     """Which tenant owns this Meta phone_number_id? A single Meta App/WABA
-    (one WHATSAPP_ACCESS_TOKEN) can send on behalf of several registered
-    numbers, one per Night Guard AI business — Integration (Phase 2's model,
-    previously unused, same "give an existing-but-empty model its first real
-    producer" pattern as Phase 19's HumanHandoff) is the real, already-modeled
+    can send on behalf of several registered numbers, one per Night Guard AI
+    business — Integration (Phase 2's model) is the real, already-modeled
     place for that per-tenant mapping: type="whatsapp",
-    config={"phone_number_id": "..."}. No connect-your-WhatsApp-number UI
-    exists yet (out of this phase's scope, same honest gap as "no staff-invite
-    endpoint" in earlier phases) — a real Integration row is inserted directly
-    for testing, exactly like those precedents."""
-    integration = db.execute(
+    config={"phone_number_id": "...", "access_token": "..."}. Returns the
+    full row (not just business_id) since send_message also needs this
+    business's own saved access token out of `config` — see
+    WhatsAppChannelAdapter.send_message's docstring on the platform-wide
+    fallback."""
+    return db.execute(
         select(Integration).where(
             Integration.type == "whatsapp",
             Integration.enabled.is_(True),
             Integration.config["phone_number_id"].astext == phone_number_id,
         )
     ).scalar_one_or_none()
-    return integration.business_id if integration else None
 
 
 def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
@@ -96,11 +93,12 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
     """
     outcomes = []
     for incoming in extract_incoming_text_messages(payload):
-        business_id = _resolve_business_id(db, phone_number_id=incoming["phone_number_id"])
-        if business_id is None:
+        integration = _resolve_integration(db, phone_number_id=incoming["phone_number_id"])
+        if integration is None:
             logger.warning("whatsapp webhook: no business registered for phone_number_id=%s", incoming["phone_number_id"])
             outcomes.append({"message_id": incoming["message_id"], "status": "unknown_phone_number_id"})
             continue
+        business_id = integration.business_id
 
         already = db.execute(
             select(Message.id).where(Message.external_message_id == incoming["message_id"])
@@ -134,7 +132,10 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
             continue
 
         send_detail = _adapter.send_message(
-            to=incoming["wa_id"], text=result["response"], phone_number_id=incoming["phone_number_id"]
+            to=incoming["wa_id"],
+            text=result["response"],
+            phone_number_id=incoming["phone_number_id"],
+            access_token=(integration.config or {}).get("access_token") or "",
         )
         outcomes.append(
             {

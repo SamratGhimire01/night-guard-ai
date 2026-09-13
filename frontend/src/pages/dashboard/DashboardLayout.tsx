@@ -6,7 +6,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { apiFetch } from '../../api/client'
 import type { BusinessRead, PlanRead } from '../../api/types'
 
-const NAV_SECTIONS: { label: string; to: string; icon: string }[] = [
+const NAV_SECTIONS: { label: string; to: string; icon: string; ownerAdminOnly?: boolean }[] = [
   { label: 'Overview', to: '/dashboard', icon: '🏠' },
   { label: 'Appointments', to: '/dashboard/appointments', icon: '📅' },
   { label: 'Services', to: '/dashboard/services', icon: '🦷' },
@@ -19,12 +19,14 @@ const NAV_SECTIONS: { label: string; to: string; icon: string }[] = [
   { label: 'Follow-ups', to: '/dashboard/followups', icon: '🔁' },
   { label: 'Website Widget', to: '/dashboard/widget', icon: '💬' },
   { label: 'Google Calendar', to: '/dashboard/google-calendar', icon: '📆' },
+  { label: 'Channels', to: '/dashboard/channels', icon: '🔌', ownerAdminOnly: true },
   { label: 'Settings', to: '/dashboard/settings', icon: '⚙️' },
 ]
 
 export default function DashboardLayout() {
   const [opened, { toggle }] = useDisclosure()
-  const { logout } = useAuth()
+  const { logout, role } = useAuth()
+  const canAccessOwnerAdminOnly = role === 'owner' || role === 'admin'
   const navigate = useNavigate()
   const [business, setBusiness] = useState<BusinessRead | null>(null)
   const [plan, setPlan] = useState<PlanRead | null>(null)
@@ -88,7 +90,7 @@ export default function DashboardLayout() {
 
       <AppShell.Navbar p="md">
         <Stack gap={2}>
-          {NAV_SECTIONS.map((item) => (
+          {NAV_SECTIONS.filter((item) => !item.ownerAdminOnly || canAccessOwnerAdminOnly).map((item) => (
             <MantineNavLink
               key={item.to}
               component={NavLink}

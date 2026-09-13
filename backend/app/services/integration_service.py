@@ -1,11 +1,30 @@
 import uuid
+from typing import Callable
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.models.integration import Integration
 from app.schemas.integration import IntegrationUpsert
+from app.services.channels.graph_api import test_graph_credentials
+
+# Per-type mapping of a saved Integration.config -> the (object_id,
+# access_token, api_version) test_graph_credentials needs — the one place
+# that knows which config keys each channel's real credential lives under.
+# WhatsApp falls back to the platform-wide WHATSAPP_ACCESS_TOKEN for rows
+# saved before per-business WhatsApp tokens existed (see
+# WhatsAppChannelAdapter.send_message).
+_TEST_CONNECTION_SPECS: dict[str, Callable[[dict], tuple[str | None, str | None, str]]] = {
+    "whatsapp": lambda config: (
+        config.get("phone_number_id"),
+        config.get("access_token") or settings.whatsapp_access_token,
+        settings.whatsapp_api_version,
+    ),
+    "messenger": lambda config: (config.get("page_id"), config.get("page_access_token"), settings.messenger_api_version),
+    "instagram": lambda config: (config.get("ig_account_id"), config.get("access_token"), settings.instagram_api_version),
+}
 
 
 def list_integrations(db: Session, *, business_id: uuid.UUID) -> list[Integration]:
@@ -67,6 +86,26 @@ def upsert_integration(db: Session, *, business_id: uuid.UUID, payload: Integrat
     return save_integration_config(
         db, business_id=business_id, type_=payload.type, config=payload.config, enabled=payload.enabled
     )
+
+
+def test_connection(db: Session, *, business_id: uuid.UUID, type_: str) -> tuple[bool, str]:
+    """Real "Test connection" button support — loads THIS business's own
+    saved Integration row (never credentials passed in the request; only
+    what was already saved via upsert_integration) and makes one real,
+    lightweight GET against Meta's Graph API to confirm they're valid. Never
+    sends a message to a real customer."""
+    spec = _TEST_CONNECTION_SPECS.get(type_)
+    if spec is None:
+        return False, f"Test connection is not supported for type={type_!r}."
+
+    integration = get_integration(db, business_id=business_id, type_=type_)
+    if integration is None or not integration.enabled:
+        return False, "Not connected yet — save your credentials first."
+
+    object_id, access_token, api_version = spec(integration.config or {})
+    if not object_id or not access_token:
+        return False, "Saved configuration is missing a required value."
+    return test_graph_credentials(object_id=object_id, access_token=access_token, api_version=api_version)
 
 
 def delete_integration(db: Session, *, business_id: uuid.UUID, type_: str) -> bool:

@@ -66,7 +66,7 @@ class WhatsAppChannelAdapter(ChannelAdapter):
             external_message_id=external_message_id,
         )
 
-    def send_message(self, *, to: str, text: str, phone_number_id: str) -> str:
+    def send_message(self, *, to: str, text: str, phone_number_id: str, access_token: str = "") -> str:
         """Real Meta Cloud API send call
         (POST https://graph.facebook.com/{version}/{phone_number_id}/messages,
         Meta's actual documented request shape) — made directly via urllib
@@ -76,14 +76,22 @@ class WhatsAppChannelAdapter(ChannelAdapter):
         break the flow" discipline as Phase 13's dispatch_service) — the
         caller only ever sees a descriptive string back, success or not.
 
-        Graceful fallback when WHATSAPP_ACCESS_TOKEN isn't configured (no
+        `access_token`: this business's own token from
+        Integration.config["access_token"] (the dashboard channel-connect
+        phase added real per-business WhatsApp tokens, matching how
+        Messenger/Instagram already worked). Falls back to the platform-wide
+        WHATSAPP_ACCESS_TOKEN when empty, so rows saved before that phase (or
+        a shared platform token) keep working unchanged.
+
+        Graceful fallback when no token is available either way (no
         production Meta Business account exists yet — Phase 22): logs a
         SIMULATED line and returns immediately, the identical fallback
         pattern Phase 15's SMSNotificationProvider stub uses for Twilio.
         """
-        if not settings.whatsapp_access_token:
+        token = access_token or settings.whatsapp_access_token
+        if not token:
             logger.info("SIMULATED WhatsApp send to %s: %s", to, text)
-            return "simulated — no real WHATSAPP_ACCESS_TOKEN configured"
+            return "simulated — no real WhatsApp access token configured"
 
         url = _SEND_URL_TEMPLATE.format(api_version=settings.whatsapp_api_version, phone_number_id=phone_number_id)
         body = json.dumps(
@@ -99,7 +107,7 @@ class WhatsAppChannelAdapter(ChannelAdapter):
             url,
             data=body,
             headers={
-                "Authorization": f"Bearer {settings.whatsapp_access_token}",
+                "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
             },
             method="POST",

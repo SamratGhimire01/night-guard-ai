@@ -11,9 +11,18 @@ from app.schemas.common import safe_str
 # this here (not in the DB) since config is a free-form JSONB column and this
 # is the one place validating what a given `type` requires before it's saved.
 _REQUIRED_CONFIG_KEYS: dict[str, set[str]] = {
-    "whatsapp": {"phone_number_id"},
+    "whatsapp": {"phone_number_id", "access_token"},
     "messenger": {"page_id", "page_access_token"},
     "instagram": {"ig_account_id", "access_token"},
+}
+
+# Which of the required keys above are secrets that must never be echoed back
+# in an API response once saved — same write-only posture as a password
+# field. IntegrationRead.redact_secrets strips these before serializing.
+_SECRET_CONFIG_KEYS: dict[str, set[str]] = {
+    "whatsapp": {"access_token"},
+    "messenger": {"page_access_token"},
+    "instagram": {"access_token"},
 }
 
 
@@ -44,13 +53,30 @@ class IntegrationRead(BaseModel):
     enabled: bool
 
     @model_validator(mode="after")
-    def redact_google_calendar_secrets(self) -> "IntegrationRead":
-        """Phase 40: config for type="google_calendar" holds real OAuth
-        access/refresh tokens — never returned in ANY API response, including
-        this generic listing. The dedicated status endpoint
-        (GET /integrations/google-calendar/status) is the real way to check
-        connection state; this just makes sure the pre-existing generic list
-        route can never leak a token even if a google_calendar row exists."""
+    def redact_secrets(self) -> "IntegrationRead":
+        """No integration's real secret ever comes back out of this API,
+        write-only like a password field. Phase 40: google_calendar's config
+        holds real OAuth access/refresh tokens, handled as a special case
+        (only calendar_id is non-secret). Dashboard channel-connect phase:
+        whatsapp/messenger/instagram each hold one real bearer token in
+        `config` (see _SECRET_CONFIG_KEYS) — stripped the same way, whatever
+        route returns an IntegrationRead (this generic list/upsert response
+        included)."""
         if self.type == "google_calendar":
             self.config = {"calendar_id": self.config.get("calendar_id")}
+            return self
+        secret_keys = _SECRET_CONFIG_KEYS.get(self.type)
+        if secret_keys:
+            self.config = {k: v for k, v in self.config.items() if k not in secret_keys}
         return self
+
+
+class IntegrationTestResult(BaseModel):
+    """POST /integrations/{type}/test-connection response — a real, lightweight
+    Meta Graph API GET using this business's own saved credentials (see
+    integration_service.test_connection). `detail` is safe to show a user:
+    it's either Meta's own error message or a short success summary, never
+    the access token itself."""
+
+    ok: bool
+    detail: str

@@ -18,6 +18,7 @@ import OverviewPage from './pages/dashboard/OverviewPage'
 import ReportsPage from './pages/dashboard/ReportsPage'
 import WebsiteWidgetPage from './pages/dashboard/WebsiteWidgetPage'
 import GoogleCalendarPage from './pages/dashboard/GoogleCalendarPage'
+import ChannelsPage from './pages/dashboard/ChannelsPage'
 import SettingsPage from './pages/dashboard/SettingsPage'
 
 import '@mantine/core/styles.css'
@@ -49,6 +50,7 @@ export default function App() {
                 <Route path="followups" element={<FollowUpsPage />} />
                 <Route path="widget" element={<WebsiteWidgetPage />} />
                 <Route path="google-calendar" element={<GoogleCalendarPage />} />
+                <Route path="channels" element={<ChannelsPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
             </Route>
