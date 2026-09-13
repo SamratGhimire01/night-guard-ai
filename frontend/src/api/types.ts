@@ -42,6 +42,8 @@ export interface BusinessRead {
   logo_url: string | null
   payment_collection_enabled: boolean
   payment_provider: 'esewa' | 'khalti' | null
+  reminder_enabled: boolean
+  reminder_minutes_before: number
 }
 
 export interface PaymentSettingsUpdate {
@@ -73,6 +75,8 @@ export interface BusinessUpdate {
   tone?: string | null
   brand_color?: string
   logo_url?: string | null
+  reminder_enabled?: boolean
+  reminder_minutes_before?: number
 }
 
 export interface PlanRead {

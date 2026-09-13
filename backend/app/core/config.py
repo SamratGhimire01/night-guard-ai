@@ -137,6 +137,12 @@ class Settings(BaseSettings):
     # never used for an authenticated dashboard redirect.
     backend_base_url: str = "http://localhost:8010"
 
+    # Phase 45: how often the in-process reminder scheduler (app/services/
+    # scheduler.py) polls for due reminders. 60s in production; override to
+    # a short value only for a real, timed live-verification run (never left
+    # short in committed config).
+    reminder_poll_interval_seconds: int = 60
+
     # Deepgram (pre-recorded/batch speech-to-text for the widget's
     # push-to-talk voice input, app/voice/deepgram.py, Phase 43h). Empty by
     # default: app/voice/deepgram.py raises a clear, caught error (never a

@@ -106,6 +106,17 @@ class Appointment(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMix
     google_calendar_event_id: Mapped[str | None] = mapped_column(String(255))
     calendar_sync_status: Mapped[str | None] = mapped_column(String(20))
 
+    # Phase 45: the real, DB-level "has a reminder already gone out for this
+    # appointment" guard. NULL = not yet sent. The scheduler NEVER does a
+    # check-then-act on this — it claims a reminder with a single atomic
+    # `UPDATE appointments SET reminder_sent_at = now() WHERE id = :id AND
+    # reminder_sent_at IS NULL AND status = 'CONFIRMED'` (see
+    # app/services/reminder_service.py). Same discipline as Phase 10's
+    # exclusion constraint and Phase 18's UniqueConstraint("conversation_id")
+    # — the guarantee lives in a single SQL statement's WHERE clause, not in
+    # application logic that a second worker/process/retry could race past.
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+
 
 class AppointmentParticipant(UUIDPrimaryKeyMixin, Base):
     """An extra named participant on an appointment. No business_id: inherited via appointment_id."""

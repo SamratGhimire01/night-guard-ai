@@ -57,6 +57,10 @@ class BusinessRead(BaseModel):
     # payments.py), which re-checks the Premium gate on every call.
     payment_collection_enabled: bool
     payment_provider: str | None
+    # Phase 45 — writable via BusinessUpdate below (unlike payment_collection_
+    # enabled): not plan-gated, see Business.reminder_enabled's own comment.
+    reminder_enabled: bool
+    reminder_minutes_before: int
 
 
 class BusinessUpdate(BaseModel):
@@ -82,6 +86,8 @@ class BusinessUpdate(BaseModel):
     follow_ups_enabled: bool | None = None
     brand_color: safe_str(7) | None = None
     logo_url: safe_str(500) | None = None
+    reminder_enabled: bool | None = None
+    reminder_minutes_before: int | None = None
 
     @field_validator("brand_color")
     @classmethod
@@ -120,11 +126,20 @@ class BusinessUpdate(BaseModel):
             raise ValueError("This field is required and cannot be cleared to null.")
         return value
 
-    @field_validator("sms_enabled", "follow_ups_enabled")
+    @field_validator("sms_enabled", "follow_ups_enabled", "reminder_enabled")
     @classmethod
     def bool_toggle_not_null(cls, value: bool | None) -> bool:
         if value is None:
             raise ValueError("This field cannot be cleared to null — pass true or false.")
+        return value
+
+    @field_validator("reminder_minutes_before")
+    @classmethod
+    def reminder_minutes_before_valid(cls, value: int | None) -> int:
+        if value is None:
+            raise ValueError("This field cannot be cleared to null.")
+        if not (5 <= value <= 1440):
+            raise ValueError("Must be an integer from 5 to 1440 (24 hours).")
         return value
 
 

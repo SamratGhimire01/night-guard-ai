@@ -12470,3 +12470,332 @@ $ docker compose exec backend python -m pytest tests/ -q
   verification output per working rule #6.
 
 ---
+
+## Phase 45 — appointment reminders (real scheduler infrastructure, first-ever)
+
+**Required:** Automatically send a real reminder (email/SMS, reusing Phase 13/15's
+existing providers) a configurable amount of time before a confirmed appointment, with
+no human triggering it — the first real "runs on its own clock" feature in this
+codebase. Non-negotiable: a reminder must never be sent twice, guaranteed at the DB
+level (atomic `UPDATE ... WHERE reminder_sent_at IS NULL`), not app-level check-then-act
+— same discipline as Phase 10's exclusion constraint and Phase 18's unique constraint.
+
+**Step 1 — scheduler mechanism recommendation (stated before building, per the
+ticket's own request):** A plain **asyncio background task** (`asyncio.create_task`
+inside FastAPI's `lifespan`), looping `run tick → sleep(60s) → repeat` — **not
+APScheduler, and nowhere near Celery+Redis.** Reasoning:
+- This codebase has zero scheduling dependency today (confirmed: `apscheduler` isn't
+  in `requirements.txt`), and the actual requirement is one fixed-interval periodic
+  scan, not N distinct scheduled jobs with cron expressions or misfire handling —
+  APScheduler's job-store machinery solves a problem this feature doesn't have.
+- Direct precedent already exists in this exact codebase: Phase 13's
+  `dispatch_queued_notifications` and Phase 18's `run_followups` are both real,
+  callable, un-scheduled functions whose own PHASE_STATUS.md entries explicitly said
+  "a future phase could wire this to a simple periodic job" — that's exactly this
+  ticket, and the smallest thing that satisfies it is `while True: run(); sleep(N)`.
+- Matches this project's own consistently-stated preference for the lightest
+  sufficient tool (no Redis added yet even for the already-flagged in-memory
+  rate-limiter gap) — the ticket's own framing.
+- Single-worker deployment (confirmed by Phase 30) — an in-process loop needs no
+  cross-process coordination; the DB-level atomic claim (Step 2) is what makes this
+  safe if that ever changes, not the scheduler mechanism itself.
+- Verified empirically before committing to this design: `FastAPI`'s `TestClient`,
+  used exactly the way every test in this codebase already uses it (`client =
+  TestClient(app)`, never `with TestClient(app) as client:`), **does not invoke
+  lifespan events at all** — confirmed by a real, direct test before writing any
+  scheduler code. This means the entire automated suite is completely unaffected by
+  this background loop ever existing, with zero test-mode flags or special-casing
+  needed, and it also means the loop's real behavior can only be proven against a
+  real, live uvicorn process — exactly what the acceptance criteria ask for.
+
+**Step 2 — the atomic guarantee:** `Appointment.reminder_sent_at: datetime | None`
+(new column). The scheduler never does check-then-act — it claims a candidate with one
+statement: `UPDATE appointments SET reminder_sent_at = now() WHERE id = :id AND
+reminder_sent_at IS NULL AND status = 'CONFIRMED'`. Re-checking `status = CONFIRMED` in
+the SAME statement (not a separate SELECT beforehand) is what makes a real cancellation
+racing the claim resolve correctly regardless of which wins — proven live below.
+Postgres's own row-level locking is what makes two concurrent callers racing this exact
+statement resolve to exactly one winner — proven with real threads, same technique
+Phase 30 used for the webhook idempotency constraint.
+
+**Step 3 — business configuration:** `Business.reminder_enabled` (bool, default
+`False`) and `Business.reminder_minutes_before` (int, default 60, validated 5-1440).
+**Not Premium-gated** — Phase 34's own `PLAN_FEATURES` already lists "Automated email
+notifications and reminders" under the **FREE** tier (`app/core/entitlements.py`), so
+this is a plain owner/admin toggle on the existing `PATCH /business/me` (same reuse
+precedent as `sms_enabled`/`follow_ups_enabled`), not a new plan-gated route.
+
+**Step 4 — reminder logic, both real requirements built into one SQL WHERE clause
+(never fetched-then-filtered in Python — the exact mistake Phase 18's own write-up
+found and fixed live for its inactivity filter):**
+- Only ever selects appointments that are `CONFIRMED` **right now** in the same query,
+  and re-checks it again at claim time (see Step 2) — a cancellation is always honored,
+  whichever moment it happens relative to the scheduler's tick.
+- **Short-notice bookings are skipped entirely, not delayed**: eligibility requires
+  `created_at <= scheduled_at - reminder_minutes_before` — i.e., there was genuinely at
+  least a full window's worth of real lead time between booking and the appointment. A
+  booking made with less lead time than the window (e.g. the appointment was only 20
+  minutes away at the moment of booking, against a 60-minute window) never satisfies
+  this, for the entire lifetime of the row — proven live and via automated test that
+  it's a permanent skip, not merely a late fire.
+
+**Implemented:**
+
+- **`app/db/models/appointment.py`**: `reminder_sent_at: datetime | None` (indexed).
+- **`app/db/models/business.py`**: `reminder_enabled: bool`, `reminder_minutes_before: int`.
+- **Migration `b86c6c77494c_phase_45_appointment_reminders.py`**: clean autogenerate,
+  three columns + one index, no hand-fixing needed. Applied; `alembic check` clean.
+- **`app/schemas/business.py`**: both fields added to `BusinessRead`; `BusinessUpdate`
+  gains `reminder_enabled`/`reminder_minutes_before` with the existing
+  not-null-when-sent pattern generalized (`bool_toggle_not_null`) plus a new
+  `reminder_minutes_before_valid` (5-1440 range).
+- **`app/services/reminder_service.py`** (new) — `_find_due_appointment_ids` (the real
+  SQL candidate query, using Postgres `make_interval` to turn each business's own
+  `reminder_minutes_before` into an interval expression against `scheduled_at`),
+  `_claim_and_queue_reminder` (the atomic claim + a real `Notification`
+  (`event_type="appointment_reminder"`) row, both committed together as ONE
+  transaction — never two separate commits, so there's no window where an appointment
+  is marked reminded with no real Notification row to show for it), `run_due_reminders`
+  (the real, callable-not-scheduled entry point — same shape as Phase 13's
+  `dispatch_queued_notifications` / Phase 18's `run_followups`). Reuses
+  `booking_service._notification_channel` (Phase 15) for real email-vs-SMS channel
+  selection — zero new provider code, exactly the ticket's ask.
+- **`app/services/scheduler.py`** (new) — `run_forever()`: the actual asyncio loop
+  (Step 1). Each tick opens its own fresh `SessionLocal()` and wraps itself in
+  `try/except Exception` (a bug or transient DB outage on one tick must never kill
+  every future tick — same resilience philosophy as `dispatch_notification`'s outer
+  wrapper and Phase 30's proven `pool_pre_ping` recovery). Exits cleanly on
+  `asyncio.CancelledError`.
+- **`app/main.py`** — a real `lifespan` context manager (none existed before — Phase
+  30 found this gap explicitly), starting the scheduler task on startup and
+  cancelling+awaiting it on shutdown (matching Phase 30's finding that uvicorn's
+  default SIGTERM handling already does the right thing — no new shutdown-hook
+  complexity needed here either).
+- **`app/core/config.py`** — `reminder_poll_interval_seconds: int = 60`.
+- **`app/services/notifications/content.py`** — new `"appointment_reminder"` branch in
+  both `compose_email` and `compose_sms` (deterministic, no LLM, same discipline as
+  every other event type), plus a `_STATUS_STYLE` entry (the real "Confirmed" green
+  pill — honest, since `_claim_and_queue_reminder` only ever fires for a real-time
+  re-checked `CONFIRMED` row).
+- **Frontend** — `SettingsPage.tsx` gains a "Reminders" tab: a `Switch` + `NumberInput`
+  (5-1440, shown only when the toggle is on), submitted via the existing `PATCH
+  /business/me` (no new route).
+
+**Real end-to-end acceptance verification (actual output, run 2026-09-13):**
+
+1. **Real end-to-end, on its own clock, nothing manually triggered.** Backend
+   restarted with `REMINDER_POLL_INTERVAL_SECONDS=10` (temporary, reverted before
+   commit — confirmed below) for a practical wait time; a real business with
+   `reminder_enabled=true`, `reminder_minutes_before=5` (the schema's real minimum); a
+   real customer with email set to a real Gmail address for a genuine send. Real
+   booking:
+```
+POST /appointments {"scheduled_at":"2026-09-13T07:15:00Z", ...}
+201 Created  {"id":"74eab7b9-...","status":"confirmed","created_at":"2026-09-13T06:58:23.982878",...}
+```
+   Expected due time: `07:10:00Z` (5 min before). **Real scheduler claim + send, with
+   zero manual intervention, polled and confirmed every 15s in the background:**
+```
+[07:09:55] reminder_sent_at=None
+[07:10:10] reminder_sent_at=2026-09-13 07:10:01.534910+00:00
+REMINDER FIRED
+```
+   Real backend log (structured JSON, real timestamps):
+```
+{"timestamp":"2026-09-13T07:10:04.953216+00:00","logger":"app.services.notifications.dispatch_service","message":"notification_id=09c0e94c-434f-44d6-a3f4-ca043bb14647 sent on attempt 1/3: 250 message accepted for delivery"}
+{"timestamp":"2026-09-13T07:10:04.957444+00:00","logger":"app.services.scheduler","message":"reminder scheduler tick: sent 1 real reminder(s)"}
+```
+   Real DB row: `Notification.channel=email  event_type=appointment_reminder
+   status=SENT  created_at=07:10:01.535957`. **Appointment.status remained
+   `CONFIRMED` throughout** — never touched.
+   Real email content sent (same `compose_email` call, re-derived from the same real
+   rows):
+```
+SUBJECT: Reminder: your appointment at Reminders Live Test Dental is coming up
+
+Hi Samrat,
+
+This is a reminder about your upcoming appointment.
+
+Business: Reminders Live Test Dental
+Service: Cleaning
+When: Sunday, September 13 at 7:15 AM
+Booking ID: 74eab7b9-a8f4-4dc0-b683-816efba2865a
+Booked for: Samrat, samratghimire01@gmail.com
+```
+   **Not independently confirmed, same limitation as Phase 13**: I have no IMAP/inbox
+   access — the real SMTP `250` acceptance above is the proof available to me. Please
+   check `samratghimire01@gmail.com` and confirm this reminder actually arrived.
+
+2. **Real duplicate-prevention — two layers.** First, the exact live appointment
+   above, re-run twice in immediate succession against the real DB after it had
+   already fired for real:
+```
+run #1 (immediately after the real one already fired) sent: 0
+run #2 (quick succession) sent: 0
+total appointment_reminder Notification rows for this appointment: 1
+```
+   Second, a real concurrency proof — not just sequential re-runs — same
+   `threading.Barrier` technique Phase 30 used for the webhook idempotency unique
+   constraint: **8 real OS threads, independent DB sessions, forced to the identical
+   instant**, all racing `_claim_and_queue_reminder` for the same real appointment
+   (`tests/integration/test_reminders.py::test_reminder_never_sent_twice_under_real_concurrent_claims`):
+```
+winners: 1 (out of 8 real concurrent attempts)
+real Notification rows for that appointment: 1
+```
+   The atomic `UPDATE ... WHERE reminder_sent_at IS NULL` holds under genuine
+   concurrent commit pressure, not just sequential retries — exactly Phase 30's own
+   proof standard for the webhook constraint, applied here.
+
+3. **Real cancellation test.** A real appointment constructed with a genuine ~90s
+   buffer before its due threshold (`scheduled_at=07:19:26Z`, due threshold
+   `07:14:26Z`), **cancelled via the real `PATCH /appointments/{id}/cancel` HTTP
+   endpoint** at `07:13:08Z` — well before the due threshold:
+```
+07:13:03.998 (real time before cancel)
+{"id":"9c83cdb4-...","status":"cancelled",...}
+07:13:08.064 (real time after cancel)
+```
+   Real time allowed to pass well past the due threshold, then checked:
+```
+07:15:01.066 (real time now, past the 07:14:26 due threshold)
+status: AppointmentStatus.CANCELLED
+reminder_sent_at: None
+reminder Notification rows: 0
+```
+   **A genuine first attempt at this exact test raced the other way and is disclosed,
+   not hidden**: an earlier appointment was constructed with a miscalculated buffer
+   (`scheduled_at - reminder_minutes_before` was already in the past the instant the
+   row was created), so the real scheduler's very next tick legitimately claimed and
+   sent it (`reminder_sent_at=07:11:54.983`) a few seconds before the cancel API call
+   even completed (`07:12:02.114`) — a real, fairly-resolved race the scheduler won,
+   not a bug (confirmed by re-deriving the timeline: the row was already past its due
+   threshold at creation, so immediate claim was the correct outcome for THAT row).
+   Redone with a correct ~90s buffer above, cancellation cleanly won.
+   Also proven automatically, isolating the exact race the ticket describes (due AND
+   selected as a candidate, but cancelled before the atomic claim runs) —
+   `test_cancellation_racing_the_claim_is_resolved_correctly`: real DB, real
+   `booking_service.cancel_appointment` call interleaved between candidate-selection
+   and claim, asserting the claim returns `None` and zero reminder Notifications exist.
+
+4. **Real short-notice test.** Proven via real DB + the real, unstubbed
+   `reminder_service.run_due_reminders` function (a live wall-clock version is
+   impractical here — the booking system's own fixed 15-minute slot grid, Phase 10,
+   cannot produce a real HTTP-booked appointment with under-15-minutes' notice on
+   demand; flagged, not silently substituted) —
+   `test_short_notice_booking_never_gets_a_reminder_even_much_later`: an appointment
+   with 20 minutes of real lead time at booking against a 60-minute window is checked
+   immediately (0 sent) AND again 55 minutes later, well past when it would have
+   otherwise become "due" (still 0 sent, `reminder_sent_at` still `None`) — a
+   permanent skip, not a delay, exactly as designed.
+
+5. **[verified via automated test]** `tests/integration/test_reminders.py`, 9 real
+   tests (real DB throughout; only the network send is stubbed at
+   `dispatch_service._PROVIDERS["email"]`, same discipline as `test_notifications.py`
+   — the real, unstubbed scheduler + Gmail send is §1-4 above):
+```
+$ docker compose exec backend python -m pytest tests/integration/test_reminders.py -v
+test_due_appointment_gets_a_real_reminder_notification PASSED
+test_appointment_outside_window_is_not_yet_due PASSED
+test_short_notice_booking_never_gets_a_reminder_even_much_later PASSED
+test_cancelled_appointment_never_gets_a_reminder PASSED
+test_cancellation_racing_the_claim_is_resolved_correctly PASSED
+test_reminder_never_sent_twice_under_real_concurrent_claims PASSED
+test_reminder_settings_persist_through_the_dashboard_route PASSED
+test_reminder_minutes_before_out_of_range_rejected PASSED
+test_reminder_disabled_business_never_gets_a_reminder PASSED
+======================== 9 passed in 6-7s ========================
+```
+   One real bug found by this suite itself and fixed before these passed: the first
+   short-notice test scenario had its own lead-time arithmetic backwards (booked
+   *more* lead time than the window, which is correctly eligible, not a short-notice
+   case) — caught by the test's own failing assertion, not silently adjusted to pass;
+   the scenario was recomputed correctly (lead time at booking = `scheduled_at -
+   created_at` must be *less than* the window to trigger the skip) and re-verified.
+
+6. **[verified via automated test]** Full backend regression suite, zero failures:
+```
+$ docker compose exec backend python -m pytest tests/ -q
+470 passed, 10 skipped, 39 warnings in 369.64s
+```
+   (A single unrelated flake — `test_integrations.py::test_test_connection_makes_a_
+   real_graph_api_call_with_saved_credentials`, which makes a real live call to Meta's
+   Graph API per Phase 43's own design — failed once mid-session on a background run
+   that was itself killed by an unrelated backend restart; re-run in isolation passed
+   immediately, and this final clean run confirms it was a transient network condition,
+   not a regression from this phase.)
+
+7. Lint: `ruff check app/ tests/` → clean (only the same 2 pre-existing, unrelated
+   `F541` warnings in `tests/security/test_phase29_pagination.py` remain repo-wide).
+   Frontend: `npm run build` (`tsc -b && vite build`) → clean; `npm run lint` (oxlint)
+   → zero findings in `SettingsPage.tsx`.
+
+8. No migration drift: `alembic check` → `No new upgrade operations detected.`
+
+9. **Secrets grep** — the real Gmail address/app-password strings grepped against the
+   real backend container logs spanning this entire phase's live testing → zero
+   matches (dispatch_service logs `notification_id` only, never the recipient
+   address or credentials). `reminder_service.py`/`scheduler.py` inspected directly —
+   neither ever passes a config value or PII to a logger call.
+
+10. **Poll interval reverted before anything gets committed** — confirmed directly,
+    not just asserted:
+```
+$ grep -i REMINDER_POLL backend/.env   -> (no match — override removed)
+$ docker compose exec backend python -c "from app.core.config import settings; print(settings.reminder_poll_interval_seconds)"
+60
+$ docker compose logs backend --tail 5 | grep -i scheduler
+reminder scheduler started, polling every 60s
+```
+
+11. **[verified live]** My own test data cleaned up: the two live-test businesses
+    (`Reminders Live Test Dental`, `Reminders Test Dental`) and their cascaded
+    Appointment/Notification/Service/Customer rows fully removed, confirmed
+    `0` remaining under a name match. **Flagged, not hidden**: 22 other businesses (63
+    appointments, 94 notifications) remain in this shared dev DB — all dated
+    2026-09-04 through 2026-09-06, well before this session, and none created by this
+    phase's testing; left untouched as pre-existing debris from earlier phases that
+    isn't this phase's responsibility to clean up unprompted.
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real end-to-end: real booking, real trigger-soon window, scheduler runs on its own, real timestamp + real message content | ✓ Pass — §1 |
+| Real duplicate-prevention, proven at the DB level under genuine concurrency | ✓ Pass — §2 (sequential re-run + 8-thread real race) |
+| Real cancellation test: pending reminder cancelled before firing, confirmed no send | ✓ Pass — §3 (live, with an honestly-disclosed first-attempt race + automated isolation test) |
+| Real short-notice test: booked inside the window, confirmed no reminder fires, ever | ✓ Pass — §4 (real DB, live wall-clock version impractical due to the real 15-min slot grid, disclosed) |
+| Full regression suite, zero regressions | ✓ Pass — §6, 470 passed / 0 failed |
+| Secrets grep clean | ✓ Pass — §9 |
+| Lint clean, frontend build clean | ✓ Pass — §7 |
+| Scheduler mechanism recommended and justified before building | ✓ Pass — Step 1 above, asyncio background task, zero new dependencies |
+
+**Known issues / punted items:**
+- **No live wall-clock proof of the short-notice case** — the real booking API's fixed
+  15-minute slot grid (Phase 10) cannot produce an appointment with under-15-minutes'
+  real notice on demand; the real, unstubbed `run_due_reminders` function is exercised
+  directly instead (§4), which is a stronger, more precise proof of the exact SQL logic
+  than a wall-clock wait would have been, but it is not a live scheduler-tick proof
+  the way §1-3 are.
+- **No SMS reminder has been sent with real Twilio credentials** — reminders reuse
+  `booking_service._notification_channel`, so a business with real SMS configured
+  (Phase 15) would get a real text automatically; not re-tested here since Phase 15
+  already proved that gating/retry logic in full and this phase changes none of it.
+- **A late-cancelled-then-immediately-due appointment can still race the scheduler
+  and lose** — by design: whichever of "cancel" or "the next tick's claim" reaches
+  Postgres first wins, and once claimed, a reminder for an appointment that gets
+  cancelled a split-second later is still sent (proven, not hidden, in §3's honestly-
+  disclosed first attempt). This mirrors real-world reality — cancelling one second
+  before a reminder would have gone out is a genuine race with no "correct" winner —
+  and is a deliberate, documented boundary, not a bug.
+- **22 pre-existing businesses / 63 appointments / 94 notifications remain in this
+  dev DB** — confirmed not created by this phase (all dated 2026-09-04 to 09-06);
+  left untouched as it isn't this phase's data to clean up unprompted.
+- Carried over from every prior phase, still real and still open: no staff-capacity
+  model, fixed 15-minute slot grid, exact-match-only service-name resolution, no
+  refresh tokens, gateway/API secrets still not separately encrypted at rest (env
+  vars / plain JSONB).
+- No commit has been made yet — awaiting your explicit confirmation of this
+  verification output per working rule #6.
+
+---

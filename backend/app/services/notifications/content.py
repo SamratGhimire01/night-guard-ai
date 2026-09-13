@@ -23,6 +23,11 @@ _STATUS_STYLE = {
     "booking_confirmed": ("Confirmed", "#065f46", "#d1fae5"),
     "appointment_cancelled": ("Cancelled", "#991b1b", "#fee2e2"),
     "appointment_rescheduled": ("Rescheduled", "#1e40af", "#dbeafe"),
+    # Phase 45: the underlying appointment genuinely still IS confirmed at
+    # send time (claim_and_queue_reminder only ever fires for a real-time
+    # re-checked CONFIRMED row) — same green pill as booking_confirmed, this
+    # is honest, not a placeholder.
+    "appointment_reminder": ("Confirmed", "#065f46", "#d1fae5"),
 }
 
 
@@ -76,6 +81,9 @@ def compose_email(
     elif event_type == "appointment_rescheduled":
         subject = f"Your appointment at {business.name} has been rescheduled"
         headline = "Your appointment has been rescheduled."
+    elif event_type == "appointment_reminder":
+        subject = f"Reminder: your appointment at {business.name} is coming up"
+        headline = "This is a reminder about your upcoming appointment."
     else:
         raise ValueError(f"Unknown notification event_type: {event_type!r}")
 
@@ -144,6 +152,8 @@ def compose_sms(
         verb = "cancelled"
     elif event_type == "appointment_rescheduled":
         verb = "rescheduled"
+    elif event_type == "appointment_reminder":
+        verb = "coming up"
     else:
         raise ValueError(f"Unknown notification event_type: {event_type!r}")
 

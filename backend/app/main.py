@@ -1,3 +1,6 @@
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -29,10 +32,34 @@ from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.widget_cors import WidgetCORSMiddleware
+from app.services import scheduler
 
 configure_logging(settings.log_level)
 
-app = FastAPI(title=settings.app_name)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Phase 45 — the first real "runs on its own clock" background task in
+    this codebase (Phase 30 found no lifespan hook existed at all). Started
+    here rather than at import time so it only ever runs against a real,
+    live uvicorn process — FastAPI's TestClient does NOT invoke lifespan
+    events unless used as a `with TestClient(app) as client:` context
+    manager, which no test in this codebase does (confirmed directly before
+    writing this), so the entire automated test suite is completely
+    unaffected by this loop ever existing. Cancelled and awaited on shutdown
+    so a real SIGTERM doesn't leave the task dangling — the same "wait for
+    real in-flight work to finish" discipline Phase 30 found uvicorn's
+    default shutdown already provides for HTTP requests."""
+    task = asyncio.create_task(scheduler.run_forever())
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 register_exception_handlers(app)
 # Order matters: Starlette makes the LAST-added middleware the OUTERMOST one, so it

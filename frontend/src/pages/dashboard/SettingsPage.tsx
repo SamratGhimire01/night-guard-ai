@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import {
   Button,
   ColorInput,
+  NumberInput,
   Select,
   Skeleton,
   Stack,
+  Switch,
   Tabs,
   Text,
   Textarea,
@@ -78,6 +80,14 @@ export default function SettingsPage() {
     initialValues: { brand_color: '#2563eb', logo_url: '' },
   })
 
+  const reminderForm = useForm<Pick<BusinessUpdate, 'reminder_enabled' | 'reminder_minutes_before'>>({
+    initialValues: { reminder_enabled: false, reminder_minutes_before: 60 },
+    validate: {
+      reminder_minutes_before: (v) =>
+        v !== undefined && v >= 5 && v <= 1440 ? null : 'Enter a number of minutes from 5 to 1440.',
+    },
+  })
+
   useEffect(() => {
     if (!business) return
     profileForm.setValues({
@@ -91,6 +101,10 @@ export default function SettingsPage() {
       currency: business.currency,
     })
     widgetForm.setValues({ brand_color: business.brand_color, logo_url: business.logo_url ?? '' })
+    reminderForm.setValues({
+      reminder_enabled: business.reminder_enabled,
+      reminder_minutes_before: business.reminder_minutes_before,
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [business])
 
@@ -124,6 +138,19 @@ export default function SettingsPage() {
       })
       setBusiness(updated)
       notifications.show({ message: 'Branding updated — your website widget reflects this immediately.', color: 'green' })
+    } catch (err) {
+      notifications.show({ message: err instanceof ApiError ? err.message : 'Save failed.', color: 'red' })
+    }
+  }
+
+  async function handleReminderSubmit(values: Pick<BusinessUpdate, 'reminder_enabled' | 'reminder_minutes_before'>) {
+    try {
+      const updated = await apiFetch<BusinessRead>('/business/me', {
+        method: 'PATCH',
+        body: JSON.stringify(values),
+      })
+      setBusiness(updated)
+      notifications.show({ message: 'Reminder settings updated.', color: 'green' })
     } catch (err) {
       notifications.show({ message: err instanceof ApiError ? err.message : 'Save failed.', color: 'red' })
     }
@@ -163,6 +190,7 @@ export default function SettingsPage() {
         <Tabs.List>
           <Tabs.Tab value="profile">Business Profile</Tabs.Tab>
           <Tabs.Tab value="widget">Website Widget</Tabs.Tab>
+          <Tabs.Tab value="reminders">Reminders</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="profile" pt="md">
@@ -233,6 +261,37 @@ export default function SettingsPage() {
                 disabled={!canWrite}
                 {...widgetForm.getInputProps('logo_url')}
               />
+              {saveButton('Save changes')}
+            </Stack>
+          </form>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="reminders" pt="md">
+          <Text c="dimmed" size="sm" mb="sm">
+            Automatically email (or text, if SMS is set up) a customer before their confirmed appointment — no staff
+            action needed. A booking made too close to the reminder window is never reminded, rather than firing
+            something confusing right after booking.
+          </Text>
+          <form onSubmit={reminderForm.onSubmit(handleReminderSubmit)}>
+            <Stack gap="sm">
+              <Switch
+                label="Send appointment reminders"
+                disabled={!canWrite}
+                checked={reminderForm.values.reminder_enabled}
+                onChange={(e) => reminderForm.setFieldValue('reminder_enabled', e.currentTarget.checked)}
+              />
+              {reminderForm.values.reminder_enabled && (
+                <NumberInput
+                  label="Remind this many minutes before the appointment"
+                  withAsterisk
+                  min={5}
+                  max={1440}
+                  disabled={!canWrite}
+                  value={reminderForm.values.reminder_minutes_before}
+                  onChange={(v) => reminderForm.setFieldValue('reminder_minutes_before', v === '' ? undefined : Number(v))}
+                  error={reminderForm.errors.reminder_minutes_before}
+                />
+              )}
               {saveButton('Save changes')}
             </Stack>
           </form>

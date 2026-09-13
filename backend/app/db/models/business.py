@@ -100,6 +100,18 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # CHECK constraint, matching this codebase's existing convention for
     # conditionally-meaningful fields (e.g. Service.deposit_percentage).
     payment_provider: Mapped[str | None] = mapped_column(String(20))
+    # Phase 45: appointment reminders — off by default (same "never on by
+    # default" discipline as sms_enabled/follow_ups_enabled), and, unlike
+    # payment_collection_enabled, NOT plan-gated: Phase 34's own PLAN_FEATURES
+    # already lists "Automated email notifications and reminders" under the
+    # FREE tier (app/core/entitlements.py), so this is a plain owner/admin
+    # toggle on the existing PATCH /business/me, available to every plan.
+    reminder_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # NOT NULL with a sane default (unlike Service.deposit_percentage) —
+    # there's no invalid-combination risk here worth a conditional-nullable
+    # field: a harmless default value sitting unused while reminder_enabled
+    # is false needs no cross-field validation at all.
+    reminder_minutes_before: Mapped[int] = mapped_column(nullable=False, default=60, server_default="60")
 
 
 class BusinessUser(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):
