@@ -23,18 +23,22 @@ from app.services.reporting.excel_export import report_to_xlsx_bytes
 _RESCHEDULE_ACTION = "appointment_rescheduled"
 
 # Shared wording (daily/monthly/yearly all use this exact text) — deliberately
-# not called "revenue": no payment/completion-tracking system exists anywhere
-# in this codebase (AppointmentStatus.COMPLETED has zero real producers,
-# confirmed by grep — see monthly_report_service's own note), so this is
-# honestly labeled as an ESTIMATE of billed value, never presented as
-# confirmed collected revenue.
+# still not called "revenue" even after Phase 44 (real eSewa/Khalti deposit
+# tracking) and Phase 46 (real AppointmentStatus.COMPLETED via QR check-in):
+# both are REAL now, but neither makes this figure exact. Payment tracking
+# only exists for services with deposit_enabled=true (most services have no
+# Payment row at all — pay-in-person, untracked by design, see Phase 44), and
+# even a completed appointment's in-person remainder is only recorded when a
+# staff member explicitly does so (Payment.collected_in_person_amount, Phase
+# 46) — never guaranteed to be filled in. So this stays an ESTIMATE of billed
+# value at list price, never presented as confirmed collected revenue.
 REVENUE_ESTIMATE_DEFINITION = (
     "Estimated billed value of non-cancelled appointments (any status except CANCELLED) at each "
     "appointment's service list price (Service.price, Phase 4). This is an ESTIMATE of billed "
-    "value, not confirmed collected revenue — this codebase has no appointment-completion or "
-    "payment-tracking system yet (AppointmentStatus.COMPLETED has no real producer anywhere; a "
-    "future phase, e.g. Phase 41's payment gateway, would make this precise). Not reduced for "
-    "discounts, taxes, or no-shows."
+    "value, not confirmed collected revenue — real payment tracking (Phase 44 online deposits, "
+    "Phase 46 in-person collection at check-in) only covers services with a deposit configured "
+    "and only when a real payment/collection actually happened, not every appointment's full "
+    "price. Not reduced for discounts, taxes, or no-shows."
 )
 
 

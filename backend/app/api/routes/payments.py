@@ -14,7 +14,7 @@ from app.core.exceptions import NotFoundError
 from app.db.models.business import BusinessPlan, BusinessUser
 from app.db.models.payment import PaymentStatus
 from app.schemas.business import BusinessRead, PaymentSettingsUpdate
-from app.schemas.payment import PaymentRead
+from app.schemas.payment import PaymentRead, RecordInPersonPaymentRequest
 from app.services import payment_service
 from app.services.payments.esewa import signed_form_fields
 
@@ -58,6 +58,26 @@ def list_payments(
     downgraded) must still be able to see its own history."""
     payments = payment_service.list_payments(db, business_id=current_user.business_id)
     return [PaymentRead.model_validate(p) for p in payments]
+
+
+@router.post("/payments/{payment_id}/collect-in-person", response_model=PaymentRead)
+def collect_in_person(
+    payment_id: uuid.UUID,
+    payload: RecordInPersonPaymentRequest,
+    current_user: BusinessUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PaymentRead:
+    """Phase 46 — the one explicit, distinct action for staff to record a
+    real remaining-balance amount collected in person (shown alongside the
+    check-in confirmation, but never fired by the scan itself — see
+    payment_service.record_in_person_payment's own docstring for why this is
+    never conflated with the online deposit's gateway-verified `status`).
+    Any authenticated role, same bar as GET /payments and the checkin route
+    — a front-desk staff member is exactly who does this in practice."""
+    payment = payment_service.record_in_person_payment(
+        db, business_id=current_user.business_id, payment_id=payment_id, amount=payload.amount
+    )
+    return PaymentRead.model_validate(payment)
 
 
 @router.get("/payments/esewa/redirect/{payment_id}", response_class=HTMLResponse)

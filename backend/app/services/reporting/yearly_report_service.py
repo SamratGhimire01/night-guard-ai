@@ -89,7 +89,7 @@ def _aggregate_year(db: Session, *, business_id: uuid.UUID, year: int) -> tuple[
             "cancelled_of_scheduled": total_cancelled,
             "completed": {
                 "count": total_completed,
-                "implemented": False,
+                "implemented": months[0]["appointments"]["completed"]["implemented"],
                 "note": months[0]["appointments"]["completed"]["note"],
             },
             "rescheduled": {"events": total_reschedule_events},

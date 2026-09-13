@@ -12,8 +12,16 @@ from app.db.models.business import BusinessUser
 from app.db.models.customer import Customer
 from app.db.models.service import Service
 from app.db.models.staff import Staff
-from app.schemas.appointment import AppointmentCreate, AppointmentListItem, AppointmentRead, AppointmentReschedule
-from app.services import booking_service
+from app.schemas.appointment import (
+    AppointmentCreate,
+    AppointmentListItem,
+    AppointmentRead,
+    AppointmentReschedule,
+    CheckinRequest,
+    CheckinResponse,
+    PaymentCheckinInfo,
+)
+from app.services import booking_service, checkin_service, payment_service
 
 router = APIRouter()
 
@@ -155,3 +163,47 @@ def reschedule_appointment(
         new_scheduled_at=payload.scheduled_at,
     )
     return AppointmentRead.model_validate(appointment)
+
+
+@router.post("/appointments/checkin", response_model=CheckinResponse)
+def check_in_appointment(
+    payload: CheckinRequest,
+    current_user: BusinessUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CheckinResponse:
+    """Phase 46 — the real QR scan endpoint. Deliberately `get_current_user`
+    (any authenticated role, including staff), not `require_role(["owner",
+    "admin"])` — the ticket's explicit ask is that front-desk staff can do
+    this, unlike cancel/reschedule above. NOT a public endpoint: a bare photo
+    of the QR code is useless without also being a real, logged-in staff
+    member OF THE SAME BUSINESS — the token lookup itself is scoped to
+    `current_user.business_id` inside checkin_service, so a token from
+    another business is indistinguishable from one that doesn't exist."""
+    appointment = checkin_service.check_in_appointment(
+        db, business_id=current_user.business_id, token=payload.token
+    )
+    customer = db.get(Customer, appointment.customer_id)
+    service = db.get(Service, appointment.service_id)
+    payment = payment_service.get_payment_for_appointment(
+        db, business_id=current_user.business_id, appointment_id=appointment.id
+    )
+    pending_payment = None
+    if payment is not None:
+        pending_payment = PaymentCheckinInfo(
+            payment_id=payment.id,
+            amount=payment.amount,
+            currency=payment.currency,
+            remaining=(service.price - payment.amount) if service else payment.amount,
+            status=payment.status.value,
+            collected_in_person_amount=payment.collected_in_person_amount,
+            collected_in_person_at=payment.collected_in_person_at,
+        )
+    return CheckinResponse(
+        appointment_id=appointment.id,
+        status=appointment.status,
+        checked_in_at=appointment.checked_in_at,
+        customer_name=customer.name if customer else "Unknown customer",
+        service_name=service.name if service else "Unknown service",
+        scheduled_at=appointment.scheduled_at,
+        pending_payment=pending_payment,
+    )

@@ -61,6 +61,8 @@ export interface PaymentRead {
   status: 'pending' | 'completed' | 'failed'
   gateway_reference: string | null
   payment_url: string
+  collected_in_person_amount: string | null
+  collected_in_person_at: string | null
 }
 
 export interface BusinessUpdate {
@@ -171,6 +173,35 @@ export interface AppointmentListItem {
   customer_name: string
   service_name: string | null
   staff_name: string | null
+  checked_in_at: string | null
+}
+
+export interface CheckinRequest {
+  token: string
+}
+
+export interface PaymentCheckinInfo {
+  payment_id: string
+  amount: string
+  currency: string
+  remaining: string
+  status: 'pending' | 'completed' | 'failed'
+  collected_in_person_amount: string | null
+  collected_in_person_at: string | null
+}
+
+export interface CheckinResponse {
+  appointment_id: string
+  status: AppointmentStatus
+  checked_in_at: string
+  customer_name: string
+  service_name: string
+  scheduled_at: string
+  pending_payment: PaymentCheckinInfo | null
+}
+
+export interface RecordInPersonPaymentRequest {
+  amount: string
 }
 
 export interface HandoffListItem {

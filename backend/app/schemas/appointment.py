@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -49,6 +50,43 @@ class AppointmentRead(BaseModel):
     status: AppointmentStatus
     created_at: datetime
     group_booking_id: uuid.UUID | None
+    # Phase 46 — deliberately NOT `checkin_token` here: the token's only real
+    # consumers are the email QR image and the checkin POST body, so it's
+    # never returned by the general appointment read/list endpoints.
+    checked_in_at: datetime | None
+
+
+class CheckinRequest(BaseModel):
+    # The exact real value decoded from the QR by the dashboard scanner
+    # (Phase 46) — the raw checkin_token, never the appointment_id.
+    token: uuid.UUID
+
+
+class CheckinResponse(BaseModel):
+    appointment_id: uuid.UUID
+    status: AppointmentStatus
+    checked_in_at: datetime
+    customer_name: str
+    service_name: str
+    scheduled_at: datetime
+    # None whenever no real Phase 44 Payment row exists for this appointment
+    # (no deposit was ever configured) — there is nothing to record. Never
+    # auto-populated as "paid"; see PaymentRead's own `collected_in_person_*`
+    # fields for why check-in itself never assumes a payment was received.
+    pending_payment: "PaymentCheckinInfo | None" = None
+
+
+class PaymentCheckinInfo(BaseModel):
+    payment_id: uuid.UUID
+    amount: Decimal
+    currency: str
+    remaining: Decimal
+    status: str
+    collected_in_person_amount: Decimal | None
+    collected_in_person_at: datetime | None
+
+
+CheckinResponse.model_rebuild()
 
 
 class AppointmentListItem(AppointmentRead):

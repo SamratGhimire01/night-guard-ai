@@ -88,7 +88,7 @@ def _dispatch(db: Session, notification: Notification) -> None:
     if notification.channel == "email":
         provider = _PROVIDERS["email"]
         recipient = customer.email or ""
-        subject, body, html_body = compose_email(
+        subject, body, html_body, inline_images = compose_email(
             event_type=notification.event_type,
             appointment=appointment,
             business=business,
@@ -96,7 +96,7 @@ def _dispatch(db: Session, notification: Notification) -> None:
             customer=customer,
             payment=payment,
         )
-        send_kwargs = {"html_body": html_body}
+        send_kwargs = {"html_body": html_body, "inline_images": inline_images}
     elif notification.channel == "sms":
         provider = _resolve_sms_provider()
         recipient = customer.phone or ""

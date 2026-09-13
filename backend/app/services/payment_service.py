@@ -1,11 +1,12 @@
 import logging
 import uuid
+from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import UnprocessableEntityError
+from app.core.exceptions import NotFoundError, UnprocessableEntityError
 from app.db.models.appointment import Appointment
 from app.db.models.business import Business
 from app.db.models.payment import Payment, PaymentStatus
@@ -147,6 +148,37 @@ def verify_and_update(db: Session, payment: Payment) -> Payment:
     payment.status = PaymentStatus.COMPLETED if result.completed else PaymentStatus.FAILED
     if result.gateway_reference:
         payment.gateway_reference = result.gateway_reference
+    db.commit()
+    db.refresh(payment)
+    return payment
+
+
+def get_payment_for_business(db: Session, *, business_id: uuid.UUID, payment_id: uuid.UUID) -> Payment | None:
+    """Tenant-scoped lookup for the real, authenticated staff-facing routes
+    (unlike get_payment above, which is deliberately unscoped for the public
+    gateway callback routes)."""
+    return db.execute(
+        select(Payment).where(Payment.id == payment_id, Payment.business_id == business_id)
+    ).scalar_one_or_none()
+
+
+def record_in_person_payment(db: Session, *, business_id: uuid.UUID, payment_id: uuid.UUID, amount: Decimal) -> Payment:
+    """Phase 46 — the ONE explicit, distinct staff action that records a real
+    remaining-balance amount collected in person (e.g. at check-in). Never
+    touches `status`/`gateway_reference` — those stay reserved for the
+    ONLINE deposit's own gateway-verified outcome (see Payment's own
+    docstring for why conflating the two would misrepresent a staff
+    attestation as a cryptographically-verified transaction). Deliberately
+    NOT wrapped in the same atomic-claim ceremony as the QR check-in or the
+    reminder guard: the ticket never asked for one-time-use here, and
+    allowing a second call (e.g. staff correcting a typo'd amount) to simply
+    overwrite the previous value is the more useful real behavior for a
+    manual data-entry action, not an oversight."""
+    payment = get_payment_for_business(db, business_id=business_id, payment_id=payment_id)
+    if payment is None:
+        raise NotFoundError("Payment not found.")
+    payment.collected_in_person_amount = amount
+    payment.collected_in_person_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(payment)
     return payment

@@ -28,6 +28,7 @@ class EmailNotificationProvider(NotificationProvider):
         body: str,
         html_body: str | None = None,
         attachments: list[tuple[str, bytes, str]] | None = None,
+        inline_images: list[tuple[str, bytes, str]] | None = None,
     ) -> str:
         """`html_body` (Phase 17, email-only — same status as `attachments`
         below, not part of the shared NotificationProvider interface): when
@@ -39,10 +40,23 @@ class EmailNotificationProvider(NotificationProvider):
         other channels implement, and never passed by dispatch_service's
         generic per-channel retry loop for ordinary appointment
         notifications): a list of (filename, content_bytes, mime_type), e.g.
-        for the daily report's .xlsx. EmailMessage's high-level API handles
-        the multipart/mixed(multipart/alternative(text, html), attachment)
-        nesting automatically regardless of whether html_body/attachments are
-        given."""
+        for the daily report's .xlsx.
+
+        `inline_images` (Phase 46, email-only, same status as `attachments`):
+        a list of (content_id, content_bytes, mime_type) — real images
+        referenced by the HTML body as `cid:<content_id>` (RFC 2392), e.g.
+        the check-in QR code. Real bug this replaces (see PHASE_STATUS.md):
+        a base64 `data:` URI image never actually renders in a real Gmail
+        inbox, even though the raw HTML contains a genuinely valid,
+        independently-decodable image — Gmail simply refuses to display
+        `data:` URIs at all. CID embedding is the correct, standard,
+        universally-supported fix. Requires `html_body` to mean anything —
+        attached to THAT part specifically (via `add_related`, which
+        promotes it to `multipart/related`), not to the top-level message,
+        which is what makes `cid:` resolution work in every real mail
+        client. EmailMessage's high-level API handles the real resulting
+        `multipart/mixed(multipart/alternative(text, multipart/related(html,
+        image)), attachment)` nesting automatically."""
         if not settings.gmail_address or not settings.gmail_app_password:
             raise NotificationDeliveryError(
                 "GMAIL_ADDRESS/GMAIL_APP_PASSWORD are not configured.", transient=False
@@ -57,6 +71,13 @@ class EmailNotificationProvider(NotificationProvider):
         message.set_content(body)
         if html_body:
             message.add_alternative(html_body, subtype="html")
+            if inline_images:
+                html_part = message.get_payload()[-1]
+                for content_id, content, mime_type in inline_images:
+                    maintype, _, subtype = mime_type.partition("/")
+                    html_part.add_related(
+                        content, maintype=maintype, subtype=subtype or "octet-stream", cid=f"<{content_id}>"
+                    )
         for filename, content, mime_type in attachments or []:
             maintype, _, subtype = mime_type.partition("/")
             message.add_attachment(content, maintype=maintype, subtype=subtype or "octet-stream", filename=filename)

@@ -117,6 +117,26 @@ class Appointment(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMix
     # application logic that a second worker/process/retry could race past.
     reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
 
+    # Phase 46: the real, unguessable per-appointment QR check-in credential —
+    # deliberately a SEPARATE random value from `id` (the QR must never encode
+    # the raw appointment_id, so no photo of it lets someone enumerate/guess
+    # real appointment identifiers). `gen_random_uuid()` is the exact same
+    # CSPRNG this codebase already uses for every primary key
+    # (UUIDPrimaryKeyMixin) — a UUIDv4 has 122 real random bits, genuinely
+    # unguessable, no new crypto primitive needed. server_default (not a
+    # Python-side default) so every existing row gets backfilled with its own
+    # distinct random value on migration (Postgres cannot use its
+    # single-stored-value fast path for a volatile function like this, so a
+    # real per-row value is computed — verified live, see PHASE_STATUS.md).
+    checkin_token: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, unique=True, server_default=text("gen_random_uuid()")
+    )
+    # NULL until a real scan claims it. The one-time-use guarantee is the
+    # exact same discipline as reminder_sent_at above: claimed via a single
+    # atomic `UPDATE ... WHERE checked_in_at IS NULL AND status = 'CONFIRMED'`
+    # (see app/services/checkin_service.py) — never check-then-act.
+    checked_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 
 class AppointmentParticipant(UUIDPrimaryKeyMixin, Base):
     """An extra named participant on an appointment. No business_id: inherited via appointment_id."""

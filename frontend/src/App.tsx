@@ -20,6 +20,7 @@ import WebsiteWidgetPage from './pages/dashboard/WebsiteWidgetPage'
 import GoogleCalendarPage from './pages/dashboard/GoogleCalendarPage'
 import ChannelsPage from './pages/dashboard/ChannelsPage'
 import PaymentsPage from './pages/dashboard/PaymentsPage'
+import CheckInPage from './pages/dashboard/CheckInPage'
 import SettingsPage from './pages/dashboard/SettingsPage'
 
 import '@mantine/core/styles.css'
@@ -53,6 +54,7 @@ export default function App() {
                 <Route path="google-calendar" element={<GoogleCalendarPage />} />
                 <Route path="channels" element={<ChannelsPage />} />
                 <Route path="payments" element={<PaymentsPage />} />
+                <Route path="checkin" element={<CheckInPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
             </Route>

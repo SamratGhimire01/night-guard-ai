@@ -1,8 +1,9 @@
 import enum
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Enum, ForeignKeyConstraint, Numeric, String, UniqueConstraint
+from sqlalchemy import DateTime, Enum, ForeignKeyConstraint, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -64,3 +65,17 @@ class Payment(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMixin, 
     gateway_reference: Mapped[str | None] = mapped_column(String(255))
     # The real link handed to the customer in chat/email.
     payment_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    # Phase 46: a real, EXPLICIT staff action recording a remaining-balance
+    # amount collected in person at check-in — deliberately separate columns
+    # from `status`/`gateway_reference` above, never conflated with them.
+    # `status` stays reserved for what it always meant: the ONLINE deposit's
+    # own gateway-verified outcome. An in-person cash/card payment is
+    # fundamentally different — staff's own attestation, not a
+    # cryptographically/API-verified transaction — so it gets its own
+    # honestly-named fields rather than silently flipping `status` to
+    # something that would misrepresent it as gateway-confirmed. NULL until
+    # a staff member explicitly records it (see
+    # app.services.payment_service.record_in_person_payment) — never
+    # inferred from a check-in scan alone, per the ticket's explicit ask.
+    collected_in_person_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    collected_in_person_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

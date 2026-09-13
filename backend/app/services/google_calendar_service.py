@@ -318,12 +318,33 @@ def _create_event(access_token: str, *, calendar_id: str, summary: str, descript
     return response.json()["id"]
 
 
-def _update_event(access_token: str, *, calendar_id: str, event_id: str, start: datetime, end: datetime) -> None:
+def _update_event(
+    access_token: str,
+    *,
+    calendar_id: str,
+    event_id: str,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    summary: str | None = None,
+    description: str | None = None,
+) -> None:
+    """PATCH only ever sends the fields actually given — `sync_appointment_
+    rescheduled` (start/end only) and `sync_appointment_completed` (summary/
+    description only, Phase 46) share this one real Calendar API call rather
+    than each hand-rolling their own request."""
+    body: dict = {}
+    if start is not None and end is not None:
+        body["start"] = {"dateTime": start.isoformat()}
+        body["end"] = {"dateTime": end.isoformat()}
+    if summary is not None:
+        body["summary"] = summary
+    if description is not None:
+        body["description"] = description
     try:
         response = httpx.patch(
             f"{_CALENDAR_API_BASE}/calendars/{calendar_id}/events/{event_id}",
             headers={"Authorization": f"Bearer {access_token}"},
-            json={"start": {"dateTime": start.isoformat()}, "end": {"dateTime": end.isoformat()}},
+            json=body,
             timeout=_TIMEOUT_SECONDS,
         )
     except httpx.TransportError as exc:
@@ -436,6 +457,47 @@ def sync_appointment_rescheduled(db: Session, appointment: Appointment) -> None:
     except Exception:
         logger.warning(
             "google calendar event update failed for appointment_id=%s (non-fatal, reschedule "
+            "already confirmed)",
+            appointment.id,
+            exc_info=True,
+        )
+        appointment.calendar_sync_status = "failed"
+    db.commit()
+
+
+def sync_appointment_completed(db: Session, appointment: Appointment) -> None:
+    """Best-effort reflection of a real check-in (Phase 46) into Google
+    Calendar. Google Calendar's real API has NO native "completed" checkbox
+    or status field for an event — the honest, real capability actually
+    available is updating the event's own summary/description text, which is
+    exactly what this does: prefixes the summary with a checkmark and a real
+    "(completed)" label, and appends the real check-in timestamp to the
+    description. This does not imply or simulate a UI feature Calendar
+    doesn't have; it's a real, visible edit to the real event's real fields.
+    A no-op if this appointment was never synced in the first place (free
+    plan, or the original sync failed with no event ever created) — same
+    precedent as sync_appointment_cancelled. NEVER raises: a Calendar
+    failure must not block or undo a check-in that already committed in
+    Postgres before this ever runs."""
+    business = db.get(Business, appointment.business_id)
+    integration = _active_integration(db, business)
+    if integration is None or not appointment.google_calendar_event_id:
+        return
+    try:
+        access_token = _fresh_access_token(db, integration)
+        summary, description = _event_summary_and_description(db, appointment)
+        checked_in_at = appointment.checked_in_at.isoformat() if appointment.checked_in_at else "unknown time"
+        _update_event(
+            access_token,
+            calendar_id=integration.config["calendar_id"],
+            event_id=appointment.google_calendar_event_id,
+            summary=f"✓ {summary} (completed)",
+            description=f"{description}\nChecked in: {checked_in_at}",
+        )
+        appointment.calendar_sync_status = "synced"
+    except Exception:
+        logger.warning(
+            "google calendar event update failed for appointment_id=%s (non-fatal, check-in "
             "already confirmed)",
             appointment.id,
             exc_info=True,

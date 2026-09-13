@@ -51,5 +51,16 @@ A {{ payment.percentage }}% deposit of {{ payment.currency }} {{ payment.amount 
 </p>
 {% endif %}
 
+{% if qr_cid %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;">
+<tr>
+<td align="center" style="padding:20px;background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;">
+<p style="margin:0 0 12px 0;font-size:13px;color:#4b5563;font-family:Arial,Helvetica,sans-serif;">Show this QR code at check-in</p>
+<img src="cid:{{ qr_cid }}" width="180" height="180" alt="Check-in QR code" style="display:block;width:180px;height:180px;">
+</td>
+</tr>
+</table>
+{% endif %}
+
 <p style="margin:24px 0 0 0;font-size:13px;line-height:20px;color:#8a8f98;font-family:Arial,Helvetica,sans-serif;">If anything here looks wrong, just reach out to us directly and we'll sort it out.</p>
 {% endblock %}

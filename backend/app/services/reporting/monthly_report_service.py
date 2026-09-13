@@ -43,10 +43,11 @@ def _count(db: Session, *filters) -> int:
 def generate_monthly_report(db: Session, *, business_id: uuid.UUID, year: int, month: int) -> dict:
     """Real DB-derived monthly aggregates only — no LLM commentary, per the
     master plan's explicit warning against fabricated analytics. Every number
-    here is a real query result; where a concept has no real producer in this
-    codebase (appointments_completed — see below), that is reported honestly
-    (0 + implemented=False) rather than guessed, the same discipline Phase 16
-    established for HumanHandoff.
+    here is a real query result. `appointments_completed` used to have no
+    real producer in this codebase and was reported as an honest 0 +
+    implemented=False (Phase 17's own disclosure, the same discipline Phase
+    16 established for HumanHandoff) — Phase 46's real QR check-in now gives
+    AppointmentStatus.COMPLETED a genuine producer, so this is real data.
 
     METHODOLOGY (stated explicitly, since several of these terms are
     genuinely ambiguous and the ticket asked for an explicit definition):
@@ -189,11 +190,11 @@ def generate_monthly_report(db: Session, *, business_id: uuid.UUID, year: int, m
             "cancelled_of_scheduled": cancelled_of_scheduled,
             "completed": {
                 "count": completed_of_scheduled,
-                "implemented": False,
+                "implemented": True,
                 "note": (
-                    "AppointmentStatus.COMPLETED has no real producer anywhere in this codebase "
-                    "(verified by grep) — nothing ever marks an appointment completed, so this is "
-                    "honestly always 0 today, not fabricated."
+                    "AppointmentStatus.COMPLETED is set by a real staff QR check-in at the clinic "
+                    "(Phase 46, app.services.checkin_service) — this count reflects genuine "
+                    "check-ins, not a proxy or an estimate."
                 ),
             },
             "rescheduled": {

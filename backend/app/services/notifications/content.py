@@ -6,6 +6,7 @@ from app.db.models.business import Business
 from app.db.models.customer import Customer
 from app.db.models.payment import Payment
 from app.db.models.service import Service
+from app.services.notifications.qr import QR_CONTENT_ID, generate_qr_png
 from app.services.notifications.templates.render import render_appointment_email
 
 # Deliberately duplicates orchestrator._format_local's formatting (same
@@ -60,14 +61,17 @@ def compose_email(
     service: Service,
     customer: Customer,
     payment: Payment | None = None,
-) -> tuple[str, str, str]:
+) -> tuple[str, str, str, list[tuple[str, bytes, str]] | None]:
     """Deterministic subject/plain-text/HTML for a booking/cancellation/
     reschedule email — no LLM involvement, the same discipline this codebase
     already applies to every other customer-facing confirmation string (see
     orchestrator.py's _format_*_result functions). Both bodies are composed
     fresh from the same real rows every time, never from anything cached or
     LLM-authored — Phase 17 changes presentation only, not what data is shown.
-    Returns (subject, plain_text_body, html_body)."""
+    Returns (subject, plain_text_body, html_body, inline_images) — the last
+    element is a real CID-embeddable image list (Phase 46's fix for the real
+    "Gmail doesn't render data: URIs" bug; see qr.py's own docstring), always
+    `None` except for a real booking_confirmed check-in QR."""
     tz = ZoneInfo(business.timezone)
     when = _format_local(appointment.scheduled_at, tz)
     booking_id = str(appointment.id)
@@ -110,6 +114,32 @@ def compose_email(
             f"{payment_ctx['remaining']} is due at the clinic.\nPay here: {payment_ctx['payment_url']}\n"
         )
 
+    # Phase 46: a real, scannable check-in QR only makes sense on the
+    # original confirmation — never re-sent on cancel/reschedule (a
+    # rescheduled appointment keeps the SAME checkin_token/QR, since only the
+    # time changed; a cancelled one has nothing to check into). The plain-
+    # text body can't render an image at all, so it just tells the customer
+    # the HTML version has one — an honest statement about a real medium
+    # limitation, not a missing feature.
+    #
+    # Real bug found via live Gmail testing, fixed here: a base64 `data:` URI
+    # image (the original approach) never actually renders in a real Gmail
+    # inbox — confirmed by a real screenshot showing a broken-image icon,
+    # even though the raw HTML genuinely contained a valid, independently
+    # decodable image (which is why the earlier jsQR-on-raw-HTML proof looked
+    # like success but didn't reflect what a real recipient sees). The real
+    # fix is CID (Content-ID) embedding — a real inline MIME part referenced
+    # by the HTML as `cid:...`, the standard, universally-supported mechanism
+    # for images in HTML email (RFC 2392). See qr.py and
+    # EmailNotificationProvider.send's `inline_images` parameter.
+    qr_cid: str | None = None
+    inline_images: list[tuple[str, bytes, str]] | None = None
+    if event_type == "booking_confirmed":
+        qr_png = generate_qr_png(str(appointment.checkin_token))
+        qr_cid = QR_CONTENT_ID
+        inline_images = [(QR_CONTENT_ID, qr_png, "image/png")]
+        body += "\nA check-in QR code is included in the HTML version of this email — please show it at the clinic.\n"
+
     status_label, status_color, status_bg = _STATUS_STYLE[event_type]
     html_body = render_appointment_email(
         business_name=business.name,
@@ -126,9 +156,10 @@ def compose_email(
         status_color=status_color,
         status_bg=status_bg,
         booking_id=booking_id,
+        qr_cid=qr_cid,
         payment=payment_ctx,
     )
-    return subject, body, html_body
+    return subject, body, html_body, inline_images
 
 
 def compose_sms(

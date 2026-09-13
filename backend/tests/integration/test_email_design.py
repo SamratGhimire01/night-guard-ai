@@ -83,7 +83,7 @@ def test_compose_email_produces_three_parts_with_real_appointment_data():
         id=uuid.uuid4(), scheduled_at=datetime(2026, 9, 7, 14, 0, tzinfo=ZoneInfo("UTC")), duration_minutes=45
     )
 
-    subject, body, html = compose_email(
+    subject, body, html, _inline_images = compose_email(
         event_type="booking_confirmed", appointment=appointment, business=business, service=service, customer=customer
     )
     assert "Acme Dental" in subject
@@ -113,7 +113,7 @@ def test_compose_email_status_pill_matches_event_type(event_type, expected_label
     appointment = Appointment(
         id=uuid.uuid4(), scheduled_at=datetime(2026, 9, 7, 14, 0, tzinfo=ZoneInfo("UTC")), duration_minutes=30
     )
-    _subject, _body, html = compose_email(
+    _subject, _body, html, _inline_images = compose_email(
         event_type=event_type, appointment=appointment, business=business, service=service, customer=customer
     )
     assert expected_label in html
@@ -129,7 +129,7 @@ def test_compose_email_autoescapes_customer_and_business_names():
     appointment = Appointment(
         id=uuid.uuid4(), scheduled_at=datetime(2026, 9, 7, 14, 0, tzinfo=ZoneInfo("UTC")), duration_minutes=30
     )
-    _subject, _body, html = compose_email(
+    _subject, _body, html, _inline_images = compose_email(
         event_type="booking_confirmed", appointment=appointment, business=business, service=service, customer=customer
     )
     assert "<script>" not in html
@@ -153,7 +153,7 @@ def test_compose_email_shows_business_contact_footer_and_patient_contact_in_body
     appointment = Appointment(
         id=uuid.uuid4(), scheduled_at=datetime(2026, 9, 7, 14, 0, tzinfo=ZoneInfo("UTC")), duration_minutes=30
     )
-    _subject, body, html = compose_email(
+    _subject, body, html, _inline_images = compose_email(
         event_type="booking_confirmed", appointment=appointment, business=business, service=service, customer=customer
     )
 
@@ -279,6 +279,71 @@ def test_provider_combines_html_body_and_attachment_correctly(monkeypatch):
     assert attachment_part.get_payload(decode=True) == xlsx_bytes
 
 
+def test_provider_embeds_inline_image_via_real_cid_not_data_uri(monkeypatch):
+    """Phase 46 fix — a real bug found via live Gmail testing: a base64
+    `data:` URI image never actually renders in a real Gmail inbox, even
+    though the raw HTML contains a genuinely valid, independently-decodable
+    image (that's exactly why the earlier jsQR-on-raw-HTML proof looked like
+    success without reflecting what a real recipient sees — see
+    PHASE_STATUS.md). This proves the real fix: a genuine CID-embedded
+    inline image, nested inside `multipart/related` under the alternative's
+    HTML part (not a top-level attachment) — the real MIME structure every
+    real mail client actually requires to resolve `cid:` references."""
+    captured = {}
+
+    class _FakeSMTP:
+        def __init__(self, *a, **k):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def starttls(self):
+            pass
+
+        def login(self, *a):
+            pass
+
+        def send_message(self, message):
+            captured["message"] = message
+            return {}
+
+    monkeypatch.setattr(settings, "gmail_address", "sender@example.com")
+    monkeypatch.setattr(settings, "gmail_app_password", "fake-app-password")
+    monkeypatch.setattr("smtplib.SMTP", _FakeSMTP)
+
+    fake_png = b"\x89PNG\r\n\x1a\nFAKE-BUT-REAL-BYTES-ROUND-TRIPPED"
+    provider = EmailNotificationProvider()
+    provider.send(
+        to="customer@example.com",
+        subject="Check-in",
+        body="plain",
+        html_body='<html><body><img src="cid:checkin-qrcode"></body></html>',
+        inline_images=[("checkin-qrcode", fake_png, "image/png")],
+    )
+
+    parsed = message_from_bytes(captured["message"].as_bytes())
+    content_types = [part.get_content_type() for part in parsed.walk()]
+    # multipart/related is the real, required nesting for CID resolution —
+    # a plain top-level attachment (multipart/mixed sibling) would NOT be
+    # addressable via cid: in most real mail clients.
+    assert "multipart/related" in content_types
+    assert "image/png" in content_types
+
+    image_part = next(p for p in parsed.walk() if p.get_content_type() == "image/png")
+    assert image_part.get_payload(decode=True) == fake_png
+    assert image_part["Content-ID"] == "<checkin-qrcode>"
+    assert image_part["Content-Disposition"].startswith("inline")
+
+    html_part = next(p for p in parsed.walk() if p.get_content_type() == "text/html")
+    assert 'src="cid:checkin-qrcode"' in html_part.get_payload(decode=True).decode()
+    # No data: URI anywhere — the real bug this replaces.
+    assert "data:image" not in html_part.get_payload(decode=True).decode()
+
+
 # --- end-to-end through the real booking flow (stubbed network only) --------------------
 
 
@@ -295,10 +360,11 @@ def test_real_booking_dispatches_a_real_html_email_with_matching_data(business_r
     class _FakeProvider:
         SIMULATED = False
 
-        def send(self, *, to, subject, body, html_body=None, attachments=None):
+        def send(self, *, to, subject, body, html_body=None, attachments=None, inline_images=None):
             captured["to"] = to
             captured["html_body"] = html_body
             captured["body"] = body
+            captured["inline_images"] = inline_images
             return "250 ok"
 
     monkeypatch.setitem(dispatch_service._PROVIDERS, "email", _FakeProvider())

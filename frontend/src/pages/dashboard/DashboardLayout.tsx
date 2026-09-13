@@ -21,6 +21,7 @@ const NAV_SECTIONS: { label: string; to: string; icon: string; ownerAdminOnly?: 
   { label: 'Google Calendar', to: '/dashboard/google-calendar', icon: '📆' },
   { label: 'Channels', to: '/dashboard/channels', icon: '🔌', ownerAdminOnly: true },
   { label: 'Payments', to: '/dashboard/payments', icon: '💳' },
+  { label: 'Check-in Scanner', to: '/dashboard/checkin', icon: '📷' },
   { label: 'Settings', to: '/dashboard/settings', icon: '⚙️' },
 ]
 
