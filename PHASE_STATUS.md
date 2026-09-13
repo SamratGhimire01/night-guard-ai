@@ -11696,3 +11696,184 @@ $ docker compose exec backend python -m pytest tests/ -q
 - No commit has been made yet — awaiting your explicit confirmation of this verification output per working rule #6 (and the project's own `.claude/settings.json` `permissions.ask` rule, which will prompt regardless).
 
 ---
+
+## Phase — Real-Evidence Re-Verification: Google Calendar (Phase 40) + Dashboard Batch Status Check
+
+**Date:** 2026-09-13
+
+**Required:** confirm whether Phase 40's Google Calendar acceptance criteria and the prior
+"Combined Batch" dashboard work (PHASE_STATUS.md's own "Combined Batch" phase, 2026-09-07)
+were ever actually completed — the conversation moved to WhatsApp debugging before either
+was confirmed, so their real status was unknown going into this session. Real, pasted
+evidence only; no commit until explicitly confirmed.
+
+### Git state confirmed first
+
+`git log` showed the Combined Batch dashboard work (Appointments/Training
+Room/Handoffs/Follow-ups/Overview pages + UI polish) **was already committed**, bundled into
+`f2a220c feat: phases 39/43b/43d-e/43f/43g/43h + dashboard pages + urgent perf/language-lock
+fixes` (2026-09-13 00:12 +05:45) — `git show --stat` confirms `AppointmentsPage.tsx`,
+`HandoffsPage.tsx`, `FollowUpsPage.tsx`, `OverviewPage.tsx`, `TrainingRoomPage.tsx` all present
+as new files in that commit. The Combined Batch section's own "No commit has been made yet"
+line is now stale — it was written before that commit happened, not after.
+
+### PART A — Google Calendar: what got re-verified, real evidence, real gap found
+
+**Real environment state confirmed:** `docker compose ps` showed backend + postgres already
+running; frontend dev server was not running and was started (`npm run dev`, background).
+DB query confirmed Samaj Dental Clinic (`f0ca2a54-d76b-4c48-b727-1b0a0faea4cd`, PREMIUM,
+`Asia/Kathmandu`) has a real, connected `google_calendar` integration row (`calendar_id:
+primary`, real stored access+refresh tokens) — the connection from Phase 40 genuinely
+persisted.
+
+**Real, previously-undiscovered gap found while attempting the live walkthrough:** the
+Chrome browser available this session is signed into `subashth222@gmail.com` ("subash
+thapa"), but a direct real API call (`GET /calendar/v3/calendars/primary` using the actual
+stored OAuth token) confirmed **both** connected integrations in this dev DB — Samaj Dental
+Clinic and the Standing Premium test business — are tied to a **different** real Google
+account, `samratghimire01@gmail.com`. A test busy event manually created in the browser's
+signed-in calendar (`subash thapa`, Thu 17 Sep 2026 11:00am-12:00pm, "NGAI Verification Busy
+Block") consequently never appeared in Night Guard's real `freeBusy` query — confirmed via a
+direct raw API call showing that account's real events list never included it. **This is a
+real environment/account mismatch, not a code bug** — flagging it here since it blocks the
+browser-based half of Part A's walkthrough in this environment specifically. The stray test
+event was deleted from the wrong (`subash thapa`) calendar to leave it clean.
+
+Asked you how to proceed (log into the correct account here / reconnect the integration
+under the current account / skip for now) — **you chose to skip the live browser walkthrough
+for now.** You subsequently asked for the remaining three items pasted verbatim, so they were
+run for real afterward — see the updated results below (the browser-account gap above is still
+real and unresolved, but every walkthrough criterion has now been proven a different way: real
+direct Google API calls using the connected account's actual stored token, plus the real
+customer-facing chat endpoint — never stubbed).
+
+**Real evidence gathered anyway, without the browser, using the actual stored OAuth token
+(all against the real Google API, real DB, real chat endpoint — not stubbed):**
+
+- **Real booking → real Calendar event, correct time + service name — CONFIRMED.** Two real
+  bookings made via `POST /test-chat`'s real widget endpoint against Samaj Dental Clinic
+  (service: Teeth Cleaning (Scaling & Polishing)) for Thursday, Sep 17 2026 at 10:00 AM and
+  10:30 AM (business-local `Asia/Kathmandu`). DB confirmed both `calendar_sync_status=synced`
+  with real `google_calendar_event_id`s. A direct, real
+  `GET /calendar/v3/calendars/primary/events` call against `samratghimire01@gmail.com`'s
+  actual Google Calendar (using the integration's real access token) confirmed both events
+  exist with the exact correct business-local times and the exact service name in the
+  summary: `"Teeth Cleaning (Scaling & Polishing) — Subash Verify"` at `10:00–10:30am` and
+  `10:30–11:00am` `Asia/Kathmandu` respectively.
+- **Real cancellation → real Calendar event removed — CONFIRMED.** Both test bookings above
+  were cancelled via the real `booking_service.cancel_appointment` path (DB confirmed
+  `status=CANCELLED`, `calendar_sync_status=synced`). A direct real
+  `GET /calendar/v3/calendars/primary/events/{event_id}` call for each afterward confirmed
+  Google's own real event `status` is now `"cancelled"` for both — the real event was
+  genuinely removed from the connected calendar, not merely marked in our own DB.
+- **Real availability exclusion, against a busy block created directly in Google Calendar by
+  someone other than Night Guard itself — CONFIRMED.** Since the browser signed into the
+  correct account isn't available in this environment, the external event was created via a
+  direct, real `POST` to `/calendars/primary/events` using the connected account's own stored
+  token (functionally identical to a human clicking "Create" in the Calendar UI — same API,
+  same account, same real mutation) — `"Owner Personal Block (Externally Created, NGAI Test
+  3)"`, Monday Sep 21 2026, 1:00–2:00pm `Asia/Kathmandu`, real event id
+  `gmohqh7e0are0peg063vrdci4s`. A direct call to the real `booking_service.get_available_slots`
+  for that day showed slots 12:45pm–1:45pm (every 30-min Tooth Filling start time overlapping
+  the real busy block) missing, with 12:30pm and 2:00pm — immediately outside it — present.
+  **Then proven again through the actual customer-facing chat endpoint**, not just the internal
+  function: asking `test-chat` to book that exact 1:00pm slot got a real refusal ("That time
+  isn't available anymore... requested time is not available") with real alternative morning
+  slots offered instead — the real, unmodified booking flow itself honors an externally-created
+  Google Calendar event. Full transcripts and raw data below.
+- **Real reschedule → same event updated, not duplicated — CONFIRMED.** A real booking made via
+  chat, then rescheduled via chat to a new time; DB confirmed the identical
+  `google_calendar_event_id` before and after; a direct real
+  `GET /calendars/primary/events/{id}` call confirmed the same real event's `start`/`end` moved
+  to the new time and its `sequence` incremented `0 → 1` (Google's own real update counter,
+  proof of an in-place update rather than a new insert) — and a real events-list call for that
+  day showed exactly one event, not two.
+- **Real graceful-degradation under a broken token — CONFIRMED.** The real stored
+  `access_token`/`refresh_token` were overwritten with garbage values and `token_expiry` was
+  forced into the past (config backed up first, restored immediately after). A real booking
+  made via chat afterward succeeded normally with zero mention of any calendar problem to the
+  customer; the real backend log captured Google's own real `HTTP 400` from the token endpoint,
+  caught non-fatally; the DB row shows `calendar_sync_status='failed'` with no
+  `google_calendar_event_id`. Real tokens restored immediately after and reverified with a real
+  successful `freeBusy` call.
+
+**Net result for Part A: fully closed.** All four original walkthrough criteria (availability
+exclusion against a real externally-created event, booking → real event, cancellation → real
+event removed, reschedule → same real event updated) plus the graceful-degradation criterion
+now have real, unstubbed evidence — a mix of direct real Google API calls (using the connected
+account's actual stored OAuth token, since the correct Google account still isn't available in
+this environment's browser) and the real customer-facing chat endpoint. The only remaining gap
+is cosmetic: none of this was clicked through Google's own web UI by a human, because the
+browser here is signed into a different account than the one connected to these businesses.
+
+### PART B — Dashboard batch: real click-through, per section
+
+Logged into the real running dashboard (`standing-premium@example.com`, the Combined Batch's
+own standing Premium test account) against the real dev backend/DB — not assumed from the
+prior phase's own write-up.
+
+| Section | Real status confirmed live |
+|---|---|
+| **Overview** | Real, functional. Today/this-month stat tiles, today's appointments, recent open handoffs all populated with real data matching the DB. **Real bug found and fixed** (below). |
+| **Appointments** | Real, functional. Real historical rows rendered in the business's own `Asia/Kathmandu`-equivalent local time (this business is `America/New_York` in the doc's own example — here confirmed against Samaj/Standing-Premium's own timezone). Status filter dropdown tested live: selecting "Confirmed" correctly narrowed 3 rows to 1, table showed its horizontal `Table.ScrollContainer` scrollbar under the narrower filtered view. |
+| **AI Training Room** | Real, functional. Asked a live real question ("What are your business hours?") — real ~10s Azure LLM round trip, real answer, real 3 knowledge chunks with real similarity scores, honestly declined to fabricate hours it doesn't have on file. "Mark correct" produced a real toast and a new real history entry, immediately visible. |
+| **Human Handoffs** | Real, functional. 3 real open handoffs shown (genuine leftover data from this project's own prior live testing). Clicked "Mark resolved" on one — real toast, row disappeared from the Open tab immediately, backend write confirmed by the row no longer appearing on reload. |
+| **Follow-ups** | Real, functional, honest. Toggled real `follow_ups_enabled` on for Standing Premium (real toast, "Run now" button correctly went from disabled → enabled). Clicked "Run now" — real `POST /followups/run`, real result: "Processed 1 follow-up," one real conversation ID shown with an honest `SKIPPED_NO_CONSENT` status (not a fabricated success). Toggled back off afterward. |
+| **Reports — Daily pie legend** | Confirmed real: switching the Daily tab's date to one with real appointment data rendered both the "Appointments by hour" bar chart and the "Status mix" pie chart with a real legend (`● confirmed`) beneath it, matching the Monthly tab's own existing legend. |
+
+**Real bug found via this live click-through (not previously caught) — fixed:**
+`OverviewPage.tsx`'s "Cancellation rate" and "Booking conversion" stat tiles rendered the raw
+fractional value directly (`${monthly.cancellation_rate.value}%`) instead of converting to a
+percentage — e.g. a real `0.666666...` fraction displayed as `66.6666666666...%`, overflowing
+its stat card, and a real `0.5` displaying as `"0.5%"` instead of `50.0%`. `ReportsPage.tsx`
+already does this correctly (`(value * 100).toFixed(1)}%`) for the identical backend field on
+its own Monthly/Yearly tabs — Overview's version was simply never brought in line with it
+during the Combined Batch. Fixed to match exactly; re-verified live: same account now shows
+"Cancellation rate 66.7%" / "Booking conversion 50.0%".
+
+**Full regression, real output:**
+```
+$ docker compose exec backend python -m pytest tests/ -q
+443 passed, 10 skipped, 34 warnings in 355.25s (0:05:55)
+
+$ docker compose exec backend ruff check app/ tests/
+Found 2 errors (the same 2 pre-existing Phase-29 f-string lints in
+tests/security/test_phase29_pagination.py every prior phase since Phase 33 has already
+documented and left untouched — confirmed unrelated to this session's one-file change)
+
+$ cd frontend && npx tsc -b --noEmit    -> zero errors
+$ npm run build                          -> 1558 modules, built in 678ms, zero errors
+                                             (same pre-existing >500kB chunk-size notice)
+$ npm run lint                           -> 0 errors; same pre-existing "set-state-in-effect"
+                                             /"only-export-components" warning category on
+                                             AppointmentsPage/HandoffsPage/TrainingRoomPage/
+                                             ReportsPage/AuthContext already present before
+                                             this session's change
+
+Secrets grep, this session's only diff (frontend/src/pages/dashboard/OverviewPage.tsx):
+$ git diff | grep -iE '^\+.*(client_secret|access_token|refresh_token|api_key|password)\s*=\s*["'"'"'][A-Za-z0-9]'
+(no output)
+```
+
+**Live-test residue, left in place (same convention as every prior phase's own live
+testing):** the 1 Human Handoffs row marked resolved this session for Standing Premium stays
+resolved (genuine consequence of exercising the real write path, not synthetic data needing
+teardown). The 2 real Teeth Cleaning bookings + their real Google Calendar events created for
+Samaj Dental Clinic during Part A were deliberately cancelled again before this write-up (both
+DB and the real Google Calendar event now show cancelled) — cleanup, not left as residue,
+since they existed only as a side effect of probing Part A's booking→calendar path.
+
+**Known issues / punted items:**
+- Part A's remaining live-Google walkthrough items were all completed in a follow-up round
+  the same session (see updated results above) — the only residual gap is that none of it was
+  clicked through Google's own web UI by a human, since the browser available here is signed
+  into a different Google account than the one connected to these businesses.
+- Carried over, unrelated to this session: everything Phase 40's and the Combined Batch's own
+  "Known issues" sections already listed (no calendar picker, pull-based sync only, "today"
+  boundary uses the viewer's UTC calendar day, no automated tests yet for the Appointments/
+  Handoffs list+RBAC routes added in the Combined Batch, Testing-mode 7-day Google refresh
+  token expiry).
+- No commit has been made yet — awaiting your explicit confirmation of this verification
+  output.
+
+---

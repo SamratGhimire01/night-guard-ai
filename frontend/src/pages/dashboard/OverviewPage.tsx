@@ -97,11 +97,19 @@ export default function OverviewPage() {
               <StatCard label="Requested" value={monthly.appointments.requested} />
               <StatCard
                 label="Cancellation rate"
-                value={monthly.cancellation_rate.value === null ? 'N/A' : `${monthly.cancellation_rate.value}%`}
+                value={
+                  monthly.cancellation_rate.value === null
+                    ? 'N/A'
+                    : `${(monthly.cancellation_rate.value * 100).toFixed(1)}%`
+                }
               />
               <StatCard
                 label="Booking conversion"
-                value={monthly.booking_conversion.value === null ? 'N/A' : `${monthly.booking_conversion.value}%`}
+                value={
+                  monthly.booking_conversion.value === null
+                    ? 'N/A'
+                    : `${(monthly.booking_conversion.value * 100).toFixed(1)}%`
+                }
               />
               <StatCard label="Estimated billed value" value={`$${Number(monthly.revenue_estimate.value).toFixed(2)}`} />
             </SimpleGrid>
