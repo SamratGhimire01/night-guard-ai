@@ -246,6 +246,28 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "ne_deva": "मैले तपाईंको अपोइन्टमेन्ट पुष्टि पनि फेरि पठाएँ — छिट्टै प्राप्त हुनेछ।",
         "ne_roman": "Maile tapaiko appointment confirmation feri pathaye — chittai prapta huncha.",
     },
+    # Phase 44: appended to booking_success ONLY when a real Payment row was
+    # actually created for this booking (payment_service.
+    # create_payment_for_appointment — Premium + payment collection enabled
+    # + this specific service has deposit_enabled=true). Always states the
+    # real percentage and both real amounts (deposit now, remainder at the
+    # clinic) — never a bare number with no context, since only some
+    # services require a deposit and a customer seeing this for the first
+    # time has no other way to know why.
+    "payment_deposit_required": {
+        "en": (
+            "A {percentage}% deposit of {currency} {amount} is required to confirm this appointment "
+            "— the remaining {currency} {remaining} is due at the clinic. Pay here: {link}"
+        ),
+        "ne_deva": (
+            "यो अपोइन्टमेन्ट पुष्टि गर्न {percentage}% डिपोजिट {currency} {amount} तिर्नुपर्छ — बाँकी "
+            "{currency} {remaining} क्लिनिकमा तिर्नुहोस्। यहाँ भुक्तानी गर्नुहोस्: {link}"
+        ),
+        "ne_roman": (
+            "Yo appointment confirm garna {percentage}% deposit {currency} {amount} tirnu parcha — baki "
+            "{currency} {remaining} clinic ma tirnuhos. Yaha payment garnuhos: {link}"
+        ),
+    },
     "handoff_addendum": {
         "en": "I've also let our team know, so a real person will follow up with you.",
         "ne_deva": "मैले हाम्रो टिमलाई पनि जानकारी दिएँ, त्यसैले एक जना साँच्चैको मान्छेले तपाईंलाई फलो-अप गर्नेछ।",

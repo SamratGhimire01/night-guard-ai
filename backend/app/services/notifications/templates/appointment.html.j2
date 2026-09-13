@@ -32,10 +32,24 @@
 <td style="padding:6px 0;font-size:13px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;vertical-align:top;">Booked for</td>
 <td style="padding:6px 0;font-size:14px;color:#111827;font-family:Arial,Helvetica,sans-serif;">{{ customer_name or "—" }}{% if customer_contact_bits %}, {{ customer_contact_bits | join(', ') }}{% endif %}</td>
 </tr>
+{% if payment %}
+<tr>
+<td style="padding:6px 0;font-size:13px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;vertical-align:top;">Deposit due</td>
+<td style="padding:6px 0;font-size:14px;color:#111827;font-family:Arial,Helvetica,sans-serif;">{{ payment.currency }} {{ payment.amount }} ({{ payment.percentage }}%) — remaining {{ payment.currency }} {{ payment.remaining }} due at the clinic</td>
+</tr>
+{% endif %}
 </table>
 </td>
 </tr>
 </table>
+
+{% if payment %}
+<p style="margin:20px 0 0 0;font-size:14px;line-height:20px;color:#111827;font-family:Arial,Helvetica,sans-serif;">
+A {{ payment.percentage }}% deposit of {{ payment.currency }} {{ payment.amount }} is required to confirm this appointment — the remaining {{ payment.currency }} {{ payment.remaining }} is due at the clinic.
+<br>
+<a href="{{ payment.payment_url }}" style="color:#2563eb;">Pay the deposit here</a>
+</p>
+{% endif %}
 
 <p style="margin:24px 0 0 0;font-size:13px;line-height:20px;color:#8a8f98;font-family:Arial,Helvetica,sans-serif;">If anything here looks wrong, just reach out to us directly and we'll sort it out.</p>
 {% endblock %}

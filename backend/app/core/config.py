@@ -114,6 +114,29 @@ class Settings(BaseSettings):
     groq_endpoint: str = "https://api.groq.com/openai/v1"
     groq_chat_model: str = "openai/gpt-oss-120b"
 
+    # eSewa ePay v2 + Khalti ePayment (Phase 44, Premium payment collection).
+    # Platform-wide credentials, same pattern as Twilio above — Night Guard AI
+    # itself is the merchant of record for every business's payment
+    # collection (a business picks WHICH of these two gateways to use via
+    # Business.payment_provider, not its own separate merchant account).
+    # esewa_* defaults are eSewa's own publicly documented UAT sandbox
+    # credentials (developer.esewa.com.np) — safe to commit, not a real
+    # secret. khalti_secret_key has no safe public default (Khalti requires a
+    # real sandbox signup at test-admin.khalti.com even for testing) so it's
+    # empty until a real key is provided.
+    esewa_product_code: str = "EPAYTEST"
+    esewa_secret_key: str = "8gBm/:&EnhH.1/q"
+    esewa_base_url: str = "https://rc-epay.esewa.com.np"
+    esewa_status_check_base_url: str = "https://rc.esewa.com.np"
+    khalti_secret_key: str = ""
+    khalti_base_url: str = "https://dev.khalti.com"
+
+    # This backend's own public base URL — where eSewa/Khalti redirect the
+    # customer's browser back to after payment, and where a real payment link
+    # sent to a customer points. Unlike dashboard_base_url (the SPA), this is
+    # never used for an authenticated dashboard redirect.
+    backend_base_url: str = "http://localhost:8010"
+
     # Deepgram (pre-recorded/batch speech-to-text for the widget's
     # push-to-talk voice input, app/voice/deepgram.py, Phase 43h). Empty by
     # default: app/voice/deepgram.py raises a clear, caught error (never a

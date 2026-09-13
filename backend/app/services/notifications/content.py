@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from app.db.models.appointment import Appointment
 from app.db.models.business import Business
 from app.db.models.customer import Customer
+from app.db.models.payment import Payment
 from app.db.models.service import Service
 from app.services.notifications.templates.render import render_appointment_email
 
@@ -29,8 +30,31 @@ def _format_local(dt: datetime, tz: ZoneInfo) -> str:
     return dt.astimezone(tz).strftime(_TIME_FORMAT)
 
 
+def _payment_context(payment: Payment | None, service: Service) -> dict | None:
+    """Phase 44: the same real deposit/remainder numbers the chat confirmation
+    states (booking_tool._payment_info) — recomputed here from the real
+    Payment/Service rows rather than threaded through as a third shape, so
+    email/SMS and chat can never honestly disagree. None whenever there's no
+    real pending payment to mention — never a bare number with no context."""
+    if payment is None or payment.status.value != "pending":
+        return None
+    return {
+        "amount": payment.amount,
+        "currency": payment.currency,
+        "percentage": service.deposit_percentage,
+        "remaining": service.price - payment.amount,
+        "payment_url": payment.payment_url,
+    }
+
+
 def compose_email(
-    *, event_type: str, appointment: Appointment, business: Business, service: Service, customer: Customer
+    *,
+    event_type: str,
+    appointment: Appointment,
+    business: Business,
+    service: Service,
+    customer: Customer,
+    payment: Payment | None = None,
 ) -> tuple[str, str, str]:
     """Deterministic subject/plain-text/HTML for a booking/cancellation/
     reschedule email — no LLM involvement, the same discipline this codebase
@@ -70,6 +94,14 @@ def compose_email(
     if business_contact:
         body += f"\n{business.name} · {business_contact}\n"
 
+    payment_ctx = _payment_context(payment, service) if event_type == "booking_confirmed" else None
+    if payment_ctx is not None:
+        body += (
+            f"\nA {payment_ctx['percentage']}% deposit of {payment_ctx['currency']} {payment_ctx['amount']} is "
+            f"required to confirm this appointment — the remaining {payment_ctx['currency']} "
+            f"{payment_ctx['remaining']} is due at the clinic.\nPay here: {payment_ctx['payment_url']}\n"
+        )
+
     status_label, status_color, status_bg = _STATUS_STYLE[event_type]
     html_body = render_appointment_email(
         business_name=business.name,
@@ -86,11 +118,19 @@ def compose_email(
         status_color=status_color,
         status_bg=status_bg,
         booking_id=booking_id,
+        payment=payment_ctx,
     )
     return subject, body, html_body
 
 
-def compose_sms(*, event_type: str, appointment: Appointment, business: Business, service: Service) -> str:
+def compose_sms(
+    *,
+    event_type: str,
+    appointment: Appointment,
+    business: Business,
+    service: Service,
+    payment: Payment | None = None,
+) -> str:
     """Deterministic one-line SMS body — same real-row/no-LLM discipline as
     compose_email, just short (SMS has no subject line and carriers/Twilio
     charge per ~160-char segment)."""
@@ -107,4 +147,11 @@ def compose_sms(*, event_type: str, appointment: Appointment, business: Business
     else:
         raise ValueError(f"Unknown notification event_type: {event_type!r}")
 
-    return f"{business.name}: your {service.name} appointment on {when} is {verb}. Booking ID {booking_id}."
+    text = f"{business.name}: your {service.name} appointment on {when} is {verb}. Booking ID {booking_id}."
+    payment_ctx = _payment_context(payment, service) if event_type == "booking_confirmed" else None
+    if payment_ctx is not None:
+        text += (
+            f" A {payment_ctx['percentage']}% deposit of {payment_ctx['currency']} {payment_ctx['amount']} is "
+            f"required — pay: {payment_ctx['payment_url']}"
+        )
+    return text

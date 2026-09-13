@@ -5,8 +5,9 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, NotFoundError, UnprocessableEntityError
+from app.db.models.payment import PaymentStatus
 from app.schemas.conversation import ConversationIntent
-from app.services import booking_service
+from app.services import booking_service, payment_service, service_service
 from app.services.conversation.tools import TOOL_REGISTRY, ConversationTool
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,38 @@ class BookAppointmentTool(ConversationTool):
             },
             "message": None,
             "alternative_slots": [],
+            "payment": self._payment_info(
+                db, business_id=business_id, appointment_id=appointment.id, service_id=service_id
+            ),
+        }
+
+    def _payment_info(
+        self, db: Session, *, business_id: uuid.UUID, appointment_id: uuid.UUID, service_id: uuid.UUID
+    ) -> dict | None:
+        """Phase 44: reads back whatever payment_service.
+        create_payment_for_appointment already decided during
+        booking_service.create_appointment's own commit — never re-decides
+        anything here. None whenever no real Payment row exists (free plan,
+        toggle off, or this service has no deposit configured) — the ONLY
+        thing that makes _format_booking_result able to honestly say nothing
+        about payment for a booking that doesn't need it (see
+        response_templates.py)."""
+        payment = payment_service.get_payment_for_appointment(
+            db, business_id=business_id, appointment_id=appointment_id
+        )
+        if payment is None or payment.status != PaymentStatus.PENDING:
+            # A FAILED payment_url is never shown to a customer as something
+            # to pay — the appointment is confirmed regardless (see Payment's
+            # own docstring); staff sees the real failure in the dashboard's
+            # pending-payments view instead.
+            return None
+        service = service_service.get_service(db, business_id=business_id, service_id=service_id)
+        return {
+            "amount": payment.amount,
+            "currency": payment.currency,
+            "payment_url": payment.payment_url,
+            "percentage": service.deposit_percentage if service else None,
+            "remaining": (service.price - payment.amount) if service else None,
         }
 
     def run_group(

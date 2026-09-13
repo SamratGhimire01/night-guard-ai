@@ -2,7 +2,7 @@ import re
 import uuid
 from zoneinfo import available_timezones
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.db.models.business import BusinessPlan
 from app.schemas.common import safe_str
@@ -52,6 +52,11 @@ class BusinessRead(BaseModel):
     # plan): this is display styling, not an entitlement.
     brand_color: str
     logo_url: str | None
+    # Phase 44 — read-only here on purpose, same reasoning as `plan`: the
+    # only writer is PATCH /business/payment-settings (app/api/routes/
+    # payments.py), which re-checks the Premium gate on every call.
+    payment_collection_enabled: bool
+    payment_provider: str | None
 
 
 class BusinessUpdate(BaseModel):
@@ -121,3 +126,31 @@ class BusinessUpdate(BaseModel):
         if value is None:
             raise ValueError("This field cannot be cleared to null — pass true or false.")
         return value
+
+
+# Phase 44 — the two real gateways this codebase has an actual
+# PaymentProvider implementation for (app/services/payments/). Both are
+# Nepali payment gateways that process NPR only in reality; enabling payment
+# collection on a business whose currency isn't NPR is rejected below rather
+# than silently generating a nonsensical payment request.
+SUPPORTED_PAYMENT_PROVIDERS = frozenset({"esewa", "khalti"})
+
+
+class PaymentSettingsUpdate(BaseModel):
+    """PATCH /business/payment-settings — deliberately separate from
+    BusinessUpdate (never the generic PATCH /business/me), since this is the
+    one business-level toggle that must be plan-gated: the route itself
+    re-checks Premium via require_plan on every call (Phase 34 discipline),
+    something a generic PATCH endpoint has no per-field way to do."""
+
+    payment_collection_enabled: bool
+    payment_provider: str | None = None
+
+    @model_validator(mode="after")
+    def provider_required_when_enabled(self) -> "PaymentSettingsUpdate":
+        if self.payment_collection_enabled:
+            if self.payment_provider not in SUPPORTED_PAYMENT_PROVIDERS:
+                raise ValueError(f"payment_provider must be one of: {', '.join(sorted(SUPPORTED_PAYMENT_PROVIDERS))}.")
+        else:
+            self.payment_provider = None
+        return self

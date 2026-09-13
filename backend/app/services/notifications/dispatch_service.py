@@ -10,6 +10,7 @@ from app.db.models.appointment import Appointment
 from app.db.models.business import Business
 from app.db.models.customer import Customer
 from app.db.models.notification import Notification, NotificationStatus
+from app.db.models.payment import Payment
 from app.db.models.service import Service
 from app.services.notifications.base import NotificationDeliveryError
 from app.services.notifications.content import compose_email, compose_sms
@@ -72,6 +73,17 @@ def _dispatch(db: Session, notification: Notification) -> None:
         _mark_failed(db, notification, "missing appointment/business/service/customer data")
         return
 
+    # Phase 44: only relevant for booking_confirmed (the only event a Payment
+    # is ever created against — see payment_service.
+    # create_payment_for_appointment), and None whenever no real Payment row
+    # exists for this appointment. compose_email/compose_sms both already
+    # treat payment=None as "say nothing about payment."
+    payment = (
+        db.execute(select(Payment).where(Payment.appointment_id == appointment.id)).scalar_one_or_none()
+        if notification.event_type == "booking_confirmed"
+        else None
+    )
+
     send_kwargs: dict = {}
     if notification.channel == "email":
         provider = _PROVIDERS["email"]
@@ -82,13 +94,18 @@ def _dispatch(db: Session, notification: Notification) -> None:
             business=business,
             service=service,
             customer=customer,
+            payment=payment,
         )
         send_kwargs = {"html_body": html_body}
     elif notification.channel == "sms":
         provider = _resolve_sms_provider()
         recipient = customer.phone or ""
         subject, body = "", compose_sms(
-            event_type=notification.event_type, appointment=appointment, business=business, service=service
+            event_type=notification.event_type,
+            appointment=appointment,
+            business=business,
+            service=service,
+            payment=payment,
         )
     else:
         _mark_failed(db, notification, f"no provider registered for channel={notification.channel!r}")

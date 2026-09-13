@@ -40,6 +40,25 @@ export interface BusinessRead {
   plan: 'free' | 'premium'
   brand_color: string
   logo_url: string | null
+  payment_collection_enabled: boolean
+  payment_provider: 'esewa' | 'khalti' | null
+}
+
+export interface PaymentSettingsUpdate {
+  payment_collection_enabled: boolean
+  payment_provider?: 'esewa' | 'khalti' | null
+}
+
+export interface PaymentRead {
+  id: string
+  business_id: string
+  appointment_id: string
+  provider: string
+  amount: string
+  currency: string
+  status: 'pending' | 'completed' | 'failed'
+  gateway_reference: string | null
+  payment_url: string
 }
 
 export interface BusinessUpdate {
@@ -106,6 +125,8 @@ export interface ServiceRead {
   price: string
   duration_minutes: number
   staff_id: string | null
+  deposit_enabled: boolean
+  deposit_percentage: number | null
 }
 
 export interface ServiceWrite {
@@ -114,6 +135,8 @@ export interface ServiceWrite {
   price: string
   duration_minutes: number
   staff_id?: string | null
+  deposit_enabled?: boolean
+  deposit_percentage?: number | null
 }
 
 export interface StaffRead {

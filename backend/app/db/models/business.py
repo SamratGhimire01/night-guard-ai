@@ -85,6 +85,21 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # the exact same look after migration.
     brand_color: Mapped[str] = mapped_column(String(7), nullable=False, default="#2563eb", server_default="#2563eb")
     logo_url: Mapped[str | None] = mapped_column(String(500))
+    # Phase 44: real eSewa/Khalti payment collection — a Premium-gated toggle,
+    # off by default (same "never on by default" discipline as sms_enabled/
+    # follow_ups_enabled above). Only writable via the dedicated, plan-gated
+    # PATCH /business/payment-settings route (app/api/routes/payments.py),
+    # never the generic PATCH /business/me — a Free-plan business must never
+    # be able to flip this on itself, the same reasoning that keeps `plan`
+    # itself off BusinessUpdate.
+    payment_collection_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    # "esewa" | "khalti" | NULL. NULL whenever payment_collection_enabled is
+    # false — enforced at the schema layer (PaymentSettingsUpdate), not a DB
+    # CHECK constraint, matching this codebase's existing convention for
+    # conditionally-meaningful fields (e.g. Service.deposit_percentage).
+    payment_provider: Mapped[str | None] = mapped_column(String(20))
 
 
 class BusinessUser(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):

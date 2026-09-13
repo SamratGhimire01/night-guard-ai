@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import ForeignKeyConstraint, Numeric, String, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKeyConstraint, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -30,3 +30,12 @@ class Service(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     duration_minutes: Mapped[int] = mapped_column(nullable=False)
     staff_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
+    # Phase 44: per-service deposit configuration for real payment collection
+    # (a Premium feature, gated at the business level — see Business.
+    # payment_collection_enabled). Off by default: a pre-existing service
+    # keeps requiring no online payment after migration. deposit_percentage
+    # is only meaningful when deposit_enabled is true (enforced by
+    # ServiceCreate/ServiceUpdate, not a DB CHECK constraint — same pattern
+    # as this codebase's other conditionally-meaningful fields).
+    deposit_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    deposit_percentage: Mapped[int | None] = mapped_column()

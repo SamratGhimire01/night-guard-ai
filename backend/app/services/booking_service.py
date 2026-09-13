@@ -13,7 +13,7 @@ from app.db.models.audit_log import AuditLog
 from app.db.models.business import Business, BusinessHours, BusinessHoursException
 from app.db.models.customer import Customer
 from app.db.models.notification import Notification, NotificationStatus
-from app.services import customer_service, google_calendar_service, service_service, staff_service
+from app.services import customer_service, google_calendar_service, payment_service, service_service, staff_service
 from app.services.notifications import dispatch_notification
 
 logger = logging.getLogger(__name__)
@@ -272,8 +272,15 @@ def create_appointment(
             db.commit()
             db.refresh(appointment)
             db.refresh(notification)
-            dispatch_notification(db, notification)
             google_calendar_service.sync_appointment_created(db, appointment)
+            # Phase 44: best-effort, same "never break an already-successful
+            # booking" discipline as the calendar sync directly above — must
+            # run after dispatch_notification's own booking-confirmation
+            # Notification is queued/sent, not before, since the payment
+            # link it may create should already be there for that email to
+            # include (see notifications/content.py).
+            payment_service.create_payment_for_appointment(db, appointment)
+            dispatch_notification(db, notification)
         else:
             db.flush()
     except (NotFoundError, UnprocessableEntityError, ConflictError) as exc:

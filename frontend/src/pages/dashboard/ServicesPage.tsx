@@ -11,6 +11,7 @@ import {
   NumberInput,
   Select,
   Stack,
+  Switch,
   Table,
   Text,
   Textarea,
@@ -64,7 +65,15 @@ export default function ServicesPage() {
   }, [])
 
   const form = useForm<ServiceWrite>({
-    initialValues: { name: '', description: '', price: '', duration_minutes: 30, staff_id: null },
+    initialValues: {
+      name: '',
+      description: '',
+      price: '',
+      duration_minutes: 30,
+      staff_id: null,
+      deposit_enabled: false,
+      deposit_percentage: null,
+    },
     // withAsterisk (visual only, no native "required" attribute) + this
     // validate config replaces the browser's own "Please fill out this
     // field" tooltip with a real styled inline Mantine error.
@@ -72,12 +81,24 @@ export default function ServicesPage() {
       name: (v) => (v.trim() ? null : 'Name is required.'),
       price: (v) => (v !== '' && Number(v) >= 0 ? null : 'Enter a valid, non-negative price.'),
       duration_minutes: (v) => (v && Number(v) > 0 ? null : 'Duration must be a positive number of minutes.'),
+      deposit_percentage: (v, values) =>
+        values.deposit_enabled && !(Number(v) >= 1 && Number(v) <= 100)
+          ? 'Enter a percentage from 1 to 100.'
+          : null,
     },
   })
 
   function openCreate() {
     setEditing(null)
-    form.setValues({ name: '', description: '', price: '', duration_minutes: 30, staff_id: null })
+    form.setValues({
+      name: '',
+      description: '',
+      price: '',
+      duration_minutes: 30,
+      staff_id: null,
+      deposit_enabled: false,
+      deposit_percentage: null,
+    })
     setFormOpen(true)
   }
 
@@ -89,12 +110,19 @@ export default function ServicesPage() {
       price: service.price,
       duration_minutes: service.duration_minutes,
       staff_id: service.staff_id,
+      deposit_enabled: service.deposit_enabled,
+      deposit_percentage: service.deposit_percentage,
     })
     setFormOpen(true)
   }
 
   async function handleSubmit(values: ServiceWrite) {
-    const payload = { ...values, staff_id: values.staff_id || null, description: values.description || null }
+    const payload = {
+      ...values,
+      staff_id: values.staff_id || null,
+      description: values.description || null,
+      deposit_percentage: values.deposit_enabled ? values.deposit_percentage : null,
+    }
     try {
       if (editing) {
         const updated = await apiFetch<ServiceRead>(`/services/${editing.id}`, {
@@ -186,6 +214,7 @@ export default function ServicesPage() {
               <Table.Th>Name</Table.Th>
               <Table.Th>Price</Table.Th>
               <Table.Th>Duration</Table.Th>
+              <Table.Th>Deposit</Table.Th>
               <Table.Th>Staff</Table.Th>
               <Table.Th>Documents</Table.Th>
               <Table.Th />
@@ -194,7 +223,7 @@ export default function ServicesPage() {
           <Table.Tbody>
             {loading && (
               <Table.Tr>
-                <Table.Td colSpan={6}>
+                <Table.Td colSpan={7}>
                   <Center py="md">
                     <Loader size="sm" />
                   </Center>
@@ -203,7 +232,7 @@ export default function ServicesPage() {
             )}
             {!loading && services.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={6}>
+                <Table.Td colSpan={7}>
                   <Text c="dimmed" ta="center" py="md">
                     No services yet.
                   </Text>
@@ -215,6 +244,17 @@ export default function ServicesPage() {
                 <Table.Td>{service.name}</Table.Td>
                 <Table.Td>{currency} {service.price}</Table.Td>
                 <Table.Td>{service.duration_minutes} min</Table.Td>
+                <Table.Td>
+                  {service.deposit_enabled ? (
+                    <Badge color="grape" variant="light">
+                      {service.deposit_percentage}%
+                    </Badge>
+                  ) : (
+                    <Text c="dimmed" size="sm">
+                      Pay at clinic
+                    </Text>
+                  )}
+                </Table.Td>
                 <Table.Td>{staffName(service.staff_id)}</Table.Td>
                 <Table.Td>
                   <Button variant="subtle" size="compact-sm" onClick={() => openDocs(service)}>
@@ -287,6 +327,24 @@ export default function ServicesPage() {
               value={form.values.staff_id}
               onChange={(v) => form.setFieldValue('staff_id', v)}
             />
+            <Switch
+              label="Require an online deposit to confirm booking"
+              description="When off, the customer pays in person at the clinic and no payment link is generated."
+              checked={form.values.deposit_enabled}
+              onChange={(e) => form.setFieldValue('deposit_enabled', e.currentTarget.checked)}
+            />
+            {form.values.deposit_enabled && (
+              <NumberInput
+                label="Deposit percentage"
+                withAsterisk
+                min={1}
+                max={100}
+                suffix="%"
+                value={form.values.deposit_percentage ?? ''}
+                onChange={(v) => form.setFieldValue('deposit_percentage', v === '' ? null : Number(v))}
+                error={form.errors.deposit_percentage}
+              />
+            )}
             <Button type="submit" mt="xs">
               {editing ? 'Save changes' : 'Add service'}
             </Button>

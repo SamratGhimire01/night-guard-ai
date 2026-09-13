@@ -12136,3 +12136,337 @@ $ docker compose exec backend python -m pytest tests/ -q
   output per working rule #6.
 
 ---
+
+## Phase 44 — real eSewa + Khalti payment collection (Premium) + per-service deposits
+
+**Required:** After a real booking is confirmed, generate a real payment request through
+eSewa or Khalti (business's choice), show the customer a real payment link, and
+automatically confirm payment via the gateway's real, independent verification API — no
+manual staff checking. Gated behind Phase 34's `require_plan("premium")`. Payment status
+must never block or corrupt a real booking (the appointment is confirmed the moment its
+DB transaction commits, per Phase 10; payment status is a separate, honestly-tracked
+field). Per-service deposit configuration (`deposit_enabled`, `deposit_percentage`
+1-100) determines the real amount charged; a service with no deposit configured is
+always paid in person, no payment request generated at all.
+
+**Correction of a false premise, before any code was written:** the ticket referenced
+"earlier Nepal launch research on eSewa/Khalti merchant APIs" in `PHASE_STATUS.md` — a
+full-text search of this entire file and the git history found no such research; it
+does not exist. Rather than fabricate credentials or a gateway response, real current
+documentation was fetched live from `developer.esewa.com.np` and `docs.khalti.com`
+before writing any gateway code, and reported to you directly in-session.
+
+**Credentials used (real, not fabricated):**
+- **eSewa**: `EPAYTEST` / `8gBm/:&EnhH.1/q` — eSewa's own publicly documented UAT
+  sandbox credentials (no signup required for testing; committed as the default in
+  `app/core/config.py` since they're not a real secret). Real production credentials
+  require signup at `merchant.esewa.com.np`.
+- **Khalti**: a real sandbox secret key from `test-admin.khalti.com`, provided by you
+  and stored only in `backend/.env` (`KHALTI_SECRET_KEY`), never committed, never
+  logged (grep-verified below).
+
+**Architectural decision, confirmed with you before coding:** payment gateway
+credentials are platform-wide config (`app/core/config.py`), not per-business —
+mirrors the existing Twilio SMS precedent exactly (global settings + a per-business
+`sms_enabled` toggle), not a per-tenant "bring your own merchant account" model like
+Google Calendar/WhatsApp. `Business.payment_provider` picks which of the two
+platform-integrated gateways a business uses.
+
+**Confirmed interpretation (per your explicit confirmation):** `deposit_enabled=false`
+on a service → no payment request generated at all, booking confirmation says nothing
+about payment, customer pays in person at the clinic.
+
+**Implemented:**
+
+- **`app/db/models/payment.py`** (new) — `Payment` (tenant-scoped, `appointment_id`
+  unique — one payment request per appointment), `provider`, `amount`/`currency`,
+  `status` (`pending`/`completed`/`failed`), `gateway_reference` (Khalti's `pidx`
+  immediately; eSewa's `transaction_code` only once confirmed), `payment_url`. The
+  row's own `id` **is** the transaction reference sent to the gateway (eSewa's
+  `transaction_uuid` / Khalti's `purchase_order_id`) — reused rather than minting a
+  second identifier, since the unauthenticated gateway redirect/callback routes need a
+  single global lookup key and this primary key already is one.
+- **`app/db/models/service.py`** — `deposit_enabled` (bool, default false),
+  `deposit_percentage` (int, nullable). **`app/db/models/business.py`** —
+  `payment_collection_enabled` (bool, default false), `payment_provider`
+  (`"esewa"`/`"khalti"`/null). Migration `8ef2989e7fca`, applied; `alembic check` →
+  clean.
+- **`app/schemas/service.py`** — `deposit_percentage` only meaningful when
+  `deposit_enabled=true` (1-100 inclusive; 100 is an ordinary value, not a special
+  case), enforced via `model_validator(mode="after")`, not `field_validator` — **a
+  real bug found by this phase's own test suite**: pydantic v2 never runs a
+  `field_validator` on a field left at its default value (only an explicitly-sent
+  value), so `ServiceCreate({"deposit_enabled": true})` with `deposit_percentage`
+  omitted silently returned `201` instead of the required `422` until switched to a
+  model-level validator (`ServiceUpdate` already used `model_fields_set` correctly and
+  needed no fix). `ServiceRead` now includes both fields.
+- **`app/schemas/business.py`** — `BusinessRead` gained `payment_collection_enabled`/
+  `payment_provider` (read-only, like `plan` — never on the generic `BusinessUpdate`).
+  New `PaymentSettingsUpdate` schema + `SUPPORTED_PAYMENT_PROVIDERS`.
+- **`app/services/payments/base.py`** (new) — `PaymentProvider` ABC
+  (`initiate_payment`/`verify_payment`), mirroring the `ChatProvider`/
+  `NotificationProvider` seam elsewhere in this codebase, plus `PaymentGatewayError`.
+- **`app/services/payments/esewa.py`** (new) — real eSewa ePay v2. eSewa's real API has
+  **no server-to-server "create payment" call at all**; `initiate_payment` reflects
+  that honestly by returning this backend's own redirect-page URL, which renders a
+  real HMAC-SHA256-signed auto-submit HTML form the customer's browser POSTs directly
+  to eSewa (`rc-epay.esewa.com.np` sandbox / `epay.esewa.com.np` production).
+  `verify_payment` calls eSewa's real Status Check API independently — never trusts
+  the redirect's own base64 payload.
+- **`app/services/payments/khalti.py`** (new) — real Khalti ePayment (KPG-2).
+  `initiate_payment` is a real `POST /api/v2/epayment/initiate/` returning a real
+  `pidx` + `payment_url`. `verify_payment` calls the real `POST /epayment/lookup/`.
+  **A real bug found via live sandbox testing**: Khalti's lookup API returns **HTTP
+  400**, not 200, for a legitimate non-success terminal outcome (e.g. `"User
+  canceled"`) — the response body is still a complete, valid status payload (plus an
+  `error_key` field). The original code treated any non-2xx as a hard
+  `PaymentGatewayError` and discarded the body, which left a real cancelled payment
+  stuck at `pending` forever. Fixed via `_post_json(..., recover_status_on_http_error=
+  True)` for the lookup call only (`initiate`'s 400 really is a bad request, with no
+  status to recover) — proven fixed by real reproduction below.
+- **`app/services/payment_service.py`** (new) — `create_payment_for_appointment`
+  (best-effort, never raises — same discipline as Phase 40's
+  `google_calendar_service.sync_appointment_created`; a no-op whenever free plan,
+  toggle off, or the specific service has no deposit configured), real deposit-amount
+  calculation (`service.price * deposit_percentage / 100`, `ROUND_HALF_UP` to 2dp —
+  the same precision as `Service.price`'s own column; this codebase has no
+  per-currency decimal-places table elsewhere, so this stays consistent with existing
+  convention rather than inventing zero-decimal-currency handling unrequested),
+  `update_payment_settings` (rejects enabling payment collection for a non-NPR
+  business — both gateways are real Nepali-only rails, a live, verified fact, not a
+  guess), `verify_and_update` (never touches `Appointment`).
+- **`app/services/booking_service.py`** — `create_appointment` calls
+  `payment_service.create_payment_for_appointment` right after the booking's own
+  commit, before `dispatch_notification` (so the confirmation email/SMS can include
+  the real payment link) — same non-blocking placement as the Google Calendar sync.
+- **`app/services/conversation/booking_tool.py`** — `run()`'s success result gained a
+  `payment` key (amount/currency/percentage/remaining/payment_url) read back from the
+  real `Payment` row created above; `None` whenever no real payment exists.
+- **`app/services/conversation/response_templates.py` /
+  `orchestrator.py`** — new `payment_deposit_required` template (translated
+  en/ne_deva/ne_roman, same discipline as every other scaffold sentence), appended to
+  `booking_success` only when a real payment exists — states the real percentage and
+  both real amounts, never a bare number with no context.
+- **`app/services/notifications/content.py` / `dispatch_service.py`** — `compose_email`/
+  `compose_sms` gained an optional `payment` param; the real deposit/remainder line is
+  added to the plain-text body, HTML template (`appointment.html.j2`, new "Deposit due"
+  row + a "Pay the deposit here" link), and SMS body — all recomputed from the real
+  `Payment`/`Service` rows, never a second copy of the chat's own numbers.
+- **`app/api/routes/payments.py`** (new) — `PATCH /business/payment-settings`
+  (owner/admin + Premium-gated), `GET /payments` (**any authenticated role, including
+  staff** — the ticket's explicit ask: "so staff can see payment status... even though
+  confirmation itself is automatic"; only the settings toggle is owner/admin-gated),
+  and the public, unauthenticated gateway routes: `GET /payments/esewa/redirect/
+  {payment_id}` (renders the real signed form), `GET /payments/esewa/success` +
+  `/failure` (both run the identical real, independent verification — eSewa's own docs
+  say the redirect payload alone is never sufficient), `GET /payments/khalti/callback`.
+  **A real gap found via live testing, fixed**: eSewa's own "Cancel Payment" button
+  redirects to `failure_url` with **no `data` param at all** (unlike a real declined
+  payment, which does carry one) — the route now also carries its own `payment_id`
+  query param on both `success_url`/`failure_url` (set in `signed_form_fields`) so a
+  bare cancel can still be looked up and independently verified rather than being
+  stranded with no way to identify which payment it was.
+- **Frontend** — `ServicesPage.tsx`: a `Switch` ("Require an online deposit to confirm
+  booking") + `NumberInput` (1-100%, shown only when the toggle is on) in the
+  add/edit modal, a "Deposit" column in the table (a badge with the real percentage, or
+  "Pay at clinic"). New `PaymentsPage.tsx` (`/dashboard/payments`, nav entry visible to
+  every role): a Premium-gated toggle + gateway `Select`, and a real payment-history
+  table (provider/amount/status badge/gateway reference/payment link) — visible to
+  staff (read-only; the toggle itself is disabled unless `canWrite`).
+
+**Real end-to-end acceptance verification (actual output, run 2026-09-13):**
+
+1. **Real eSewa payment initiation** — booked a real appointment for a 20%-deposit,
+   NPR 45,000 service; real Payment row created with `amount=9000.00`. Fetched the real
+   signed redirect page and POSTed the exact same real fields to eSewa's real sandbox:
+```
+$ curl -i -X POST https://rc-epay.esewa.com.np/api/epay/main/v2/form -d amount=9000.00 ... -d signature=cLjZwsmZCJk0cJ35NXO3jKOXUuM/vqO9deZJlTEBYVo=
+HTTP/2 302
+location: https://rc-epay.esewa.com.np/epay?bookingId=Ksvazz20BERlGPPDWOwJEw%3D%3D
+```
+   A real, valid eSewa sandbox session — proves the HMAC signature and field shapes are
+   correct.
+
+2. **Real eSewa payment confirmation** — completed a full real browser flow (Chrome):
+   logged into eSewa's real sandbox (`9711111111` / MPIN `1122` / OTP `123456`), real
+   wallet balance NPR 38,590 shown, clicked "PAY VIA ESEWA". Real redirect back to this
+   backend's `success_url` with a real base64 payload:
+```json
+{"transaction_code":"000H30V","status":"COMPLETE","total_amount":"9000.0","transaction_uuid":"9af6472c-...","product_code":"EPAYTEST", ...}
+```
+   Real, independent Status Check API call (both by the backend itself and repeated
+   manually for verification):
+```
+$ curl "https://rc.esewa.com.np/api/epay/transaction/status/?product_code=EPAYTEST&total_amount=9000.00&transaction_uuid=9af6472c-..."
+{"status":"COMPLETE","ref_id":"000H30V", ...}
+```
+   Real DB update: `Payment.status` → `completed`, `gateway_reference` → `000H30V`.
+   **The underlying `Appointment.status` remained `confirmed` throughout** — never
+   touched by any of this.
+
+3. **Real eSewa failure case** — a second real booking's payment was cancelled via
+   eSewa's real "Cancel Payment" button. Found and fixed the `failure_url`-has-no-
+   `data`-param gap (above) via live reproduction, then re-verified: real redirect to
+   `failure_url?payment_id=...`, real Status Check API call returns
+   `{"status":"NOT_FOUND","ref_id":null}` (eSewa genuinely never created a transaction
+   since the customer cancelled before submitting), real DB update to
+   `Payment.status=failed`, and `Appointment.status` still `confirmed`.
+
+4. **Real Khalti payment initiation** — switched the same business to
+   `payment_provider="khalti"`, booked a fresh appointment. Real `POST
+   /api/v2/epayment/initiate/` call returned a real `pidx` (`LQ6MvuiMQsFBbxdo6tsLLc`)
+   and a real `https://test-pay.khalti.com/?pidx=...` checkout URL — opened in a real
+   browser, showing the real sandbox checkout UI with the correct `NPR 9,000.00`.
+
+5. **Real Khalti lookup + failure case, and the real bug this found** — the real
+   lookup API confirmed an honest `"Pending"` status before completion:
+```
+$ curl -X POST https://dev.khalti.com/api/v2/epayment/lookup/ -H "Authorization: Key ..." -d '{"pidx":"LQ6MvuiMQsFBbxdo6tsLLc"}'
+{"status":"Pending","total_amount":900000, ...}
+```
+   Clicked "Cancel Payment" in the real sandbox UI → real redirect to this backend's
+   `khalti/callback?...&status=User+canceled&purchase_order_id=...`. The real lookup
+   API turned out to return **HTTP 400** for this real outcome
+   (`{"status":"User canceled","error_key":"khalti_error"}`), which the original code
+   mishandled as a hard error, leaving `Payment.status` stuck at `pending` — caught via
+   a real backend log (`PaymentGatewayError: Khalti HTTP 400: ...`), fixed, and
+   re-verified live: the same real cancelled transaction now correctly resolves to
+   `Payment.status=failed`, with `Appointment.status` still `confirmed`.
+   **Known gap, honestly disclosed**: a live browser click-through to a
+   Khalti-confirmed **`Completed`** state could not be produced — the shared public
+   sandbox wallet test accounts (`9800000000`-`9800000001`, documented by Khalti) came
+   back "MPIN locked" from other testers' use, the SCT test-card flow hit a real
+   `Server Error (500)` on Khalti's own sandbox, and Connect IPS redirected to a real
+   third-party bank aggregator with no sandbox at all — all environment limitations on
+   Khalti's own side, not this integration. The `completed` code path is the exact same
+   `verify_and_update`/`PaymentStatus.COMPLETED` logic already fully proven live via
+   eSewa's real completed transaction above, differing only in which gateway's status
+   string is compared (`"COMPLETE"` vs `"Completed"`), both confirmed correct against
+   real, live API responses.
+
+6. **Real deposit-amount calculation** — Root Canal (NPR 45,000, `deposit_percentage=
+   20`) → real `Payment.amount = 9000.00` (exactly 20%). A service with
+   `deposit_enabled=false` (Checkup) → booking succeeded, **zero** Payment rows created
+   for that appointment, confirmed by direct query.
+
+7. **Real chat + email honesty** — directly invoking the real, unmodified
+   `BookAppointmentTool`/`_format_booking_result`/`compose_email` against the real
+   pending-deposit appointment:
+```
+You're all set, Test Customer! I've booked Root Canal for Thursday, September 17 at 9:00 AM (60 min).
+Your booking ID is ab7d761d-.... A 20% deposit of NPR 9000.00 is required to confirm this appointment
+— the remaining NPR 36000.00 is due at the clinic. Pay here: http://localhost:8010/api/v1/payments/esewa/redirect/593c4fe9-...
+```
+   The no-deposit Checkup booking's email mentions nothing about payment at all.
+
+8. **Free-plan business — real 402**:
+```
+$ curl -i -X PATCH .../business/payment-settings (free-plan bearer) -d '{"payment_collection_enabled":true,"payment_provider":"esewa"}'
+HTTP/1.1 402 Payment Required
+{"error":{"type":"plan_required","message":"This feature requires the premium plan (current plan: free)."}}
+```
+
+9. **Non-NPR currency rejected** — `PATCH /business/payment-settings` on a
+   non-NPR-currency Premium business → real `422`, before any gateway call is ever
+   attempted.
+
+10. **Cross-tenant isolation** — Business B's `GET /payments` (real bearer token)
+    returns `[]` after Business A created real payment rows.
+
+11. **Real dashboard UI** (Chrome, real dev server on :5173 against the real backend):
+    Services page shows a live "20%" / "25%" badge or "Pay at clinic" per service;
+    toggling the deposit switch on a real service, saving, and re-reading confirmed
+    real persistence (`"Checkup" updated.` toast, badge changed 
+    "Pay at clinic" → "25%"). Payments page shows the real toggle (Premium-gated,
+    disabled for non-owner/admin) and the real payment-history table populated with
+    every real row from the verification above (correct provider/amount/status
+    badge/gateway reference/Open link).
+
+12. **[verified via automated test]** `tests/integration/test_payments.py`, 14 real
+    tests (network calls stubbed at `payment_service._PROVIDERS`, the same seam
+    `google_calendar_service` tests stub at — the real, unstubbed gateway walkthrough
+    is §1-5 above):
+```
+$ docker compose exec backend python -m pytest tests/integration/test_payments.py -v
+test_service_create_rejects_deposit_percentage_out_of_range PASSED
+test_service_create_rejects_deposit_enabled_without_percentage PASSED
+test_service_create_allows_100_percent_deposit_as_ordinary_value PASSED
+test_service_update_toggle_persists_and_clears_percentage_when_disabled PASSED
+test_payment_settings_402_for_free_plan PASSED
+test_payment_settings_rejects_non_npr_currency PASSED
+test_payment_settings_requires_provider_when_enabling PASSED
+test_booking_deposit_service_creates_payment_with_exact_percentage_amount PASSED
+test_booking_no_deposit_service_creates_no_payment PASSED
+test_booking_free_plan_creates_no_payment_even_with_deposit_service PASSED
+test_gateway_initiation_failure_never_blocks_or_corrupts_the_booking PASSED
+test_verify_and_update_never_touches_appointment_either_way PASSED
+test_payments_are_tenant_scoped PASSED
+test_staff_role_can_read_payments_but_not_change_settings PASSED
+======================== 14 passed in 14.5s ========================
+```
+
+13. **[verified via automated test]** Full backend regression suite, zero failures:
+```
+$ docker compose exec backend python -m pytest tests/ -q
+461 passed, 10 skipped, 38 warnings in 372.85s
+```
+
+14. Lint: `ruff check` on every file this phase touched → clean (only the same 2
+    pre-existing, unrelated `F541` warnings in `tests/security/test_phase29_
+    pagination.py` remain repo-wide). Frontend: `npm run build` (`tsc -b && vite
+    build`) → clean; `npm run lint` (oxlint) → zero findings in any file this phase
+    touched.
+
+15. No migration drift: `alembic check` → `No new upgrade operations detected.`
+
+16. **Secrets grep** — the real eSewa secret key, the real Khalti secret/public keys,
+    and the literal string `Authorization` grepped against ~250 lines of real backend
+    logs spanning this entire phase's testing → zero matches. Every `logger.*` call in
+    every file this phase touched inspected directly — none pass a secret/config dict
+    to a logger; the Khalti provider's HTTP-error path explicitly never logs the raw
+    response body except through the same scrubbing discipline as the Twilio/Gmail
+    providers.
+
+17. **[verified live]** DB left clean: the two demo businesses (`Payments Demo Dental`,
+    `Free Plan Dental`) and all their real Appointment/Payment/Customer/Service rows
+    removed (cascade via `Business` delete), confirmed `count() == 0` afterward.
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real payment initiation: real API call, real payment link/QR, request/response pasted | ✓ Pass — §1 (eSewa), §4 (Khalti) |
+| Real payment confirmation: real sandbox payment, real callback, real DB update to completed | ✓ Pass — §2 (eSewa, fully live); Khalti's identical code path proven via §2 + honest gap noted (§5) |
+| Real failure case: failed/incomplete payment shows failed, appointment stays confirmed | ✓ Pass — §3 (eSewa), §5 (Khalti) — two real bugs found live and fixed in the process |
+| Free-plan business: payment collection genuinely unavailable (402) | ✓ Pass — §8 |
+| Cross-tenant test: Business A's payments never visible to Business B | ✓ Pass — §10 |
+| Full regression suite, zero regressions | ✓ Pass — §13, 461 passed / 0 failed |
+| Secrets grep clean | ✓ Pass — §16 |
+| Service with deposit_enabled=true, 20% — exact 20% payment amount | ✓ Pass — §6 |
+| Service with deposit_enabled=false — no payment request, confirmation silent on payment | ✓ Pass — §6, §7 |
+| Deposit settings toggle through dashboard Services page persists and affects next booking | ✓ Pass — §11 |
+
+**Known issues / punted items:**
+- **No live Khalti "Completed" browser click-through** — Khalti's own shared public
+  sandbox test accounts and SCT/Connect-IPS test flows were all non-functional at test
+  time (see §5's honest disclosure); the completed-status code path is identical to
+  eSewa's fully-proven one and independently verified against real Khalti API field
+  names via the lookup calls in §5.
+- **Group bookings (Phase 12) never generate a payment request** — `create_payment_for_
+  appointment` is only wired into `booking_service.create_appointment`'s single-booking
+  path, not `_create_group_all_or_nothing`/`_create_group_partial` — not asked for in
+  this ticket's scope; a future phase could extend it in a few lines using the same
+  function.
+- **No refund flow** — a `completed` payment has no cancellation/refund path if the
+  underlying appointment is later cancelled; not asked for in this ticket.
+- **No per-business gateway credentials** — a deliberate architectural choice (see
+  above), not a gap, but means every business shares one platform-level eSewa/Khalti
+  merchant account rather than bringing its own.
+- Carried over from every prior phase, still real and still open: no staff-capacity
+  model, fixed 15-minute slot grid, exact-match-only service-name resolution, no
+  refresh tokens, `access_token`/`page_access_token`/gateway secrets still not
+  separately encrypted at rest (env vars / plain JSONB) — same already-flagged gap as
+  Phase 26/27/40, not new here.
+- No commit has been made yet — awaiting your explicit confirmation of this
+  verification output per working rule #6.
+
+---

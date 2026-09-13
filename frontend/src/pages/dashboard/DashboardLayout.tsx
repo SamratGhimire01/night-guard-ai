@@ -20,6 +20,7 @@ const NAV_SECTIONS: { label: string; to: string; icon: string; ownerAdminOnly?: 
   { label: 'Website Widget', to: '/dashboard/widget', icon: '💬' },
   { label: 'Google Calendar', to: '/dashboard/google-calendar', icon: '📆' },
   { label: 'Channels', to: '/dashboard/channels', icon: '🔌', ownerAdminOnly: true },
+  { label: 'Payments', to: '/dashboard/payments', icon: '💳' },
   { label: 'Settings', to: '/dashboard/settings', icon: '⚙️' },
 ]
 

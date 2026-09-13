@@ -15,6 +15,7 @@ from app.db.models.handoff import HumanHandoff
 from app.db.models.integration import Integration
 from app.db.models.knowledge import KnowledgeChunk, KnowledgeDocument, KnowledgeDocumentStatus
 from app.db.models.notification import Notification, NotificationStatus
+from app.db.models.payment import Payment, PaymentStatus
 from app.db.models.service import Service
 from app.db.models.service_knowledge import ServiceKnowledgeDocument
 from app.db.models.staff import Staff
@@ -43,6 +44,8 @@ __all__ = [
     "KnowledgeDocumentStatus",
     "Notification",
     "NotificationStatus",
+    "Payment",
+    "PaymentStatus",
     "Service",
     "ServiceKnowledgeDocument",
     "Staff",

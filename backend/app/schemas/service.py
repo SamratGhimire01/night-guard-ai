@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.schemas.common import safe_str
 
@@ -18,6 +18,20 @@ def _positive_duration(value: int) -> int:
     return value
 
 
+def _validate_deposit_pair(deposit_enabled: bool, deposit_percentage: int | None) -> int | None:
+    """Phase 44: deposit_percentage is only meaningful when deposit_enabled is
+    true — enforced here (schema layer), not a DB CHECK constraint, matching
+    this codebase's existing convention (e.g. BusinessHours' closed/open_time
+    pair). 100 is a legitimate value (full payment upfront), not a special
+    case — only the 1-100 range is checked. Disabling deposit always clears
+    the percentage rather than leaving a stale value silently ignored."""
+    if not deposit_enabled:
+        return None
+    if deposit_percentage is None or not (1 <= deposit_percentage <= 100):
+        raise ValueError("deposit_percentage must be an integer from 1 to 100 when deposit_enabled is true.")
+    return deposit_percentage
+
+
 class ServiceCreate(BaseModel):
     # max_length matches services.name/description's real VARCHAR(255)/
     # VARCHAR(2000) column widths (Phase 29 — see app/schemas/common.py).
@@ -26,23 +40,39 @@ class ServiceCreate(BaseModel):
     price: Decimal
     duration_minutes: int
     staff_id: uuid.UUID | None = None
+    deposit_enabled: bool = False
+    deposit_percentage: int | None = None
 
     _validate_price = field_validator("price")(_non_negative_price)
     _validate_duration = field_validator("duration_minutes")(_positive_duration)
+
+    @model_validator(mode="after")
+    def deposit_pair_consistent(self) -> "ServiceCreate":
+        # model_validator(mode="after"), not field_validator: a
+        # field_validator never runs on an omitted field using its default
+        # value (pydantic v2 only validates defaults with validate_default=
+        # True), so deposit_percentage=None being the default for an omitted
+        # field would silently skip this check entirely — real bug found via
+        # this phase's own test suite (test_service_create_rejects_deposit_
+        # enabled_without_percentage returned 201, not 422, before this fix).
+        self.deposit_percentage = _validate_deposit_pair(self.deposit_enabled, self.deposit_percentage)
+        return self
 
 
 class ServiceUpdate(BaseModel):
     """PATCH — a field omitted entirely is left unchanged; a field sent as an
     explicit null clears it (only valid for the nullable ones: description,
-    staff_id). name/price/duration_minutes are NOT NULL in the DB, so an explicit
-    null on any of those is rejected with a 422 rather than reaching the DB as an
-    IntegrityError."""
+    staff_id, deposit_percentage). name/price/duration_minutes are NOT NULL in the
+    DB, so an explicit null on any of those is rejected with a 422 rather than
+    reaching the DB as an IntegrityError."""
 
     name: safe_str(255) | None = None
     description: safe_str(2000) | None = None
     price: Decimal | None = None
     duration_minutes: int | None = None
     staff_id: uuid.UUID | None = None
+    deposit_enabled: bool | None = None
+    deposit_percentage: int | None = None
 
     @field_validator("name")
     @classmethod
@@ -65,6 +95,18 @@ class ServiceUpdate(BaseModel):
             raise ValueError("This field is required and cannot be cleared to null.")
         return _positive_duration(value)
 
+    @model_validator(mode="after")
+    def deposit_pair_consistent(self) -> "ServiceUpdate":
+        # Only re-validated when deposit_enabled is actually part of this PATCH —
+        # a PATCH touching unrelated fields must not require re-sending deposit
+        # fields (exclude_unset semantics, same as every other field here).
+        if "deposit_enabled" in self.model_fields_set:
+            self.deposit_percentage = _validate_deposit_pair(bool(self.deposit_enabled), self.deposit_percentage)
+        elif "deposit_percentage" in self.model_fields_set and self.deposit_percentage is not None:
+            if not (1 <= self.deposit_percentage <= 100):
+                raise ValueError("deposit_percentage must be an integer from 1 to 100.")
+        return self
+
 
 class ServiceRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -76,3 +118,5 @@ class ServiceRead(BaseModel):
     price: Decimal
     duration_minutes: int
     staff_id: uuid.UUID | None
+    deposit_enabled: bool
+    deposit_percentage: int | None

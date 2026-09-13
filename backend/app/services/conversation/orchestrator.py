@@ -255,7 +255,7 @@ def _format_booking_result(
     if result["success"]:
         appointment = result["appointment"]
         when = _format_local(appointment["scheduled_at"], tz)
-        return render(
+        text = render(
             "booking_success",
             language,
             who=who,
@@ -264,6 +264,14 @@ def _format_booking_result(
             duration=str(appointment["duration_minutes"]),
             id=str(appointment["id"]),
         )
+        payment = result.get("payment")
+        if payment is not None:
+            # Phase 44: a real Payment row exists for this booking — state
+            # the real deposit/remainder honestly, never silently omitted.
+            # See response_templates.TEMPLATES["payment_deposit_required"]'s
+            # own comment for why this is never a bare number.
+            text = f"{text} {render('payment_deposit_required', language, percentage=str(payment['percentage']), currency=payment['currency'], amount=str(payment['amount']), remaining=str(payment['remaining']), link=payment['payment_url'])}"
+        return text
 
     message = result["message"].rstrip(".").lower()
     alternatives = result.get("alternative_slots") or []
