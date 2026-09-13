@@ -157,7 +157,7 @@ export interface StaffWrite {
   role: string
 }
 
-export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed'
+export type AppointmentStatus = 'pending' | 'confirmed' | 'arrived' | 'cancelled' | 'completed'
 
 export interface AppointmentListItem {
   id: string
@@ -174,6 +174,22 @@ export interface AppointmentListItem {
   service_name: string | null
   staff_name: string | null
   checked_in_at: string | null
+  completed_at: string | null
+}
+
+export interface AppointmentRead {
+  id: string
+  business_id: string
+  customer_id: string
+  service_id: string
+  staff_id: string | null
+  scheduled_at: string
+  duration_minutes: number
+  status: AppointmentStatus
+  created_at: string
+  group_booking_id: string | null
+  checked_in_at: string | null
+  completed_at: string | null
 }
 
 export interface CheckinRequest {

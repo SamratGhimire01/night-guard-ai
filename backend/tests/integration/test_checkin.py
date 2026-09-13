@@ -1,4 +1,6 @@
-"""Phase 46 — QR check-in.
+"""Phase 46 — QR check-in, split into ARRIVED (the scan) + COMPLETED (a real,
+separate "mark service complete" staff action) — real industry precedent:
+Open Dental tracks "Time Arrived" separately from visit completion.
 
 Real DB + real HTTP throughout. Google Calendar's real network call is
 stubbed at google_calendar_service's private HTTP helpers, same seam
@@ -6,12 +8,18 @@ test_google_calendar.py itself stubs at. Payment-gateway network calls
 (for the in-person-payment test) are stubbed at payment_service._PROVIDERS,
 same seam test_payments.py uses.
 
-Covers: real check-in marks COMPLETED, one-time-use enforced atomically
-(sequential re-scan + a real concurrent-thread race), cross-tenant isolation
-(a valid token from another business is checked exactly like a token that
-doesn't exist), a cancelled appointment can't be checked in, staff (not just
-owner/admin) can check in, the explicit/separate in-person-payment action,
-and the monthly report's completed count reflecting a real check-in.
+Covers: real check-in marks ARRIVED (never COMPLETED directly), the real
+separate "mark complete" action moves ARRIVED -> COMPLETED, one-time-use
+enforced atomically for BOTH claims (sequential re-attempt + a real
+concurrent-thread race each), cross-tenant isolation (a valid token from
+another business is checked exactly like a token that doesn't exist), a
+cancelled appointment can't be checked in, a not-yet-arrived appointment
+can't be completed, staff (not just owner/admin) can do both actions, the
+explicit/separate in-person-payment action, Google Calendar reflecting
+ARRIVED and COMPLETED honestly differently, the monthly report's completed
+count reflecting only genuine completions (not mere arrivals), and a
+pre-split legacy COMPLETED row (as if written before ARRIVED ever existed)
+remaining valid and correctly counted.
 """
 
 import threading
@@ -125,21 +133,22 @@ def booked_ready(two_businesses):
     return {**two_businesses, "appointment_id": appointment_id, "checkin_token": token, "service_id": service["id"], "customer_id": customer["id"]}
 
 
-def test_checkin_marks_appointment_completed_real_http(booked_ready):
+def test_checkin_marks_appointment_arrived_real_http(booked_ready):
     token_a = booked_ready["token_a"]
     resp = client.post(
         "/api/v1/appointments/checkin", json={"token": str(booked_ready["checkin_token"])}, headers=_auth_header(token_a)
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["status"] == "completed"
+    assert body["status"] == "arrived"
     assert body["checked_in_at"] is not None
     assert body["customer_name"] == "Test Customer"
 
     with SessionLocal() as db:
         appointment = db.get(Appointment, booked_ready["appointment_id"])
-        assert appointment.status == AppointmentStatus.COMPLETED
+        assert appointment.status == AppointmentStatus.ARRIVED
         assert appointment.checked_in_at is not None
+        assert appointment.completed_at is None
 
 
 def test_duplicate_scan_returns_honest_already_checked_in(booked_ready):
@@ -250,11 +259,11 @@ def test_checkin_never_sent_twice_under_real_concurrent_claims(booked_ready):
 
     with SessionLocal() as db:
         appointment = db.get(Appointment, appointment_id)
-        assert appointment.status == AppointmentStatus.COMPLETED
+        assert appointment.status == AppointmentStatus.ARRIVED
         assert appointment.checked_in_at is not None
 
 
-def test_calendar_completed_sync_is_best_effort_and_never_blocks_checkin(booked_ready, monkeypatch):
+def test_calendar_arrived_sync_is_best_effort_and_never_blocks_checkin(booked_ready, monkeypatch):
     business_id = booked_ready["business_id_a"]
     _set_plan(business_id, BusinessPlan.PREMIUM)
     with SessionLocal() as db:
@@ -288,11 +297,69 @@ def test_calendar_completed_sync_is_best_effort_and_never_blocks_checkin(booked_
     )
     assert resp.status_code == 200, resp.text
     assert captured["event_id"] == "real-google-event-id-999"
-    assert "completed" in captured["summary"].lower()
-    assert "Checked in:" in captured["description"]
+    # A mere arrival never claims completion: sync_appointment_arrived never
+    # passes a summary kwarg at all (falls through to _update_event's own
+    # summary=None default), so the real PATCH body sent to Google never
+    # includes a "summary" field — see _update_event, which only includes
+    # fields actually given.
+    assert captured["summary"] is None
+    assert "Arrived:" in captured["description"]
+    assert "completed" not in captured["description"].lower()
 
     with SessionLocal() as db:
         appt = db.get(Appointment, booked_ready["appointment_id"])
+        assert appt.calendar_sync_status == "synced"
+
+
+def test_calendar_completed_sync_fires_on_real_completion_not_on_arrival(booked_ready, monkeypatch):
+    """The honest, real distinction the ticket asked for: ARRIVED gets the
+    lighter note (previous test); only the separate, later COMPLETED
+    transition gets the "✓ ... (completed)" summary treatment."""
+    business_id = booked_ready["business_id_a"]
+    _set_plan(business_id, BusinessPlan.PREMIUM)
+    with SessionLocal() as db:
+        integration_service.save_integration_config(
+            db,
+            business_id=business_id,
+            type_="google_calendar",
+            config={
+                "access_token": "fake-access-token",
+                "refresh_token": "fake-refresh-token",
+                "calendar_id": "primary",
+                "calendar_summary": "Real Calendar",
+                "token_expiry": (datetime.now(ZoneInfo("UTC")) + timedelta(hours=1)).isoformat(),
+            },
+            enabled=True,
+        )
+        appt = db.get(Appointment, booked_ready["appointment_id"])
+        appt.google_calendar_event_id = "real-google-event-id-completed"
+        db.commit()
+
+    captured = {}
+
+    def fake_update_event(access_token, *, calendar_id, event_id, start=None, end=None, summary=None, description=None):
+        captured.update({"event_id": event_id, "summary": summary, "description": description})
+
+    monkeypatch.setattr(google_calendar_service, "_update_event", fake_update_event)
+
+    token_a = booked_ready["token_a"]
+    checkin_resp = client.post(
+        "/api/v1/appointments/checkin", json={"token": str(booked_ready["checkin_token"])}, headers=_auth_header(token_a)
+    )
+    assert checkin_resp.status_code == 200, checkin_resp.text
+    assert captured["summary"] is None  # confirmed by the previous test too: arrival never touches summary
+
+    complete_resp = client.post(
+        f"/api/v1/appointments/{booked_ready['appointment_id']}/complete", headers=_auth_header(token_a)
+    )
+    assert complete_resp.status_code == 200, complete_resp.text
+    assert captured["event_id"] == "real-google-event-id-completed"
+    assert "completed" in captured["summary"].lower()
+    assert "Completed:" in captured["description"]
+
+    with SessionLocal() as db:
+        appt = db.get(Appointment, booked_ready["appointment_id"])
+        assert appt.status == AppointmentStatus.COMPLETED
         assert appt.calendar_sync_status == "synced"
 
 
@@ -327,11 +394,11 @@ def test_calendar_sync_failure_never_blocks_checkin(booked_ready, monkeypatch):
         "/api/v1/appointments/checkin", json={"token": str(booked_ready["checkin_token"])}, headers=_auth_header(token_a)
     )
     assert resp.status_code == 200, resp.text  # check-in itself still succeeds
-    assert resp.json()["status"] == "completed"
+    assert resp.json()["status"] == "arrived"
 
     with SessionLocal() as db:
         appt = db.get(Appointment, booked_ready["appointment_id"])
-        assert appt.status == AppointmentStatus.COMPLETED
+        assert appt.status == AppointmentStatus.ARRIVED
         assert appt.calendar_sync_status == "failed"
 
 
@@ -412,11 +479,14 @@ def test_in_person_payment_is_never_inferred_and_is_its_own_explicit_action(two_
         assert payment.status.value == "pending"
 
 
-def test_monthly_report_completed_count_reflects_real_checkin(booked_ready):
+def test_monthly_report_completed_count_reflects_genuine_completion_not_mere_arrival(booked_ready):
+    """The exact real gap the ticket named: confirm the report's completed
+    count only moves on a real COMPLETED transition, never on ARRIVED alone."""
     from app.services.reporting.monthly_report_service import generate_monthly_report
 
     token_a = booked_ready["token_a"]
     business_id_a = booked_ready["business_id_a"]
+    appointment_id = booked_ready["appointment_id"]
     target_date = _next_weekday(0)
 
     with SessionLocal() as db:
@@ -427,8 +497,166 @@ def test_monthly_report_completed_count_reflects_real_checkin(booked_ready):
         "/api/v1/appointments/checkin", json={"token": str(booked_ready["checkin_token"])}, headers=_auth_header(token_a)
     )
     assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "arrived"
+
+    with SessionLocal() as db:
+        after_arrival = generate_monthly_report(
+            db, business_id=business_id_a, year=target_date.year, month=target_date.month
+        )
+    # Arrival alone must NOT move the completed count — that's exactly the
+    # real bug this split closes.
+    assert after_arrival["appointments"]["completed"]["count"] == before["appointments"]["completed"]["count"]
+
+    complete_resp = client.post(f"/api/v1/appointments/{appointment_id}/complete", headers=_auth_header(token_a))
+    assert complete_resp.status_code == 200, complete_resp.text
+
+    with SessionLocal() as db:
+        after_complete = generate_monthly_report(
+            db, business_id=business_id_a, year=target_date.year, month=target_date.month
+        )
+    assert after_complete["appointments"]["completed"]["count"] == before["appointments"]["completed"]["count"] + 1
+    assert after_complete["appointments"]["completed"]["implemented"] is True
+
+
+def test_monthly_report_counts_pre_split_legacy_completed_row(booked_ready):
+    """A row written directly to COMPLETED — exactly what every pre-Phase-46-
+    continued row in a real production DB looks like, since ARRIVED did not
+    exist yet when they were completed — must remain valid and still count.
+    This never goes through checkin_service at all, by design: it simulates
+    data that predates this split entirely."""
+    from app.services.reporting.monthly_report_service import generate_monthly_report
+
+    business_id_a = booked_ready["business_id_a"]
+    appointment_id = booked_ready["appointment_id"]
+    target_date = _next_weekday(0)
+
+    with SessionLocal() as db:
+        before = generate_monthly_report(db, business_id=business_id_a, year=target_date.year, month=target_date.month)
+
+    with SessionLocal() as db:
+        appointment = db.get(Appointment, appointment_id)
+        appointment.status = AppointmentStatus.COMPLETED
+        appointment.completed_at = None  # honest: legacy rows never had this column at all
+        db.commit()
 
     with SessionLocal() as db:
         after = generate_monthly_report(db, business_id=business_id_a, year=target_date.year, month=target_date.month)
     assert after["appointments"]["completed"]["count"] == before["appointments"]["completed"]["count"] + 1
-    assert after["appointments"]["completed"]["implemented"] is True
+
+    with SessionLocal() as db:
+        appointment = db.get(Appointment, appointment_id)
+        assert appointment.status == AppointmentStatus.COMPLETED  # still a valid, real status value
+
+
+def test_mark_complete_requires_arrived_status(booked_ready):
+    """A CONFIRMED appointment (never checked in) cannot be marked complete —
+    the real lifecycle order (arrive, then complete) is enforced, not just
+    suggested by the UI."""
+    token_a = booked_ready["token_a"]
+    resp = client.post(f"/api/v1/appointments/{booked_ready['appointment_id']}/complete", headers=_auth_header(token_a))
+    assert resp.status_code == 422, resp.text
+    assert "confirmed" in resp.json()["error"]["message"]
+
+
+def test_mark_complete_marks_appointment_completed_real_http(booked_ready):
+    token_a = booked_ready["token_a"]
+    checkin_resp = client.post(
+        "/api/v1/appointments/checkin", json={"token": str(booked_ready["checkin_token"])}, headers=_auth_header(token_a)
+    )
+    assert checkin_resp.status_code == 200, checkin_resp.text
+
+    resp = client.post(f"/api/v1/appointments/{booked_ready['appointment_id']}/complete", headers=_auth_header(token_a))
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "completed"
+    assert body["completed_at"] is not None
+    assert body["checked_in_at"] is not None  # never cleared by completion
+
+    with SessionLocal() as db:
+        appointment = db.get(Appointment, booked_ready["appointment_id"])
+        assert appointment.status == AppointmentStatus.COMPLETED
+        assert appointment.completed_at is not None
+
+
+def test_duplicate_complete_returns_honest_already_completed(booked_ready):
+    token_a = booked_ready["token_a"]
+    client.post(
+        "/api/v1/appointments/checkin", json={"token": str(booked_ready["checkin_token"])}, headers=_auth_header(token_a)
+    )
+    first = client.post(f"/api/v1/appointments/{booked_ready['appointment_id']}/complete", headers=_auth_header(token_a))
+    assert first.status_code == 200, first.text
+    real_completed_at = first.json()["completed_at"]
+
+    second = client.post(f"/api/v1/appointments/{booked_ready['appointment_id']}/complete", headers=_auth_header(token_a))
+    assert second.status_code == 409, second.text
+    message = second.json()["error"]["message"]
+    assert "already marked complete" in message
+    assert real_completed_at[:19] in message
+
+
+def test_staff_role_can_mark_complete(booked_ready):
+    business_id_a = booked_ready["business_id_a"]
+    token_a = booked_ready["token_a"]
+    client.post(
+        "/api/v1/appointments/checkin", json={"token": str(booked_ready["checkin_token"])}, headers=_auth_header(token_a)
+    )
+
+    with SessionLocal() as db:
+        staff_user = BusinessUser(
+            business_id=business_id_a, email=_unique_email("staff-complete"), hashed_password="not-used", role=BusinessUserRole.STAFF
+        )
+        db.add(staff_user)
+        db.commit()
+        db.refresh(staff_user)
+        from app.core.security import create_access_token
+
+        staff_token = create_access_token(user_id=staff_user.id, business_id=business_id_a, role=staff_user.role.value)
+
+    resp = client.post(f"/api/v1/appointments/{booked_ready['appointment_id']}/complete", headers=_auth_header(staff_token))
+    assert resp.status_code == 200, resp.text
+
+
+def test_complete_never_claimed_twice_under_real_concurrent_claims(booked_ready):
+    """Same real threading.Barrier proof technique as the check-in claim
+    above — 8 real threads, independent DB sessions, forced to the identical
+    instant, all racing the exact same atomic "mark complete" claim for the
+    exact same real, already-ARRIVED appointment."""
+    from app.services import checkin_service
+
+    token_a = booked_ready["token_a"]
+    business_id = booked_ready["business_id_a"]
+    appointment_id = booked_ready["appointment_id"]
+
+    checkin_resp = client.post(
+        "/api/v1/appointments/checkin", json={"token": str(booked_ready["checkin_token"])}, headers=_auth_header(token_a)
+    )
+    assert checkin_resp.status_code == 200, checkin_resp.text
+
+    n_threads = 8
+    barrier = threading.Barrier(n_threads)
+    results = [None] * n_threads
+
+    def worker(i):
+        with SessionLocal() as db:
+            barrier.wait()
+            try:
+                appointment = checkin_service.mark_appointment_completed(
+                    db, business_id=business_id, appointment_id=appointment_id
+                )
+                results[i] = ("won", appointment.id)
+            except Exception as exc:
+                results[i] = ("lost", type(exc).__name__)
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(n_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    winners = [r for r in results if r[0] == "won"]
+    assert len(winners) == 1, f"expected exactly 1 winner, got {len(winners)}: {results}"
+
+    with SessionLocal() as db:
+        appointment = db.get(Appointment, appointment_id)
+        assert appointment.status == AppointmentStatus.COMPLETED
+        assert appointment.completed_at is not None

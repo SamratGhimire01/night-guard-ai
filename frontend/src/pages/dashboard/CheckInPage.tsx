@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import jsQR from 'jsqr'
-import { Alert, Badge, Button, Group, NumberInput, Paper, Stack, Text, Title } from '@mantine/core'
+import { Alert, Badge, Button, NumberInput, Paper, Stack, Text, Title } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { apiFetch, ApiError } from '../../api/client'
-import type { CheckinResponse, PaymentRead } from '../../api/types'
+import type { AppointmentRead, CheckinResponse, PaymentRead } from '../../api/types'
 
 export default function CheckInPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -31,6 +31,10 @@ export default function CheckInPage() {
   const [resultError, setResultError] = useState<string | null>(null)
   const [paymentAmount, setPaymentAmount] = useState<number | ''>('')
   const [recordingPayment, setRecordingPayment] = useState(false)
+  // NULL until the real, separate "mark service complete" action (below)
+  // claims it — a scan alone only ever means ARRIVED, never done.
+  const [completedAt, setCompletedAt] = useState<string | null>(null)
+  const [completing, setCompleting] = useState(false)
 
   // A ref, not a plain closure captured by the animation-frame loop below:
   // the loop is started exactly once (on mount) so the camera stream is
@@ -123,7 +127,24 @@ export default function CheckInPage() {
     setResult(null)
     setResultError(null)
     setPaymentAmount('')
+    setCompletedAt(null)
     scanningRef.current = true
+  }
+
+  async function markComplete() {
+    if (!result) return
+    setCompleting(true)
+    try {
+      const updated = await apiFetch<AppointmentRead>(`/appointments/${result.appointment_id}/complete`, {
+        method: 'POST',
+      })
+      setCompletedAt(updated.completed_at)
+      notifications.show({ message: 'Marked as service complete.', color: 'green' })
+    } catch (err) {
+      notifications.show({ message: err instanceof ApiError ? err.message : 'Failed to mark complete.', color: 'red' })
+    } finally {
+      setCompleting(false)
+    }
   }
 
   async function recordPayment() {
@@ -203,12 +224,26 @@ export default function CheckInPage() {
       {result && (
         <Paper withBorder p="md" radius="md">
           <Stack gap="sm">
-            <Group gap="xs">
-              <Text fw={600}>Checked in</Text>
-              <Badge color="green" variant="light">
-                {result.status}
-              </Badge>
-            </Group>
+            {/* Large, banner-style terminal-state confirmation — a small
+                pill is easy to miss on a phone screen glanced at quickly
+                between patients. Two real, distinct states: ARRIVED (from
+                the scan itself) and COMPLETED (only after the separate
+                "mark service complete" action below), never conflated. */}
+            <Paper
+              radius="md"
+              p="lg"
+              ta="center"
+              bg={completedAt ? 'var(--mantine-color-teal-1)' : 'var(--mantine-color-blue-1)'}
+            >
+              <Stack gap={4} align="center">
+                <Text size="28px" fw={800} c={completedAt ? 'teal.9' : 'blue.9'}>
+                  {completedAt ? '✓ SERVICE COMPLETE' : '✓ ARRIVED'}
+                </Text>
+                <Badge size="lg" color={completedAt ? 'teal' : 'blue'} variant="filled">
+                  {completedAt ? 'completed' : result.status}
+                </Badge>
+              </Stack>
+            </Paper>
             <Text size="sm">
               {result.customer_name} — {result.service_name}
             </Text>
@@ -218,6 +253,16 @@ export default function CheckInPage() {
             <Text size="xs" c="dimmed">
               Checked in at: {new Date(result.checked_in_at).toLocaleString()}
             </Text>
+            {completedAt && (
+              <Text size="xs" c="dimmed">
+                Marked complete at: {new Date(completedAt).toLocaleString()}
+              </Text>
+            )}
+            {!completedAt && (
+              <Button size="xl" fullWidth color="teal" onClick={markComplete} loading={completing}>
+                Mark service complete
+              </Button>
+            )}
 
             {result.pending_payment && (
               <Paper withBorder p="sm" radius="md" bg="var(--mantine-color-gray-0)">

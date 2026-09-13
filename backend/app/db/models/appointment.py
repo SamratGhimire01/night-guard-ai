@@ -25,6 +25,12 @@ class AppointmentStatus(str, enum.Enum):
     PENDING = "pending"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
+    # Phase 46 (continued) — real, distinct "at the clinic, service not yet
+    # done" state (real industry precedent: Open Dental's "Time Arrived"),
+    # set by the QR scan itself. Separate from COMPLETED so a scan only ever
+    # claims "showed up", never "the visit is over" — that's now its own,
+    # later, explicit staff action.
+    ARRIVED = "arrived"
     COMPLETED = "completed"
 
 
@@ -136,6 +142,12 @@ class Appointment(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMix
     # atomic `UPDATE ... WHERE checked_in_at IS NULL AND status = 'CONFIRMED'`
     # (see app/services/checkin_service.py) — never check-then-act.
     checked_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Phase 46 (continued): NULL until a real, separate "mark service
+    # complete" staff action claims it. Same atomic-claim discipline again —
+    # `UPDATE ... WHERE status = 'ARRIVED'` (see
+    # checkin_service.mark_appointment_completed) — never inferred from
+    # checked_in_at alone.
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AppointmentParticipant(UUIDPrimaryKeyMixin, Base):

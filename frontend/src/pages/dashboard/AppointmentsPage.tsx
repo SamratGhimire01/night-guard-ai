@@ -22,6 +22,7 @@ import type { AppointmentListItem, AppointmentStatus, BusinessRead } from '../..
 const STATUS_COLORS: Record<AppointmentStatus, string> = {
   pending: 'yellow',
   confirmed: 'blue',
+  arrived: 'grape',
   cancelled: 'red',
   completed: 'teal',
 }
@@ -125,6 +126,16 @@ export default function AppointmentsPage() {
     }
   }
 
+  async function handleComplete(appt: AppointmentListItem) {
+    try {
+      await apiFetch(`/appointments/${appt.id}/complete`, { method: 'POST' })
+      notifications.show({ message: 'Marked as service complete.', color: 'green' })
+      load()
+    } catch (err) {
+      notifications.show({ message: err instanceof ApiError ? err.message : 'Failed to mark complete.', color: 'red' })
+    }
+  }
+
   function openReschedule(appt: AppointmentListItem) {
     setRescheduling(appt)
     const { date, time } = utcIsoToZonedParts(appt.scheduled_at, timezone)
@@ -159,6 +170,7 @@ export default function AppointmentsPage() {
           data={[
             { value: 'pending', label: 'Pending' },
             { value: 'confirmed', label: 'Confirmed' },
+            { value: 'arrived', label: 'Arrived' },
             { value: 'cancelled', label: 'Cancelled' },
             { value: 'completed', label: 'Completed' },
           ]}
@@ -206,33 +218,47 @@ export default function AppointmentsPage() {
                         </Badge>
                       </Table.Td>
                       <Table.Td>
-                        {canWrite ? (
-                          <Group gap="xs" wrap="nowrap">
+                        <Group gap="xs" wrap="nowrap">
+                          {appt.status === 'arrived' && (
                             <Button
                               size="compact-sm"
+                              color="teal"
                               variant="light"
-                              disabled={!cancellable}
-                              onClick={() => openReschedule(appt)}
+                              onClick={() => handleComplete(appt)}
                             >
-                              Reschedule
+                              Mark complete
                             </Button>
-                            <Button
-                              size="compact-sm"
-                              color="red"
-                              variant="light"
-                              disabled={!cancellable}
-                              onClick={() => handleCancel(appt)}
-                            >
-                              Cancel
-                            </Button>
-                          </Group>
-                        ) : (
-                          <Tooltip label="Owners and admins only">
-                            <Text size="xs" c="dimmed">
-                              Read-only
-                            </Text>
-                          </Tooltip>
-                        )}
+                          )}
+                          {canWrite ? (
+                            <>
+                              <Button
+                                size="compact-sm"
+                                variant="light"
+                                disabled={!cancellable}
+                                onClick={() => openReschedule(appt)}
+                              >
+                                Reschedule
+                              </Button>
+                              <Button
+                                size="compact-sm"
+                                color="red"
+                                variant="light"
+                                disabled={!cancellable}
+                                onClick={() => handleCancel(appt)}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            appt.status !== 'arrived' && (
+                              <Tooltip label="Owners and admins only">
+                                <Text size="xs" c="dimmed">
+                                  Read-only
+                                </Text>
+                              </Tooltip>
+                            )
+                          )}
+                        </Group>
                       </Table.Td>
                     </Table.Tr>
                   )

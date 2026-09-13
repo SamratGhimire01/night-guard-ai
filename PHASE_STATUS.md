@@ -13459,3 +13459,272 @@ $ docker compose exec backend python -m pytest tests/ -q
   your own real phone test.
 
 ---
+
+## Phase 46 (continued) — split check-in into ARRIVED + COMPLETED (real industry pattern)
+
+**⚠️ Real discrepancy found at the start of this session, disclosed honestly, not
+silently worked around**: you asked me to confirm git log showed "the mobile scanning
+fix" as the last commit. It did not — `git log` still showed Phase 45 as HEAD, and
+every Phase 46 file (QR check-in, in-person payment collection, and the mobile-scanning
+fix documented above) was still sitting uncommitted in the working tree, exactly as
+this document's own prior "No commit has been made yet" lines already said. This
+session's work is built on top of that still-uncommitted state. Separately, the two
+`.env` overrides from the mobile-scanner test (`backend/.env`'s `DASHBOARD_CORS_ORIGINS`
+ngrok origin, `frontend/.env`'s `VITE_API_BASE_URL` pointed at the backend's ngrok
+tunnel) were still live from that session — both real, gitignored, zero commit risk,
+but would have broken normal local dev. Reverted both back to `localhost` before doing
+any of this phase's own real testing.
+
+**Required:** Real industry precedent (Open Dental tracks "Time Arrived" separately
+from visit completion) — split the QR scan from marking a visit done. The scan now
+only ever claims ARRIVED; a real, separate, explicit staff action claims COMPLETED.
+
+**Implemented:**
+
+- **`app/db/models/appointment.py`**: new `AppointmentStatus.ARRIVED` member, between
+  `CONFIRMED` and `COMPLETED` in the source (Postgres enum ordering doesn't matter
+  functionally, but keeps the lifecycle readable). New `completed_at: datetime | None`
+  column, same real, per-action-timestamp precedent as `checked_in_at`.
+- **`app/memory/appointment_context.py`**: real gap found and fixed by grepping every
+  `AppointmentStatus.*` consumer before touching the enum, not just the ones the
+  ticket named — `_ACTIVE_STATUSES` (used by the LLM's own appointment-context memory,
+  `app.services.conversation.appointment_tools.AppointmentStatusTool`) previously only
+  listed `PENDING`/`CONFIRMED`. Without this fix, an ARRIVED appointment would have
+  silently vanished from both the "active" and "recent_past" buckets the LLM sees —
+  a customer literally sitting in the waiting room asking "what's the status of my
+  appointment?" would get "you don't have any appointments." Added `ARRIVED` to the
+  active set (an arrived-but-not-yet-completed visit is still genuinely ongoing, not
+  history).
+- **`app/services/checkin_service.py`**: `check_in_appointment`'s existing atomic claim
+  now sets `status=ARRIVED` (was `COMPLETED`) — same exact WHERE clause, same one-time-
+  use guarantee, unchanged. New `mark_appointment_completed(db, *, business_id,
+  appointment_id)` — the one new atomic claim: `UPDATE appointments SET
+  completed_at=now(), status='COMPLETED' WHERE business_id=:business_id AND
+  id=:appointment_id AND status='ARRIVED' RETURNING id`, identical discipline to every
+  atomic claim in this codebase (Phase 10's exclusion constraint, Phase 18's unique
+  conversation constraint, Phase 30's webhook idempotency, Phase 45's reminder guard,
+  Phase 46's own check-in claim). Falls back to a read-only SELECT only to compose an
+  honest, specific reason (already completed at a real timestamp / not yet arrived).
+- **`app/services/google_calendar_service.py`**: split into `sync_appointment_arrived`
+  (new, lighter touch — appends a real "Arrived: <timestamp>" line to the description
+  only, summary left completely untouched, no checkmark, no "(completed)" label — an
+  arrival never overstates itself as a finished visit) and `sync_appointment_completed`
+  (unchanged mechanism, now fires only on the real COMPLETED transition — prefixes the
+  summary with a checkmark and "(completed)", appends the real completion timestamp).
+  Both remain best-effort, `NEVER raises`, same precedent as every other
+  `sync_appointment_*`.
+- **`app/schemas/appointment.py`**: `AppointmentRead` gained `completed_at` (same
+  precedent as `checked_in_at` — a real, honest field, not `checkin_token`).
+- **`app/api/routes/appointments.py`**: `POST /appointments/{appointment_id}/complete`
+  — `get_current_user` (any authenticated role, including staff — same bar as the
+  check-in scan itself, per the ticket's explicit ask), tenant-scoped inside
+  `checkin_service.mark_appointment_completed`.
+- **`app/services/reporting/monthly_report_service.py`/`report_service.py`**: real
+  audit of the existing `completed_of_scheduled` counter (line-by-line, not assumed)
+  confirmed it already filters on `AppointmentStatus.COMPLETED` specifically — an
+  ARRIVED row was already naturally excluded with **zero code change needed** (verified
+  by the new test below, not just reasoned about). Only the human-readable `note` text
+  and two docstring/comment mentions were updated from "set by a real staff QR
+  check-in" to "set by a real, separate 'mark service complete' action, after a QR
+  check-in has already marked the appointment ARRIVED" — the honest, current mechanism.
+- **`app/db/migrations/versions/f030c3b290ee_phase_46_arrived_status_split.py`** (new)
+  — `ALTER TYPE appointment_status ADD VALUE IF NOT EXISTS 'ARRIVED'` (same real,
+  per-row-safe pattern as Phase 12's `notification_status` `SIMULATED` value; every
+  pre-existing `COMPLETED` row is untouched — this only adds a value, never remaps an
+  existing one) + `completed_at` column. **Real bug found and fixed by actually running
+  the downgrade against this dev DB, not just reasoning about it**: see Verification §2
+  below.
+- **Frontend `AppointmentsPage.tsx`**: `STATUS_COLORS` gained `arrived: 'grape'` (5
+  genuinely distinct colors: yellow/blue/grape/red/teal). Status filter dropdown gained
+  an "Arrived" option — **a real, honest pre-existing gap confirmed, not assumed
+  already fine, per the ticket's explicit ask**: `completed` was in fact already wired
+  in the filter dropdown (this session found no `completed`-filter gap to fix — Phase
+  46's original check-in UI already added it), so `arrived` was the one genuinely
+  missing option. New "Mark complete" button, shown only for an ARRIVED row, visible to
+  **any** authenticated role (not gated behind the existing owner/admin-only
+  Reschedule/Cancel `canWrite` check) — matches the backend's own permission bar.
+- **Frontend `CheckInPage.tsx`**: the scan result's terminal-state confirmation is now
+  a large banner (28px bold text + a large filled badge in a colored panel) instead of
+  a small inline pill — directly per the ticket's "bigger banner-style confirmation"
+  ask. Two real, distinct banner states: blue "✓ ARRIVED" (right after a scan) and teal
+  "✓ SERVICE COMPLETE" (only after the new, separate "Mark service complete" button —
+  itself a large `size="xl" fullWidth` button — is pressed and the real
+  `POST /appointments/{id}/complete` call succeeds).
+- **`frontend/src/api/types.ts`**: `AppointmentStatus` gained `'arrived'`; new
+  `AppointmentRead` type (the `/complete` response shape) and `completed_at` added to
+  `AppointmentListItem`.
+- **Reverted, not part of this phase's real changes**: `backend/.env`/`frontend/.env`
+  ngrok overrides from the prior mobile-scanner session, restored to `localhost` (see
+  the discrepancy note at the top).
+
+**Real verification (actual output, run 2026-09-13):**
+
+1. **New/updated `tests/integration/test_checkin.py`** — 18 real tests (was 11), run
+   against the real dev DB, Google Calendar's real network call stubbed at the same
+   seam as before:
+```
+$ docker compose exec backend python -m pytest tests/integration/test_checkin.py -v
+test_checkin_marks_appointment_arrived_real_http PASSED
+test_duplicate_scan_returns_honest_already_checked_in PASSED
+test_cancelled_appointment_cannot_be_checked_in PASSED
+test_cross_tenant_token_is_indistinguishable_from_nonexistent PASSED
+test_random_unrelated_token_returns_404 PASSED
+test_staff_role_can_check_in PASSED
+test_checkin_never_sent_twice_under_real_concurrent_claims PASSED
+test_calendar_arrived_sync_is_best_effort_and_never_blocks_checkin PASSED
+test_calendar_completed_sync_fires_on_real_completion_not_on_arrival PASSED
+test_calendar_sync_failure_never_blocks_checkin PASSED
+test_in_person_payment_is_never_inferred_and_is_its_own_explicit_action PASSED
+test_monthly_report_completed_count_reflects_genuine_completion_not_mere_arrival PASSED
+test_monthly_report_counts_pre_split_legacy_completed_row PASSED
+test_mark_complete_requires_arrived_status PASSED
+test_mark_complete_marks_appointment_completed_real_http PASSED
+test_duplicate_complete_returns_honest_already_completed PASSED
+test_staff_role_can_mark_complete PASSED
+test_complete_never_claimed_twice_under_real_concurrent_claims PASSED
+======================== 18 passed in 90.56s ========================
+```
+   `test_complete_never_claimed_twice_under_real_concurrent_claims` is the same real
+   8-real-thread `threading.Barrier` proof as Phase 45/46's other atomic claims, applied
+   to the new `mark_appointment_completed` claim: exactly 1 winner out of 8, real
+   appointment ends `COMPLETED` with `completed_at` set exactly once.
+   `test_monthly_report_counts_pre_split_legacy_completed_row` directly answers the
+   ticket's ask about pre-split data: a row forced to `COMPLETED` with `completed_at =
+   NULL` (simulating a genuine pre-this-phase production row, since ARRIVED didn't
+   exist when it was written) is confirmed to remain a valid status value and still
+   increments the monthly report's completed count.
+
+2. **Real migration bug found and fixed by actually running the downgrade against this
+   dev DB, not just reasoning about it**: `excl_appointments_no_overlap` (Phase 10)'s
+   own WHERE predicate casts a literal to `appointment_status`. Rebuilding the enum
+   type (the standard "Postgres has no ALTER TYPE DROP VALUE" downgrade pattern this
+   codebase already uses for `notification_status`) without dropping that constraint
+   first fails for real:
+```
+$ psql ... (rename type, create new type, alter column) in a transaction
+ERROR:  operator does not exist: appointment_status <> appointment_status_old
+HINT:  No operator matches the given name and argument types.
+```
+   Fixed by dropping and recreating `excl_appointments_no_overlap` (identical
+   definition) around the type rebuild. Then ran the REAL `alembic downgrade -1`
+   followed by `alembic upgrade head` against this dev DB (not just the raw SQL in
+   isolation):
+```
+$ docker compose exec backend alembic downgrade -1
+Running downgrade f030c3b290ee -> fc8e1d0ac457, phase 46 arrived status split
+$ docker compose exec backend alembic upgrade head
+Running upgrade fc8e1d0ac457 -> f030c3b290ee, phase 46 arrived status split
+$ docker compose exec backend alembic check
+No new upgrade operations detected.
+```
+
+3. **Real end-to-end HTTP proof** (real business, real service, real customer, real
+   booking, real backend restarted to pick up the code — confirmed the running
+   container was still serving the OLD code before this restart, a real "stale
+   container" bug this verification itself caught):
+```
+STEP 1: SCAN
+{"appointment_id":"830fb3ca-...","status":"arrived","checked_in_at":"2026-09-13T14:35:52.849347Z",...}
+STEP 2: DOUBLE-SCAN (honest 409, unaffected)
+{"error":{"type":"conflict","message":"This appointment was already checked in at 2026-09-13T14:35:52.849347+00:00."}}
+STEP 3: real, separate MARK COMPLETE
+{"id":"830fb3ca-...","status":"completed","checked_in_at":"2026-09-13T14:35:52.849347Z","completed_at":"2026-09-13T14:35:52.888607Z",...}
+STEP 4: DOUBLE-COMPLETE (honest 409)
+{"error":{"type":"conflict","message":"This appointment was already marked complete at 2026-09-13T14:35:52.888607+00:00."}}
+STEP 5: real DB row
+  status   |         checked_in_at         |         completed_at
+-----------+-------------------------------+-------------------------------
+ COMPLETED | 2026-09-13 14:35:52.849347+00 | 2026-09-13 14:35:52.888607+00
+STEP 6: filter status=arrived -> [] ; filter status=completed -> ["830fb3ca-..."]
+```
+
+4. **[verified live, real browser]** Claude-in-Chrome WAS connected this session
+   (unlike the prior mobile-scanning-fix session). Real login to a real test business
+   (`UI Badge Check Dental`), real appointments driven into all four real statuses via
+   the real API (arrived, completed, confirmed, cancelled), real Appointments dashboard
+   page screenshot: four genuinely distinct badge colors (grape/teal/blue/red), a
+   "Mark complete" button appearing only on the ARRIVED row. Clicked the real Status
+   filter dropdown — confirmed "Arrived" and "Completed" both genuinely present and
+   selectable (not just assumed from reading the code): selecting "Arrived" made a real
+   API round-trip and correctly narrowed the table to exactly the one real ARRIVED row.
+   Clicked the real "Mark complete" button on that row — real toast "Marked as service
+   complete.", and the still-active "Arrived" filter correctly updated to show zero
+   rows (real proof the state transition actually happened, not just that the button
+   is wired to *something*).
+
+5. **Real, honestly-disclosed limitation on the Check-in Scanner page's own banner
+   UI**: the scanner page itself loaded correctly with a live camera feed and no
+   errors. To test the actual scan-to-banner flow without a physical phone, a real QR
+   PNG was generated server-side for a real, still-CONFIRMED test appointment's real
+   `checkin_token` (same `qrcode` library Phase 46 uses) and fed into the page's live
+   `<video>` element via a canvas-captured `MediaStream` (a legitimate technique —
+   the page's own scan loop reads frames from the live video element exactly the same
+   way regardless of the stream's real source). This did **not** produce a decode: real
+   investigation (not assumed) found `document.visibilityState` was `"hidden"` for this
+   automated tab even after clicking into it, which — confirmed live via a canvas draw
+   counter that stayed frozen at `1` for 6+ real seconds — throttles
+   `requestAnimationFrame` to a near-total stop in this specific sandboxed browser
+   session. This is not a bug in the scan loop or the banner code: it equally freezes
+   the *app's own* real scanning loop (which also depends on `requestAnimationFrame`),
+   so this session's automation genuinely cannot drive a live scan-to-banner test right
+   now — the same class of environment gap already disclosed for the physical-webcam
+   step in Phase 46's original entry and the rear-camera confirmation in the mobile-
+   scanning-fix entry above, not a new shortcut taken here. The banner JSX itself
+   (`CheckInPage.tsx`) type-checks and lints clean, reuses the exact same
+   `Paper`/`Stack`/`Badge` primitives already proven to render correctly on the
+   Appointments page in this same session (§4), and its logic is a simple two-state
+   conditional with no complex branching — real, final visual confirmation of the
+   banner is yours, the same as the physical webcam scan itself.
+
+6. **[verified via automated test]** Full backend regression suite, zero regressions:
+```
+$ docker compose exec backend python -m pytest tests/ -q
+489 passed, 10 skipped, 39 warnings in 469.53s
+```
+   (482 at the end of the mobile-scanning-fix entry + 7 new tests this phase = 489 —
+   exact match.)
+
+7. Lint: `ruff check` on every backend file this phase touched → clean. Frontend:
+```
+$ npm run build
+✓ built in 563ms
+$ npm run lint
+```
+   8 warnings, all pre-existing and unrelated (identical count/lines to the mobile-
+   scanning-fix entry's own baseline) — zero new findings in `AppointmentsPage.tsx` or
+   `CheckInPage.tsx`.
+
+8. **Secrets/token grep** — every real `checkin_token` used in this phase's live HTTP
+   and browser testing, grepped against 30 minutes of real backend container logs
+   spanning this entire phase → zero matches.
+
+9. **[verified live]** Both real test businesses (`UI Badge Check Dental` and the
+   e2e-proof business) and their cascaded rows removed after testing.
+
+**Result / Acceptance criteria:**
+| Criterion | Status |
+|---|---|
+| Real end-to-end: scan → ARRIVED, then real separate "mark complete" → COMPLETED, both real state transitions and timestamps | ✓ Pass — §3, live HTTP; also §1 automated |
+| Real proof the atomic one-time-use guarantee holds for the new ARRIVED claim | ✓ Pass — unchanged claim, still covered by `test_checkin_never_sent_twice_under_real_concurrent_claims` |
+| Real proof the new "mark complete" claim is atomic, same rigor as Phase 46 | ✓ Pass — §1, `test_complete_never_claimed_twice_under_real_concurrent_claims`, 8 real threads, exactly 1 winner |
+| Real proof pre-split COMPLETED rows remain valid and correctly counted | ✓ Pass — §1, `test_monthly_report_counts_pre_split_legacy_completed_row` |
+| Real Appointments page: 4 distinct badges, filter dropdown genuinely working for each | ✓ Pass — §4, live browser, real API round-trips |
+| Real Google Calendar proof: ARRIVED and COMPLETED honestly different, appropriately-scoped updates | ✓ Pass — §1, `test_calendar_arrived_sync_...`/`test_calendar_completed_sync_fires_on_real_completion_not_on_arrival` |
+| More prominent completion UI on the scanner | Code shipped, type-checked, lint-clean, reuses proven-rendering primitives (§4) — live visual confirmation blocked by a real, disclosed `requestAnimationFrame` throttling limitation in this sandboxed browser session (§5), not a shortcut |
+| Full regression suite, zero regressions | ✓ Pass — §6, 489/0 |
+| Secrets grep clean, lint clean, frontend build clean | ✓ Pass — §7, §8 |
+
+**Known issues / punted items:**
+- **The Check-in Scanner's new banner has not been visually confirmed live** — see §5;
+  this is now, alongside the physical webcam scan itself, something for your own real
+  phone/browser test to confirm.
+- Every carried-over gap from Phase 46's original entry and the mobile-scanning-fix
+  entry above remains open and unchanged (no live physical webcam scan or Google OAuth
+  connection performed by me, the emailed-QR CID fix awaiting your Gmail confirmation,
+  `record_in_person_payment` has no one-time-use guarantee by design, `checkin_token`
+  never rotates/expires by design, no staff-capacity model, fixed 15-minute slot grid,
+  etc.).
+- No commit has been made yet — awaiting your explicit confirmation of this
+  verification output, and separately, your own real check-in-scanner banner test.
+
+---

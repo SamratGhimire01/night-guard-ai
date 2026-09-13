@@ -24,7 +24,8 @@ _RESCHEDULE_ACTION = "appointment_rescheduled"
 
 # Shared wording (daily/monthly/yearly all use this exact text) — deliberately
 # still not called "revenue" even after Phase 44 (real eSewa/Khalti deposit
-# tracking) and Phase 46 (real AppointmentStatus.COMPLETED via QR check-in):
+# tracking) and Phase 46 (real AppointmentStatus.COMPLETED via QR check-in +
+# the separate "mark service complete" staff action):
 # both are REAL now, but neither makes this figure exact. Payment tracking
 # only exists for services with deposit_enabled=true (most services have no
 # Payment row at all — pay-in-person, untracked by design, see Phase 44), and

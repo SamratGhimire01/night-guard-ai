@@ -207,3 +207,21 @@ def check_in_appointment(
         scheduled_at=appointment.scheduled_at,
         pending_payment=pending_payment,
     )
+
+
+@router.post("/appointments/{appointment_id}/complete", response_model=AppointmentRead)
+def complete_appointment(
+    appointment_id: uuid.UUID,
+    current_user: BusinessUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AppointmentRead:
+    """Phase 46 (continued) — the real, separate "mark service complete"
+    action. Deliberately `get_current_user` (any authenticated role,
+    including staff), same bar as the check-in scan above — reachable from
+    both the check-in scanner's result screen and the Appointments dashboard
+    page. Only ever moves an ARRIVED appointment to COMPLETED; the atomic
+    claim guarantee lives in checkin_service.mark_appointment_completed."""
+    appointment = checkin_service.mark_appointment_completed(
+        db, business_id=current_user.business_id, appointment_id=appointment_id
+    )
+    return AppointmentRead.model_validate(appointment)

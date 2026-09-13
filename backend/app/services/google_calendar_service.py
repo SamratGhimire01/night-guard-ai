@@ -465,18 +465,16 @@ def sync_appointment_rescheduled(db: Session, appointment: Appointment) -> None:
     db.commit()
 
 
-def sync_appointment_completed(db: Session, appointment: Appointment) -> None:
-    """Best-effort reflection of a real check-in (Phase 46) into Google
-    Calendar. Google Calendar's real API has NO native "completed" checkbox
-    or status field for an event — the honest, real capability actually
-    available is updating the event's own summary/description text, which is
-    exactly what this does: prefixes the summary with a checkmark and a real
-    "(completed)" label, and appends the real check-in timestamp to the
-    description. This does not imply or simulate a UI feature Calendar
-    doesn't have; it's a real, visible edit to the real event's real fields.
-    A no-op if this appointment was never synced in the first place (free
-    plan, or the original sync failed with no event ever created) — same
-    precedent as sync_appointment_cancelled. NEVER raises: a Calendar
+def sync_appointment_arrived(db: Session, appointment: Appointment) -> None:
+    """Best-effort reflection of a real QR check-in (Phase 46) into Google
+    Calendar — the customer has arrived, the service is NOT yet done. This is
+    deliberately a lighter touch than sync_appointment_completed below: only
+    the description gets a real, honest "Arrived" note appended with the real
+    check-in timestamp; the summary is left untouched (no checkmark, no
+    "(completed)" label) so the event never overstates what a simple arrival
+    means. A no-op if this appointment was never synced in the first place
+    (free plan, or the original sync failed with no event ever created) —
+    same precedent as sync_appointment_cancelled. NEVER raises: a Calendar
     failure must not block or undo a check-in that already committed in
     Postgres before this ever runs."""
     business = db.get(Business, appointment.business_id)
@@ -485,19 +483,61 @@ def sync_appointment_completed(db: Session, appointment: Appointment) -> None:
         return
     try:
         access_token = _fresh_access_token(db, integration)
-        summary, description = _event_summary_and_description(db, appointment)
+        _, description = _event_summary_and_description(db, appointment)
         checked_in_at = appointment.checked_in_at.isoformat() if appointment.checked_in_at else "unknown time"
         _update_event(
             access_token,
             calendar_id=integration.config["calendar_id"],
             event_id=appointment.google_calendar_event_id,
-            summary=f"✓ {summary} (completed)",
-            description=f"{description}\nChecked in: {checked_in_at}",
+            description=f"{description}\nArrived: {checked_in_at}",
         )
         appointment.calendar_sync_status = "synced"
     except Exception:
         logger.warning(
             "google calendar event update failed for appointment_id=%s (non-fatal, check-in "
+            "already confirmed)",
+            appointment.id,
+            exc_info=True,
+        )
+        appointment.calendar_sync_status = "failed"
+    db.commit()
+
+
+def sync_appointment_completed(db: Session, appointment: Appointment) -> None:
+    """Best-effort reflection of a real, separate "mark service complete"
+    staff action (Phase 46 continued) into Google Calendar — fires on the
+    real COMPLETED transition, never on a mere arrival (see
+    sync_appointment_arrived above). Google Calendar's real API has NO native
+    "completed" checkbox or status field for an event — the honest, real
+    capability actually available is updating the event's own
+    summary/description text, which is exactly what this does: prefixes the
+    summary with a checkmark and a real "(completed)" label, and appends the
+    real completion timestamp to the description. This does not imply or
+    simulate a UI feature Calendar doesn't have; it's a real, visible edit to
+    the real event's real fields. A no-op if this appointment was never
+    synced in the first place (free plan, or the original sync failed with no
+    event ever created) — same precedent as sync_appointment_cancelled.
+    NEVER raises: a Calendar failure must not block or undo a completion that
+    already committed in Postgres before this ever runs."""
+    business = db.get(Business, appointment.business_id)
+    integration = _active_integration(db, business)
+    if integration is None or not appointment.google_calendar_event_id:
+        return
+    try:
+        access_token = _fresh_access_token(db, integration)
+        summary, description = _event_summary_and_description(db, appointment)
+        completed_at = appointment.completed_at.isoformat() if appointment.completed_at else "unknown time"
+        _update_event(
+            access_token,
+            calendar_id=integration.config["calendar_id"],
+            event_id=appointment.google_calendar_event_id,
+            summary=f"✓ {summary} (completed)",
+            description=f"{description}\nCompleted: {completed_at}",
+        )
+        appointment.calendar_sync_status = "synced"
+    except Exception:
+        logger.warning(
+            "google calendar event update failed for appointment_id=%s (non-fatal, completion "
             "already confirmed)",
             appointment.id,
             exc_info=True,

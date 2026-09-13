@@ -46,8 +46,9 @@ def generate_monthly_report(db: Session, *, business_id: uuid.UUID, year: int, m
     here is a real query result. `appointments_completed` used to have no
     real producer in this codebase and was reported as an honest 0 +
     implemented=False (Phase 17's own disclosure, the same discipline Phase
-    16 established for HumanHandoff) — Phase 46's real QR check-in now gives
-    AppointmentStatus.COMPLETED a genuine producer, so this is real data.
+    16 established for HumanHandoff) — Phase 46's real "mark service
+    complete" staff action now gives AppointmentStatus.COMPLETED a genuine
+    producer, so this is real data.
 
     METHODOLOGY (stated explicitly, since several of these terms are
     genuinely ambiguous and the ticket asked for an explicit definition):
@@ -192,9 +193,11 @@ def generate_monthly_report(db: Session, *, business_id: uuid.UUID, year: int, m
                 "count": completed_of_scheduled,
                 "implemented": True,
                 "note": (
-                    "AppointmentStatus.COMPLETED is set by a real staff QR check-in at the clinic "
-                    "(Phase 46, app.services.checkin_service) — this count reflects genuine "
-                    "check-ins, not a proxy or an estimate."
+                    "AppointmentStatus.COMPLETED is set by a real, separate staff action — "
+                    "'mark service complete' — after a QR check-in has already marked the "
+                    "appointment ARRIVED (Phase 46, app.services.checkin_service) — this count "
+                    "reflects genuine completed visits, not just arrivals, and not a proxy or an "
+                    "estimate."
                 ),
             },
             "rescheduled": {

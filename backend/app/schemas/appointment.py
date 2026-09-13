@@ -54,6 +54,7 @@ class AppointmentRead(BaseModel):
     # consumers are the email QR image and the checkin POST body, so it's
     # never returned by the general appointment read/list endpoints.
     checked_in_at: datetime | None
+    completed_at: datetime | None
 
 
 class CheckinRequest(BaseModel):
