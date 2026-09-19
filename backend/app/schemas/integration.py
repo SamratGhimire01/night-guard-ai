@@ -80,3 +80,29 @@ class IntegrationTestResult(BaseModel):
 
     ok: bool
     detail: str
+
+
+class WhatsAppEmbeddedSignupConfig(BaseModel):
+    """GET /integrations/whatsapp/embedded-signup/config response — lets the
+    dashboard decide whether to show the self-serve "Connect WhatsApp" button
+    at all. `app_id`/`config_id` are not secrets (both are passed to the
+    client-side Meta JS SDK by design); `configured=False` means the platform
+    hasn't set WHATSAPP_EMBEDDED_SIGNUP_APP_ID/_CONFIG_ID yet, in which case
+    the dashboard should hide the button and fall back to the manual fields."""
+
+    configured: bool
+    app_id: str
+    config_id: str
+    api_version: str
+
+
+class WhatsAppEmbeddedSignupComplete(BaseModel):
+    """POST /integrations/whatsapp/embedded-signup body — the three real
+    values Meta's Embedded Signup hands back to the browser (see
+    app/services/channels/whatsapp_embedded_signup.py's module docstring for
+    the full flow). `code` is a real, short-lived (30s) authorization code,
+    never a long-lived credential itself."""
+
+    code: safe_str(2000)
+    waba_id: safe_str(64)
+    phone_number_id: safe_str(64)

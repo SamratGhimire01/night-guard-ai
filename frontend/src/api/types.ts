@@ -123,6 +123,15 @@ export interface IntegrationTestResult {
   detail: string
 }
 
+// WhatsApp Embedded Signup — a NEW, self-serve alternative to hand-typing
+// IntegrationUpsert's whatsapp fields above. See ChannelsPage.tsx.
+export interface WhatsAppEmbeddedSignupConfig {
+  configured: boolean
+  app_id: string
+  config_id: string
+  api_version: string
+}
+
 export interface ServiceRead {
   id: string
   business_id: string

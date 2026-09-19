@@ -57,6 +57,25 @@ class Settings(BaseSettings):
     whatsapp_access_token: str = ""
     whatsapp_api_version: str = "v20.0"
 
+    # WhatsApp Embedded Signup (app/services/channels/whatsapp_embedded_signup.py).
+    # A NEW, purely additive self-serve connect option alongside the manual
+    # phone_number_id/access_token entry above — neither this nor the manual
+    # path is removed; a business owner picks whichever applies to them. Empty
+    # by default, same honest "no production Meta Tech Provider approval yet"
+    # gap as every other Meta credential in this file: the dashboard hides the
+    # "Connect WhatsApp (self-serve)" button until both are set.
+    # whatsapp_embedded_signup_app_id: the Meta App ID — public by nature (it's
+    #   passed to the client-side JS SDK's FB.init(), never a secret).
+    # whatsapp_embedded_signup_config_id: the Facebook Login for Business
+    #   configuration ID (create one from the "WhatsApp Embedded Signup
+    #   Configuration" template in the Meta App Dashboard) — also passed
+    #   client-side, also not a secret.
+    # The actual secret this flow needs server-side for the code-for-token
+    # exchange is whatsapp_app_secret above — already exists (Phase 22), reused
+    # here rather than duplicated, since it's the same Meta App's one secret.
+    whatsapp_embedded_signup_app_id: str = ""
+    whatsapp_embedded_signup_config_id: str = ""
+
     # Messenger Platform (app/services/channels/messenger.py). Empty by default —
     # no production Meta Page/App exists yet (Phase 26), same honest gap as
     # WhatsApp. messenger_app_secret/messenger_verify_token play the identical

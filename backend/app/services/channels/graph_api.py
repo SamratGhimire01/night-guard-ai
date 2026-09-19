@@ -7,16 +7,33 @@ logger = logging.getLogger(__name__)
 
 _TIMEOUT_SECONDS = 10
 
+# Real, confirmed-live finding (PHASE_STATUS.md — the WhatsApp Embedded
+# Signup phase's root-cause investigation): Instagram has two structurally
+# incompatible connection products. "Instagram API with Instagram Login"
+# issues IGAA-prefixed Instagram User access tokens that are ONLY ever valid
+# against graph.instagram.com; the older Instagram-via-linked-Facebook-Page
+# product issues ordinary Facebook (EAA-prefixed) tokens, valid only against
+# graph.facebook.com. Confirmed live: the same saved token that got "Cannot
+# parse access token" from graph.facebook.com resolved successfully via
+# graph.instagram.com/me. Detected by prefix, not hardcoded to one host, so a
+# future business connected the other way isn't silently broken.
+_INSTAGRAM_LOGIN_TOKEN_PREFIX = "IGAA"
 
-def test_graph_credentials(*, object_id: str, access_token: str, api_version: str) -> tuple[bool, str]:
+
+def instagram_graph_host(access_token: str) -> str:
+    return "graph.instagram.com" if access_token.startswith(_INSTAGRAM_LOGIN_TOKEN_PREFIX) else "graph.facebook.com"
+
+
+def test_graph_credentials(
+    *, object_id: str, access_token: str, api_version: str, host: str = "graph.facebook.com"
+) -> tuple[bool, str]:
     """Real, lightweight `GET /{api_version}/{object_id}?access_token=...`
-    against Meta's Graph API — the one mechanism genuinely identical across
-    WhatsApp (a phone_number_id), Messenger (a page_id) and Instagram (an
-    ig_account_id): each object is readable by its own credential when that
-    credential is valid, and Meta returns a real, descriptive error
-    (typically "Invalid OAuth access token") when it isn't. This never sends
-    a message to a real customer — it's a read, safe to run before a
-    business relies on the saved credentials.
+    against Meta's Graph API — a real object read, safe to run before a
+    business relies on the saved credentials, never sending a message to a
+    real customer. `host` defaults to graph.facebook.com (WhatsApp/Messenger
+    Page-linked Instagram); pass `host="graph.instagram.com"` for an
+    Instagram-Login-style token (see instagram_graph_host above) — that
+    other host cannot parse this one's tokens at all, confirmed live.
 
     Never raises. Never logs/returns the access_token itself — it only ever
     appears in the outgoing request URL, never in a log line here.
@@ -24,7 +41,7 @@ def test_graph_credentials(*, object_id: str, access_token: str, api_version: st
     if not object_id or not access_token:
         return False, "Missing phone number ID / account ID or access token."
 
-    url = f"https://graph.facebook.com/{api_version}/{object_id}?access_token={access_token}"
+    url = f"https://{host}/{api_version}/{object_id}?access_token={access_token}"
     request = urllib.request.Request(url, method="GET")
     try:
         with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:
@@ -41,4 +58,46 @@ def test_graph_credentials(*, object_id: str, access_token: str, api_version: st
         return False, message
     except urllib.error.URLError as exc:
         logger.info("graph API test-connection could not reach Graph API (%s)", type(exc.reason).__name__)
+        return False, "Could not reach Meta's Graph API. Please try again."
+
+
+def test_messenger_credentials(*, access_token: str, api_version: str) -> tuple[bool, str]:
+    """Real, harmless `GET /me/messenger_profile` — gated by the SAME
+    `pages_messaging` permission the real Send API (`POST /me/messages`)
+    uses. Deliberately NOT the generic test_graph_credentials object-read
+    above for Messenger: a plain `GET /{page_id}` requires
+    `pages_read_engagement` / Page Public Content Access, a permission this
+    app's Messenger integration was never granted and doesn't need for
+    sending — confirmed live to be a false negative (PHASE_STATUS.md): a
+    fully valid, never-expiring, `pages_messaging`-scoped token failed that
+    check while genuinely being able to send. This endpoint reflects real
+    send capability instead: a 200 here (even with empty fields, meaning
+    nothing's configured) proves the token can authenticate a real
+    pages_messaging-gated call; an actual auth failure here would mean
+    sending is ALSO broken, a real signal, not a false one.
+
+    Never raises. Never logs/returns the access_token itself.
+    """
+    if not access_token:
+        return False, "Missing access token."
+
+    url = (
+        f"https://graph.facebook.com/{api_version}/me/messenger_profile"
+        f"?fields=whitelisted_domains,greeting&access_token={access_token}"
+    )
+    request = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:
+            json.loads(response.read())
+            return True, "Connected — the pages_messaging-scoped Messenger Profile API accepted this token."
+    except urllib.error.HTTPError as exc:
+        try:
+            body = json.loads(exc.read())
+            message = (body.get("error") or {}).get("message") or f"HTTP {exc.code}"
+        except (ValueError, json.JSONDecodeError):
+            message = f"HTTP {exc.code}"
+        logger.info("messenger test-connection failed: HTTP %s", exc.code)
+        return False, message
+    except urllib.error.URLError as exc:
+        logger.info("messenger test-connection could not reach Graph API (%s)", type(exc.reason).__name__)
         return False, "Could not reach Meta's Graph API. Please try again."

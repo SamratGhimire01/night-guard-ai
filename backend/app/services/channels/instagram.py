@@ -8,11 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.services.channels.base import ChannelAdapter, get_or_create_conversation
+from app.services.channels.graph_api import instagram_graph_host
 from app.services.conversation.orchestrator import handle_incoming_message
 
 logger = logging.getLogger(__name__)
 
-_SEND_URL_TEMPLATE = "https://graph.facebook.com/{api_version}/{ig_account_id}/messages"
+_SEND_URL_TEMPLATE = "https://{host}/{api_version}/{ig_account_id}/messages"
 _SEND_TIMEOUT_SECONDS = 15
 
 
@@ -63,7 +64,7 @@ class InstagramChannelAdapter(ChannelAdapter):
 
     def send_message(self, *, igsid: str, text: str, ig_account_id: str, access_token: str) -> str:
         """Real Instagram Messaging API send request
-        (POST https://graph.facebook.com/{version}/{ig_account_id}/messages?access_token=...,
+        (POST https://{host}/{version}/{ig_account_id}/messages?access_token=...,
         Meta's current documented request shape:
         {"recipient":{"id":igsid},"message":{"text":text}}), made via stdlib
         urllib — same "no SDK for one POST" precedent as WhatsApp/Messenger.
@@ -79,6 +80,15 @@ class InstagramChannelAdapter(ChannelAdapter):
         professional account has its own access token, sourced per-request
         from this business's own Integration.config, not a global setting.
 
+        `host` is chosen per-token (see graph_api.instagram_graph_host), not
+        hardcoded — a real, confirmed-live root cause: Instagram has two
+        structurally incompatible connection products. "Instagram API with
+        Instagram Login" issues IGAA-prefixed tokens valid ONLY against
+        graph.instagram.com; the older Instagram-via-linked-Facebook-Page
+        product issues ordinary Facebook tokens valid only against
+        graph.facebook.com — the wrong host doesn't just reject the token,
+        it can't even parse it (see PHASE_STATUS.md).
+
         Graceful fallback, same discipline as WhatsApp/Messenger: an empty/
         missing access_token logs a SIMULATED line and returns immediately,
         never attempting a network call. Never raises on a real failure
@@ -88,7 +98,11 @@ class InstagramChannelAdapter(ChannelAdapter):
             logger.info("SIMULATED Instagram send to %s: %s", igsid, text)
             return "simulated — no real access token configured for this business"
 
-        url = _SEND_URL_TEMPLATE.format(api_version=settings.instagram_api_version, ig_account_id=ig_account_id)
+        url = _SEND_URL_TEMPLATE.format(
+            host=instagram_graph_host(access_token),
+            api_version=settings.instagram_api_version,
+            ig_account_id=ig_account_id,
+        )
         body = json.dumps({"recipient": {"id": igsid}, "message": {"text": text}}).encode("utf-8")
         request = urllib.request.Request(
             f"{url}?access_token={access_token}",

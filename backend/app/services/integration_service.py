@@ -8,22 +8,55 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.models.integration import Integration
 from app.schemas.integration import IntegrationUpsert
-from app.services.channels.graph_api import test_graph_credentials
+from app.services.channels.graph_api import instagram_graph_host, test_graph_credentials, test_messenger_credentials
 
-# Per-type mapping of a saved Integration.config -> the (object_id,
-# access_token, api_version) test_graph_credentials needs — the one place
-# that knows which config keys each channel's real credential lives under.
-# WhatsApp falls back to the platform-wide WHATSAPP_ACCESS_TOKEN for rows
-# saved before per-business WhatsApp tokens existed (see
-# WhatsAppChannelAdapter.send_message).
-_TEST_CONNECTION_SPECS: dict[str, Callable[[dict], tuple[str | None, str | None, str]]] = {
-    "whatsapp": lambda config: (
-        config.get("phone_number_id"),
-        config.get("access_token") or settings.whatsapp_access_token,
-        settings.whatsapp_api_version,
-    ),
-    "messenger": lambda config: (config.get("page_id"), config.get("page_access_token"), settings.messenger_api_version),
-    "instagram": lambda config: (config.get("ig_account_id"), config.get("access_token"), settings.instagram_api_version),
+
+def _check_whatsapp(config: dict) -> tuple[bool, str]:
+    # Falls back to the platform-wide WHATSAPP_ACCESS_TOKEN for rows saved
+    # before per-business WhatsApp tokens existed (see
+    # WhatsAppChannelAdapter.send_message) — unchanged by this fix.
+    object_id = config.get("phone_number_id")
+    access_token = config.get("access_token") or settings.whatsapp_access_token
+    if not object_id or not access_token:
+        return False, "Saved configuration is missing a required value."
+    return test_graph_credentials(object_id=object_id, access_token=access_token, api_version=settings.whatsapp_api_version)
+
+
+def _check_messenger(config: dict) -> tuple[bool, str]:
+    # Real fix (see graph_api.test_messenger_credentials docstring): a plain
+    # object-read false-negatived a fully valid, never-expiring token that
+    # genuinely can send — this checks the actual pages_messaging-gated
+    # capability instead.
+    access_token = config.get("page_access_token")
+    if not access_token:
+        return False, "Saved configuration is missing a required value."
+    return test_messenger_credentials(access_token=access_token, api_version=settings.messenger_api_version)
+
+
+def _check_instagram(config: dict) -> tuple[bool, str]:
+    # Real fix: route to the correct Graph API host for this token's real
+    # connection product (see graph_api.instagram_graph_host) instead of
+    # always assuming graph.facebook.com. "me" resolves the current token's
+    # own identity on either host — no dependency on ig_account_id being
+    # correct for the check to at least prove the token itself is valid.
+    access_token = config.get("access_token")
+    if not access_token:
+        return False, "Saved configuration is missing a required value."
+    return test_graph_credentials(
+        object_id="me",
+        access_token=access_token,
+        api_version=settings.instagram_api_version,
+        host=instagram_graph_host(access_token),
+    )
+
+
+# Per-type real connection check — each channel now genuinely reflects its
+# own real send capability (see the three functions above), not one generic
+# mechanism applied uniformly regardless of whether it fits.
+_TEST_CONNECTION_CHECKS: dict[str, Callable[[dict], tuple[bool, str]]] = {
+    "whatsapp": _check_whatsapp,
+    "messenger": _check_messenger,
+    "instagram": _check_instagram,
 }
 
 
@@ -92,20 +125,18 @@ def test_connection(db: Session, *, business_id: uuid.UUID, type_: str) -> tuple
     """Real "Test connection" button support — loads THIS business's own
     saved Integration row (never credentials passed in the request; only
     what was already saved via upsert_integration) and makes one real,
-    lightweight GET against Meta's Graph API to confirm they're valid. Never
-    sends a message to a real customer."""
-    spec = _TEST_CONNECTION_SPECS.get(type_)
-    if spec is None:
+    lightweight Meta API call, chosen per-type to actually reflect that
+    channel's real send capability (see _TEST_CONNECTION_CHECKS above).
+    Never sends a message to a real customer."""
+    check = _TEST_CONNECTION_CHECKS.get(type_)
+    if check is None:
         return False, f"Test connection is not supported for type={type_!r}."
 
     integration = get_integration(db, business_id=business_id, type_=type_)
     if integration is None or not integration.enabled:
         return False, "Not connected yet — save your credentials first."
 
-    object_id, access_token, api_version = spec(integration.config or {})
-    if not object_id or not access_token:
-        return False, "Saved configuration is missing a required value."
-    return test_graph_credentials(object_id=object_id, access_token=access_token, api_version=api_version)
+    return check(integration.config or {})
 
 
 def delete_integration(db: Session, *, business_id: uuid.UUID, type_: str) -> bool:
