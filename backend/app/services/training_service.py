@@ -8,7 +8,7 @@ from app.db.models.business import Business
 from app.db.models.knowledge import KnowledgeChunk, KnowledgeDocument, KnowledgeDocumentStatus
 from app.db.models.training import TrainingQuestion
 from app.llm import get_embedding_provider
-from app.services import knowledge_service, service_service
+from app.services import business_hours_service, knowledge_service, service_service
 from app.services.conversation.intent import classify_and_respond
 from app.services.conversation.orchestrator import KNOWLEDGE_TOP_K
 
@@ -36,10 +36,18 @@ def ask(
     """
     business = db.get(Business, business_id)
     services = service_service.list_services(db, business_id=business_id)
+    hours = business_hours_service.list_hours(db, business_id=business_id)
 
     query_vector = get_embedding_provider().embed([question])[0]
-    knowledge_results = knowledge_service.search_chunks(
-        db, business_id=business_id, query_vector=query_vector, top_k=KNOWLEDGE_TOP_K
+    # Same real relevance floor the real customer orchestrator applies (see
+    # knowledge_service.filter_for_llm) — this function's own docstring
+    # promises exact parity with the real customer path, so an owner testing
+    # the AI must see the same noise-free knowledge, not a stale, unfiltered
+    # copy of Phase 6's raw search.
+    knowledge_results = knowledge_service.filter_for_llm(
+        knowledge_service.search_chunks(
+            db, business_id=business_id, query_vector=query_vector, top_k=KNOWLEDGE_TOP_K
+        )
     )
 
     classification = classify_and_respond(
@@ -48,6 +56,7 @@ def ask(
         knowledge_results=knowledge_results,
         customer_message=question,
         services=services,
+        hours=hours,
     )
 
     training_question = TrainingQuestion(

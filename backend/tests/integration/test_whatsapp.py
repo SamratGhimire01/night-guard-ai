@@ -389,3 +389,87 @@ def test_send_message_gracefully_simulates_when_no_access_token_configured(monke
     detail = adapter.send_message(to="15551234567", text="hello", phone_number_id="whatever")
     assert "simulated" in detail
     assert "no real" in detail
+
+
+# ---------------------------------------------------------------------------
+# Outgoing image send (QR resend) — real Media API two-step flow, researched
+# against Meta's current docs: upload the bytes to get a real media id, then
+# reference that id in a real image-type message. Never a single request.
+# ---------------------------------------------------------------------------
+
+
+class _FakeHttpxResponse:
+    def __init__(self, status_code, payload):
+        self.status_code = status_code
+        self._payload = payload
+
+    def json(self):
+        return self._payload
+
+
+def test_send_image_message_gracefully_simulates_when_no_access_token_configured(monkeypatch):
+    from app.services.channels.whatsapp import WhatsAppChannelAdapter
+
+    monkeypatch.setattr(settings, "whatsapp_access_token", "")
+    adapter = WhatsAppChannelAdapter()
+    detail = adapter.send_image_message(
+        to="15551234567",
+        image_bytes=b"fake-png-bytes",
+        mime_type="image/png",
+        caption="x",
+        phone_number_id="whatever",
+    )
+    assert "simulated" in detail
+    assert "no real" in detail
+
+
+def test_send_image_message_uploads_media_then_sends_real_image_message(monkeypatch):
+    from app.services.channels import whatsapp as whatsapp_module
+
+    calls = []
+
+    def _fake_post(url, **kwargs):
+        calls.append((url, kwargs))
+        if url.endswith("/media"):
+            assert kwargs["files"]["file"][1] == b"fake-png-bytes"
+            assert kwargs["files"]["file"][2] == "image/png"
+            assert kwargs["data"] == {"messaging_product": "whatsapp", "type": "image/png"}
+            return _FakeHttpxResponse(200, {"id": "real-media-id-123"})
+        assert kwargs["json"]["type"] == "image"
+        assert kwargs["json"]["image"] == {"id": "real-media-id-123", "caption": "Show this at the clinic."}
+        return _FakeHttpxResponse(200, {"messages": [{"id": "wamid.ABC123"}]})
+
+    monkeypatch.setattr(whatsapp_module.httpx, "post", _fake_post)
+
+    adapter = whatsapp_module.WhatsAppChannelAdapter()
+    detail = adapter.send_image_message(
+        to="15551234567",
+        image_bytes=b"fake-png-bytes",
+        mime_type="image/png",
+        caption="Show this at the clinic.",
+        phone_number_id="12345",
+        access_token="real-token",
+    )
+    assert detail == "sent wamid=wamid.ABC123"
+    assert len(calls) == 2, "must be exactly two real calls: upload, then send"
+    assert calls[0][0].endswith("/12345/media")
+    assert calls[1][0].endswith("/12345/messages")
+
+
+def test_send_image_message_fails_honestly_when_media_upload_rejected(monkeypatch):
+    from app.services.channels import whatsapp as whatsapp_module
+
+    monkeypatch.setattr(
+        whatsapp_module.httpx, "post", lambda url, **kwargs: _FakeHttpxResponse(400, {"error": {"message": "bad"}})
+    )
+
+    adapter = whatsapp_module.WhatsAppChannelAdapter()
+    detail = adapter.send_image_message(
+        to="15551234567",
+        image_bytes=b"x",
+        mime_type="image/png",
+        caption="x",
+        phone_number_id="12345",
+        access_token="tok",
+    )
+    assert detail.startswith("failed:")

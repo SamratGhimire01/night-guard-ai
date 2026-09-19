@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Index,
+    Integer,
     String,
     Text,
     UniqueConstraint,
@@ -148,6 +149,16 @@ class Appointment(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMix
     # checkin_service.mark_appointment_completed) — never inferred from
     # checked_in_at alone.
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # A customer-triggered "(re)send my confirmation/QR" request, capped at 3
+    # per appointment (abuse guard). Same atomic-claim discipline as
+    # reminder_sent_at/checked_in_at above — claimed via a single
+    # `UPDATE appointments SET confirmation_resend_count = confirmation_resend_count + 1
+    # WHERE id = :id AND confirmation_resend_count < 3` (see
+    # app/services/conversation/appointment_tools.py's ResendConfirmationTool)
+    # — a count, not a boolean, since (unlike a reminder) this is legitimately
+    # allowed to happen more than once, just not unboundedly.
+    confirmation_resend_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
 
 class AppointmentParticipant(UUIDPrimaryKeyMixin, Base):

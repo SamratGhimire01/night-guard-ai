@@ -290,3 +290,26 @@ def test_rbac_staff_can_read_but_not_approve_archive_or_delete(staff_token, two_
 def test_create_rejects_blank_fields_with_422(two_businesses, body):
     resp = client.post("/api/v1/knowledge", json=body, headers=_auth_header(two_businesses["token_a"]))
     assert resp.status_code == 422, resp.text
+
+
+def test_filter_for_llm_drops_noise_keeps_real_matches():
+    """Real conversation-quality fix (PHASE_STATUS.md, "greeting verbosity"):
+    real-measured score distribution on this project's own real business
+    ("Samaj Dental Clinic") showed genuinely relevant top-1 matches at
+    0.379-0.645 and irrelevant ones (a bare greeting, "thank you," an
+    unrelated question) at 0.080-0.207 — LLM_RELEVANCE_FLOOR (0.25) sits in
+    that real gap. `filter_for_llm` never touches the chunk/document objects
+    themselves, only the similarity score, so plain placeholders are enough
+    here — this is a pure filtering-logic test, not a real search test (that
+    coverage already exists via the manual-entry/search tests above)."""
+    assert knowledge_service.LLM_RELEVANCE_FLOOR == 0.25
+    results = [
+        ("chunk_real_match", "doc", 0.645),
+        ("chunk_weak_match", "doc", 0.379),
+        ("chunk_borderline", "doc", 0.25),
+        ("chunk_noise_1", "doc", 0.207),
+        ("chunk_noise_2", "doc", 0.108),
+    ]
+    filtered = knowledge_service.filter_for_llm(results)
+    assert [r[0] for r in filtered] == ["chunk_real_match", "chunk_weak_match", "chunk_borderline"]
+    assert knowledge_service.filter_for_llm([]) == []

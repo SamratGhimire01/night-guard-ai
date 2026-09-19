@@ -13,6 +13,10 @@ class ConversationIntent(str, enum.Enum):
     RESCHEDULING = "rescheduling"
     CANCELLATION = "cancellation"
     APPOINTMENT_STATUS = "appointment_status"
+    # A customer explicitly asking to have their appointment confirmation
+    # and/or check-in QR (re)sent, to WhatsApp, email, or both — see
+    # ResendConfirmationTool (app/services/conversation/appointment_tools.py).
+    RESEND_CONFIRMATION = "resend_confirmation"
     BUSINESS_HOURS = "business_hours"
     LOCATION = "location"
     COMPLAINT = "complaint"

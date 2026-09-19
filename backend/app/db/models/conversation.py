@@ -82,6 +82,38 @@ class Conversation(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMi
     booking_draft_service_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     booking_draft_date: Mapped[str | None] = mapped_column(String(10))
     booking_draft_time: Mapped[str | None] = mapped_column(String(5))
+    # Real root-cause fix (PHASE_STATUS.md, "silent service switch" ->
+    # re-investigating the DATE-switch false positive it originally forced
+    # us to exclude): `booking_draft_date` above must mean ONLY "the date
+    # the CUSTOMER explicitly stated" (written exclusively by
+    # orchestrator._merge_booking_draft from a real booking_request.date) —
+    # that's what makes it safe to compare turn-to-turn for a genuine
+    # switch. Before this field existed, orchestrator._propose_available_
+    # slots ALSO wrote directly into booking_draft_date, as a "search from
+    # here" internal bookkeeping default (so a later time-only reply, e.g.
+    # "10:30 works", could still resolve a full date+time even though the
+    # customer never stated a date) — two genuinely different pieces of
+    # state (a customer fact vs. Python's own search anchor) sharing one
+    # field, which is exactly what produced the false positive. This column
+    # is that search anchor's own real home: written only by
+    # _propose_available_slots, read only as a FALLBACK when
+    # booking_draft_date is still null (see orchestrator._effective_draft_
+    # date) — never itself compared for a "did the customer switch dates"
+    # judgment.
+    booking_draft_search_anchor_date: Mapped[str | None] = mapped_column(String(10))
+    # Real conversation-quality audit finding (PHASE_STATUS.md, §50/"don't
+    # create an LLM call for everything"): the real, freshly-computed slot
+    # list a "here's what's open" turn just showed the customer (see
+    # orchestrator._propose_available_slots), as comma-separated UTC ISO8601
+    # timestamps — deliberately ephemeral, one-shot state, NOT a durable part
+    # of the booking draft: it exists only so THIS turn's deterministic
+    # bare-digit-selection check (orchestrator._resolve_bare_digit_slot_pick)
+    # can resolve "2" to a real, known slot without a second LLM round trip.
+    # Set only when slots are shown, and always cleared again after the very
+    # next turn (whether or not that turn actually was a digit pick) — never
+    # left to survive long enough for a much-later, unrelated bare digit to
+    # be misread as a stale slot selection.
+    booking_draft_proposed_slots: Mapped[str | None] = mapped_column(Text)
 
 
 class Message(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):

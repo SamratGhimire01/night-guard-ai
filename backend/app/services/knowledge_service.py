@@ -146,6 +146,38 @@ def search_chunks(
     return [(chunk, doc, similarity) for chunk, doc, similarity in db.execute(stmt).all()]
 
 
+# Real conversation-quality fix (PHASE_STATUS.md): `search_chunks` always
+# returns its top_k results with no relevance floor, by design — the
+# admin-facing raw knowledge-search endpoint (app/api/routes/knowledge.py)
+# genuinely wants to see everything, unfiltered, for debugging what does and
+# doesn't match. But every caller that hands these results to the LLM
+# (orchestrator.handle_incoming_message, training_service.ask) was showing it
+# real noise on top of real matches — live-measured on this project's own
+# real business ("Samaj Dental Clinic") knowledge base: genuinely relevant
+# top-1 matches scored 0.379-0.645 (parking, cancellation policy, braces
+# timeline, payment methods, cleaning pricing); a bare greeting, "thank you,"
+# and an unrelated question scored 0.080-0.207 top-1 — a real, clean gap
+# between the two clusters. 0.25 sits in that gap, closer to the irrelevant
+# side (comfortably above the highest irrelevant score seen, 0.207) so a
+# genuinely relevant but weaker match is never wrongly hidden — showing one
+# extra borderline chunk is a much smaller real harm than hiding real,
+# correct information (rule 1 in intent.py's accuracy floor). Filters
+# per-chunk, not all-or-nothing: a query whose #1 result is relevant but
+# whose #2/#3 are noise (real example: "can I pay by card?" -> 0.400, 0.192,
+# 0.156) correctly keeps only the real match.
+LLM_RELEVANCE_FLOOR = 0.25
+
+
+def filter_for_llm(
+    results: list[tuple[KnowledgeChunk, KnowledgeDocument, float]],
+) -> list[tuple[KnowledgeChunk, KnowledgeDocument, float]]:
+    """Drops chunks below LLM_RELEVANCE_FLOOR — the ONLY place this floor is
+    applied, so every caller that feeds the LLM shares one real, evidenced
+    cutoff. Never applied to `search_chunks` itself or to the raw admin
+    search endpoint, which intentionally shows unfiltered results."""
+    return [r for r in results if r[2] >= LLM_RELEVANCE_FLOOR]
+
+
 def delete_document(db: Session, *, business_id: uuid.UUID, document_id: uuid.UUID) -> bool:
     document = get_document(db, business_id=business_id, document_id=document_id)
     if document is None:

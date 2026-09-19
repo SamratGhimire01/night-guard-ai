@@ -134,10 +134,16 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "ne_deva": "अहिले तपाईंको कुनै आगामी अपोइन्टमेन्ट छैन{who}।",
         "ne_roman": "Ahile tapaiko kunai aagami appointment chaina{who}.",
     },
+    # Real conversation-quality spec-conformance finding (PHASE_STATUS.md,
+    # §11 — a simple "is my 2pm still on?" confirmation should read as brief
+    # as "Huss, 2 PM ko appointment raicha," not a formal status readout):
+    # shortened from "You have one upcoming appointment{who}: {desc}, status:
+    # {status}." — same real facts (desc already includes service/time/id),
+    # less wrapper.
     "status_one_active": {
-        "en": "You have one upcoming appointment{who}: {desc}, status: {status}.",
-        "ne_deva": "तपाईंको एउटा आगामी अपोइन्टमेन्ट छ{who}: {desc}, स्थिति: {status}।",
-        "ne_roman": "Tapaiko euta aagami appointment cha{who}: {desc}, status: {status}.",
+        "en": "{desc}{who} — {status}.",
+        "ne_deva": "{desc}{who} — {status}।",
+        "ne_roman": "{desc}{who} — {status}.",
     },
     "status_multi_active": {
         "en": "You have {n} upcoming appointments{who}: {lines}.",
@@ -245,6 +251,71 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "en": "I also resent your appointment confirmation — you should receive it shortly.",
         "ne_deva": "मैले तपाईंको अपोइन्टमेन्ट पुष्टि पनि फेरि पठाएँ — छिट्टै प्राप्त हुनेछ।",
         "ne_roman": "Maile tapaiko appointment confirmation feri pathaye — chittai prapta huncha.",
+    },
+    # A customer's explicit "(re)send my confirmation/QR" request
+    # (ResendConfirmationTool) — deliberately separate wording from
+    # contact_resent above, which fires as a side effect of a contact-info
+    # update, not a direct request, and doesn't need to report per-channel
+    # detail or a rate limit the way this one does.
+    "resend_success": {
+        "en": "Sent! Your appointment confirmation and QR code are on their way to {channels}.",
+        "ne_deva": "पठाइयो! तपाईंको अपोइन्टमेन्ट पुष्टि र QR कोड {channels} मा जाँदैछ।",
+        "ne_roman": "Pathaiyo! Tapaiko appointment confirmation ra QR code {channels} ma jaandai cha.",
+    },
+    "resend_partial": {
+        "en": "I sent it to {sent_channels}, but couldn't reach you on {failed_channels}.",
+        "ne_deva": "मैले {sent_channels} मा पठाएँ, तर {failed_channels} मा पुर्‍याउन सकिनँ।",
+        "ne_roman": "Maile {sent_channels} ma pathaye, tara {failed_channels} ma puryauna sakina.",
+    },
+    "resend_no_recipient": {
+        "en": "I don't have a {channels} on file for you yet — could you give me one?",
+        "ne_deva": "मसँग तपाईंको {channels} रेकर्डमा छैन — एउटा दिनुहुन्छ?",
+        "ne_roman": "Masanga tapaiko {channels} record ma chaina — euta dinuhuncha?",
+    },
+    "resend_not_connected": {
+        "en": "WhatsApp sending isn't set up on our end right now — let me connect you with our front desk instead.",
+        "ne_deva": "अहिले हाम्रोतर्फ WhatsApp पठाउने व्यवस्था मिलेको छैन — म तपाईंलाई हाम्रो फ्रन्ट डेस्कसँग जोडिदिन्छु।",
+        "ne_roman": "Ahile hamro tarfa WhatsApp pathaune byabastha mileko chaina — ma tapailai hamro front desk sanga jodidinchu.",
+    },
+    "resend_send_failed": {
+        "en": "Something went wrong sending that just now — let me connect you with our front desk instead.",
+        "ne_deva": "अहिले पठाउँदा केही समस्या भयो — म तपाईंलाई हाम्रो फ्रन्ट डेस्कसँग जोडिदिन्छु।",
+        "ne_roman": "Ahile pathauda kehi samasya bhayo — ma tapailai hamro front desk sanga jodidinchu.",
+    },
+    "resend_rate_limited": {
+        "en": "You've already received this several times — let me connect you with our front desk instead.",
+        "ne_deva": "तपाईंले यो पहिले नै धेरैपटक पाउनुभएको छ — म तपाईंलाई हाम्रो फ्रन्ट डेस्कसँग जोडिदिन्छु।",
+        "ne_roman": "Tapaile yo pahile nai dherai patak paunu bhayeko cha — ma tapailai hamro front desk sanga jodidinchu.",
+    },
+    "resend_fail": {
+        "en": "I couldn't do that — {message}.",
+        "ne_deva": "म त्यो गर्न सकिनँ — {message}।",
+        "ne_roman": "Ma tyo garna sakina — {message}.",
+    },
+    "resend_clarify": {
+        "en": (
+            "Sorry, I want to make sure I send the right one — could you tell me which appointment "
+            "(service and date) you mean?"
+        ),
+        "ne_deva": (
+            "माफ गर्नुहोस्, मैले सही अपोइन्टमेन्टमा पठाउन चाहन्छु — कुन अपोइन्टमेन्ट (सेवा र मिति) हो "
+            "भनी बताउनुहुन्छ?"
+        ),
+        "ne_roman": (
+            "Maaf garnuhos, maile sahi appointment ma pathauna chahanchu — kun appointment (service "
+            "ra miti) ho bhanera batauna sakinu huncha?"
+        ),
+    },
+    # Real gap found live (PHASE_STATUS.md, "silent service switch"): the ONLY
+    # place a booking-draft field switch (a genuinely NEW value replacing a
+    # different, already-known one — never a first-time fill-in) is
+    # acknowledged. A brief factual statement, never a question — see
+    # orchestrator._merge_booking_draft's own docstring for why this must
+    # never become a new blocking confirmation round-trip.
+    "booking_draft_switch": {
+        "en": "Switching to {new} instead of {old}.",
+        "ne_deva": "{old} को सट्टा {new}।",
+        "ne_roman": "{old} ko sattama {new}.",
     },
     # Phase 44: appended to booking_success ONLY when a real Payment row was
     # actually created for this booking (payment_service.

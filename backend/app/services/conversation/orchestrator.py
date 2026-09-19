@@ -19,7 +19,7 @@ from app.memory import assemble_context
 from app.memory.conversations import get_conversation
 from app.memory.summarization import maybe_summarize_conversation
 from app.schemas.conversation import ConversationIntent, ConversationLanguage
-from app.services import booking_service, handoff_service, knowledge_service, service_service
+from app.services import booking_service, business_hours_service, handoff_service, knowledge_service, service_service
 from app.services.conversation import appointment_tools  # noqa: F401  registers CANCELLATION/RESCHEDULING tools
 from app.services.conversation import booking_tool  # noqa: F401  registers the BOOKING tool
 from app.services.conversation.contact_tool import UpdateContactInfoTool
@@ -85,7 +85,13 @@ def _format_date_only(date_str: str) -> str:
     return datetime.strptime(date_str, "%Y-%m-%d").strftime("%A, %B %-d")
 
 
-def _merge_booking_draft(conversation: Conversation, services: list[Service], booking_request: dict | None) -> None:
+def _format_time_only(time_str: str) -> str:
+    return datetime.strptime(time_str, "%H:%M").strftime("%-I:%M %p")
+
+
+def _merge_booking_draft(
+    conversation: Conversation, services: list[Service], booking_request: dict | None
+) -> list[tuple[str, str]]:
     """Phase 25a — root-cause fix for the infinite booking-confirmation loop:
     real testing showed the LLM being asked, fresh every turn, to judge
     whether it had "enough information" to book — not deterministic, and the
@@ -96,20 +102,70 @@ def _merge_booking_draft(conversation: Conversation, services: list[Service], bo
     name or a malformed date/time string. The LLM's only job now (see
     intent.py rule 9) is reporting what THIS message says; accumulating
     slots and judging readiness is entirely this function's + _resolve_
-    booking_draft's job, not the model's."""
+    booking_draft's job, not the model's.
+
+    Real gap found live (PHASE_STATUS.md, "silent service switch"): a
+    customer naming a DIFFERENT service/date/time than what's already in the
+    draft got a silent overwrite — no acknowledgment anywhere that the prior
+    value was dropped (a real risk once contact info has already been given
+    for it, one step from being booked). Returns a list of (old, new)
+    human-readable description pairs for every field that just switched from
+    one real, non-null CUSTOMER-STATED value to a genuinely different one —
+    never for a field being filled in for the first time, which is not a
+    switch. The caller folds this into whatever response already runs next
+    as a brief factual addendum (see render("booking_draft_switch", ...)),
+    never a new blocking question.
+
+    DATE switch detection compares booking_draft_date ONLY — never
+    conversation.booking_draft_search_anchor_date, which
+    _propose_available_slots writes as its own internal "search from here"
+    bookkeeping (see that column's docstring). This function is the ONLY
+    writer of booking_draft_date/booking_draft_service_id/
+    booking_draft_time, so all three are genuinely customer-stated facts,
+    safe to compare directly for a real switch judgment. (A real false
+    positive from an earlier version of this fix — a customer's FIRST real
+    date being misreported as "switching FROM" the search anchor — is what
+    made this separation necessary; see PHASE_STATUS.md.)"""
     if not booking_request:
-        return
+        return []
+    switches: list[tuple[str, str]] = []
+
     service_name = booking_request.get("service")
     if service_name:
         service = _resolve_service_by_name(services, service_name)
-        if service is not None:
+        if service is not None and service.id != conversation.booking_draft_service_id:
+            if conversation.booking_draft_service_id is not None:
+                old_service = next((s for s in services if s.id == conversation.booking_draft_service_id), None)
+                if old_service is not None:
+                    switches.append((old_service.name, service.name))
             conversation.booking_draft_service_id = service.id
+
     date_str = booking_request.get("date")
-    if date_str and _is_valid_date_str(date_str):
+    if date_str and _is_valid_date_str(date_str) and date_str != conversation.booking_draft_date:
+        if conversation.booking_draft_date is not None:
+            switches.append((_format_date_only(conversation.booking_draft_date), _format_date_only(date_str)))
         conversation.booking_draft_date = date_str
+
     time_str = booking_request.get("time")
-    if time_str and _is_valid_time_str(time_str):
+    if time_str and _is_valid_time_str(time_str) and time_str != conversation.booking_draft_time:
+        if conversation.booking_draft_time is not None:
+            switches.append((_format_time_only(conversation.booking_draft_time), _format_time_only(time_str)))
         conversation.booking_draft_time = time_str
+
+    return switches
+
+
+def _effective_draft_date(conversation: Conversation) -> str | None:
+    """The ONLY place these two real, distinct pieces of state are combined
+    into a single "what date are we working with" answer — real customer
+    intent (booking_draft_date) takes priority; the internal availability-
+    search anchor (booking_draft_search_anchor_date) is a fallback ONLY, for
+    completing a booking whose date was never actually stated by the
+    customer (see the column's own docstring). `_merge_booking_draft`'s
+    switch-detection deliberately does NOT use this — it compares
+    booking_draft_date alone, since a switch judgment must never be
+    triggered by Python's own bookkeeping."""
+    return conversation.booking_draft_date or conversation.booking_draft_search_anchor_date
 
 
 def _resolve_booking_draft(
@@ -124,8 +180,9 @@ def _resolve_booking_draft(
     if conversation.booking_draft_service_id is not None:
         service = next((s for s in services if s.id == conversation.booking_draft_service_id), None)
     scheduled_at = None
-    if conversation.booking_draft_date and conversation.booking_draft_time:
-        scheduled_at = _resolve_booking_datetime(business, conversation.booking_draft_date, conversation.booking_draft_time)
+    effective_date = _effective_draft_date(conversation)
+    if effective_date and conversation.booking_draft_time:
+        scheduled_at = _resolve_booking_datetime(business, effective_date, conversation.booking_draft_time)
     return service, scheduled_at
 
 
@@ -144,7 +201,7 @@ def _describe_known_booking_slots(conversation: Conversation, services: list[Ser
     if conversation.booking_draft_service_id is not None:
         service = next((s for s in services if s.id == conversation.booking_draft_service_id), None)
 
-    date_str, time_str = conversation.booking_draft_date, conversation.booking_draft_time
+    date_str, time_str = _effective_draft_date(conversation), conversation.booking_draft_time
     when = None
     if date_str and time_str:
         dt = _resolve_booking_datetime(business, date_str, time_str)
@@ -164,11 +221,12 @@ def _booking_draft_missing(conversation: Conversation, service: Service | None, 
     if service is None:
         missing.append("service")
     if scheduled_at is None:
-        if not conversation.booking_draft_date:
+        effective_date = _effective_draft_date(conversation)
+        if not effective_date:
             missing.append("date")
         if not conversation.booking_draft_time:
             missing.append("time")
-        if conversation.booking_draft_date and conversation.booking_draft_time:
+        if effective_date and conversation.booking_draft_time:
             # Both individually well-formed (format-validated at merge time)
             # but failed to resolve together — should not happen in practice,
             # but never silently treat as complete: ask for both again
@@ -180,6 +238,7 @@ def _booking_draft_missing(conversation: Conversation, service: Service | None, 
 def _clear_booking_draft(conversation: Conversation) -> None:
     conversation.booking_draft_service_id = None
     conversation.booking_draft_date = None
+    conversation.booking_draft_search_anchor_date = None
     conversation.booking_draft_time = None
 
 
@@ -209,6 +268,7 @@ def _clear_booking_draft_after_attempt(
     alternatives = result.get("alternative_slots") or []
     if not any(alt.astimezone(tz).date() == requested_date for alt in alternatives):
         conversation.booking_draft_date = None
+        conversation.booking_draft_search_anchor_date = None
 
 
 def _has_partial_booking_draft(conversation: Conversation) -> bool:
@@ -312,16 +372,18 @@ def _propose_available_slots(
 
     If the customer already named a specific day (conversation.
     booking_draft_date, persisted by the normal draft-merge mechanism — see
-    _merge_booking_draft), the search starts there; otherwise it starts
-    today. Either way this is a single get_available_slots call over one
-    contiguous window — the earliest real slots it returns naturally answer
-    both cases: if the requested day itself has openings, they're the first
-    ones back; if not, the first slots back land on whatever the next real
-    open day is, which is exactly the honest "nothing that day, but here's
-    the next real opening" case the ticket requires. An empty result means
-    genuinely no openings anywhere in the window — never presented as a
-    silent empty list."""
-    requested_date_str = conversation.booking_draft_date
+    _merge_booking_draft) or a prior search already anchored one (this
+    function's own booking_draft_search_anchor_date, see _effective_draft_
+    date), the search starts there; otherwise it starts today. Either way
+    this is a single get_available_slots call over one contiguous window —
+    the earliest real slots it returns naturally answer both cases: if the
+    requested day itself has openings, they're the first ones back; if not,
+    the first slots back land on whatever the next real open day is, which
+    is exactly the honest "nothing that day, but here's the next real
+    opening" case the ticket requires. An empty result means genuinely no
+    openings anywhere in the window — never presented as a silent empty
+    list."""
+    requested_date_str = _effective_draft_date(conversation)
     if requested_date_str and _is_valid_date_str(requested_date_str):
         search_start = datetime.strptime(requested_date_str, "%Y-%m-%d").date()
     else:
@@ -349,13 +411,33 @@ def _propose_available_slots(
     # was just searched and displayed) — persisting it here means the next
     # turn's merge/resolve completes correctly even if the LLM's own
     # extraction leaves `date` null, same "Python decides, LLM only observes"
-    # discipline as every other persisted draft field. Never overwrites a
-    # date the customer explicitly named this or an earlier turn with anything
-    # false: this IS that exact date whenever requested_date_str was already
-    # set, and is the deterministic, real first-available day otherwise.
-    conversation.booking_draft_date = slots[0].astimezone(tz).strftime("%Y-%m-%d")
+    # discipline as every other persisted draft field.
+    #
+    # Real root-cause fix (PHASE_STATUS.md — the DATE-switch false positive
+    # that originally forced date out of _merge_booking_draft's switch
+    # detection): this write goes to booking_draft_search_anchor_date, NEVER
+    # booking_draft_date — this is Python's own internal "here's what's
+    # open" bookkeeping, not a customer commitment, even when it happens to
+    # equal a date the customer separately did state. Keeping it in its own
+    # column is what makes it safe to bring DATE back into switch detection
+    # (see _merge_booking_draft): a real switch judgment now only ever
+    # looks at booking_draft_date, which THIS function never touches.
+    conversation.booking_draft_search_anchor_date = slots[0].astimezone(tz).strftime("%Y-%m-%d")
 
-    options = ", ".join(_format_local(slot, tz) for slot in slots[:_AVAILABILITY_SLOTS_COUNT])
+    shown_slots = slots[:_AVAILABILITY_SLOTS_COUNT]
+    # Real conversation-quality audit finding (§50, "don't create an LLM call
+    # for everything"): persist exactly the slots the customer is about to
+    # see, as real UTC timestamps, so a bare-digit reply next turn
+    # (_resolve_bare_digit_slot_pick) can resolve "2" to a real, known slot
+    # deterministically instead of round-tripping through the LLM to guess
+    # what "2" means. One-shot: handle_incoming_message clears this again
+    # right after checking it on the very next turn, whether or not that
+    # turn actually was a digit pick.
+    conversation.booking_draft_proposed_slots = ",".join(
+        slot.astimezone(ZoneInfo("UTC")).isoformat() for slot in shown_slots
+    )
+
+    options = ", ".join(_format_local(slot, tz) for slot in shown_slots)
     if requested_date_str and _is_valid_date_str(requested_date_str) and slots[0].astimezone(tz).date() != search_start:
         return render(
             "availability_none_with_next_day",
@@ -365,6 +447,36 @@ def _propose_available_slots(
             options=options,
         )
     return render("availability_options", language, service=service.name, options=options)
+
+
+_BARE_DIGIT_RE = re.compile(r"^[1-9]$")
+
+
+def _resolve_bare_digit_slot_pick(conversation: Conversation, content: str) -> datetime | None:
+    """Real, scoped fix for the conversation-quality audit's §50 finding
+    ("don't create an LLM call for everything"): when a slot list was just
+    shown (_propose_available_slots persisted the real, exact slots into
+    conversation.booking_draft_proposed_slots) and the customer's ENTIRE next
+    message reduces to a single bare digit, that digit unambiguously means
+    "the Nth option shown" — a real, already-known value, never worth a full
+    LLM round trip to (mis)interpret. Deliberately narrow: only a message
+    that IS just the digit, nothing else, counts — this never touches an
+    ordinal WORD reply ("second one"), which already resolves correctly
+    through the normal LLM path (real transcript evidence, PHASE_STATUS.md)
+    and is left completely alone. Returns the real slot datetime for a valid
+    in-range pick, or None for anything else (no proposed slots on file, an
+    out-of-range digit, or a message that isn't a bare digit at all) — None
+    always means "fall through to the normal LLM-classification path
+    unchanged," never a guess."""
+    if not conversation.booking_draft_proposed_slots:
+        return None
+    if not _BARE_DIGIT_RE.match(content.strip()):
+        return None
+    slots = [datetime.fromisoformat(s) for s in conversation.booking_draft_proposed_slots.split(",")]
+    index = int(content.strip()) - 1
+    if not (0 <= index < len(slots)):
+        return None
+    return slots[index]
 
 
 def _format_group_booking_result(
@@ -457,6 +569,40 @@ def _format_appointment_status_result(
         parts.append(render("status_recent_past", language, lines=lines))
 
     return " ".join(parts)
+
+
+def _format_resend_result(result: dict, *, language: str | None) -> str:
+    """The ONLY place a resend-confirmation reply is composed — deterministic
+    Python reading ResendConfirmationTool's real result, same discipline as
+    every other _format_*_result function (rule 13: the LLM never gets to
+    claim this happened). Honest about partial success (e.g. WhatsApp sent
+    but no email on file) rather than a blanket success/fail."""
+    if result["rate_limited"]:
+        return render("resend_rate_limited", language)
+    if result["message"]:
+        return render("resend_fail", language, message=result["message"].rstrip(".").lower())
+
+    channels = result["channels"]
+    sent = [c for c, r in channels.items() if r["status"] in ("sent", "simulated")]
+    failed_no_recipient = [c for c, r in channels.items() if r["status"] == "no_recipient"]
+    failed_not_connected = [c for c, r in channels.items() if r["status"] == "not_connected"]
+    failed_send = [c for c, r in channels.items() if r["status"] == "failed"]
+
+    if sent and not (failed_no_recipient or failed_not_connected or failed_send):
+        return render("resend_success", language, channels=" and ".join(sorted(sent)))
+    if sent:
+        problems = failed_no_recipient + failed_not_connected + failed_send
+        return render(
+            "resend_partial",
+            language,
+            sent_channels=" and ".join(sorted(sent)),
+            failed_channels=" and ".join(sorted(problems)),
+        )
+    if failed_no_recipient:
+        return render("resend_no_recipient", language, channels=" or ".join(sorted(failed_no_recipient)))
+    if failed_not_connected:
+        return render("resend_not_connected", language)
+    return render("resend_send_failed", language)
 
 
 def _off_topic_response(business: Business | None, language: str | None) -> str:
@@ -573,6 +719,33 @@ _ROMAN_NEPALI_WORDS = {
     "dhanyabad", "namaste", "kripaya", "ramro", "bhanuhos", "bhannuhos", "madat",
     "samaya", "ahile", "milcha", "maile", "arko", "malum", "madhyam", "chahincha",
     "huncha", "bujhe", "pugyo", "vaneko", "vannu",
+    # Real gap found live (PHASE_STATUS.md conversation-quality audit): these
+    # common spellings showed up in this project's own real transcripts
+    # (28017051: "K xa", "Malai euta tooth dukheko xa") and in the source
+    # spec's own "Roman Nepali is especially important" list, but were never
+    # in this set — a conversation that OPENED with one of these would fail
+    # to lock correctly. "xa"/"hunxa" are the same words as "cha"/"huncha"
+    # spelled the other common way; the rest are additional real,
+    # Nepali-only spoken contractions.
+    "xa", "hunxa", "mildaina", "gardim", "gardai", "garda", "gardinu", "rakhdim",
+    "bholi", "aja", "aaja", "hijo", "parsi", "aile", "hunuhuncha", "huss", "thik",
+    # Deliberately NOT added, despite appearing in the spec's own list:
+    # - "chai" — collides with the English loanword "chai" (tea); the
+    #   existing test test_resolve_message_language_roman_nepali_deterministic_
+    #   override_beats_anchoring already asserts "Can I get a cha (chai tea)..."
+    #   stays "en", which adding "chai" here would break.
+    # - "okay"/"ok" — already deliberately excluded as ambiguous/no-signal
+    #   (see _AMBIGUOUS_GREETING_TOKENS above); these are common neutral
+    #   English filler, not real Nepali evidence.
+    # - bare "k" (half of "k xa") — a single letter, extremely common in
+    #   English chat as "ok" shorthand; far too collision-prone even under
+    #   the 2-match threshold.
+    # "la" is added despite being a short, somewhat collision-prone token
+    # (English "la la la", Singlish "la") because it's explicitly a real,
+    # common Nepali particle this project's own spec calls out — the
+    # existing 2-distinct-match requirement is the mitigation, same as every
+    # other short token here.
+    "la",
 }
 
 
@@ -841,6 +1014,106 @@ def handle_incoming_message(
         )
 
     services = service_service.list_services(db, business_id=business_id)
+    # Real conversation-quality spec-conformance finding (PHASE_STATUS.md): a
+    # real "open cha?" (are you open?) question got "I don't have that
+    # information" — real business hours exist (booking_service already
+    # reads this exact table to compute real availability) but were never
+    # shown to the LLM. Same real per-business list every other context
+    # section here already uses (services, knowledge, appointments).
+    hours = business_hours_service.list_hours(db, business_id=business_id)
+
+    # Real conversation-quality audit finding (§50, "don't create an LLM call
+    # for everything"): a bare-digit reply to a slot list just shown
+    # ("2") is real, unambiguous, already-known data — resolve it
+    # deterministically and skip the embedding call, the knowledge search,
+    # AND the main classification LLM call entirely for this one turn (the
+    # single most expensive stage on every other turn — see the real
+    # per-stage timing data in the latency-diagnosis phase above). One-shot:
+    # the proposed-slots hint is always cleared right here, whether or not
+    # this turn actually consumed it, so a much-later, unrelated bare digit
+    # can never be misread as a stale slot pick.
+    picked_slot = _resolve_bare_digit_slot_pick(conversation, content) if business is not None else None
+    conversation.booking_draft_proposed_slots = None
+    if picked_slot is not None and business is not None:
+        tool = find_tool(ConversationIntent.BOOKING)
+        service, _ = _resolve_booking_draft(conversation, services, business)
+        if tool is not None and service is not None:
+            customer_row = db.get(Customer, conversation.customer_id)
+            tz = ZoneInfo(business.timezone)
+            # Real bug found live via the spec-conformance eval (PHASE_STATUS.md):
+            # this deterministic shortcut called tool.run() directly with NO
+            # has_contact check at all — a customer could get a real
+            # appointment booked from a bare digit reply without EVER giving a
+            # phone number or email, silently bypassing the real Phase 24
+            # business requirement ("never book a customer the business has no
+            # way to reach"). The picked slot IS a genuine, explicit customer
+            # choice, so it's safe to persist into the real booking_draft_date/
+            # booking_draft_time fields (not the search-anchor fallback) —
+            # exactly as if the customer had typed the date/time themselves —
+            # and, if contact is still missing, render the same real contact
+            # gate the normal LLM path would, still with zero LLM call.
+            has_contact = bool(customer_row and (customer_row.phone or customer_row.email))
+            if not has_contact:
+                conversation.booking_draft_date = picked_slot.astimezone(tz).strftime("%Y-%m-%d")
+                conversation.booking_draft_time = picked_slot.astimezone(tz).strftime("%H:%M")
+                response_text = render_contact_gate(
+                    _describe_known_booking_slots(conversation, services, business),
+                    force_language or conversation.detected_language,
+                )
+                logger.info(
+                    "bare-digit slot pick resolved but contact info missing -- gated, not booked: "
+                    "conversation_id=%s",
+                    conversation_id,
+                )
+            else:
+                result = tool.run(
+                    db,
+                    business_id=business_id,
+                    customer_id=conversation.customer_id,
+                    service_id=service.id,
+                    staff_id=None,
+                    scheduled_at=picked_slot,
+                )
+                response_text = _format_booking_result(
+                    result,
+                    service=service,
+                    tz=tz,
+                    customer_name=customer_row.name if customer_row else None,
+                    language=force_language or conversation.detected_language,
+                )
+                _clear_booking_draft_after_attempt(conversation, result, picked_slot, tz)
+                logger.info(
+                    "book_appointment tool executed (deterministic bare-digit slot pick, no LLM call): "
+                    "conversation_id=%s success=%s",
+                    conversation_id,
+                    result["success"],
+                )
+            customer_message = Message(
+                conversation_id=conversation_id,
+                sender_type=MessageSenderType.CUSTOMER,
+                content=content,
+                detected_intent=ConversationIntent.BOOKING.value,
+                external_message_id=external_message_id,
+            )
+            db.add(customer_message)
+            db.commit()
+            db.refresh(customer_message)
+            agent_message = Message(
+                conversation_id=conversation_id, sender_type=MessageSenderType.AGENT, content=response_text
+            )
+            db.add(agent_message)
+            db.commit()
+            db.refresh(agent_message)
+            return {
+                "intent": ConversationIntent.BOOKING,
+                "response": response_text,
+                "customer_message_id": customer_message.id,
+                "agent_message_id": agent_message.id,
+                "detected_language": conversation.detected_language,
+            }
+        # Service no longer resolves (e.g. draft was reset) — the digit hint
+        # was already cleared above, so this just falls through to the
+        # normal LLM-classification path below like any other message.
 
     # Urgent fix (real 500 found live, PHASE_STATUS.md): `_post` (app/llm/
     # azure_openai.py) already retries transient provider failures internally
@@ -853,8 +1126,10 @@ def handle_incoming_message(
         _t3 = time.perf_counter()
         query_vector = get_embedding_provider().embed([content])[0]
         _t4 = time.perf_counter()
-        knowledge_results = knowledge_service.search_chunks(
-            db, business_id=business_id, query_vector=query_vector, top_k=KNOWLEDGE_TOP_K
+        knowledge_results = knowledge_service.filter_for_llm(
+            knowledge_service.search_chunks(
+                db, business_id=business_id, query_vector=query_vector, top_k=KNOWLEDGE_TOP_K
+            )
         )
         _t5 = time.perf_counter()
         classification = classify_and_respond(
@@ -864,6 +1139,7 @@ def handle_incoming_message(
             customer_message=content,
             services=services,
             locked_language=force_language or conversation.detected_language,
+            hours=hours,
         )
         _t6 = time.perf_counter()
         logger.info(
@@ -969,6 +1245,26 @@ def handle_incoming_message(
     # reading it fresh from there closes the gap.
     customer_name = customer_row.name if customer_row else None
 
+    # Real bug found live (PHASE_STATUS.md, "§2.C confirmation ignored"): a
+    # customer naming a service while it's still just a service_question
+    # ("teeth whitening, how much is that?") — not yet a booking intent —
+    # had that service silently discarded, because this merge used to run
+    # only inside the intent==BOOKING branch below. The customer would then
+    # give a date/time on a LATER, genuinely booking-intent turn, the draft
+    # would persist that date/time but never the service, and once contact
+    # info completed the draft, the customer had to re-supply a service
+    # they'd already named turns ago. Exact same class of gap Phase 24
+    # already fixed for contact info (see the contact-info resolution above,
+    # which likewise runs "regardless of intent") — a customer can mention a
+    # service in any intent's message, so this can't be gated on this turn's
+    # classified intent either. Runs unconditionally, before dispatch, so
+    # every branch below (contact gate, missing-slots, the off-intent
+    # completion branch) sees the fully up-to-date draft. A no-op whenever
+    # this turn's booking_request is null (the overwhelmingly common case
+    # for non-booking turns), so this changes nothing for any turn that
+    # doesn't actually name a slot.
+    draft_switches = _merge_booking_draft(conversation, services, classification.booking_request)
+
     # The LLM never mutates data itself: only tool.run() would, and only the
     # orchestrator calls it. Phase 10 registered BOOKING; Phase 11 registers
     # CANCELLATION and RESCHEDULING the same way — this dispatch and the
@@ -1015,12 +1311,11 @@ def handle_incoming_message(
                 # placeholder response text for this turn.
                 response_text = render("group_booking_clarify", language)
     elif intent == ConversationIntent.BOOKING and tool is not None and classification.group_booking_request is None and business is not None:
-        # Phase 25a: merge happens BEFORE the contact-info gate, unconditionally
-        # — slots the customer already gave must not be lost while contact info
-        # is still missing, so once contact info arrives the booking can proceed
-        # immediately using everything already collected, never re-asking for
-        # service/date/time it already has.
-        _merge_booking_draft(conversation, services, classification.booking_request)
+        # Phase 25a: the merge itself now runs unconditionally above (real bug
+        # fix, see its own comment) — slots the customer already gave must not
+        # be lost while contact info is still missing, so once contact info
+        # arrives the booking can proceed immediately using everything already
+        # collected, never re-asking for service/date/time it already has.
         # Phase 33: a per-turn instruction, not a persisted slot — the LLM's
         # honest read of whether THIS message is asking to see real options
         # rather than naming a specific time (intent.py rule 9). Read fresh
@@ -1028,15 +1323,28 @@ def handle_incoming_message(
         wants_availability = bool(
             classification.booking_request and classification.booking_request.get("wants_availability")
         )
-        if not has_contact:
-            # Phase 25a-2: dynamic — reflects whatever the draft already has
-            # (service/date/time accumulated across turns), never the same
-            # static sentence regardless of real progress. See
-            # _describe_known_booking_slots / render_contact_gate.
-            response_text = render_contact_gate(_describe_known_booking_slots(conversation, services, business), language)
-        else:
-            service, scheduled_at = _resolve_booking_draft(conversation, services, business)
-            if service is not None and scheduled_at is not None:
+        # Real conversation-quality spec-conformance finding (PHASE_STATUS.md):
+        # the contact-info gate used to fire BEFORE ever resolving the draft,
+        # so a brand-new customer asking a purely informational "is teeth
+        # cleaning available tomorrow?" got "give me your phone number" as
+        # its first-ever reply — never an actual answer, directly against
+        # the spec's own "answer the question first" principle. Showing real
+        # availability or asking which service/date/time is still missing
+        # are both read-only, zero-commitment steps (nothing is written,
+        # nothing needs to reach the customer) — resolving the draft FIRST,
+        # regardless of has_contact, and gating on contact ONLY at the real
+        # moment of commitment (service AND scheduled_at both known, i.e.
+        # about to actually call tool.run()) is the correct point for this
+        # business requirement (Phase 24) to apply. `_describe_known_booking_
+        # slots`/`render_contact_gate` are unchanged — only WHEN they're
+        # reached moved.
+        service, scheduled_at = _resolve_booking_draft(conversation, services, business)
+        if service is not None and scheduled_at is not None:
+            # The real moment of commitment — about to actually write a
+            # booking — is the ONLY place contact info is required.
+            if not has_contact:
+                response_text = render_contact_gate(_describe_known_booking_slots(conversation, services, business), language)
+            else:
                 result = tool.run(
                     db,
                     business_id=business_id,
@@ -1060,37 +1368,40 @@ def handle_incoming_message(
                     conversation_id,
                     result["success"],
                 )
-            elif wants_availability and service is not None:
-                # Phase 33: the customer wants to see real options rather than
-                # guess a time — a real, un-invented list, never a booking
-                # attempt (nothing is written here; the customer still has to
-                # pick one, which flows into the branch above like any other
-                # explicitly-given date/time). Only reachable when a service
-                # is already known — an ambiguous "what's available" with no
-                # service is handled by the missing-slots branch below
-                # instead, same as it always has been.
-                response_text = _propose_available_slots(
-                    db,
-                    business_id=business_id,
-                    service=service,
-                    conversation=conversation,
-                    tz=ZoneInfo(business.timezone),
-                    language=language,
-                )
-                logger.info(
-                    "propose_available_slots: conversation_id=%s service_id=%s",
-                    conversation_id,
-                    service.id,
-                )
-            else:
-                # Never a vague "should I go ahead and book that?" — Python (not
-                # the LLM) determines exactly which slot(s) are still missing
-                # from the REAL persisted draft and asks for ONLY those. This is
-                # what actually closes the infinite-confirmation-loop bug: the
-                # customer-facing question is always driven by real state, never
-                # by the LLM's own (potentially indefinitely hedging) judgment.
-                missing = _booking_draft_missing(conversation, service, scheduled_at)
-                response_text = render_missing_slots(missing, language)
+        elif wants_availability and service is not None:
+            # Phase 33: the customer wants to see real options rather than
+            # guess a time — a real, un-invented list, never a booking
+            # attempt (nothing is written here; the customer still has to
+            # pick one, which flows into the branch above like any other
+            # explicitly-given date/time). Only reachable when a service
+            # is already known — an ambiguous "what's available" with no
+            # service is handled by the missing-slots branch below
+            # instead, same as it always has been. Never gated on contact —
+            # showing real availability is read-only, zero-commitment.
+            response_text = _propose_available_slots(
+                db,
+                business_id=business_id,
+                service=service,
+                conversation=conversation,
+                tz=ZoneInfo(business.timezone),
+                language=language,
+            )
+            logger.info(
+                "propose_available_slots: conversation_id=%s service_id=%s",
+                conversation_id,
+                service.id,
+            )
+        else:
+            # Never a vague "should I go ahead and book that?" — Python (not
+            # the LLM) determines exactly which slot(s) are still missing
+            # from the REAL persisted draft and asks for ONLY those. This is
+            # what actually closes the infinite-confirmation-loop bug: the
+            # customer-facing question is always driven by real state, never
+            # by the LLM's own (potentially indefinitely hedging) judgment.
+            # Never gated on contact — asking which service/date/time is
+            # also read-only, zero-commitment.
+            missing = _booking_draft_missing(conversation, service, scheduled_at)
+            response_text = render_missing_slots(missing, language)
     elif contact_changes and has_contact and business is not None and _has_partial_booking_draft(conversation):
         # Phase 25a gap, found live: contact info can arrive on a turn the
         # LLM classifies as something OTHER than "booking" (real transcript,
@@ -1174,6 +1485,28 @@ def handle_incoming_message(
             len(result["active"]),
             len(result["recent_past"]),
         )
+    elif intent == ConversationIntent.RESEND_CONFIRMATION and tool is not None and classification.resend_request is not None:
+        appointment_id = _resolve_known_appointment(context, classification.resend_request["appointment_id"])
+        if appointment_id is not None:
+            result = tool.run(
+                db,
+                business_id=business_id,
+                customer_id=conversation.customer_id,
+                appointment_id=appointment_id,
+                channel=classification.resend_request["channel"],
+                conversation_channel=conversation.channel,
+            )
+            response_text = _format_resend_result(result, language=language)
+            logger.info(
+                "resend_confirmation tool executed: conversation_id=%s success=%s rate_limited=%s",
+                conversation_id,
+                result["success"],
+                result["rate_limited"],
+            )
+        else:
+            # Same discipline as cancellation/reschedule: never pass an
+            # unresolved id to the tool.
+            response_text = render("resend_clarify", language)
     elif intent == ConversationIntent.OFF_TOPIC:
         # Phase 24 urgent fix: deterministic override, never the LLM's own
         # drafted text — see _off_topic_response's docstring. Deliberately NOT
@@ -1187,6 +1520,16 @@ def handle_incoming_message(
     # non-dispatched intent, or a dispatch branch's deterministic sentence.
     if contact_sentence:
         response_text = f"{response_text} {contact_sentence}"
+
+    # Real gap found live (PHASE_STATUS.md, "silent service switch"): a
+    # genuine switch away from a different, already-known service/date/time
+    # (never a first-time fill-in — see _merge_booking_draft) gets a brief,
+    # factual mention folded in here, the same "append a real fact, never a
+    # new question" discipline as contact_sentence/handoff_addendum above and
+    # below. Applies regardless of which dispatch branch produced
+    # response_text, same as those two.
+    for old, new in draft_switches:
+        response_text = f"{response_text} {render('booking_draft_switch', language, old=old, new=new)}"
 
     # Phase 19: real human-handoff producer — Phase 16 flagged that
     # HumanHandoff had zero producers anywhere in this codebase. This checks

@@ -4,6 +4,7 @@ import urllib.error
 import urllib.request
 import uuid
 
+import httpx
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -127,3 +128,77 @@ class WhatsAppChannelAdapter(ChannelAdapter):
         except urllib.error.URLError as exc:
             logger.warning("WhatsApp send failed: could not reach Graph API (%s)", type(exc.reason).__name__)
             return "failed: could not reach Graph API"
+
+    def send_image_message(
+        self,
+        *,
+        to: str,
+        image_bytes: bytes,
+        mime_type: str,
+        caption: str,
+        phone_number_id: str,
+        access_token: str = "",
+    ) -> str:
+        """Real Meta Cloud API image send (Phase 9/resend-QR research,
+        confirmed live against Meta's current docs, not assumed): unlike
+        email's CID embedding, WhatsApp has no "attach bytes to this
+        message" mechanism at all — an image message can only ever reference
+        an already-uploaded media id. Two real calls, in order:
+        1. `POST /{phone_number_id}/media` (multipart/form-data: `file`,
+           `type`, `messaging_product=whatsapp`) -> `{"id": "<media_id>"}`.
+        2. `POST /{phone_number_id}/messages` (JSON: `type="image"`,
+           `image={"id": "<media_id>", "caption": "..."}`) -- the same send
+           endpoint send_message uses, just a different `type`/body shape.
+        httpx (already a real dependency, used identically in
+        whatsapp_embedded_signup.py) instead of urllib here specifically
+        because step 1 needs real multipart/form-data, which urllib has no
+        built-in support for. Same graceful-simulation, never-raises, and
+        never-log-the-raw-response-body discipline as send_message."""
+        token = access_token or settings.whatsapp_access_token
+        if not token:
+            logger.info("SIMULATED WhatsApp image send to %s (%d bytes, %s)", to, len(image_bytes), mime_type)
+            return "simulated — no real WhatsApp access token configured"
+
+        media_url = f"https://graph.facebook.com/{settings.whatsapp_api_version}/{phone_number_id}/media"
+        try:
+            upload_response = httpx.post(
+                media_url,
+                headers={"Authorization": f"Bearer {token}"},
+                data={"messaging_product": "whatsapp", "type": mime_type},
+                files={"file": ("qr.png", image_bytes, mime_type)},
+                timeout=_SEND_TIMEOUT_SECONDS,
+            )
+        except httpx.TransportError as exc:
+            logger.warning("WhatsApp media upload failed: could not reach Graph API (%s)", type(exc).__name__)
+            return "failed: could not reach Graph API"
+        if upload_response.status_code != 200:
+            logger.warning("WhatsApp media upload failed: HTTP %s", upload_response.status_code)
+            return f"failed: HTTP {upload_response.status_code} on media upload"
+        media_id = upload_response.json().get("id")
+        if not media_id:
+            logger.warning("WhatsApp media upload returned no media id")
+            return "failed: media upload returned no id"
+
+        send_url = _SEND_URL_TEMPLATE.format(api_version=settings.whatsapp_api_version, phone_number_id=phone_number_id)
+        body = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": to,
+            "type": "image",
+            "image": {"id": media_id, "caption": caption},
+        }
+        try:
+            send_response = httpx.post(
+                send_url,
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                json=body,
+                timeout=_SEND_TIMEOUT_SECONDS,
+            )
+        except httpx.TransportError as exc:
+            logger.warning("WhatsApp image send failed: could not reach Graph API (%s)", type(exc).__name__)
+            return "failed: could not reach Graph API"
+        if send_response.status_code != 200:
+            logger.warning("WhatsApp image send failed: HTTP %s", send_response.status_code)
+            return f"failed: HTTP {send_response.status_code}"
+        message_id = (send_response.json().get("messages") or [{}])[0].get("id")
+        return f"sent wamid={message_id}"
