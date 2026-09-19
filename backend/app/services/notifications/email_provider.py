@@ -102,8 +102,12 @@ class EmailNotificationProvider(NotificationProvider):
                 f"{type(exc).__name__}: permanent SMTP failure", transient=False
             ) from None
         except smtplib.SMTPException as exc:
+            # Unlike _PERMANENT_SMTP_ERRORS above, this isn't the AUTH
+            # exchange -- exc's args are the server's real DATA/response text
+            # (e.g. "550 5.4.5 Daily user sending limit exceeded"), not
+            # credential material, so it's safe and genuinely useful to keep.
             raise NotificationDeliveryError(
-                f"{type(exc).__name__}: transient SMTP failure", transient=True
+                f"{type(exc).__name__}: transient SMTP failure ({exc})", transient=True
             ) from None
         except OSError as exc:
             # Connection refused / timeout / DNS failure reaching smtp.gmail.com.

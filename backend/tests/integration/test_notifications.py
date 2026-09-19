@@ -266,6 +266,53 @@ def test_email_provider_rejects_missing_credentials_without_any_network_call(mon
     assert exc_info.value.transient is False
 
 
+def test_email_provider_surfaces_real_smtp_error_detail_for_non_auth_failures(monkeypatch):
+    """Real bug found live (PHASE_STATUS.md, the Gmail confirmation-email
+    investigation): a non-auth smtplib.SMTPException (e.g. Gmail's real
+    "Daily user sending limit exceeded" quota error, a real 550 5.4.5
+    SMTPDataError) was being scrubbed down to a generic "transient SMTP
+    failure" string with zero real detail -- that scrubbing was only ever
+    meant for the AUTH exchange (_PERMANENT_SMTP_ERRORS below it), not the
+    server's real DATA-command response text, which isn't credential
+    material and is exactly what's needed to diagnose a real failure without
+    live-reproducing it every time. Fixed: real (str(exc)) detail is now
+    preserved for this branch."""
+    import smtplib
+
+    from app.core.config import settings
+    from app.services.notifications import email_provider as email_provider_module
+
+    monkeypatch.setattr(settings, "gmail_address", "test@example.com")
+    monkeypatch.setattr(settings, "gmail_app_password", "app-password")
+
+    class _FakeSMTP:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def starttls(self):
+            pass
+
+        def login(self, *args, **kwargs):
+            pass
+
+        def send_message(self, message):
+            raise smtplib.SMTPDataError(550, b"5.4.5 Daily user sending limit exceeded.")
+
+    monkeypatch.setattr(email_provider_module.smtplib, "SMTP", _FakeSMTP)
+
+    provider = EmailNotificationProvider()
+    with pytest.raises(NotificationDeliveryError) as exc_info:
+        provider.send(to="someone@example.com", subject="x", body="y")
+    assert exc_info.value.transient is True
+    assert "Daily user sending limit exceeded" in str(exc_info.value)
+
+
 def test_dispatch_queued_notifications_picks_up_a_notification_that_was_never_dispatched_inline(
     business_ready, monkeypatch
 ):
