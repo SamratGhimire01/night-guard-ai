@@ -16307,6 +16307,49 @@ Side effect: the live checks created 60 test conversations (120 messages) on the
 
 ---
 
+## Phase 13 (2026-09-19 series, after Phase 12) — Picking a SYSTEM-OFFERED alternative day is not a customer "switch" (orchestrator `_merge_booking_draft`)
+
+**Real, live-caught bug (reported from a real conversation):** customer asked to book "bholi" (tomorrow = a closed Sunday); the *system* said nothing was open that day and offered Monday's real slots; the customer answered "first one" — and the reply appended
+*"…Sunday, September 20 ko sattama Monday, September 21."* (Phase 5's date-switch acknowledgment), restating a change the customer never made.
+
+**1. Reproduction BEFORE any change** (per CLAUDE.md: `docker compose up -d --force-recreate backend` first, StartedAt 17:05Z; real widget endpoint, real orchestrator, real Azure gpt-5-mini, real DB, standing test business "Standing Test Biz Premium" [America/New_York; Sat/Sun closed]; script `backend/tests/eval/live_replay_slot_pick.py`):
+`bholi Basic Cleaning book garna paryo` -> system: "Sunday, September 20 ma … khali chaina — arko real khali samaya Monday, September 21 at 9:00 AM, …" ; then `first one`:
+| session (3) | reply to "first one" |
+|---|---|
+| 1 | "Bujhe — Basic Cleaning, Monday, September 21 at 9:00 AM. Lock garna malai … **Sunday, September 20 ko sattama Monday, September 21.**" (redundant acknowledgment) |
+| 2 | "Bujhe — Basic Cleaning, **Sunday, September 20** at 9:00 AM. Lock garna malai …" — a SECOND, worse symptom of the same root cause: the LLM extracted only the slot's *time*, the draft still held the requested closed Sunday, so the reply confirmed a day the system itself had just said has no availability |
+| 3 | same redundant acknowledgment as session 1 |
+=> **3/3 sessions bad (2 redundant acknowledgments + 1 closed-day confirmation).** The same two shapes were then reproduced deterministically with a stubbed LLM in the new tests below (both failed before the fix).
+
+**2. Root cause.** `_merge_booking_draft` compares this turn's LLM-extracted date/time with the persisted draft; any difference from a non-null draft value is reported as a "switch". The system's own offered list (`booking_draft_proposed_slots`, persisted by `_propose_available_slots`) was
+never consulted — and worse, `handle_incoming_message` **clears it (one-shot) at ~line 1036, before the merge runs (~1266)**, so by merge time the "customer is picking from the list I just showed" fact was already gone. Phase 5 correctly separates the search *anchor* (`booking_draft_search_anchor_date`) from customer-stated dates, but a pick from an offered list wasn't distinguished from an independent customer change.
+
+**3. The fix (precise distinction, `backend/app/services/conversation/orchestrator.py` only):**
+* `handle_incoming_message` captures the list *before* the one-shot clear (`offered_last_turn`) and passes it (plus the business tz) to `_merge_booking_draft` (new optional args `offered_slots`, `tz`; defaults keep old behavior for any other caller).
+* New `_offered_slot_pick(offered_slots, tz, date, time)`: this turn's value is a **pick from the offered list** iff (a) date+time whose *pair* is an offered slot, or (b) a date that is one of the offered days, or (c) a **time-only** reply matching exactly ONE offered slot (a time offered on several days is ambiguous -> not a pick, nothing guessed).
+* On a pick: the date/time still go into the draft (a time-only pick now lands on the **offered day**, fixing symptom 2), but no switch is recorded. Anything the system did not offer — a different date, or a slot never offered — is a customer-initiated change and is acknowledged exactly as before (Phase 5 unchanged).
+* One-shot preserved: only the list shown on the *immediately previous* turn counts; after an unrelated turn it's cleared and a later message stating that day is again the customer's own choice. Service-switch acknowledgment is untouched. The deterministic bare-digit path ("2") is untouched (it never went through the merge).
+
+**4. Tests (6 new in `tests/integration/test_conversation.py`; 5 integration + 1 unit, the two "bug" ones failed before the fix, the 4 "keep working" ones passed before and after):**
+`test_picking_the_systems_offered_alternative_day_is_not_reported_as_a_switch`, `test_picking_an_offered_slot_by_time_only_resolves_to_the_offered_day_not_the_closed_one` (the two real shapes) ·
+`test_customer_stating_a_date_the_system_did_not_offer_is_still_acknowledged_as_a_switch`, `test_genuine_switch_away_from_an_offered_and_confirmed_working_date_is_acknowledged` (the ticket's literal "actually let's do Tuesday instead" with Monday's list just shown), `test_an_offered_list_only_counts_for_the_very_next_turn` ·
+`test_merge_booking_draft_unit_offered_slot_pick_vs_customer_stated_change` (pair-match, unique time-only, ambiguous time-only not guessed, non-offered date = switch, non-offered pair = switch, nothing offered = old behavior).
+**Full backend suite: 531 passed, 10 skipped, 0 failed** (= 525 baseline + these 6; 560.8s). Phase 5's own tests (genuine service switch, genuine date switch, first-real-date-not-a-false-switch, ordinal-word pick) all still pass.
+**Lint:** `ruff check` (project's pinned ruff 0.6.9, in the container): my three files clean (I fixed one E401 in my own new replay script). Whole-tree run still shows 2 F541 in `tests/security/test_phase29_pagination.py` — pre-existing, untouched here, left alone.
+**Secrets:** grep for the real Azure key/endpoint host across every changed/new file + a generic secret-pattern scan of the diff -> clean.
+
+**5. Live verification AFTER** (`docker compose up -d --force-recreate backend` again, StartedAt 17:20:56Z; loaded module confirmed to contain the fix; same real conversation replayed against the actual running backend):
+| check | BEFORE | AFTER |
+|---|---|---|
+| "bholi" -> system offers Monday -> "first one" (6 sessions after / 3 before) | **3/3 bad** (2 redundant "ko sattama", 1 closed-day confirmation) | **0/6 bad**: every reply is *"Bujhe — Basic Cleaning, Monday, September 21 at 9:00 AM. Lock garna malai tapaiko naam ra phone number wa email chahincha."* |
+| genuine switch: Monday's slots just shown -> "actually let's do Tuesday instead" (4 sessions) | (acknowledged — Phase 5 behavior; covered by the unit/integration tests) | **4/4 still acknowledged** ("…Monday, September 21 ko sattama Tuesday, September 22") |
+**Honest limits:** live samples are small (6 and 4) and the LLM's extraction shape varies run to run (which is why both extraction shapes are covered deterministically by the tests, not just live); the live runs use one test business/language (Romanized Nepali) and the no-contact path; a customer who states a date/time the system *did* offer but had already stated earlier is treated as picking from the list (intended). Time-switch acknowledgments follow the same rule (an offered-slot time pick is not a "switch"; a time the customer states that was never offered still is).
+Side effect: live checks created ~13 test conversations on the standing test business; no real customer data.
+
+Files changed: `backend/app/services/conversation/orchestrator.py`, `backend/tests/integration/test_conversation.py`; new `backend/tests/eval/live_replay_slot_pick.py` (live replay script, not collected by pytest). **Not committed** — awaiting your review of the before/after (standing rule #6).
+
+---
+
 ## Phase L1 — conversation-lab sandbox (separate track)
 
 New top-level `conversation-lab/` (DSPy sandbox, judge, test UI). Full report, real judge scores and isolation

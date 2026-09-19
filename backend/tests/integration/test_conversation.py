@@ -2530,6 +2530,198 @@ def test_genuine_date_switch_is_now_acknowledged(two_businesses, monkeypatch):
         assert conversation.booking_draft_date == tuesday.isoformat()
 
 
+# --- Phase 13 (2026-09-19 series): picking a SYSTEM-OFFERED alternative is not a customer "switch" --------
+
+
+def _closed_sunday_and_monday() -> tuple[date, date]:
+    """The business from _setup_booking_business is closed Sundays; returns the next Sunday and the Monday after it."""
+    today = date.today()
+    sunday = today + timedelta(days=(6 - today.weekday()) % 7 or 7)
+    return sunday, sunday + timedelta(days=1)
+
+
+def _customer_asks_for_closed_sunday_and_system_offers_monday(token_a, business_id_a, monkeypatch):
+    """The exact real conversation: "bholi" (a closed Sunday) -> the SYSTEM says nothing is open that day and offers
+    Monday's real slots. Returns (conversation_id, sunday, monday). Customer deliberately has NO contact info, like the
+    real reproduction (so the next turn renders the contact gate, which is where the switch addendum was appended)."""
+    _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    sunday, monday = _closed_sunday_and_monday()
+    _stub_providers(monkeypatch, _partial_booking_reply(service="Cleaning", date=sunday.isoformat(), wants_availability=True))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "book a cleaning tomorrow"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()["response"]
+    assert "9:00 AM" in body and _format_date_for_test(monday) in body, f"system must offer Monday's slots: {body}"
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.booking_draft_date == sunday.isoformat(), "the customer's own stated date"
+        assert conversation.booking_draft_proposed_slots, "the offered list must be persisted for the next turn"
+    return conversation_id, sunday, monday
+
+
+def _format_date_for_test(d: date) -> str:
+    return d.strftime("%A, %B ") + str(d.day)
+
+
+def test_picking_the_systems_offered_alternative_day_is_not_reported_as_a_switch(two_businesses, monkeypatch):
+    """Real bug caught live: the customer asked for a closed Sunday, the SYSTEM offered Monday's slots, the customer
+    picked "first one" — and the reply appended "Sunday, ... instead of Monday, ..." (Phase 5's switch acknowledgment),
+    restating a change the customer never initiated. The new date came from the system's own offered list."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    conversation_id, sunday, monday = _customer_asks_for_closed_sunday_and_system_offers_monday(token_a, business_id_a, monkeypatch)
+
+    _stub_providers(monkeypatch, _partial_booking_reply(date=monday.isoformat(), time="09:00", response="Sure."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a), json={"content": "first one"}
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()["response"]
+    assert "instead of" not in body, f"redundant switch acknowledgment: {body}"
+    assert _format_date_for_test(monday) in body and _format_date_for_test(sunday) not in body, body
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.booking_draft_date == monday.isoformat()
+        assert conversation.booking_draft_time == "09:00"
+
+
+def test_picking_an_offered_slot_by_time_only_resolves_to_the_offered_day_not_the_closed_one(two_businesses, monkeypatch):
+    """Second real shape seen live: the LLM extracted only the picked slot's TIME ("first one" -> 09:00, date null).
+    The draft still held the customer's stated CLOSED Sunday, so the reply confirmed "Sunday ... 9:00 AM" — a day the
+    system itself had just said has no availability. A pick from the offered list must resolve to that slot's day."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    conversation_id, sunday, monday = _customer_asks_for_closed_sunday_and_system_offers_monday(token_a, business_id_a, monkeypatch)
+
+    _stub_providers(monkeypatch, _partial_booking_reply(time="09:00", response="Sure."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a), json={"content": "first one"}
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()["response"]
+    assert "instead of" not in body, body
+    assert _format_date_for_test(monday) in body and _format_date_for_test(sunday) not in body, body
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.booking_draft_date == monday.isoformat(), "must not stay on the closed day"
+
+
+def test_customer_stating_a_date_the_system_did_not_offer_is_still_acknowledged_as_a_switch(two_businesses, monkeypatch):
+    """The original Phase 5 behavior must survive: after the system offered Monday, the customer independently asks for
+    Tuesday — a date that is NOT in the offered list — a real, customer-initiated change of the stated date."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    conversation_id, sunday, monday = _customer_asks_for_closed_sunday_and_system_offers_monday(token_a, business_id_a, monkeypatch)
+    tuesday = monday + timedelta(days=1)
+
+    _stub_providers(monkeypatch, _partial_booking_reply(date=tuesday.isoformat(), response="Sure."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a), json={"content": "actually tuesday"}
+    )
+    assert resp.status_code == 201, resp.text
+    assert "instead of" in resp.json()["response"], resp.json()["response"]
+    with SessionLocal() as db:
+        assert db.get(Conversation, conversation_id).booking_draft_date == tuesday.isoformat()
+
+
+def test_genuine_switch_away_from_an_offered_and_confirmed_working_date_is_acknowledged(two_businesses, monkeypatch):
+    """The literal case from the ticket: Monday is already the working date AND its slot list was just shown; then the
+    customer says "actually let's do Tuesday instead". Tuesday is not in the offered list, so this is the customer
+    changing their mind — must still be acknowledged (Phase 5)."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    monday = _next_monday()
+    tuesday = monday + timedelta(days=1)
+
+    _stub_providers(monkeypatch, _partial_booking_reply(service="Cleaning", date=monday.isoformat(), wants_availability=True))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a), json={"content": "cleaning on monday, what's open?"}
+    )
+    assert resp.status_code == 201, resp.text
+    assert "9:00 AM" in resp.json()["response"]
+
+    _stub_providers(monkeypatch, _partial_booking_reply(date=tuesday.isoformat(), response="Sure."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a), json={"content": "actually let's do tuesday instead"}
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()["response"]
+    assert "instead of" in body, body
+    assert _format_date_for_test(monday) in body and _format_date_for_test(tuesday) in body, body
+
+
+def test_an_offered_list_only_counts_for_the_very_next_turn(two_businesses, monkeypatch):
+    """One-shot, like the bare-digit hint: if an unrelated turn happens after the system's offer, a later message stating
+    the offered day is the customer's own (later) choice again — no longer "picking from the list just shown"."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    conversation_id, sunday, monday = _customer_asks_for_closed_sunday_and_system_offers_monday(token_a, business_id_a, monkeypatch)
+
+    _stub_providers(monkeypatch, json.dumps({"intent": "general_question", "response": "We are on Main Street."}))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a), json={"content": "where are you located?"}
+    )
+    assert resp.status_code == 201, resp.text
+    with SessionLocal() as db:
+        assert not db.get(Conversation, conversation_id).booking_draft_proposed_slots, "cleared by the unrelated turn"
+
+    _stub_providers(monkeypatch, _partial_booking_reply(date=monday.isoformat(), response="Sure."))
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a), json={"content": "monday then"}
+    )
+    assert resp.status_code == 201, resp.text
+    assert "instead of" in resp.json()["response"], resp.json()["response"]
+
+
+def _utc(d: date, hour: int, minute: int = 0) -> datetime:
+    return datetime.combine(d, time(hour, minute), tzinfo=ZoneInfo("UTC"))
+
+
+def test_merge_booking_draft_unit_offered_slot_pick_vs_customer_stated_change():
+    """Direct unit coverage of the distinction inside orchestrator._merge_booking_draft (no DB, no LLM)."""
+    from app.services.conversation.orchestrator import _merge_booking_draft
+
+    utc = ZoneInfo("UTC")
+    sunday, monday = _closed_sunday_and_monday()
+    tuesday = monday + timedelta(days=1)
+    offered = [_utc(monday, 9), _utc(monday, 9, 15), _utc(tuesday, 9)]
+
+    def fresh(date_str=None, time_str=None):
+        return Conversation(booking_draft_date=date_str, booking_draft_time=time_str)
+
+    # date + time exactly matching an offered slot: a pick, no switches, draft updated.
+    c = fresh(sunday.isoformat())
+    assert _merge_booking_draft(c, [], {"date": monday.isoformat(), "time": "09:15"}, offered_slots=offered, tz=utc) == []
+    assert (c.booking_draft_date, c.booking_draft_time) == (monday.isoformat(), "09:15")
+
+    # time only, unique in the offered list (09:15 exists on one day): resolves the date from the offered slot.
+    c = fresh(sunday.isoformat())
+    assert _merge_booking_draft(c, [], {"date": None, "time": "09:15"}, offered_slots=offered, tz=utc) == []
+    assert (c.booking_draft_date, c.booking_draft_time) == (monday.isoformat(), "09:15")
+
+    # time only but ambiguous (09:00 is offered on Monday AND Tuesday): must NOT guess a day.
+    c = fresh(sunday.isoformat())
+    assert _merge_booking_draft(c, [], {"date": None, "time": "09:00"}, offered_slots=offered, tz=utc) == []
+    assert c.booking_draft_date == sunday.isoformat(), "ambiguous pick: the date is left alone, never guessed"
+
+    # a date that is NOT one of the offered days: customer-initiated -> still a switch.
+    c = fresh(monday.isoformat())
+    wednesday = monday + timedelta(days=2)
+    sw = _merge_booking_draft(c, [], {"date": wednesday.isoformat(), "time": None}, offered_slots=offered, tz=utc)
+    assert len(sw) == 1 and c.booking_draft_date == wednesday.isoformat()
+
+    # date + time where the PAIR was not offered (Monday 14:00): customer-chosen time -> not a pick.
+    c = fresh(sunday.isoformat())
+    sw = _merge_booking_draft(c, [], {"date": monday.isoformat(), "time": "14:00"}, offered_slots=offered, tz=utc)
+    assert len(sw) == 1, "a slot that was never offered is the customer's own choice"
+
+    # nothing offered: exactly the pre-existing behavior.
+    c = fresh(sunday.isoformat())
+    assert len(_merge_booking_draft(c, [], {"date": monday.isoformat(), "time": None})) == 1
+
+
 def test_service_named_on_a_non_booking_intent_turn_is_not_lost(two_businesses, monkeypatch):
     """Real bug found live (PHASE_STATUS.md, "§2.C confirmation ignored"): a
     customer naming a service while the message was classified as

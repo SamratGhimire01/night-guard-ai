@@ -89,8 +89,34 @@ def _format_time_only(time_str: str) -> str:
     return datetime.strptime(time_str, "%H:%M").strftime("%-I:%M %p")
 
 
+def _offered_slot_pick(
+    offered_slots: list[datetime] | None, tz: ZoneInfo | None, date_str: str | None, time_str: str | None
+) -> tuple[bool, str | None]:
+    """Is THIS turn's date/time the customer choosing from the slot list the SYSTEM just showed them?
+
+    Returns (is_pick, offered_day). `offered_slots` is exactly what _propose_available_slots persisted on the previous
+    turn (one-shot: handle_incoming_message hands it over before clearing it, so a stale list never counts). A pick is:
+    date+time whose PAIR is an offered slot; a date that is one of the offered days; or a time-only reply ("first
+    one" -> 09:00) that matches exactly one offered slot (offered_day is then that slot's day; a time offered on
+    several days is ambiguous, so it is NOT treated as a pick and nothing is guessed). Anything else -- a date or
+    slot the system never offered -- is the customer's own choice, i.e. a real switch."""
+    if not offered_slots or tz is None or not (date_str or time_str):
+        return False, None
+    pairs = {(slot.astimezone(tz).strftime("%Y-%m-%d"), slot.astimezone(tz).strftime("%H:%M")) for slot in offered_slots}
+    if date_str and time_str:
+        return (date_str, time_str) in pairs, date_str
+    if date_str:
+        return date_str in {day for day, _ in pairs}, date_str
+    days = {day for day, hhmm in pairs if hhmm == time_str}
+    return (True, next(iter(days))) if len(days) == 1 else (False, None)
+
+
 def _merge_booking_draft(
-    conversation: Conversation, services: list[Service], booking_request: dict | None
+    conversation: Conversation,
+    services: list[Service],
+    booking_request: dict | None,
+    offered_slots: list[datetime] | None = None,
+    tz: ZoneInfo | None = None,
 ) -> list[tuple[str, str]]:
     """Phase 25a — root-cause fix for the infinite booking-confirmation loop:
     real testing showed the LLM being asked, fresh every turn, to judge
@@ -125,7 +151,19 @@ def _merge_booking_draft(
     safe to compare directly for a real switch judgment. (A real false
     positive from an earlier version of this fix — a customer's FIRST real
     date being misreported as "switching FROM" the search anchor — is what
-    made this separation necessary; see PHASE_STATUS.md.)"""
+    made this separation necessary; see PHASE_STATUS.md.)
+
+    Phase 13 (2026-09-19 series) — a real live bug: a customer asked for a
+    closed day, the SYSTEM offered the next open day's slots, the customer
+    picked "first one", and the reply then restated "Sunday ... instead of
+    Monday ..." — a change the customer never initiated (nothing was silent:
+    they had just been shown the alternative). `offered_slots` is the list
+    the system showed on the previous turn; when this turn's date/time is a
+    pick from it (see _offered_slot_pick) the date/time still moves into the
+    draft — including landing on the OFFERED day when the LLM only extracted
+    the slot's time and the draft still held the requested (closed) day —
+    but is not reported as a switch. Only a date/time the customer states on
+    their own, that the system did not offer, is a genuine switch."""
     if not booking_request:
         return []
     switches: list[tuple[str, str]] = []
@@ -141,14 +179,21 @@ def _merge_booking_draft(
             conversation.booking_draft_service_id = service.id
 
     date_str = booking_request.get("date")
+    time_str = booking_request.get("time")
+    is_pick, offered_day = _offered_slot_pick(
+        offered_slots, tz, date_str if date_str and _is_valid_date_str(date_str) else None,
+        time_str if time_str and _is_valid_time_str(time_str) else None,
+    )
+    if is_pick and not date_str and offered_day:
+        date_str = offered_day  # time-only pick: land on the offered day, not the requested (possibly closed) one
+
     if date_str and _is_valid_date_str(date_str) and date_str != conversation.booking_draft_date:
-        if conversation.booking_draft_date is not None:
+        if conversation.booking_draft_date is not None and not is_pick:
             switches.append((_format_date_only(conversation.booking_draft_date), _format_date_only(date_str)))
         conversation.booking_draft_date = date_str
 
-    time_str = booking_request.get("time")
     if time_str and _is_valid_time_str(time_str) and time_str != conversation.booking_draft_time:
-        if conversation.booking_draft_time is not None:
+        if conversation.booking_draft_time is not None and not is_pick:
             switches.append((_format_time_only(conversation.booking_draft_time), _format_time_only(time_str)))
         conversation.booking_draft_time = time_str
 
@@ -1033,6 +1078,12 @@ def handle_incoming_message(
     # this turn actually consumed it, so a much-later, unrelated bare digit
     # can never be misread as a stale slot pick.
     picked_slot = _resolve_bare_digit_slot_pick(conversation, content) if business is not None else None
+    # Phase 13: remember what the SYSTEM offered last turn BEFORE the one-shot clear below, so _merge_booking_draft can
+    # tell "picked from the list I just showed" (not a switch) from "stated a different date on their own" (a switch).
+    offered_last_turn = (
+        [datetime.fromisoformat(x) for x in conversation.booking_draft_proposed_slots.split(",")]
+        if conversation.booking_draft_proposed_slots else None
+    )
     conversation.booking_draft_proposed_slots = None
     if picked_slot is not None and business is not None:
         tool = find_tool(ConversationIntent.BOOKING)
@@ -1263,7 +1314,10 @@ def handle_incoming_message(
     # this turn's booking_request is null (the overwhelmingly common case
     # for non-booking turns), so this changes nothing for any turn that
     # doesn't actually name a slot.
-    draft_switches = _merge_booking_draft(conversation, services, classification.booking_request)
+    draft_switches = _merge_booking_draft(
+        conversation, services, classification.booking_request,
+        offered_slots=offered_last_turn, tz=ZoneInfo(business.timezone) if business is not None else None,
+    )
 
     # The LLM never mutates data itself: only tool.run() would, and only the
     # orchestrator calls it. Phase 10 registered BOOKING; Phase 11 registers
