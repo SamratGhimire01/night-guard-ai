@@ -1,0 +1,162 @@
+[
+ {
+  "question": "How long is a Whitening session?",
+  "answer": "A Whitening session takes about 45 minutes.",
+  "closing": "thanks",
+  "reply": "You're welcome! 😊",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "Is Friday open all day?",
+  "answer": "Friday we're open 9:00 AM to 2:00 PM — not all day. We're closed Saturday and Sunday.",
+  "closing": "thank you",
+  "reply": "You're welcome! 😊",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "do you have a cleaning service?",
+  "answer": "Yes — we offer Basic Cleaning. It’s USD 75 and takes about 30 minutes.",
+  "closing": "thanks!",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "What's the price of cleaning and whitening?",
+  "answer": "Basic Cleaning is USD 75 and takes about 30 minutes. Whitening is USD 150 and takes about 45 minutes.",
+  "closing": "ok thanks",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "Are you open on Saturday?",
+  "answer": "We're closed on Saturdays. Our hours are Monday–Thursday 9:00 AM–5:00 PM and Friday 9:00 AM–2:00 PM.",
+  "closing": "thanks!",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "How much is a cleaning?",
+  "answer": "Basic Cleaning is $75 and takes about 30 minutes.",
+  "closing": "Thanks a lot!",
+  "reply": "You're welcome! Glad I could help 😊",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "What services do you offer?",
+  "answer": "We offer:\n- Basic Cleaning — USD 75.00, about 30 minutes\n- Whitening — USD 150.00, about 45 minutes",
+  "closing": "thank you!",
+  "reply": "You're welcome! Would you like to book an appointment?",
+  "intent": "follow_up",
+  "tail": true
+ },
+ {
+  "question": "when do you close on Friday?",
+  "answer": "On Fridays we close at 2:00 PM.",
+  "closing": "thanks",
+  "reply": "You're welcome! 😊",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "how long does whitening take?",
+  "answer": "Whitening takes about 45 minutes.",
+  "closing": "thank you very much",
+  "reply": "You're welcome! 😊",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "What time do you open on Monday?",
+  "answer": "We open at 9:00 AM on Monday and are open until 5:00 PM.",
+  "closing": "thanks!",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "How long is a Whitening session?",
+  "answer": "A Whitening session takes about 45 minutes.",
+  "closing": "thanks",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "Is Friday open all day?",
+  "answer": "On Friday we're open 9:00 AM to 2:00 PM — we close after 2pm.",
+  "closing": "thank you",
+  "reply": "You're welcome! 😊",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "do you have a cleaning service?",
+  "answer": "Yes — we offer Basic Cleaning. It's USD 75 and takes about 30 minutes.",
+  "closing": "thanks!",
+  "reply": "You're welcome! Would you like to book a Basic Cleaning now or see available times?",
+  "intent": "follow_up",
+  "tail": true
+ },
+ {
+  "question": "What's the price of cleaning and whitening?",
+  "answer": "Basic Cleaning — USD 75.00, about 30 minutes. Whitening — USD 150.00, about 45 minutes. Want me to check availability for either service?",
+  "closing": "ok thanks",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "Are you open on Saturday?",
+  "answer": "We're closed on Saturdays. Our hours are Monday–Thursday 9:00 AM–5:00 PM and Friday 9:00 AM–2:00 PM. Would you like to book an appointment on another day?",
+  "closing": "thanks!",
+  "reply": "You're welcome 😊",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "How much is a cleaning?",
+  "answer": "Basic Cleaning is $75 and takes about 30 minutes. Want me to check available times?",
+  "closing": "Thanks a lot!",
+  "reply": "You're welcome! 😊",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "What services do you offer?",
+  "answer": "We offer Basic Cleaning (USD 75.00, 30 minutes) and Whitening (USD 150.00, 45 minutes).",
+  "closing": "thank you!",
+  "reply": "You're welcome! 😊",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "when do you close on Friday?",
+  "answer": "On Fridays we close at 2:00 PM.",
+  "closing": "thanks",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "how long does whitening take?",
+  "answer": "Whitening takes about 45 minutes.",
+  "closing": "thank you very much",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "What time do you open on Monday?",
+  "answer": "We open at 9:00 AM on Mondays and close at 5:00 PM.",
+  "closing": "thanks!",
+  "reply": "You're welcome 😊",
+  "intent": "follow_up",
+  "tail": false
+ }
+]

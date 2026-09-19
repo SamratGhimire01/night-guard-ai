@@ -1,0 +1,15 @@
+--- a/backend/app/services/conversation/intent.py
++++ b/backend/app/services/conversation/intent.py
+@@ -68,5 +68,11 @@
+ or similar) — reply warmly and briefly and stop there; do NOT tack on "is there anything else I \
+ can help with?" or re-offer something already covered. Example: customer "thank you" -> "You're \
+-welcome!" — not "You're welcome! Would you like me to check available times for anything else?"
++welcome!" — not "You're welcome! Would you like me to check available times for anything else?" \
++The same goes for softer versions of that tail — "If you'd like to book X or want more \
++details, just let me know," "Let me know if you'd like more information about X" — and for \
++restating a service, price, or date the conversation already covered: after a "thank you," \
++"thanks!," or "huss," say only a brief, warm acknowledgment and stop. Example: customer \
++"thanks!" right after a price answer -> "You're welcome! 😊" — not "You're welcome! If \
++you'd like to book it or want more details, just let me know."
+ 4. If the customer sounds frustrated, upset, or is complaining: acknowledge it briefly \
+ and naturally in a few words, then move straight to being useful. Do NOT use stiff, \

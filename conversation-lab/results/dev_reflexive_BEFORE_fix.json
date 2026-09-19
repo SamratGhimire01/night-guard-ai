@@ -1,0 +1,969 @@
+{
+ "set": "dev_set_reflexive",
+ "effort": null,
+ "samples": 5,
+ "elapsed_s": 78,
+ "results": [
+  {
+   "group": "dev-decline-pm",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I'm just here to help with things related to Demo Dental Clinic — appointments, services, hours, and the like. Is there something about that I can help with?",
+   "provenance": "verbatim production decline shape",
+   "customer": "Who is the prime minister of Nepal?",
+   "score": 84.7,
+   "per_sample": [
+    100.0,
+    70.3,
+    53.1,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 94.4,
+   "criteria": {
+    "length_fit": 4.4,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 4,
+    "focused_no_dump": 4.8,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 28,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-pm",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "The current prime minister changes with coalitions, but recent governments have been led by senior party leaders. Anything else I can help you with?",
+   "provenance": "answers the off-topic question",
+   "customer": "Who is the prime minister of Nepal?",
+   "score": 15.5,
+   "per_sample": [
+    12.5,
+    22.6,
+    14.1,
+    14.1,
+    14.1
+   ],
+   "weighted_v1": 30.9,
+   "criteria": {
+    "length_fit": 2.2,
+    "language_match": 5,
+    "natural_tone": 3,
+    "no_reflexive_question": 1.2,
+    "focused_no_dump": 1.2,
+    "helpful_honest": 1.2,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 24,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-joke",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I'm just here to help with things related to Demo Hair Salon — appointments, services, hours, and the like. Is there something about that I can help with?",
+   "provenance": "verbatim production decline shape",
+   "customer": "tell me a joke",
+   "score": 81.9,
+   "per_sample": [
+    100.0,
+    53.1,
+    86.0,
+    100.0,
+    70.3
+   ],
+   "weighted_v1": 93.8,
+   "criteria": {
+    "length_fit": 4.6,
+    "language_match": 5,
+    "natural_tone": 4.4,
+    "no_reflexive_question": 4,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 28,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-joke",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "Why did the barber win the race? He knew all the short cuts! 😄😄",
+   "provenance": "answers the off-topic request",
+   "customer": "tell me a joke",
+   "score": 46.9,
+   "per_sample": [
+    46.9,
+    46.9,
+    46.9,
+    46.9,
+    46.9
+   ],
+   "weighted_v1": 93.8,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 1
+   },
+   "objective": {
+    "word_count": 14,
+    "sentence_count": 3,
+    "ends_with_question": false,
+    "emoji_count": 2,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-capital",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I'm just here to help with things related to Demo Himalayan Treks — treks, prices, hours, and the like. Is there something about that I can help with?",
+   "provenance": "verbatim production decline shape",
+   "customer": "what is the capital of France?",
+   "score": 97.2,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    86.0,
+    100.0
+   ],
+   "weighted_v1": 99.4,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 4.8,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 28,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-capital",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "The capital of France is Paris. Is there anything else I can help you with?",
+   "provenance": "answers + generic tail",
+   "customer": "what is the capital of France?",
+   "score": 16.9,
+   "per_sample": [
+    18.8,
+    23.4,
+    17.2,
+    12.5,
+    12.5
+   ],
+   "weighted_v1": 33.8,
+   "criteria": {
+    "length_fit": 2.6,
+    "language_match": 5,
+    "natural_tone": 1,
+    "no_reflexive_question": 1,
+    "focused_no_dump": 3,
+    "helpful_honest": 1.8,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 15,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": [
+     "is there anything else i can help you with"
+    ]
+   }
+  },
+  {
+   "group": "dev-decline-phone",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I'm just here to help with things related to Demo Dental Clinic — appointments, services, hours, and the like. Is there something about that I can help with?",
+   "provenance": "verbatim production decline shape",
+   "customer": "which phone should I buy, iPhone or Samsung?",
+   "score": 91.6,
+   "per_sample": [
+    86.0,
+    86.0,
+    86.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 98.1,
+   "criteria": {
+    "length_fit": 4.8,
+    "language_match": 5,
+    "natural_tone": 4.6,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 28,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-phone",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "Both are great! iPhones are smoother, Samsung has more customization. Let me know if you need anything else!",
+   "provenance": "answers + generic tail",
+   "customer": "which phone should I buy, iPhone or Samsung?",
+   "score": 25.8,
+   "per_sample": [
+    25.8,
+    31.2,
+    27.4,
+    25.8,
+    18.8
+   ],
+   "weighted_v1": 51.6,
+   "criteria": {
+    "length_fit": 4,
+    "language_match": 5,
+    "natural_tone": 4.6,
+    "no_reflexive_question": 1.4,
+    "focused_no_dump": 3,
+    "helpful_honest": 2,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 18,
+    "sentence_count": 3,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-bitcoin",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I'm just here to help with things related to Demo Himalayan Treks — treks, prices, hours, and the like. Is there something about that I can help with?",
+   "provenance": "verbatim production decline shape",
+   "customer": "what's the bitcoin price today?",
+   "score": 91.6,
+   "per_sample": [
+    100.0,
+    100.0,
+    57.8,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 98.1,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 4.4,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 28,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-bitcoin",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "Bitcoin is trading around $60,000 today, though it moves a lot during the day.",
+   "provenance": "answers the off-topic question",
+   "customer": "what's the bitcoin price today?",
+   "score": 33.8,
+   "per_sample": [
+    32.8,
+    34.4,
+    34.4,
+    32.8,
+    34.4
+   ],
+   "weighted_v1": 67.5,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 4.6,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 1,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 14,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-homework",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I'm just here to help with things related to Demo Dental Clinic — appointments, services, hours, and the like. Is there something about that I can help with?",
+   "provenance": "verbatim production decline shape",
+   "customer": "can you help me with my maths homework",
+   "score": 90.6,
+   "per_sample": [
+    100.0,
+    84.4,
+    84.4,
+    100.0,
+    84.4
+   ],
+   "weighted_v1": 96.2,
+   "criteria": {
+    "length_fit": 4.4,
+    "language_match": 5,
+    "natural_tone": 4.6,
+    "no_reflexive_question": 4.8,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 28,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-homework",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "Of course! Send me the question and I'll walk you through the steps.",
+   "provenance": "agrees to the off-topic request",
+   "customer": "can you help me with my maths homework",
+   "score": 34.1,
+   "per_sample": [
+    34.4,
+    34.4,
+    34.4,
+    32.8,
+    34.4
+   ],
+   "weighted_v1": 68.1,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 4.8,
+    "helpful_honest": 1,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 13,
+    "sentence_count": 2,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-match",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I'm just here to help with things related to Demo Hair Salon — appointments, services, hours, and the like. Is there something about that I can help with?",
+   "provenance": "verbatim production decline shape",
+   "customer": "who will win the match tonight?",
+   "score": 93.4,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    84.4,
+    82.8
+   ],
+   "weighted_v1": 96.9,
+   "criteria": {
+    "length_fit": 4.6,
+    "language_match": 5,
+    "natural_tone": 4.6,
+    "no_reflexive_question": 4.8,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 28,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-match",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "Hard to say, but the home team looks stronger on form. Should be a good game!",
+   "provenance": "answers the off-topic question",
+   "customer": "who will win the match tonight?",
+   "score": 30.0,
+   "per_sample": [
+    31.2,
+    34.4,
+    23.4,
+    34.4,
+    26.6
+   ],
+   "weighted_v1": 60.0,
+   "criteria": {
+    "length_fit": 4.6,
+    "language_match": 5,
+    "natural_tone": 3.6,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 4,
+    "helpful_honest": 1,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 16,
+    "sentence_count": 2,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-recipe",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I'm just here to help with things related to Demo Himalayan Treks — treks, prices, hours, and the like. Is there something about that I can help with?",
+   "provenance": "verbatim production decline shape",
+   "customer": "momo ko recipe deu na",
+   "score": 46.4,
+   "per_sample": [
+    40.6,
+    34.4,
+    50.8,
+    56.2,
+    50.0
+   ],
+   "weighted_v1": 77.8,
+   "criteria": {
+    "length_fit": 4.6,
+    "language_match": 1.6,
+    "natural_tone": 3.2,
+    "no_reflexive_question": 4,
+    "focused_no_dump": 4.8,
+    "helpful_honest": 4.8,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 28,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-recipe",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "Ma momo ko recipe dinchu: maida, keema, pyaj, adhuwa, lasun milayera filling banaunus, ani steam garnus.",
+   "provenance": "gives the recipe",
+   "customer": "momo ko recipe deu na",
+   "score": 33.0,
+   "per_sample": [
+    30.4,
+    36.0,
+    31.2,
+    36.0,
+    31.2
+   ],
+   "weighted_v1": 65.9,
+   "criteria": {
+    "length_fit": 2.8,
+    "language_match": 5,
+    "natural_tone": 4.8,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 2,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 16,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-color",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I'm just here to help with things related to Demo Dental Clinic — appointments, services, hours, and the like. Is there something about that I can help with?",
+   "provenance": "verbatim production decline shape",
+   "customer": "what's your favourite colour?",
+   "score": 88.5,
+   "per_sample": [
+    86.0,
+    86.0,
+    84.4,
+    86.0,
+    100.0
+   ],
+   "weighted_v1": 96.9,
+   "criteria": {
+    "length_fit": 4.6,
+    "language_match": 5,
+    "natural_tone": 4.4,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 28,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-color",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "I love a calm blue! What's yours?",
+   "provenance": "chats off-topic",
+   "customer": "what's your favourite colour?",
+   "score": 70.6,
+   "per_sample": [
+    100.0,
+    30.4,
+    100.0,
+    36.7,
+    86.0
+   ],
+   "weighted_v1": 86.2,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 3.6,
+    "focused_no_dump": 4.8,
+    "helpful_honest": 4.2,
+    "stays_in_scope": 3.4,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 7,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-translate",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I'm just here to help with things related to Demo Hair Salon — appointments, services, hours, and the like. Is there something about that I can help with?",
+   "provenance": "verbatim production decline shape",
+   "customer": "translate 'hello' into Japanese",
+   "score": 84.9,
+   "per_sample": [
+    68.0,
+    84.4,
+    100.0,
+    86.0,
+    86.0
+   ],
+   "weighted_v1": 94.7,
+   "criteria": {
+    "length_fit": 4.4,
+    "language_match": 5,
+    "natural_tone": 4.2,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 4.8,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 28,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-decline-translate",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "'Hello' in Japanese is 'konnichiwa' (こんにちは).",
+   "provenance": "answers the off-topic request",
+   "customer": "translate 'hello' into Japanese",
+   "score": 41.3,
+   "per_sample": [
+    43.8,
+    37.5,
+    41.4,
+    43.8,
+    39.9
+   ],
+   "weighted_v1": 82.5,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 4.6,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 4.2,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 6,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-tail-hours",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "Cha — Somabar dekhi Sukrabar, 9:00 AM–6:00 PM samma khula cha.",
+   "provenance": "complete answer, stops",
+   "customer": "open cha?",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 11,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-tail-hours",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "Cha — Somabar dekhi Sukrabar, 9:00 AM–6:00 PM samma khula cha. Is there anything else I can help you with?",
+   "provenance": "generic content-free tail",
+   "customer": "open cha?",
+   "score": 24.8,
+   "per_sample": [
+    25.0,
+    25.0,
+    22.6,
+    26.6,
+    25.0
+   ],
+   "weighted_v1": 49.7,
+   "criteria": {
+    "length_fit": 3.2,
+    "language_match": 1.8,
+    "natural_tone": 1,
+    "no_reflexive_question": 1,
+    "focused_no_dump": 2.2,
+    "helpful_honest": 4.8,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 20,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": [
+     "is there anything else i can help you with"
+    ]
+   }
+  },
+  {
+   "group": "dev-tail-price",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "Haircut NPR 600 parcha, 30 minute lagcha.",
+   "provenance": "complete answer, stops",
+   "customer": "haircut kati parcha?",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 7,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-tail-price",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "Haircut NPR 600 parcha, 30 minute lagcha. Please feel free to let me know if you have any other questions or need anything else!",
+   "provenance": "generic content-free tail",
+   "customer": "haircut kati parcha?",
+   "score": 29.0,
+   "per_sample": [
+    31.2,
+    28.1,
+    28.1,
+    28.1,
+    29.7
+   ],
+   "weighted_v1": 58.1,
+   "criteria": {
+    "length_fit": 3.6,
+    "language_match": 2.6,
+    "natural_tone": 1,
+    "no_reflexive_question": 1.2,
+    "focused_no_dump": 3.2,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 24,
+    "sentence_count": 2,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": [
+     "please feel free to let me know",
+     "feel free to let me know"
+    ]
+   }
+  },
+  {
+   "group": "dev-tail-english",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "Poon Hill is 5 days.",
+   "provenance": "complete answer, stops",
+   "customer": "How long is the Poon Hill trek?",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 5,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-tail-english",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "Poon Hill is 5 days. Anything else I can help you with today?",
+   "provenance": "generic content-free tail",
+   "customer": "How long is the Poon Hill trek?",
+   "score": 38.1,
+   "per_sample": [
+    40.6,
+    42.2,
+    34.4,
+    36.0,
+    37.5
+   ],
+   "weighted_v1": 76.2,
+   "criteria": {
+    "length_fit": 4,
+    "language_match": 5,
+    "natural_tone": 4,
+    "no_reflexive_question": 1,
+    "focused_no_dump": 3.4,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 13,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-redirect-real-next-step",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "Sure — which day works for you?",
+   "provenance": "specific, needed next-step question (fine)",
+   "customer": "I want a facial",
+   "score": 97.2,
+   "per_sample": [
+    100.0,
+    100.0,
+    86.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 99.4,
+   "criteria": {
+    "length_fit": 4.8,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 7,
+    "sentence_count": 1,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "dev-redirect-real-next-step",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "Sure. Is there anything else I can help you with?",
+   "provenance": "generic tail instead of the real next step",
+   "customer": "I want a facial",
+   "score": 18.6,
+   "per_sample": [
+    18.8,
+    17.2,
+    17.2,
+    21.1,
+    18.8
+   ],
+   "weighted_v1": 37.2,
+   "criteria": {
+    "length_fit": 2,
+    "language_match": 5,
+    "natural_tone": 1,
+    "no_reflexive_question": 1,
+    "focused_no_dump": 1.6,
+    "helpful_honest": 1.2,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 10,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": [
+     "is there anything else i can help you with"
+    ]
+   }
+  }
+ ]
+}

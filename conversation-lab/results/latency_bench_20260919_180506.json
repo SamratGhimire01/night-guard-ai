@@ -1,0 +1,38 @@
+{
+ "A_cap_mean_latency_s": {
+  "16000": 8.73,
+  "2000": 8.78
+ },
+ "B_reply_by_effort": {
+  "None": {
+   "mean_latency_s": 10.43,
+   "max_latency_s": 17.47,
+   "mean_completion_tokens": 620,
+   "mean_quality_score": 36.2,
+   "n": 12
+  },
+  "low": {
+   "mean_latency_s": 4.22,
+   "max_latency_s": 8.19,
+   "mean_completion_tokens": 244,
+   "mean_quality_score": 36.1,
+   "n": 12
+  },
+  "minimal": {
+   "mean_latency_s": 2.45,
+   "max_latency_s": 3.66,
+   "mean_completion_tokens": 115,
+   "mean_quality_score": 42.9,
+   "n": 12
+  }
+ },
+ "C_judge_mean_latency_s": {
+  "None_x1": 6.46,
+  "None_x3": 7.95,
+  "None_x5": 9.43,
+  "low_x1": 4.56,
+  "low_x3": 5.13,
+  "low_x5": 6.15,
+  "minimal_x1": 3.76
+ }
+}

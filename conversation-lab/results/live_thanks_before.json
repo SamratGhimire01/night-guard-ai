@@ -1,0 +1,82 @@
+[
+ {
+  "question": "How much is the Whitening?",
+  "answer": "Whitening is USD 150 and takes about 45 minutes. Would you like me to check available times for you?",
+  "closing": "thanks!",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "How long does a basic cleaning take?",
+  "answer": "A Basic Cleaning takes about 30 minutes.",
+  "closing": "thank you",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "What are your hours?",
+  "answer": "We're open Monday–Thursday 9:00 AM–5:00 PM, Friday 9:00 AM–2:00 PM. Closed Saturday and Sunday.",
+  "closing": "thanks!",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "How much is a Basic Cleaning?",
+  "answer": "Basic Cleaning is $75 and takes about 30 minutes.",
+  "closing": "thank you so much",
+  "reply": "You're welcome! 😊",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "How much is the Whitening and how long does it take?",
+  "answer": "Whitening costs $150 and takes about 45 minutes. Would you like me to check available times?",
+  "closing": "thanks",
+  "reply": "You're welcome! 😊",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "How much is the Whitening?",
+  "answer": "Whitening is $150 and takes about 45 minutes. Want me to check available times?",
+  "closing": "thanks!",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "How long does a basic cleaning take?",
+  "answer": "A Basic Cleaning takes about 30 minutes.",
+  "closing": "thank you",
+  "reply": "You're welcome! 😊",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "What are your hours?",
+  "answer": "We're open Monday–Thursday 9:00 AM to 5:00 PM, Friday 9:00 AM to 2:00 PM. Saturday and Sunday we are closed.",
+  "closing": "thanks!",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "How much is a Basic Cleaning?",
+  "answer": "A Basic Cleaning is $75 (about 30 minutes). Want me to check available times for you?",
+  "closing": "thank you so much",
+  "reply": "You're welcome!",
+  "intent": "follow_up",
+  "tail": false
+ },
+ {
+  "question": "How much is the Whitening and how long does it take?",
+  "answer": "Whitening is $150 and takes about 45 minutes.",
+  "closing": "thanks",
+  "reply": "You’re welcome! 😊",
+  "intent": "follow_up",
+  "tail": false
+ }
+]

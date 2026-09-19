@@ -1,0 +1,756 @@
+{
+ "set": "heldout_set_2",
+ "effort": "low",
+ "samples": 5,
+ "elapsed_s": 38,
+ "results": [
+  {
+   "group": "scope-weather",
+   "kind": "real",
+   "label": "good",
+   "text": "I'm just here to help with things related to Riverside Dental — appointments, services, hours, and the like. Is there something about that I can help with?",
+   "provenance": "Phase 24 live run (project verdict: correct off_topic decline)",
+   "customer": "What's the weather like today?",
+   "score": 91.6,
+   "per_sample": [
+    86.0,
+    86.0,
+    86.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 98.1,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 4.6,
+    "no_reflexive_question": 4.8,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 27,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "scope-weather",
+   "kind": "real",
+   "label": "bad",
+   "text": "It's usually warm this time of year — around 25°C with some afternoon clouds, so a nice day to get out and about!",
+   "provenance": "synthetic: answers the off-topic question",
+   "customer": "What's the weather like today?",
+   "score": 28.5,
+   "per_sample": [
+    26.6,
+    25.0,
+    26.6,
+    34.4,
+    29.7
+   ],
+   "weighted_v1": 56.9,
+   "criteria": {
+    "length_fit": 4.2,
+    "language_match": 5,
+    "natural_tone": 4.6,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 2.4,
+    "helpful_honest": 1,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 23,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "scope-election",
+   "kind": "real",
+   "label": "good",
+   "text": "I'm just here to help with things related to Riverside Dental — appointments, services, hours, and the like. Is there something about that I can help with?",
+   "provenance": "Phase 24 live run (project verdict: correct off_topic decline)",
+   "customer": "Who won the last election?",
+   "score": 72.0,
+   "per_sample": [
+    53.1,
+    100.0,
+    100.0,
+    54.7,
+    52.4
+   ],
+   "weighted_v1": 89.1,
+   "criteria": {
+    "length_fit": 4.2,
+    "language_match": 5,
+    "natural_tone": 4.4,
+    "no_reflexive_question": 3.2,
+    "focused_no_dump": 5,
+    "helpful_honest": 4.8,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 27,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "scope-election",
+   "kind": "real",
+   "label": "bad",
+   "text": "That depends on which country you mean, but in most recent national elections the incumbent party narrowly held on. Happy to say more if you tell me which one.",
+   "provenance": "synthetic: engages with the off-topic question",
+   "customer": "Who won the last election?",
+   "score": 17.2,
+   "per_sample": [
+    15.6,
+    20.3,
+    17.2,
+    15.6,
+    17.2
+   ],
+   "weighted_v1": 34.4,
+   "criteria": {
+    "length_fit": 2,
+    "language_match": 5,
+    "natural_tone": 2.8,
+    "no_reflexive_question": 2.6,
+    "focused_no_dump": 1.6,
+    "helpful_honest": 1,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 29,
+    "sentence_count": 2,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "scope-poem",
+   "kind": "real",
+   "label": "good",
+   "text": "I'm just here to help with things related to Riverside Dental — appointments, services, hours, and the like. Is there something about that I can help with?",
+   "provenance": "Phase 24 live run (project verdict: correct off_topic decline)",
+   "customer": "Write me a poem about autumn.",
+   "score": 96.9,
+   "per_sample": [
+    100.0,
+    84.4,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 98.8,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 4.8,
+    "no_reflexive_question": 4.8,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 27,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "scope-poem",
+   "kind": "real",
+   "label": "bad",
+   "text": "Golden leaves drift slowly down, / Crimson roofs and amber ground, / Autumn hums its quiet sound, / Peace in every fallen crown.",
+   "provenance": "synthetic: writes the poem",
+   "customer": "Write me a poem about autumn.",
+   "score": 28.4,
+   "per_sample": [
+    28.1,
+    28.9,
+    32.0,
+    34.4,
+    18.8
+   ],
+   "weighted_v1": 56.9,
+   "criteria": {
+    "length_fit": 3.8,
+    "language_match": 5,
+    "natural_tone": 2,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 4.2,
+    "helpful_honest": 1.8,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 23,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "adjacent-insurance",
+   "kind": "real",
+   "label": "good",
+   "text": "I don't have our insurance information here — would you like me to connect you with our team to confirm which plans we accept? I've also let our team know, so a real person will follow up with you.",
+   "provenance": "Phase 24 live run (project verdict: correctly NOT off-topic; honest + escalates)",
+   "customer": "Do you take insurance?",
+   "score": 57.8,
+   "per_sample": [
+    46.1,
+    43.0,
+    67.2,
+    65.6,
+    67.2
+   ],
+   "weighted_v1": 75.6,
+   "criteria": {
+    "length_fit": 4.4,
+    "language_match": 5,
+    "natural_tone": 3.6,
+    "no_reflexive_question": 4,
+    "focused_no_dump": 3.8,
+    "helpful_honest": 2.6,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 39,
+    "sentence_count": 2,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "adjacent-insurance",
+   "kind": "real",
+   "label": "bad",
+   "text": "I'm just here to help with things related to Riverside Dental — appointments, services, hours, and the like. Is there something about that I can help with?",
+   "provenance": "synthetic: over-refusal - the same decline sentence applied to a business question (the ticket's explicit 'don't over-tighten' failure)",
+   "customer": "Do you take insurance?",
+   "score": 17.2,
+   "per_sample": [
+    21.9,
+    14.1,
+    17.2,
+    17.2,
+    15.6
+   ],
+   "weighted_v1": 34.4,
+   "criteria": {
+    "length_fit": 1.8,
+    "language_match": 5,
+    "natural_tone": 2,
+    "no_reflexive_question": 1,
+    "focused_no_dump": 1.2,
+    "helpful_honest": 1,
+    "stays_in_scope": 4,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 27,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "adjacent-parking",
+   "kind": "real",
+   "label": "good",
+   "text": "I don't have our parking information on file — would you like me to connect you with our team to confirm availability and directions? I've also let our team know, so a real person will follow up with you.",
+   "provenance": "Phase 24 live run (project verdict: correctly NOT off-topic; honest + escalates)",
+   "customer": "Is there parking available?",
+   "score": 53.6,
+   "per_sample": [
+    46.1,
+    67.2,
+    39.9,
+    64.0,
+    50.8
+   ],
+   "weighted_v1": 72.2,
+   "criteria": {
+    "length_fit": 3.8,
+    "language_match": 5,
+    "natural_tone": 3.2,
+    "no_reflexive_question": 4.2,
+    "focused_no_dump": 3.8,
+    "helpful_honest": 2.4,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 39,
+    "sentence_count": 2,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "adjacent-parking",
+   "kind": "real",
+   "label": "bad",
+   "text": "I'm just here to help with things related to Riverside Dental — appointments, services, hours, and the like. Is there something about that I can help with?",
+   "provenance": "synthetic: over-refusal of a business question",
+   "customer": "Is there parking available?",
+   "score": 12.5,
+   "per_sample": [
+    10.9,
+    14.1,
+    14.1,
+    12.5,
+    10.9
+   ],
+   "weighted_v1": 25.0,
+   "criteria": {
+    "length_fit": 1.6,
+    "language_match": 5,
+    "natural_tone": 1.6,
+    "no_reflexive_question": 1,
+    "focused_no_dump": 1,
+    "helpful_honest": 1,
+    "stays_in_scope": 1.8,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 27,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "scope-salon-movie",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I'm just here to help with things related to Demo Hair Salon — appointments, services, and hours. Is there something about that I can help with?",
+   "provenance": "synthetic: production-style decline for another business",
+   "customer": "Can you recommend a good movie to watch tonight?",
+   "score": 82.2,
+   "per_sample": [
+    82.8,
+    100.0,
+    56.2,
+    86.0,
+    86.0
+   ],
+   "weighted_v1": 94.4,
+   "criteria": {
+    "length_fit": 4.8,
+    "language_match": 5,
+    "natural_tone": 4.2,
+    "no_reflexive_question": 4.2,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 26,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "scope-salon-movie",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "Sure! If you like thrillers, try 'Parasite'; for something light, 'The Grand Budapest Hotel' is great. Enjoy your evening!",
+   "provenance": "synthetic: answers off-topic question",
+   "customer": "Can you recommend a good movie to watch tonight?",
+   "score": 27.5,
+   "per_sample": [
+    39.9,
+    23.4,
+    28.9,
+    23.4,
+    21.9
+   ],
+   "weighted_v1": 55.0,
+   "criteria": {
+    "length_fit": 3,
+    "language_match": 5,
+    "natural_tone": 4,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 2.4,
+    "helpful_honest": 1.8,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 19,
+    "sentence_count": 3,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "scope-trek-cricket",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I'm just here to help with things related to Demo Himalayan Treks — treks, prices, and hours. Is there something about that I can help with?",
+   "provenance": "synthetic: production-style decline",
+   "customer": "Which team won the last cricket world cup?",
+   "score": 82.5,
+   "per_sample": [
+    86.0,
+    86.0,
+    100.0,
+    40.6,
+    100.0
+   ],
+   "weighted_v1": 95.0,
+   "criteria": {
+    "length_fit": 4.8,
+    "language_match": 5,
+    "natural_tone": 4.6,
+    "no_reflexive_question": 4,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 26,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "scope-trek-cricket",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "I don't have that information right now. Would you like me to connect you with our team to find out?",
+   "provenance": "synthetic: frames an off-topic question as a knowledge gap + needless handoff (production rule 0 forbids exactly this)",
+   "customer": "Which team won the last cricket world cup?",
+   "score": 19.2,
+   "per_sample": [
+    17.9,
+    19.6,
+    18.8,
+    21.1,
+    18.8
+   ],
+   "weighted_v1": 38.4,
+   "criteria": {
+    "length_fit": 3,
+    "language_match": 5,
+    "natural_tone": 3,
+    "no_reflexive_question": 1.2,
+    "focused_no_dump": 2.2,
+    "helpful_honest": 1.6,
+    "stays_in_scope": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 20,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "adjacent-trek-insurance",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "I don't have travel insurance details on file — want me to connect you with our team to confirm?",
+   "provenance": "synthetic: honest + escalates a business-adjacent question",
+   "customer": "Do I need travel insurance for the Poon Hill trek?",
+   "score": 84.2,
+   "per_sample": [
+    82.0,
+    86.0,
+    86.0,
+    83.6,
+    83.6
+   ],
+   "weighted_v1": 93.4,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 4,
+    "no_reflexive_question": 4.8,
+    "focused_no_dump": 5,
+    "helpful_honest": 4.4,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 19,
+    "sentence_count": 1,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "adjacent-trek-insurance",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "I'm just here to help with things related to Demo Himalayan Treks — treks, prices, and hours. Is there something about that I can help with?",
+   "provenance": "synthetic: over-refusal of a business-adjacent question",
+   "customer": "Do I need travel insurance for the Poon Hill trek?",
+   "score": 12.2,
+   "per_sample": [
+    12.5,
+    12.5,
+    12.5,
+    12.5,
+    10.9
+   ],
+   "weighted_v1": 24.4,
+   "criteria": {
+    "length_fit": 1.8,
+    "language_match": 5,
+    "natural_tone": 1.6,
+    "no_reflexive_question": 1,
+    "focused_no_dump": 1,
+    "helpful_honest": 1,
+    "stays_in_scope": 1.4,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 26,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "slot-pick-date-lost",
+   "kind": "real",
+   "label": "bad",
+   "text": "Got it — could you tell me what date?",
+   "provenance": "real, PHASE_STATUS Phase 33-era: date was just shown, agent re-asks it",
+   "customer": "10:30am works for me",
+   "score": 32.8,
+   "per_sample": [
+    29.7,
+    41.4,
+    23.4,
+    25.0,
+    44.5
+   ],
+   "weighted_v1": 55.6,
+   "criteria": {
+    "length_fit": 3.6,
+    "language_match": 5,
+    "natural_tone": 4.6,
+    "no_reflexive_question": 1.4,
+    "focused_no_dump": 1.6,
+    "helpful_honest": 1.4,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 9,
+    "sentence_count": 1,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "slot-pick-date-lost",
+   "kind": "real",
+   "label": "good",
+   "text": "10:30 AM on Monday, September 7 — I'll note that. Could I get your name and a phone number or email to lock it in?",
+   "provenance": "synthetic: uses the shown date, asks the one thing actually missing",
+   "customer": "10:30am works for me",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 25,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "contradictory-booking",
+   "kind": "real",
+   "label": "bad",
+   "text": "Got it — could you tell me which service? I've updated your contact info on file.",
+   "provenance": "real, PHASE_STATUS contradictory-message test: service was stated (cleaning), agent asks again",
+   "customer": "Book me a root canal, no wait, a cleaning, for tomorrow, actually day after tomorrow, at 3pm, actually make it 4pm. Name is [name], [email]",
+   "score": 23.9,
+   "per_sample": [
+    25.0,
+    25.0,
+    21.9,
+    25.8,
+    21.9
+   ],
+   "weighted_v1": 47.8,
+   "criteria": {
+    "length_fit": 2,
+    "language_match": 5,
+    "natural_tone": 4,
+    "no_reflexive_question": 1.4,
+    "focused_no_dump": 1.6,
+    "helpful_honest": 1.2,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 16,
+    "sentence_count": 2,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "contradictory-booking",
+   "kind": "real",
+   "label": "good",
+   "text": "Got it — a Teeth Cleaning the day after tomorrow at 4:00 PM.",
+   "provenance": "synthetic: takes the last-stated values, no re-ask",
+   "customer": "Book me a root canal, no wait, a cleaning, for tomorrow, actually day after tomorrow, at 3pm, actually make it 4pm. Name is [name], [email]",
+   "score": 85.2,
+   "per_sample": [
+    85.2,
+    85.2,
+    85.2,
+    85.2,
+    85.2
+   ],
+   "weighted_v1": 95.3,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 4,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 13,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "hours-repeated",
+   "kind": "real",
+   "label": "bad",
+   "text": "Sorry — I don't have our hours on file. Would you like me to connect you with our team so they can confirm them?",
+   "provenance": "real Phase 24 live run; hours were in the DB but not passed to the LLM (Phase 6 root cause)",
+   "customer": "Sorry, what were your hours again?",
+   "score": 18.5,
+   "per_sample": [
+    21.9,
+    15.6,
+    14.1,
+    18.8,
+    21.9
+   ],
+   "weighted_v1": 36.9,
+   "criteria": {
+    "length_fit": 2,
+    "language_match": 5,
+    "natural_tone": 3,
+    "no_reflexive_question": 1.6,
+    "focused_no_dump": 1.4,
+    "helpful_honest": 1,
+    "stays_in_scope": 2.8,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 24,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "hours-repeated",
+   "kind": "real",
+   "label": "good",
+   "text": "Monday to Saturday, 9:00 AM–5:00 PM.",
+   "provenance": "synthetic: direct, no 'as I said' preamble",
+   "customer": "Sorry, what were your hours again?",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "stays_in_scope": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 6,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  }
+ ]
+}

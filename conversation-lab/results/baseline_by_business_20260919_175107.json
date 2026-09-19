@@ -1,0 +1,812 @@
+[
+ {
+  "biz": "dental",
+  "scenario": "greeting",
+  "customer": "hlo",
+  "reply": "Hello! Welcome to Demo Dental Clinic in New Baneshwor — how can I help you today? We’re open Monday–Friday 9:00 AM–6:00 PM (closed Saturday and Sunday). Our services: Teeth Cleaning (NPR 1500, 30 min), Tooth Filling (NPR 2500, 45 min), Root Canal (NPR 9000, 90 min), Teeth Whitening (NPR 6000, 45 min), Dental Consultation (NPR 500, 20 min). We have on-site parking and accept cash, eSewa, or Khalti. If you’d like, tell me the service and a preferred date/time and I can suggest available slots — note I can’t actually book here in this sandbox.",
+  "score": 33.6,
+  "criteria": {
+   "length_fit": 1.67,
+   "language_match": 5,
+   "natural_tone": 4,
+   "no_reflexive_question": 4.67,
+   "focused_no_dump": 1,
+   "helpful_honest": 4.67,
+   "emoji_name_policy": 5
+  },
+  "words": 95,
+  "ends_q": false
+ },
+ {
+  "biz": "dental",
+  "scenario": "greeting",
+  "customer": "hlo",
+  "reply": "Hello! Welcome to Demo Dental Clinic in New Baneshwor — how can I help you today?\n\nOur hours: Monday–Friday 9:00 AM–6:00 PM (closed Sat & Sun).\nServices (price / duration):\n- Teeth Cleaning: NPR 1500 (30 min)\n- Tooth Filling: NPR 2500 (45 min)\n- Root Canal: NPR 9000 (90 min)\n- Teeth Whitening: NPR 6000 (45 min)\n- Dental Consultation: NPR 500 (20 min)\n\nWe have on-site parking. Payment: cash, eSewa, or Khalti. Please cancel at least 4 hours before an appointment.\n\nI can help with information and suggest appointment times, but I can’t actually book or change appointments in this chat sandbox. What would you like to do or which service are you interested in?",
+  "score": 29.8,
+  "criteria": {
+   "length_fit": 1.33,
+   "language_match": 5,
+   "natural_tone": 4,
+   "no_reflexive_question": 3.33,
+   "focused_no_dump": 1,
+   "helpful_honest": 4.33,
+   "emoji_name_policy": 5
+  },
+  "words": 117,
+  "ends_q": true
+ },
+ {
+  "biz": "dental",
+  "scenario": "greeting",
+  "customer": "hlo",
+  "reply": "Hello! Welcome to Demo Dental Clinic in New Baneshwor. How can I help you today? Our hours are Monday–Friday 9:00 AM–6:00 PM (closed Saturday and Sunday). We offer: Teeth Cleaning NPR 1500 (30 min); Tooth Filling NPR 2500 (45 min); Root Canal NPR 9000 (90 min); Teeth Whitening NPR 6000 (45 min); Dental Consultation NPR 500 (20 min). We have on-site parking and accept payment by cash, eSewa, or Khalti. Please note I can only chat here and cannot actually book or change appointments in this sandbox — I can, however, help with information, suggest appointment times, or tell you how to prepare. What would you like to do?",
+  "score": 32.4,
+  "criteria": {
+   "length_fit": 1.33,
+   "language_match": 5,
+   "natural_tone": 3.33,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 1,
+   "helpful_honest": 4.67,
+   "emoji_name_policy": 5
+  },
+  "words": 109,
+  "ends_q": true
+ },
+ {
+  "biz": "dental",
+  "scenario": "hours-roman",
+  "customer": "open cha?",
+  "reply": "नमस्ते! हाम्रो समय तालिका— सोमबारदेखि शुक्रबार ९:०० AM–६:०० PM खुल्छौं; शनिबार र आइतबार बन्द हुन्छौं। अहिले शनिवार भएकाले आज हामी बन्द छौं। \n\nतपाईं अहिले आउन चाहनुहुन्छ वा अर्को दिन अपोइन्टमेन्ट लिन चाहनुहुन्छ भने कुन दिन/समय मनपर्छ बताउनुहोस्—म उपलब्ध समय र सेवाको जानकारी दिन्छु। (नोट: यो sandbox च्याटबाट सिधै बुकिङ् गर्न सकिँदैन।)",
+  "score": 54.5,
+  "criteria": {
+   "length_fit": 3.33,
+   "language_match": 2.67,
+   "natural_tone": 5,
+   "no_reflexive_question": 4.33,
+   "focused_no_dump": 4.33,
+   "helpful_honest": 4,
+   "emoji_name_policy": 5
+  },
+  "words": 51,
+  "ends_q": false
+ },
+ {
+  "biz": "dental",
+  "scenario": "hours-roman",
+  "customer": "open cha?",
+  "reply": "नमस्ते! अहिले हामी बन्द छौं। हाम्रो समय: सोमबार–शुक्रबार 9:00 AM–6:00 PM। शनिबार र आइतबार बन्द हुन्छौं।\n\nयदि अपोइन्टमेन्ट लिन चाहनुहुन्छ भने कुन सेवा र कुन दिन/समय चाहनुहुन्छ भनेर बताउनुहोस् — म यहाँ नोट गर्न र सुझाव दिन मद्दत गर्छु। (नोट: यो स्यान्डबक्स च्याट हो, यहाँबाट म साँच्चिकै बुकिङ् गर्न सक्दिनँ.)",
+  "score": 56.2,
+  "criteria": {
+   "length_fit": 3,
+   "language_match": 2.33,
+   "natural_tone": 5,
+   "no_reflexive_question": 4.33,
+   "focused_no_dump": 5,
+   "helpful_honest": 4.67,
+   "emoji_name_policy": 5
+  },
+  "words": 50,
+  "ends_q": false
+ },
+ {
+  "biz": "dental",
+  "scenario": "hours-roman",
+  "customer": "open cha?",
+  "reply": "नमस्ते! Demo Dental Clinic (New Baneshwor) को खुल्ने समय: सोमबार–शुक्रबार 9:00 AM–6:00 PM. हामी शनिबार र आइतबार बन्द हुन्छौं — आज शनिबार भएकाले क्लिनिक आज बन्द छ।\n\nहाम्रा केही सेवाहरू: दाँत सन्चाई NPR 1500 (30 मिनेट), भराई NPR 2500 (45 मिनेट), रुट क्यानल NPR 9000 (90 मिनेट), टुथ व्हाइटेनिङ NPR 6000 (45 मिनेट), परामर्श NPR 500 (20 मिनेट). साइटमा पार्किङ उपलब्ध छ। भुक्तानी: नगद, eSewa, वा Khalti. रद्द गर्ने नियम: कम्तिमा 4 घण्टा अघि जानकारी दिनुहोस।\n\nनोट: यो च्याट स्यान्डबक्स हो — म यहाँबाट वास्तविक बुकिङ वा परिवर्तन गर्न सक्दिनँ। तपाइँ चाहनुहुन्छ भने म उपलब्ध समय र सेवाको बारेमा सल्लाह दिन सक्छु वा अर्को कुनै जानकारी दिन सक्छु। कुन सेवाका लागि कुन दिन/समय सोध्न चाहनुहुन्छ?",
+  "score": 27.4,
+  "criteria": {
+   "length_fit": 1.67,
+   "language_match": 2,
+   "natural_tone": 3.67,
+   "no_reflexive_question": 4.33,
+   "focused_no_dump": 1.33,
+   "helpful_honest": 3,
+   "emoji_name_policy": 5
+  },
+  "words": 115,
+  "ends_q": true
+ },
+ {
+  "biz": "dental",
+  "scenario": "hours-english",
+  "customer": "Are you open on Saturday?",
+  "reply": "Thanks for asking! We’re closed on Saturdays and Sundays. Our hours are Monday–Friday, 9:00 AM–6:00 PM. If you’d like, I can help find a weekday time for an appointment — which service and which day/time would you prefer? Note: this chat is a sandbox so I can’t actually book or change appointments here. We have on-site parking and accept cash, eSewa, and Khalti; please cancel at least 4 hours before your appointment.",
+  "score": 46.8,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 5,
+   "natural_tone": 4.33,
+   "no_reflexive_question": 3.33,
+   "focused_no_dump": 2,
+   "helpful_honest": 4.67,
+   "emoji_name_policy": 5
+  },
+  "words": 72,
+  "ends_q": false
+ },
+ {
+  "biz": "dental",
+  "scenario": "hours-english",
+  "customer": "Are you open on Saturday?",
+  "reply": "We’re closed on Saturdays and Sundays. Our hours are Monday–Friday, 9:00 AM–6:00 PM. If you’d like to book on a weekday, tell me which service you need and a preferred day/time and I can suggest available slots. Note: cancellation requires at least 4 hours’ notice; we have on‑site parking and accept cash, eSewa, or Khalti. (I can only chat here and cannot make bookings in this sandbox.)",
+  "score": 52.3,
+  "criteria": {
+   "length_fit": 2.33,
+   "language_match": 5,
+   "natural_tone": 4.67,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 2.33,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 67,
+  "ends_q": false
+ },
+ {
+  "biz": "dental",
+  "scenario": "hours-english",
+  "customer": "Are you open on Saturday?",
+  "reply": "Hi! We’re closed on Saturdays (and Sundays). Our hours are Monday–Friday, 9:00 AM to 6:00 PM. If you’d like, I can help you pick a weekday appointment for any of our services (Teeth Cleaning, Tooth Filling, Root Canal, Teeth Whitening, Dental Consultation). Please note our cancellation policy: cancel at least 4 hours before your appointment. We have on-site parking and accept cash, eSewa, and Khalti. I can’t actually book in this sandbox chat, but I’m happy to help you find a convenient time.",
+  "score": 49.1,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 5,
+   "natural_tone": 4,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 2,
+   "helpful_honest": 4.67,
+   "emoji_name_policy": 5
+  },
+  "words": 83,
+  "ends_q": false
+ },
+ {
+  "biz": "dental",
+  "scenario": "price",
+  "customer": "teeth cleaning ko price kati ho?",
+  "reply": "Teeth cleaning ko price NPR 1,500 ho ra samanya rupma yo karib 30 minute lagchha. Hamro clinic Monday–Friday 9:00 AM–6:00 PM kholcha (Saturday–Sunday band). Payment cash, eSewa, ani Khalti le linchhau. On-site parking upalabdha cha. Kripaya booking cancel garnu parne ho bhane kam se kam 4 ghanta aghi cancel garnu hola. Appointment lina cha? (Note: yo sandbox chat ho — ma yaha bata seedha booking garna sakdina, tara tapaiko lagi upayukt samaya haru sallah dinchhu.)",
+  "score": 47.0,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 4,
+   "natural_tone": 4.33,
+   "no_reflexive_question": 4,
+   "focused_no_dump": 2,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 75,
+  "ends_q": false
+ },
+ {
+  "biz": "dental",
+  "scenario": "price",
+  "customer": "teeth cleaning ko price kati ho?",
+  "reply": "नमस्ते! Teeth cleaning (दाँत सफा) को मूल्य NPR 1,500 हो। सेसन करिब 30 मिनेट लाग्छ।\n\nहामी New Baneshwor, Kathmandu मा छौं। समय: सोमबार–शुक्रबार 9:00 AM–6:00 PM (शनिबार & आइतबार बन्द)। भुक्तानी: Cash, eSewa वा Khalti। रद्द गर्नुपर्ने भए कम्तीमा 4 घण्टा अगाडि जानकारी गराउनुहोस्।\n\nम तपाईँको लागि सुविधाजनक मिति/समय सुन्न चाहन्छु—तर कृपया ध्यान दिनुहोस् यो sandbox च्याट मात्रै हो, म साँच्चैमा अपोइन्टमेन्ट बुक गर्न सक्दिनँ। कुन दिन/समय उपयुक्त हुन्छ भन्नुहोस्, म सल्लाह दिन्छु।",
+  "score": 32.7,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 2,
+   "natural_tone": 4,
+   "no_reflexive_question": 2,
+   "focused_no_dump": 1.67,
+   "helpful_honest": 4.33,
+   "emoji_name_policy": 5
+  },
+  "words": 73,
+  "ends_q": false
+ },
+ {
+  "biz": "dental",
+  "scenario": "price",
+  "customer": "teeth cleaning ko price kati ho?",
+  "reply": "Namaste — Teeth Cleaning (दाँत सफाइ) को शुल्क NPR 1500 हो र सेवा करिब 30 मिनेट लाग्छ।\n\nClinic: Demo Dental Clinic, New Baneshwor\nघडी: सोमवार–शुक्रबार 9:00 AM–6:00 PM (शनिबार/आइतबार बन्द)\nअन्य जानकारी: ऑन-साइट पार्किङ उपलब्ध। भुक्तानी: cash, eSewa वा Khalti। रद्द गर्ने नीति: कृपया कम्तीमा 4 घण्टा अघिनै रद्द गर्नुहोस्।\n\nसूचना: यहाँ म केवल च्याटमार्फत मद्दत गर्न सक्छु — वास्तविक अपोइन्टमेन्ट म यसबाट बुक गर्न सक्दिन। यदि चाहनुहुन्छ भने आफ्नो मनपर्ने मिति/समय बताउनुस्, म उपलब्ध सल्लाह दिन्छु र सुझाव दिन सक्छु।",
+  "score": 29.2,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 2.33,
+   "natural_tone": 3.33,
+   "no_reflexive_question": 3,
+   "focused_no_dump": 1.33,
+   "helpful_honest": 4.33,
+   "emoji_name_policy": 5
+  },
+  "words": 81,
+  "ends_q": false
+ },
+ {
+  "biz": "dental",
+  "scenario": "thanks",
+  "customer": "thank you",
+  "reply": "You're welcome! If you'd like to book an appointment, tell me the service and your preferred date and time and I can help guide you (note: I can't actually make the booking here). Our hours are Mon–Fri 9:00 AM–6:00 PM. Cancellation is required at least 4 hours before the appointment. We accept cash, eSewa, and Khalti. Anything else I can help with?",
+  "score": 24.7,
+  "criteria": {
+   "length_fit": 1.67,
+   "language_match": 5,
+   "natural_tone": 3.67,
+   "no_reflexive_question": 1,
+   "focused_no_dump": 1,
+   "helpful_honest": 4,
+   "emoji_name_policy": 5
+  },
+  "words": 62,
+  "ends_q": true
+ },
+ {
+  "biz": "dental",
+  "scenario": "thanks",
+  "customer": "thank you",
+  "reply": "You're welcome! Happy to help. If you need anything else — for example info on appointments, services, or availability — tell me which service and a preferred date/time and I can guide you. Our hours are Monday–Friday 9:00 AM–6:00 PM. Please remember to cancel at least 4 hours before an appointment. On-site parking is available, and we accept cash, eSewa, and Khalti.\n\nNote: this is a chat sandbox, so I can't actually book or change appointments here, but I can help with information and next steps. How can I assist further?",
+  "score": 22.0,
+  "criteria": {
+   "length_fit": 1.33,
+   "language_match": 5,
+   "natural_tone": 3,
+   "no_reflexive_question": 1,
+   "focused_no_dump": 1,
+   "helpful_honest": 3.67,
+   "emoji_name_policy": 5
+  },
+  "words": 91,
+  "ends_q": true
+ },
+ {
+  "biz": "dental",
+  "scenario": "thanks",
+  "customer": "thank you",
+  "reply": "You’re welcome! If you’d like to book an appointment, I can suggest available time slots during our hours (Mon–Fri 9:00 AM–6:00 PM). Please note I can’t actually make bookings here in this sandbox — I can only provide information. Also, please remember to cancel at least 4 hours in advance if needed. Anything else I can help with?",
+  "score": 24.1,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 5,
+   "natural_tone": 3,
+   "no_reflexive_question": 1,
+   "focused_no_dump": 1,
+   "helpful_honest": 4,
+   "emoji_name_policy": 5
+  },
+  "words": 58,
+  "ends_q": true
+ },
+ {
+  "biz": "salon",
+  "scenario": "greeting",
+  "customer": "hlo",
+  "reply": "Hello! Welcome to Demo Hair Salon in Jawalakhel, Lalitpur. We’re open every day 9:00 AM–8:00 PM. Our services: Haircut (NPR 600, 30 min); Hair Colour (NPR 3500, 120 min); Facial (NPR 1800, 60 min); Beard Trim (NPR 300, 15 min). Walk-ins are welcome if a stylist is free. Note our policy: arriving more than 15 minutes late may mean losing your slot. Payment by cash or eSewa. How can I help you today? (I can’t actually make bookings in this chat, but I can give information and help you plan.)",
+  "score": 32.7,
+  "criteria": {
+   "length_fit": 1.67,
+   "language_match": 5,
+   "natural_tone": 3.67,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 1,
+   "helpful_honest": 4.33,
+   "emoji_name_policy": 5
+  },
+  "words": 90,
+  "ends_q": false
+ },
+ {
+  "biz": "salon",
+  "scenario": "greeting",
+  "customer": "hlo",
+  "reply": "Hello! Welcome to Demo Hair Salon in Jawalakhel. We’re open every day 9:00 AM–8:00 PM. How can I help you today — would you like information on services and prices, to check availability, or something else? Our main services: Haircut NPR 600 (30 min); Hair Colour NPR 3500 (120 min); Facial NPR 1800 (60 min); Beard Trim NPR 300 (15 min). Walk-ins are welcome if a stylist is free. Payment by cash or eSewa. Note: I can only chat here and cannot actually make bookings, but tell me what you need and I’ll guide you on the next steps.",
+  "score": 31.5,
+  "criteria": {
+   "length_fit": 1.33,
+   "language_match": 5,
+   "natural_tone": 3.67,
+   "no_reflexive_question": 4.67,
+   "focused_no_dump": 1,
+   "helpful_honest": 4.33,
+   "emoji_name_policy": 5
+  },
+  "words": 99,
+  "ends_q": false
+ },
+ {
+  "biz": "salon",
+  "scenario": "greeting",
+  "customer": "hlo",
+  "reply": "Hello! Welcome to Demo Hair Salon in Jawalakhel, Lalitpur. We’re open every day from 9:00 AM to 8:00 PM. Our main services: Haircut — NPR 600 (30 min); Hair Colour — NPR 3500 (120 min); Facial — NPR 1800 (60 min); Beard Trim — NPR 300 (15 min). Walk-ins are welcome when a stylist is free. Please note: if you’re more than 15 minutes late you may lose your slot. We accept payment by cash or eSewa. I can’t actually make a booking from this chat (sandbox), but I’m happy to help you choose a service or answer any questions — what would you like to book or know more about?",
+  "score": 31.5,
+  "criteria": {
+   "length_fit": 1.67,
+   "language_match": 5,
+   "natural_tone": 3,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 1,
+   "helpful_honest": 4.33,
+   "emoji_name_policy": 5
+  },
+  "words": 111,
+  "ends_q": true
+ },
+ {
+  "biz": "salon",
+  "scenario": "hours-roman",
+  "customer": "open cha?",
+  "reply": "Ho — Demo Hair Salon pratidin 9:00 AM dekhi 8:00 PM samma khula cha. Hamro thau Jawalakhel, Lalitpur ho. Services: Haircut NPR 600 (30 min); Hair Colour NPR 3500 (120 min); Facial NPR 1800 (60 min); Beard Trim NPR 300 (15 min). Walk-ins welcome if stylist free; tara 15 minutes bhanda badi late bhaye slot harna sakincha. Payment cash or eSewa. Ke tapaai aaja auna chahanu huncha? Ma yaha bata sachikai booking garna sakdina, tara kun service chahinchha bhanera btaunu, ma madat garna sakchhu.",
+  "score": 40.8,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 5,
+   "natural_tone": 4,
+   "no_reflexive_question": 3,
+   "focused_no_dump": 1.67,
+   "helpful_honest": 4.67,
+   "emoji_name_policy": 5
+  },
+  "words": 84,
+  "ends_q": false
+ },
+ {
+  "biz": "salon",
+  "scenario": "hours-roman",
+  "customer": "open cha?",
+  "reply": "Ho — Demo Hair Salon harek din 9:00 AM dekhi 8:00 PM samma khuleko cha. Hamro thau Jawalakhel, Lalitpur ho. Walk-ins welcome chhan (stylist free bhaye matra). 15 minute bhandaa beshi late bhaye tapai ko slot harna sakcha. Payment cash wa eSewa le huncha.\n\nAuna man cha vane bhanidinuhos — ma yaha matra chat garna sakchhu, tesaile real booking garna sakdina. Kaha ko service chahanu huncha? (Haircut, Hair Colour, Facial, Beard Trim)",
+  "score": 56.6,
+  "criteria": {
+   "length_fit": 2.33,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 4,
+   "focused_no_dump": 3,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 72,
+  "ends_q": false
+ },
+ {
+  "biz": "salon",
+  "scenario": "hours-roman",
+  "customer": "open cha?",
+  "reply": "Ho — khula cha! Haami pratidin 9:00 AM–8:00 PM, Jawalakhel, Lalitpur ma chau. Walk-ins welcome cha jasari stylist free huncha. \n\nServices ra rates:\n- Haircut NPR 600 (30 min)\n- Hair Colour NPR 3500 (120 min)\n- Facial NPR 1800 (60 min)\n- Beard Trim NPR 300 (15 min)\n\nPayment: cash or eSewa. Nota: yo sandbox chat ho — ma yaha matra bolna sakchhu; actual booking garnu/parivartan garnu sakdina. Kun service chahincha? kun time ma aunu huncha bhanera btaunu hola.",
+  "score": 51.8,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 4.67,
+   "focused_no_dump": 2.33,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 80,
+  "ends_q": false
+ },
+ {
+  "biz": "salon",
+  "scenario": "hours-english",
+  "customer": "Are you open on Saturday?",
+  "reply": "Yes — we’re open on Saturdays! Our hours are every day 9:00 AM–8:00 PM.\n\nWalk-ins are welcome if a stylist is free. If you’d like to book, tell me which service and your preferred time and I can check availability (note: in this sandbox I can only chat — I can’t actually make a booking). Prices and typical durations:\n- Haircut: NPR 600 (30 min)\n- Hair Colour: NPR 3500 (120 min)\n- Facial: NPR 1800 (60 min)\n- Beard Trim: NPR 300 (15 min)\n\nPayment by cash or eSewa. Also please note if you’re more than 15 minutes late you may lose your slot. How can I help you next?",
+  "score": 28.3,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 5,
+   "natural_tone": 4,
+   "no_reflexive_question": 1,
+   "focused_no_dump": 1.33,
+   "helpful_honest": 4.67,
+   "emoji_name_policy": 5
+  },
+  "words": 111,
+  "ends_q": true
+ },
+ {
+  "biz": "salon",
+  "scenario": "hours-english",
+  "customer": "Are you open on Saturday?",
+  "reply": "Yes — we’re open on Saturdays! Our hours are 9:00 AM to 8:00 PM every day. Walk-ins are welcome if a stylist is free. Please note: arriving more than 15 minutes late may mean you lose your slot. We accept payment by cash or eSewa. I can’t actually make bookings here, but I’m happy to help with information about services or typical availability — would you like that?",
+  "score": 46.4,
+  "criteria": {
+   "length_fit": 2.33,
+   "language_match": 5,
+   "natural_tone": 4.67,
+   "no_reflexive_question": 2,
+   "focused_no_dump": 2,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 68,
+  "ends_q": true
+ },
+ {
+  "biz": "salon",
+  "scenario": "hours-english",
+  "customer": "Are you open on Saturday?",
+  "reply": "Yes — we’re open on Saturdays! Our hours are every day from 9:00 AM to 8:00 PM at Demo Hair Salon in Jawalakhel, Lalitpur.\n\nWalk-ins are welcome if a stylist is free. A couple of quick notes: arriving more than 15 minutes late may forfeit your slot, and we accept payment by cash or eSewa. I can’t actually make bookings in this chat, but if you tell me which service you want (Haircut NPR 600, Hair Colour NPR 3500, Facial NPR 1800, Beard Trim NPR 300) and your preferred time, I’ll help you with the next steps or how to reserve.",
+  "score": 56.5,
+  "criteria": {
+   "length_fit": 2.33,
+   "language_match": 5,
+   "natural_tone": 4.67,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 2.33,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 101,
+  "ends_q": false
+ },
+ {
+  "biz": "salon",
+  "scenario": "price",
+  "customer": "haircut ko price kati ho?",
+  "reply": "Haircut ko price NPR 600 ho. Samaya: praya 30 minutes. Hamro hours: harek din 9:00 AM–8:00 PM. Walk-ins welcome (stylist free bhaye). Payment: cash or eSewa. Note: ma yaha matra chat garna sakchhu — yo sandbox ho, ma sidha booking garna sakdina. Booking confirm garna chai salon (Jawalakhel, Lalitpur) ma aaera garnu hola.",
+  "score": 56.8,
+  "criteria": {
+   "length_fit": 2.67,
+   "language_match": 5,
+   "natural_tone": 4.67,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 2.67,
+   "helpful_honest": 4.67,
+   "emoji_name_policy": 5
+  },
+  "words": 53,
+  "ends_q": false
+ },
+ {
+  "biz": "salon",
+  "scenario": "price",
+  "customer": "haircut ko price kati ho?",
+  "reply": "Namaste! Haircut ko price NPR 600 ho. Samaya approx 30 minutes lagchha.\n\nHamro salon Jawalakhel, Lalitpur ma cha — harek din 9:00 AM–8:00 PM khula. Walk-ins welcome (stylist free bhaye matra). Payment cash ra eSewa dwara linu huncha.\n\nNote: Yo sandbox chat ho — ma yahan bata sidha appointment book garna sakdina. Aru sodhna khojnu huncha? Ma madat garna tayar chu.",
+  "score": 37.5,
+  "criteria": {
+   "length_fit": 2.33,
+   "language_match": 5,
+   "natural_tone": 4.67,
+   "no_reflexive_question": 1.33,
+   "focused_no_dump": 2.33,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 61,
+  "ends_q": false
+ },
+ {
+  "biz": "salon",
+  "scenario": "price",
+  "customer": "haircut ko price kati ho?",
+  "reply": "नमस्ते! haircut को price NPR 600 हो, service करिब 30 मिनेट लाग्छ। हामी हरेक दिन बिहान 9:00 बजे देखि साँझ 8:00 बजे सम्म खुल्छौं। Walk-ins स्वागत छन् (यदि stylist available भएमा)। 15 मिनेट भन्दा बढी ढिला हुनुभयो भने तपाईंको slot हराउन सक्छ। भुक्तानी नगद वा eSewa बाट गर्न सकिन्छ। availability हेर्न वा appointment बारे सोध्न चाहनुहुन्छ भने भन्नुहोस् — तर नोट: म यहाँ केवल च्याट गर्न सक्छु, वास्तविक booking वा परिवर्तन गर्न सक्दिन। धन्यवाद!",
+  "score": 34.8,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 2,
+   "natural_tone": 4.33,
+   "no_reflexive_question": 2.33,
+   "focused_no_dump": 1.67,
+   "helpful_honest": 4.67,
+   "emoji_name_policy": 5
+  },
+  "words": 74,
+  "ends_q": false
+ },
+ {
+  "biz": "salon",
+  "scenario": "thanks",
+  "customer": "thank you",
+  "reply": "You're welcome! Ke ma aru madat garna sakchu? Hamro hours: daily 9:00 AM–8:00 PM. Walk-ins welcome if a stylist free. Payment: cash or eSewa. Note: I can only chat here — I can't actually book an appointment, but I can tell you prices, durations, or availability details.",
+  "score": 17.0,
+  "criteria": {
+   "length_fit": 1.67,
+   "language_match": 1.33,
+   "natural_tone": 3,
+   "no_reflexive_question": 1,
+   "focused_no_dump": 1,
+   "helpful_honest": 4,
+   "emoji_name_policy": 5
+  },
+  "words": 47,
+  "ends_q": false
+ },
+ {
+  "biz": "salon",
+  "scenario": "thanks",
+  "customer": "thank you",
+  "reply": "You're welcome! If you'd like to book an appointment or have any other questions—hours, services, or payment options—I’m happy to help. We’re open daily 9:00 AM–8:00 PM. Walk-ins are welcome if a stylist is free, and we accept cash or eSewa. Anything else I can do for you?",
+  "score": 24.7,
+  "criteria": {
+   "length_fit": 1.67,
+   "language_match": 5,
+   "natural_tone": 3.67,
+   "no_reflexive_question": 1,
+   "focused_no_dump": 1,
+   "helpful_honest": 4,
+   "emoji_name_policy": 5
+  },
+  "words": 48,
+  "ends_q": true
+ },
+ {
+  "biz": "salon",
+  "scenario": "thanks",
+  "customer": "thank you",
+  "reply": "You’re welcome! If you’d like, I can help with more info or arrange a time — we’re open every day 9:00 AM–8:00 PM and welcome walk-ins if a stylist is free. Payments accepted: cash or eSewa. Note: I can only chat here and can’t actually complete bookings in this sandbox. Kehi madat chahiyo bhane bhannuhos!",
+  "score": 33.6,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 3,
+   "natural_tone": 4,
+   "no_reflexive_question": 3,
+   "focused_no_dump": 1.67,
+   "helpful_honest": 3.33,
+   "emoji_name_policy": 5
+  },
+  "words": 55,
+  "ends_q": false
+ },
+ {
+  "biz": "trek",
+  "scenario": "greeting",
+  "customer": "hlo",
+  "reply": "Hello! Welcome to Demo Himalayan Treks. How can I help you today? We’re located in Thamel and are open Monday–Friday and Sunday 10:00 AM–6:00 PM (closed Saturday).\n\nOur popular trips:\n- Poon Hill Trek — USD 450 (5 days)\n- Everest Base Camp Trek — USD 1400 (14 days)\n- Day Hike Nagarkot — USD 60 (1 day)\n\nA 30% deposit is required to confirm a booking; you’ll get a full refund if you cancel 14 or more days before departure. Trekking permits are arranged by us and included in the price.\n\nNote: this is a sandbox chat, so I can provide information and help plan but cannot actually make or change bookings here. What trip or dates are you interested in, and how many people will be coming?",
+  "score": 35.1,
+  "criteria": {
+   "length_fit": 1.67,
+   "language_match": 5,
+   "natural_tone": 4,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 1,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 129,
+  "ends_q": true
+ },
+ {
+  "biz": "trek",
+  "scenario": "greeting",
+  "customer": "hlo",
+  "reply": "Hi—welcome to Demo Himalayan Treks! We're a trekking agency in Thamel, Kathmandu. Our hours: Mon–Fri and Sun 10:00–18:00 (closed Saturdays).\n\nWe offer:\n- Poon Hill Trek — USD 450 (5 days)\n- Everest Base Camp Trek — USD 1400 (14 days)\n- Day Hike Nagarkot — USD 60 (1 day)\n\nPolicies: 30% deposit to confirm a booking; full refund if cancelled 14+ days before departure. Trekking permits are arranged by us and included in the price.\n\nNote: in this sandbox chat I can’t actually book or change reservations, but I can give information and help plan. What would you like help with—more details on a trek, availability for certain dates, or recommendations?",
+  "score": 29.1,
+  "criteria": {
+   "length_fit": 1,
+   "language_match": 5,
+   "natural_tone": 3.33,
+   "no_reflexive_question": 4,
+   "focused_no_dump": 1,
+   "helpful_honest": 4.33,
+   "emoji_name_policy": 5
+  },
+  "words": 112,
+  "ends_q": true
+ },
+ {
+  "biz": "trek",
+  "scenario": "greeting",
+  "customer": "hlo",
+  "reply": "Hello! Welcome to Demo Himalayan Treks — how can I help you today?\n\nQuick info to get started:\n- Hours: Mon–Fri & Sun 10:00 AM–6:00 PM (closed Saturday)\n- Treks we offer: Poon Hill — USD 450 (5 days); Everest Base Camp — USD 1400 (14 days); Day Hike Nagarkot — USD 60 (1 day)\n- Booking notes: 30% deposit to confirm; full refund if cancelled 14+ days before departure. Permits are arranged by us and included in the price.\n\nPlease tell me which trek or dates you're interested in, or ask any questions — I’m here to help. (Note: this is a chat-only sandbox, so I can’t complete actual bookings here.)",
+  "score": 35.7,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 5,
+   "natural_tone": 4.33,
+   "no_reflexive_question": 4.67,
+   "focused_no_dump": 1,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 112,
+  "ends_q": false
+ },
+ {
+  "biz": "trek",
+  "scenario": "hours-roman",
+  "customer": "open cha?",
+  "reply": "Namaste! Ho — our office hours are Monday–Friday 10:00 AM–6:00 PM and Sunday 10:00 AM–6:00 PM. We are closed on Saturdays. Are you asking about today — or would you like information on a particular trek? I can help with details and booking steps (note: this chat can’t complete an actual booking, but I’ll guide you).",
+  "score": 48.2,
+  "criteria": {
+   "length_fit": 3,
+   "language_match": 2,
+   "natural_tone": 4,
+   "no_reflexive_question": 4,
+   "focused_no_dump": 4,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 56,
+  "ends_q": false
+ },
+ {
+  "biz": "trek",
+  "scenario": "hours-roman",
+  "customer": "open cha?",
+  "reply": "Ho — Demo Himalayan Treks khula cha. Hāmī Monday–Friday 10:00 AM–6:00 PM ra Sunday 10:00 AM–6:00 PM khula huncha; Saturday bandha huncha. Ke ma tapaīlā'ī trek info, price, athawā kunai schedule herera madat garu? (Note: yo sandbox chat ho — yaha bata siddha booking garna mildaina.)",
+  "score": 71.4,
+  "criteria": {
+   "length_fit": 4.33,
+   "language_match": 3.33,
+   "natural_tone": 4.33,
+   "no_reflexive_question": 4,
+   "focused_no_dump": 4.67,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 46,
+  "ends_q": false
+ },
+ {
+  "biz": "trek",
+  "scenario": "hours-roman",
+  "customer": "open cha?",
+  "reply": "Namaste — aaja hamro office bandh cha. Hamro regular hours: Mon–Fri 10:00–18:00 and Sunday 10:00–18:00. Saturday hamro weekly off ho.\n\nTapaĩle kun trek ko jankari chahanu huncha? (Poon Hill — 5 days, USD 450; Everest Base Camp — 14 days, USD 1400; Day Hike Nagarkot — 1 day, USD 60). If you tell me your preferred dates and trek, I can note it and get back to you when we’re open.\n\nNote: we require a 30% deposit to confirm bookings; permits are arranged by us and included in the price; full refund if cancelled 14+ days before departure. Also, this is a chat sandbox so I can’t actually make bookings from here. Thank you!",
+  "score": 43.4,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 3.67,
+   "natural_tone": 4,
+   "no_reflexive_question": 4.67,
+   "focused_no_dump": 2,
+   "helpful_honest": 3.67,
+   "emoji_name_policy": 5
+  },
+  "words": 114,
+  "ends_q": false
+ },
+ {
+  "biz": "trek",
+  "scenario": "hours-english",
+  "customer": "Are you open on Saturday?",
+  "reply": "We’re closed on Saturdays. Our hours are Monday–Friday 10:00 AM–6:00 PM and Sunday 10:00 AM–6:00 PM. If you’d like, I can help answer questions or start planning a trek here in chat (note: in this sandbox you can’t actually complete a booking).",
+  "score": 85.7,
+  "criteria": {
+   "length_fit": 4,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 42,
+  "ends_q": false
+ },
+ {
+  "biz": "trek",
+  "scenario": "hours-english",
+  "customer": "Are you open on Saturday?",
+  "reply": "Hi — thanks for asking! We're closed on Saturdays. Our hours are Monday–Friday and Sunday, 10:00 AM–6:00 PM (Thamel, Kathmandu).\n\nIf you'd like, tell me what trek and dates you're thinking about and I can give availability info, pricing, and next steps. (Note: this is a chat sandbox so I can't complete bookings here — our normal policy is a 30% deposit to confirm a booking and permits are included in the price.)\n\nHow can I help you plan?",
+  "score": 42.9,
+  "criteria": {
+   "length_fit": 2.33,
+   "language_match": 5,
+   "natural_tone": 4.33,
+   "no_reflexive_question": 2,
+   "focused_no_dump": 2.67,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 79,
+  "ends_q": true
+ },
+ {
+  "biz": "trek",
+  "scenario": "hours-english",
+  "customer": "Are you open on Saturday?",
+  "reply": "Hi — thanks for asking! We are closed on Saturdays. Our hours are Monday–Friday 10:00 AM–6:00 PM and Sunday 10:00 AM–6:00 PM.\n\nIf you'd like, I can help with trek info, availability options for other days, or explain our booking steps (we require a 30% deposit to confirm). Note: in this chat sandbox I can only provide information — I can't actually make or change bookings here. How can I help you next?",
+  "score": 37.5,
+  "criteria": {
+   "length_fit": 2.33,
+   "language_match": 5,
+   "natural_tone": 4.67,
+   "no_reflexive_question": 1.33,
+   "focused_no_dump": 2.33,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 73,
+  "ends_q": true
+ },
+ {
+  "biz": "trek",
+  "scenario": "price",
+  "customer": "Everest Base Camp trek ko price kati ho?",
+  "reply": "Namaste! Everest Base Camp Trek ko price USD 1400 per vyakti ho. Trek 14 dinko ho. Price ma trekking permits samet include bhayeko cha ra hami permit arrange garnechhu.\n\nBooking confirm garnalai 30% deposit chahinchha. Cancel garda 14 din or tala agadi bhaye full refund paunuhunchha.\n\nHamro office Thamel, Kathmandu ma cha. Office hours: Mon–Fri 10:00–18:00, Sun 10:00–18:00 (Saturday band).\n\nTapaai booking garna chaahanu huncha vane tapaiko expected departure date ra kati jana hunuhunchha bhanera pathaunuhos — ma agadi ko steps bataidinchu. (Note: yo sandbox chat ho — yaha bata actual booking garna mildaina.) Kehi aru sodhna cha?",
+  "score": 45.2,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 4.33,
+   "natural_tone": 4.67,
+   "no_reflexive_question": 2,
+   "focused_no_dump": 2.33,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 98,
+  "ends_q": true
+ },
+ {
+  "biz": "trek",
+  "scenario": "price",
+  "customer": "Everest Base Camp trek ko price kati ho?",
+  "reply": "Everest Base Camp Trek ko price USD 1400 ho. Yo trek 14 dinko program ho. \n\nBooking confirm garna 30% deposit chahinchha. Trekking permits hamro price maa samabesh chan. Yadi trek ko departure bhanda 14 din aghi cancel garincha bhane full refund dinchhau. \n\n(Note: yo sandbox ho — yahan matra kura garna sakincha, tapaiko lagi actual booking yaha bata gareko hudaina.)\n\nKati jana hunuhunchha ra kahile janu bhane sochnu bhayo? Ma arko madat garna sakchhu.",
+  "score": 56.5,
+  "criteria": {
+   "length_fit": 2.33,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 4,
+   "focused_no_dump": 3,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 74,
+  "ends_q": false
+ },
+ {
+  "biz": "trek",
+  "scenario": "price",
+  "customer": "Everest Base Camp trek ko price kati ho?",
+  "reply": "Namaste! Everest Base Camp trek ko price USD 1,400 per person ho. Duration 14 days. Booking confirm garna 30% deposit lagchha (USD 420). Price bhitra trekking permits ra hami le garne arrangement haru sammilit chan. Cancellation policy: departure ko 14 din bhandaa agadi cancel garda full refund. Note: yo sandbox chat ma matra ho — yaha bata real booking garna mildaina. Tapai kun tarikamaa ani kati jana hunuhunchha? Ma arko maddat (itinerary, packing list, flights adi) garna sakchhu.",
+  "score": 57.1,
+  "criteria": {
+   "length_fit": 3.33,
+   "language_match": 3,
+   "natural_tone": 4.67,
+   "no_reflexive_question": 4.67,
+   "focused_no_dump": 4,
+   "helpful_honest": 5,
+   "emoji_name_policy": 5
+  },
+  "words": 78,
+  "ends_q": false
+ },
+ {
+  "biz": "trek",
+  "scenario": "thanks",
+  "customer": "thank you",
+  "reply": "You're welcome! If you'd like to proceed, the Everest Base Camp trek is USD 1400 for 14 days and requires a 30% deposit to confirm a booking. Trekking permits are arranged by us and included in the price. Our office hours are Mon–Fri and Sun 10:00 AM–6:00 PM (closed Saturday). Please note this is a sandbox chat — I can’t actually make bookings here, but I can help with information, dates, packing lists, or next steps. Would you like help choosing departure dates or anything else?",
+  "score": 24.1,
+  "criteria": {
+   "length_fit": 1.33,
+   "language_match": 5,
+   "natural_tone": 3.67,
+   "no_reflexive_question": 1,
+   "focused_no_dump": 1,
+   "helpful_honest": 4,
+   "emoji_name_policy": 5
+  },
+  "words": 86,
+  "ends_q": true
+ },
+ {
+  "biz": "trek",
+  "scenario": "thanks",
+  "customer": "thank you",
+  "reply": "You're welcome! If you'd like to book or need more details—available dates, itinerary, what's included, fitness level required, or gear list—I can help. Just a reminder: we require a 30% deposit to confirm bookings, permits are arranged by us and included in the price, and you get a full refund if you cancel 14 or more days before departure. Our office hours are Mon–Fri and Sun 10:00 AM–6:00 PM (closed Saturday). \n\nNote: in this sandbox chat I can't actually make bookings, but I can guide you through the steps. Would you like to check available dates or get the detailed itinerary for the Everest Base Camp trek?",
+  "score": 22.9,
+  "criteria": {
+   "length_fit": 1.33,
+   "language_match": 5,
+   "natural_tone": 3,
+   "no_reflexive_question": 1,
+   "focused_no_dump": 1,
+   "helpful_honest": 4,
+   "emoji_name_policy": 5
+  },
+  "words": 107,
+  "ends_q": true
+ },
+ {
+  "biz": "trek",
+  "scenario": "thanks",
+  "customer": "thank you",
+  "reply": "You’re welcome! If you’d like to proceed with the Everest Base Camp Trek (USD 1400, 14 days), we require a 30% deposit to confirm and trekking permits are included and arranged by us. I can help with available departure dates, the itinerary, packing list, or any other questions. Our office hours are Mon–Fri and Sun 10:00 AM–6:00 PM (closed Saturday). Please note I can only provide information here and cannot complete bookings in this sandbox — how would you like to proceed?",
+  "score": 25.3,
+  "criteria": {
+   "length_fit": 2,
+   "language_match": 5,
+   "natural_tone": 3.67,
+   "no_reflexive_question": 1,
+   "focused_no_dump": 1,
+   "helpful_honest": 4,
+   "emoji_name_policy": 5
+  },
+  "words": 82,
+  "ends_q": true
+ }
+]

@@ -1,0 +1,2 @@
+# conversation-lab ONLY -- never add these to backend/requirements.txt.
+dspy==3.3.1

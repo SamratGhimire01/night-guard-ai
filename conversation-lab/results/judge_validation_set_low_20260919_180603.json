@@ -1,0 +1,872 @@
+{
+ "set": "validation_set",
+ "effort": "low",
+ "samples": 5,
+ "elapsed_s": 31,
+ "results": [
+  {
+   "group": "greeting-hlo",
+   "kind": "real",
+   "label": "bad",
+   "text": "Hello! Welcome to Samaj Dental Clinic. How can I help you today? We offer general dentistry, orthodontics (braces), oral surgery, and cosmetic treatments — on-site parking is available.",
+   "provenance": "Phase 3, live run #3 (pre-fix)",
+   "customer": "hlo",
+   "score": 45.2,
+   "per_sample": [
+    40.2,
+    47.3,
+    47.3,
+    45.5,
+    45.5
+   ],
+   "weighted_v1": 65.4,
+   "criteria": {
+    "length_fit": 2,
+    "language_match": 5,
+    "natural_tone": 3.6,
+    "no_reflexive_question": 4.8,
+    "focused_no_dump": 2,
+    "helpful_honest": 3.6,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 28,
+    "sentence_count": 4,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "greeting-hlo",
+   "kind": "real",
+   "label": "bad",
+   "text": "Hello! Welcome to Samaj Dental Clinic in New Baneshwor — we offer general dentistry, orthodontics, oral surgery, and cosmetic treatments, and on-site parking is available. How can I help you today — an appointment, question about a service, or directions?",
+   "provenance": "Phase 3, live run #5 (pre-fix)",
+   "customer": "hlo",
+   "score": 29.3,
+   "per_sample": [
+    24.1,
+    23.2,
+    31.2,
+    43.8,
+    24.1
+   ],
+   "weighted_v1": 53.6,
+   "criteria": {
+    "length_fit": 2,
+    "language_match": 5,
+    "natural_tone": 2.8,
+    "no_reflexive_question": 4.6,
+    "focused_no_dump": 1.2,
+    "helpful_honest": 2.6,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 40,
+    "sentence_count": 3,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "greeting-hlo",
+   "kind": "real",
+   "label": "bad",
+   "text": "Hi — welcome to Test Chat Biz! How can I help you today? I can assist with appointments, services, pricing, hours, location, or policies.",
+   "provenance": "Phase 7, stale-container live reply",
+   "customer": "hlo",
+   "score": 23.9,
+   "per_sample": [
+    23.2,
+    21.4,
+    26.8,
+    25.0,
+    23.2
+   ],
+   "weighted_v1": 47.9,
+   "criteria": {
+    "length_fit": 2.4,
+    "language_match": 5,
+    "natural_tone": 2.2,
+    "no_reflexive_question": 4.8,
+    "focused_no_dump": 2,
+    "helpful_honest": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 24,
+    "sentence_count": 3,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "greeting-hlo",
+   "kind": "real",
+   "label": "good",
+   "text": "Namaste! Kasari sahayog garna sakchu?",
+   "provenance": "Phase 4, post-fix live run #1",
+   "customer": "hlo",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 5,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "greeting-hlo",
+   "kind": "real",
+   "label": "good",
+   "text": "Hi! Welcome to Samaj Dental Clinic — how can I help you today?",
+   "provenance": "Phase 4, post-fix live run #2",
+   "customer": "hlo",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 13,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "greeting-hlo",
+   "kind": "real",
+   "label": "good",
+   "text": "Hi! K ma madat garna sakchu?",
+   "provenance": "Phase 4, post-fix live run #3",
+   "customer": "hlo",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 6,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "greeting-hlo",
+   "kind": "real",
+   "label": "good",
+   "text": "Namaste! K ma madat garna sakchu? 😊",
+   "provenance": "Phase 7, live after container recreate",
+   "customer": "hlo",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 7,
+    "sentence_count": 3,
+    "ends_with_question": false,
+    "emoji_count": 1,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "greeting-hlo",
+   "kind": "real",
+   "label": "good",
+   "text": "Hi — welcome to Samaj Dental Clinic. How can I help you today?",
+   "provenance": "Phase 8, live after recreate",
+   "customer": "hlo",
+   "score": 97.1,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    85.7,
+    100.0
+   ],
+   "weighted_v1": 99.3,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 4.8,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 13,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "greeting-yo",
+   "kind": "real",
+   "label": "bad",
+   "text": "Hi! Welcome to Samaj Dental Clinic in New Baneshwor. How can I help you today — would you like to book an appointment, get directions, or hear more about a specific service?",
+   "provenance": "Phase 1 audit §2.A, real transcript 3db7b0b2",
+   "customer": "Yo",
+   "score": 51.8,
+   "per_sample": [
+    62.5,
+    50.0,
+    48.2,
+    50.0,
+    48.2
+   ],
+   "weighted_v1": 73.6,
+   "criteria": {
+    "length_fit": 2.6,
+    "language_match": 5,
+    "natural_tone": 4,
+    "no_reflexive_question": 3.8,
+    "focused_no_dump": 2.2,
+    "helpful_honest": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 32,
+    "sentence_count": 3,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "greeting-yo",
+   "kind": "real",
+   "label": "bad",
+   "text": "Hi! Welcome to Samaj Dental Clinic. How can I help — would you like to book an appointment, get directions to our New Baneshwor clinic (we have on-site parking), or learn about a specific service?",
+   "provenance": "Phase 1 audit §2.A, real transcript 3db7b0b2",
+   "customer": "Yo",
+   "score": 46.8,
+   "per_sample": [
+    45.5,
+    51.8,
+    43.8,
+    46.5,
+    46.5
+   ],
+   "weighted_v1": 68.6,
+   "criteria": {
+    "length_fit": 2.4,
+    "language_match": 5,
+    "natural_tone": 4,
+    "no_reflexive_question": 3.4,
+    "focused_no_dump": 2,
+    "helpful_honest": 4.6,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 35,
+    "sentence_count": 3,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "greeting-yo",
+   "kind": "real",
+   "label": "good",
+   "text": "Hi! How can I help you today?",
+   "provenance": "Phase 4, eval-set re-run",
+   "customer": "Yo",
+   "score": 94.3,
+   "per_sample": [
+    85.7,
+    100.0,
+    100.0,
+    100.0,
+    85.7
+   ],
+   "weighted_v1": 98.6,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 4.6,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 7,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "hours-open-cha",
+   "kind": "real",
+   "label": "bad",
+   "text": "Maile yaha hamro opening hours ko info paudina. Ke ma team sanga connect garera confirm garera dinu?",
+   "provenance": "Phase 6 baseline (pre-fix, hours not given to LLM)",
+   "customer": "open cha?",
+   "score": 16.8,
+   "per_sample": [
+    14.3,
+    17.9,
+    16.1,
+    17.9,
+    17.9
+   ],
+   "weighted_v1": 33.6,
+   "criteria": {
+    "length_fit": 2.2,
+    "language_match": 4.8,
+    "natural_tone": 3.2,
+    "no_reflexive_question": 1,
+    "focused_no_dump": 1.2,
+    "helpful_honest": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 17,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "hours-open-cha",
+   "kind": "real",
+   "label": "good",
+   "text": "Ho — hami Somabar dekhi Sukrabar samma, 9:00 AM dekhi 6:00 PM samma khula chau. Sanibar ra Aitabar bandha huncha.",
+   "provenance": "Phase 6, post-fix live run",
+   "customer": "open cha?",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 20,
+    "sentence_count": 2,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "hours-open-cha",
+   "kind": "real",
+   "label": "good",
+   "text": "Ho — hamro clinic Somabar dekhi Shukrabar 9:00 AM–6:00 PM samma khula cha. Saturday ra Sunday bandha huncha.",
+   "provenance": "Phase 8, live re-verification",
+   "customer": "open cha?",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 18,
+    "sentence_count": 2,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "thanks-closing",
+   "kind": "real",
+   "label": "bad",
+   "text": "You're welcome — would you like me to check available times for a cleaning?",
+   "provenance": "Phase 6 baseline (pre-fix)",
+   "customer": "thank you",
+   "score": 47.3,
+   "per_sample": [
+    50.0,
+    29.4,
+    54.5,
+    50.9,
+    51.8
+   ],
+   "weighted_v1": 74.6,
+   "criteria": {
+    "length_fit": 3.8,
+    "language_match": 5,
+    "natural_tone": 4.8,
+    "no_reflexive_question": 1.8,
+    "focused_no_dump": 3.4,
+    "helpful_honest": 4.4,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 14,
+    "sentence_count": 1,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "thanks-closing",
+   "kind": "real",
+   "label": "good",
+   "text": "You're welcome!",
+   "provenance": "Phase 6, post-fix live run",
+   "customer": "thank you",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 2,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "availability-no-contact-gate",
+   "kind": "real",
+   "label": "bad",
+   "text": "Bujhe — Teeth Cleaning (Scaling & Polishing). Lock garna malai tapaiko naam ra phone number wa email chahincha.",
+   "provenance": "Phase 6 baseline (contact gate fired first)",
+   "customer": "teeth cleaning available cha?",
+   "score": 49.5,
+   "per_sample": [
+    49.1,
+    45.5,
+    50.9,
+    52.7,
+    49.1
+   ],
+   "weighted_v1": 73.9,
+   "criteria": {
+    "length_fit": 3.8,
+    "language_match": 5,
+    "natural_tone": 4.8,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 3.6,
+    "helpful_honest": 2,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 18,
+    "sentence_count": 2,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "availability-no-contact-gate",
+   "kind": "real",
+   "label": "good",
+   "text": "Teeth Cleaning (Scaling & Polishing) ko lagi yi samaya haru khali chan: Thursday, September 17 at 9:30 AM, Thursday, September 17 at 9:45 AM, Thursday, September 17 at 10:00 AM, Thursday, September 17 at 10:15 AM, Thursday, September 17 at 10:30 AM. Kun milcha?",
+   "provenance": "Phase 8, live re-verification",
+   "customer": "teeth cleaning available cha?",
+   "score": 100.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 100.0,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 44,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "reask-loop-whatsapp",
+   "kind": "real",
+   "label": "bad",
+   "text": "Thik cha — yo dui jana ko Teeth Cleaning ho bhanera bujhe. E‑Sewa QR kun method ma pathaun? WhatsApp 98XXXXXXXX, email sita@example.com, or SMS 98XXXXXXXX — kun ma pathaun bhanera confirm garnuhos. Ra eSewa QR dui ota pathaun huncha ho?",
+   "provenance": "Rule-16 phase, real BEFORE turn 11 (loop reproduced)",
+   "customer": "Tooth cleaning Ani tei what app number ma pathaunu k",
+   "score": 25.5,
+   "per_sample": [
+    16.1,
+    37.5,
+    34.8,
+    21.4,
+    17.9
+   ],
+   "weighted_v1": 41.1,
+   "criteria": {
+    "length_fit": 2,
+    "language_match": 4.8,
+    "natural_tone": 3.4,
+    "no_reflexive_question": 1.8,
+    "focused_no_dump": 1.6,
+    "helpful_honest": 1.6,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 40,
+    "sentence_count": 5,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "reask-fixed",
+   "kind": "real",
+   "label": "good",
+   "text": "Thik cha — WhatsApp ma nai pathaun. Yo QR Teeth Cleaning (Scaling & Polishing) ko payment NPR 1500 ko lagi ho, thik cha? Ma front desk sanga QR pathauna bhanera arrange garna sahayog garun?",
+   "provenance": "Rule-16 phase, real AFTER (post-fix; itself still a bit compound)",
+   "customer": "Ho whatsapp ma nai pathaun na, tei number ho",
+   "score": 82.7,
+   "per_sample": [
+    100.0,
+    80.3,
+    85.7,
+    100.0,
+    47.3
+   ],
+   "weighted_v1": 90.4,
+   "criteria": {
+    "length_fit": 4.4,
+    "language_match": 5,
+    "natural_tone": 4.8,
+    "no_reflexive_question": 4,
+    "focused_no_dump": 4.4,
+    "helpful_honest": 4.8,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 34,
+    "sentence_count": 3,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "cancel-it-transactional",
+   "kind": "real",
+   "label": "good",
+   "text": "Done, Sita — your appointment on Monday, September 7 at 10:00 AM has been cancelled.",
+   "provenance": "Phase 1 audit §2.F, real transcript 32aea5c3 ('target quality bar')",
+   "customer": "cancel it",
+   "score": 97.0,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    84.8
+   ],
+   "weighted_v1": 98.9,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 4.8,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 15,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "frustrated-corporate",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "I apologize for the inconvenience. I understand how frustrating that is. Thank you for reaching out to us, and please feel free to let me know if there is anything else I can assist you with.",
+   "provenance": "synthetic: scripted phrases named in intent.py rule 4",
+   "customer": "This is the third time I've called about this and no one's called me back!",
+   "score": 14.3,
+   "per_sample": [
+    12.5,
+    12.5,
+    14.3,
+    16.1,
+    16.1
+   ],
+   "weighted_v1": 28.6,
+   "criteria": {
+    "length_fit": 2.4,
+    "language_match": 5,
+    "natural_tone": 1,
+    "no_reflexive_question": 1,
+    "focused_no_dump": 1.6,
+    "helpful_honest": 1,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 36,
+    "sentence_count": 3,
+    "ends_with_question": false,
+    "emoji_count": 0,
+    "corporate_phrase_hits": [
+     "thank you for reaching out",
+     "please feel free to let me know",
+     "feel free to let me know",
+     "i apologize for the inconvenience",
+     "i understand how frustrating that is"
+    ]
+   }
+  },
+  {
+   "group": "frustrated-corporate",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "So sorry about that 😊😊 we'll fix it right away 🙏",
+   "provenance": "synthetic: emoji while frustrated",
+   "customer": "This is the third time I've called about this and no one's called me back!",
+   "score": 34.3,
+   "per_sample": [
+    37.5,
+    33.0,
+    35.7,
+    35.7,
+    29.4
+   ],
+   "weighted_v1": 68.6,
+   "criteria": {
+    "length_fit": 3.8,
+    "language_match": 5,
+    "natural_tone": 3.6,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 4.4,
+    "helpful_honest": 2.6,
+    "emoji_name_policy": 1
+   },
+   "objective": {
+    "word_count": 11,
+    "sentence_count": 1,
+    "ends_with_question": false,
+    "emoji_count": 3,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "frustrated-corporate",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "Three times with no callback — that shouldn't happen. Let's get this sorted now. What's the issue, and what's the best number to reach you?",
+   "provenance": "verbatim few-shot example from intent.py",
+   "customer": "This is the third time I've called about this and no one's called me back!",
+   "score": 94.3,
+   "per_sample": [
+    100.0,
+    100.0,
+    100.0,
+    85.7,
+    85.7
+   ],
+   "weighted_v1": 98.6,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 4.6,
+    "helpful_honest": 5,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 25,
+    "sentence_count": 3,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "wrong-language-devanagari",
+   "kind": "synthetic",
+   "label": "bad",
+   "text": "Yes, we can do a teeth cleaning tomorrow. Which time would you prefer?",
+   "provenance": "synthetic: English reply to a Devanagari message (customer msg is verbatim spec §7)",
+   "customer": "भोलि दाँत सफा गर्न मिल्छ?",
+   "score": 38.7,
+   "per_sample": [
+    34.8,
+    38.4,
+    33.0,
+    52.7,
+    34.8
+   ],
+   "weighted_v1": 72.5,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 1.2,
+    "natural_tone": 4.4,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 2.8,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 13,
+    "sentence_count": 2,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  },
+  {
+   "group": "wrong-language-devanagari",
+   "kind": "synthetic",
+   "label": "good",
+   "text": "मिल्छ — भोलि दाँत सफा गर्न कुन समय मिल्छ तपाईंलाई?",
+   "provenance": "synthetic: same content in the customer's script",
+   "customer": "भोलि दाँत सफा गर्न मिल्छ?",
+   "score": 90.9,
+   "per_sample": [
+    84.8,
+    100.0,
+    69.7,
+    100.0,
+    100.0
+   ],
+   "weighted_v1": 96.8,
+   "criteria": {
+    "length_fit": 5,
+    "language_match": 5,
+    "natural_tone": 5,
+    "no_reflexive_question": 5,
+    "focused_no_dump": 5,
+    "helpful_honest": 4.4,
+    "emoji_name_policy": 5
+   },
+   "objective": {
+    "word_count": 10,
+    "sentence_count": 1,
+    "ends_with_question": true,
+    "emoji_count": 0,
+    "corporate_phrase_hits": []
+   }
+  }
+ ]
+}
