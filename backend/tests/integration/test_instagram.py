@@ -21,6 +21,7 @@ codebase's own real INSTAGRAM_APP_SECRET/INSTAGRAM_VERIFY_TOKEN dev values.
 import hashlib
 import hmac
 import json as jsonlib
+import re
 import uuid
 
 import pytest
@@ -492,3 +493,25 @@ def test_whatsapp_messenger_and_instagram_conversations_for_the_same_business_ne
         assert ig_message_id not in all_message_ids_by_channel["messenger"] | all_message_ids_by_channel["whatsapp"]
         assert mg_message_id not in all_message_ids_by_channel["instagram"] | all_message_ids_by_channel["whatsapp"]
         assert wa_message_id not in all_message_ids_by_channel["instagram"] | all_message_ids_by_channel["messenger"]
+
+
+def test_resend_qr_link_reaches_instagram_as_a_plain_link_through_the_real_webhook(business_with_instagram, monkeypatch):
+    from app.services import qr_link_service
+    from tests.integration._resend_channel_support import run_resend_scenario
+
+    business_id, ig_account_id = business_with_instagram["business_id"], business_with_instagram["ig_account_id"]
+    with SessionLocal() as db:
+        integration = db.query(Integration).filter(Integration.business_id == business_id).one()
+        integration.config = {"ig_account_id": ig_account_id, "access_token": "tok-test"}
+        db.commit()
+
+    igsid = "igsid-resend-1"
+    build = lambda text: _build_payload(ig_account_id=ig_account_id, igsid=igsid, message_id=f"mid.{uuid.uuid4().hex}", text=text)  # noqa: E731
+    out = run_resend_scenario(monkeypatch, business_id=business_id, post_webhook=_post_webhook,
+                              first_payload=build("hello"), second_payload=build("send me my QR code"))
+    assert len(out["captured"]) == 1, out["captured"]
+    sent = out["captured"][0]
+    assert sent["recipient"] == {"id": igsid} and set(sent["message"]) == {"text"}
+    assert sent["message"]["text"] == out["stored_reply"]
+    url = re.search(r"https?://\S+", sent["message"]["text"]).group(0)
+    assert qr_link_service.verify_token(url.rsplit("/qr/", 1)[1]) == out["appointment_id"]

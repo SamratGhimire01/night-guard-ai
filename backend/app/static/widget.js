@@ -145,10 +145,26 @@
     if (opening) inputEl.focus();
   });
 
+  // Message text is inserted as DOM text nodes (never innerHTML). Only http(s) URLs become links, so a reply that
+  // contains a QR-page link is tappable while nothing else in a message can ever inject markup or a javascript: URL.
+  function fillWithLinks(el, text) {
+    var re = /(https?:\/\/[^\s<>"']+)/g, last = 0, m;
+    while ((m = re.exec(text)) !== null) {
+      var url = m[1].replace(/[.,;:!?)]+$/, "");
+      el.appendChild(document.createTextNode(text.slice(last, m.index)));
+      var a = document.createElement("a");
+      a.href = url; a.textContent = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+      el.appendChild(a);
+      last = m.index + url.length;
+      re.lastIndex = last;
+    }
+    el.appendChild(document.createTextNode(text.slice(last)));
+  }
+
   function appendMessage(text, sender) {
     var el = document.createElement("div");
     el.className = "ng-msg " + (sender === "customer" ? "ng-msg-customer" : "ng-msg-agent");
-    el.textContent = text;
+    fillWithLinks(el, text);
     messagesEl.appendChild(el);
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }

@@ -234,12 +234,28 @@
   backendUrlInput.value = window.location.origin;
   businessIdInput.value = 'f0ca2a54-d76b-4c48-b727-1b0a0faea4cd'; // Samaj Dental Clinic
 
+  // Text nodes only (never innerHTML); only http(s) URLs become links (e.g. a QR-page link in a resend reply).
+  function fillWithLinks(el, text) {
+    const re = /(https?:\/\/[^\s<>"']+)/g;
+    let last = 0, m;
+    while ((m = re.exec(text)) !== null) {
+      const url = m[1].replace(/[.,;:!?)]+$/, '');
+      el.appendChild(document.createTextNode(text.slice(last, m.index)));
+      const a = document.createElement('a');
+      a.href = url; a.textContent = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      el.appendChild(a);
+      last = m.index + url.length;
+      re.lastIndex = last;
+    }
+    el.appendChild(document.createTextNode(text.slice(last)));
+  }
+
   function addMessage(role, text, intent) {
     const wrap = document.createElement('div');
     wrap.className = 'msg ' + role;
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
-    bubble.textContent = text;
+    fillWithLinks(bubble, text);
     wrap.appendChild(bubble);
     if (intent) {
       const intentEl = document.createElement('div');

@@ -45,6 +45,7 @@ def _handoff_reason(
     llm_confirmed_answered: bool | None,
     is_language_switch_request: bool = False,
     is_provider_failure: bool = False,
+    front_desk_reason: str | None = None,
 ) -> str | None:
     """None means this turn doesn't qualify for a handoff. Otherwise the real
     reason to record on the row — never a generic string reused for every
@@ -93,6 +94,10 @@ def _handoff_reason(
         return "The AI provider was unreachable after retries and could not process this message."
     if is_language_switch_request:
         return None
+    if front_desk_reason:
+        # Phase 14: the reply already told the customer "let me connect you with our front desk" (resend limit reached /
+        # send failed) — the caller states the real reason so that promise is backed by a real HumanHandoff row.
+        return front_desk_reason
     if intent == ConversationIntent.COMPLAINT:
         return "Customer message was classified as a complaint."
     if intent == ConversationIntent.HUMAN_HANDOFF:
@@ -115,6 +120,7 @@ def maybe_create_handoff(
     llm_confirmed_answered: bool | None = None,
     is_language_switch_request: bool = False,
     is_provider_failure: bool = False,
+    front_desk_reason: str | None = None,
 ) -> HumanHandoff | None:
     """The real HumanHandoff producer — the gap Phase 16 flagged (the model
     has existed since Phase 2; nothing ever constructed a row). Returns the
@@ -136,6 +142,7 @@ def maybe_create_handoff(
         llm_confirmed_answered=llm_confirmed_answered,
         is_language_switch_request=is_language_switch_request,
         is_provider_failure=is_provider_failure,
+        front_desk_reason=front_desk_reason,
     )
     if reason is None:
         return None

@@ -20,6 +20,7 @@ from app.api.routes import (
     knowledge,
     payments,
     premium_test,
+    qr_view,
     reports,
     services,
     staff,
@@ -99,5 +100,6 @@ app.include_router(internal_metrics.router, prefix="/api/v1", tags=["internal"])
 app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 app.include_router(premium_test.router, prefix="/api/v1", tags=["premium-test"])
 app.include_router(widget.router, tags=["widget"])
+app.include_router(qr_view.router, tags=["qr"])
 app.include_router(voice.router, tags=["voice"])
 app.include_router(webhooks.router, tags=["webhooks"])

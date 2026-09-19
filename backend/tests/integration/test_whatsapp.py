@@ -21,6 +21,7 @@ WHATSAPP_APP_SECRET/WHATSAPP_VERIFY_TOKEN dev values.
 import hashlib
 import hmac
 import json as jsonlib
+import re
 import uuid
 
 import pytest
@@ -473,3 +474,27 @@ def test_send_image_message_fails_honestly_when_media_upload_rejected(monkeypatc
         access_token="tok",
     )
     assert detail.startswith("failed:")
+
+
+def test_resend_qr_link_reaches_whatsapp_as_a_plain_link_through_the_real_webhook(business_with_whatsapp, monkeypatch):
+    """Phase 14: real signed webhook -> real orchestrator -> the exact Graph API body a real send would POST. The reply
+    is a plain text message whose body carries the QR-page link (WhatsApp auto-links it); nothing is uploaded."""
+    from app.services import qr_link_service
+    from tests.integration._resend_channel_support import run_resend_scenario
+
+    business_id, phone_number_id = business_with_whatsapp["business_id"], business_with_whatsapp["phone_number_id"]
+    with SessionLocal() as db:  # a token makes the real send path run (no token = a logged simulation, nothing POSTed)
+        integration = db.query(Integration).filter(Integration.business_id == business_id).one()
+        integration.config = {"phone_number_id": phone_number_id, "access_token": "tok-test"}
+        db.commit()
+
+    wa_id = "15551239001"
+    build = lambda text: _build_payload(phone_number_id=phone_number_id, wa_id=wa_id, message_id=f"wamid.{uuid.uuid4().hex}", text=text)  # noqa: E731
+    out = run_resend_scenario(monkeypatch, business_id=business_id, post_webhook=_post_webhook,
+                              first_payload=build("hello"), second_payload=build("send me my QR code"))
+    assert len(out["captured"]) == 1, out["captured"]
+    sent = out["captured"][0]
+    assert sent["type"] == "text" and sent["to"] == wa_id and "media" not in jsonlib.dumps(sent).lower()
+    assert sent["text"]["body"] == out["stored_reply"], "what WhatsApp received is exactly what was stored/answered"
+    url = re.search(r"https?://\S+", sent["text"]["body"]).group(0)
+    assert qr_link_service.verify_token(url.rsplit("/qr/", 1)[1]) == out["appointment_id"]

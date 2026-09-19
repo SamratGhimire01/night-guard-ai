@@ -27,6 +27,7 @@ from app.db.database import SessionLocal
 from app.db.models.appointment import Appointment, AppointmentStatus
 from app.db.models.business import Business, BusinessHours
 from app.db.models.conversation import Conversation
+from app.db.models.customer import Customer
 from app.db.models.notification import NotificationStatus
 from app.main import app
 from app.schemas.conversation import ConversationIntent
@@ -994,83 +995,51 @@ def test_resend_confirmation_atomic_cap_enforced_after_three_attempts(two_busine
     assert row.confirmation_resend_count == 3, "the real counter must never exceed the cap"
 
 
-def test_resend_confirmation_whatsapp_prefers_real_channel_identity_over_customer_phone(two_businesses, monkeypatch):
-    """customer.phone may have been typed into a booking form with no country
-    code at all (a real, pre-existing ambiguity this project already
-    discloses for SMS — see TwilioSMSProvider._normalize_phone). This
-    customer's own real WhatsApp wa_id, when one already exists
-    (ChannelIdentity), is Meta's own already-correct identifier and must be
-    preferred over guessing from customer.phone."""
+def test_resend_whatsapp_channel_now_answers_with_a_qr_link_and_never_calls_the_meta_media_api(two_businesses, monkeypatch):
+    """Phase 14: "QR in chat" is a plain link to the QR page (signed, expiring), NOT the Meta Media API image-upload
+    flow. An explicit "whatsapp" channel therefore means "answer here in the chat"; nothing is uploaded or pushed to
+    any destination, and the tool must never even touch the adapter's image sender."""
     import app.services.channels.whatsapp as whatsapp_module
-    from app.db.models.channel_identity import ChannelIdentity
-    from app.db.models.integration import Integration
+    from app.services import qr_link_service
     from app.services.conversation.appointment_tools import ResendConfirmationTool
 
-    token_a = two_businesses["token_a"]
-    business_id_a = two_businesses["business_id_a"]
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
     service_id = _setup_booking_business(token_a)
     customer_id = _create_customer(token_a, phone="9800000000")
-    target_date = _next_monday()
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
 
-    captured: dict = {}
+    def _must_not_be_called(self, **kwargs):
+        raise AssertionError("the Meta Media API image upload must no longer be used for a resend")
 
-    def _fake_send_image_message(self, *, to, image_bytes, mime_type, caption, phone_number_id, access_token=""):
-        captured["to"] = to
-        return "sent wamid=test123"
-
-    monkeypatch.setattr(whatsapp_module.WhatsAppChannelAdapter, "send_image_message", _fake_send_image_message)
-
-    with SessionLocal() as db:
-        appointment = booking_service.create_appointment(
-            db,
-            business_id=business_id_a,
-            customer_id=customer_id,
-            service_id=service_id,
-            staff_id=None,
-            scheduled_at=datetime(target_date.year, target_date.month, target_date.day, 14, 0, tzinfo=ZoneInfo("UTC")),
-        )
-        appointment_id = appointment.id
-        db.add(
-            Integration(
-                business_id=business_id_a,
-                type="whatsapp",
-                enabled=True,
-                config={"phone_number_id": "1234", "access_token": "tok"},
-            )
-        )
-        db.add(
-            ChannelIdentity(
-                business_id=business_id_a, channel="whatsapp", external_ref="9779800000000", customer_id=customer_id
-            )
-        )
-        db.commit()
+    monkeypatch.setattr(whatsapp_module.WhatsAppChannelAdapter, "send_image_message", _must_not_be_called)
+    monkeypatch.setattr(whatsapp_module.WhatsAppChannelAdapter, "send_message", _must_not_be_called)
 
     with SessionLocal() as db:
         result = ResendConfirmationTool().run(
-            db,
-            business_id=business_id_a,
-            customer_id=customer_id,
-            appointment_id=appointment_id,
-            channel="whatsapp",
-            conversation_channel="widget",
+            db, business_id=business_id_a, customer_id=customer_id, appointment_id=appointment_id,
+            channel="whatsapp", conversation_channel="widget",
         )
-
-    assert result["channels"]["whatsapp"]["status"] == "sent"
-    assert captured["to"] == "9779800000000", "must use the real wa_id, not the country-code-less customer.phone"
+    assert set(result["channels"]) == {"chat"}
+    chat = result["channels"]["chat"]
+    assert chat["status"] == "sent" and "/qr/" in chat["url"]
+    assert qr_link_service.verify_token(chat["url"].rsplit("/qr/", 1)[1]) == appointment_id
 
 
 def test_resend_confirmation_resolve_channels():
-    """Pure channel-resolution logic, no I/O: explicit beats default, "both"
-    splits into both real channels, and the lazy default is 'wherever
-    they're already talking to us', falling back to email."""
+    """Pure channel-resolution logic, no I/O. "email" = the on-file email; "chat" = the QR link in this conversation.
+    "both" = both; the LLM's "whatsapp" (or nothing, on a chat channel) means "answer here"; email is the default only
+    where there's no chat to answer in."""
     from app.services.conversation.appointment_tools import ResendConfirmationTool
 
     resolve = ResendConfirmationTool._resolve_channels
-    assert resolve("both", None) == {"email", "whatsapp"}
+    assert resolve("both", None) == {"email", "chat"}
     assert resolve("email", "whatsapp") == {"email"}
-    assert resolve("whatsapp", None) == {"whatsapp"}
-    assert resolve(None, "whatsapp") == {"whatsapp"}
-    assert resolve(None, "widget") == {"email"}
+    assert resolve("whatsapp", None) == {"chat"}
+    assert resolve("chat", "widget") == {"chat"}
+    for chat_channel in ("whatsapp", "messenger", "instagram", "website"):
+        assert resolve(None, chat_channel) == {"chat"}
+    assert resolve(None, "sms") == {"email"}
+    assert resolve(None, "widget") == {"email"}, "'widget' is not a real conversation channel value; the widget stores 'website'"
     assert resolve(None, None) == {"email"}
 
 
@@ -3712,3 +3681,618 @@ def test_handoff_service_still_fires_for_genuinely_unanswered_questions():
     )
     assert reason is not None
     assert "0.28" in reason
+
+
+# =====================================================================================================================
+# Phase 14 (2026-09-19 series): formatting fixes + rate-limited resend (email / QR-in-email / QR-link-in-chat)
+# =====================================================================================================================
+import re  # noqa: E402
+import threading  # noqa: E402
+
+
+def _book_appointment(business_id: uuid.UUID, customer_id: uuid.UUID, service_id: uuid.UUID, *, hour: int = 14) -> uuid.UUID:
+    target = _next_monday()
+    with SessionLocal() as db:
+        return booking_service.create_appointment(
+            db, business_id=business_id, customer_id=customer_id, service_id=service_id, staff_id=None,
+            scheduled_at=datetime(target.year, target.month, target.day, hour, 0, tzinfo=ZoneInfo("UTC")),
+        ).id
+
+
+class _CapturingEmailProvider:
+    """Stubs ONLY the network: the REAL dispatch chain runs and resolves the recipient itself, so `recipients` is the
+    address a real send would actually have gone to."""
+
+    def __init__(self):
+        self.recipients: list[str] = []
+
+    def send(self, *, to, subject, body, html_body=None, attachments=None, inline_images=None):
+        self.recipients.append(to)
+        return "250 message accepted for delivery"
+
+
+def _capture_email(monkeypatch) -> _CapturingEmailProvider:
+    from app.services.notifications import dispatch_service
+
+    fake = _CapturingEmailProvider()
+    monkeypatch.setitem(dispatch_service._PROVIDERS, "email", fake)
+    return fake
+
+
+def _resend_llm_reply(appointment_id, *, channel=None, contact_info_update=None, intent="resend_confirmation") -> str:
+    payload = {"intent": intent, "response": "Sure, one moment."}
+    if appointment_id is not None:
+        payload["resend_request"] = {"appointment_id": str(appointment_id), "channel": channel}
+    if contact_info_update:
+        payload["contact_info_update"] = contact_info_update
+    return json.dumps(payload)
+
+
+def _say(token, conversation_id, text):
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token), json={"content": text}
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()["response"]
+
+
+# ---------------------------------------------------------------- formatting 2: the date is stated once ---------
+
+
+def test_slot_options_state_one_date_once_and_keep_dates_when_they_differ():
+    from app.services.conversation.orchestrator import _format_local, _format_slot_options
+
+    utc = ZoneInfo("UTC")
+    monday = _next_monday()
+    same_day = [datetime.combine(monday, time(9, m), tzinfo=utc) for m in (0, 15, 30, 45)]
+    out = _format_slot_options(same_day, utc)
+    assert out == f"{monday.strftime('%A, %B ')}{monday.day} at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM"
+    assert out.count(monday.strftime("%B")) == 1, "the date must be stated exactly once"
+
+    # a single slot is byte-identical to the pre-existing single-slot format
+    assert _format_slot_options(same_day[:1], utc) == _format_local(same_day[0], utc)
+
+    # slots on DIFFERENT real dates: every slot keeps its own full date (dropping it would be ambiguous)
+    tuesday = monday + timedelta(days=1)
+    mixed = [datetime.combine(monday, time(16, 30), tzinfo=utc), datetime.combine(tuesday, time(9, 0), tzinfo=utc)]
+    assert _format_slot_options(mixed, utc) == ", ".join(_format_local(x, utc) for x in mixed)
+
+
+def test_slot_options_compare_local_dates_not_utc_dates():
+    """Two slots on different UTC dates can be the same LOCAL date (and vice versa): what the customer sees decides."""
+    from app.services.conversation.orchestrator import _format_local, _format_slot_options
+
+    ny = ZoneInfo("America/New_York")
+    # 23:30Z and 02:00Z(+1 day) are 19:30 and 22:00 on the SAME New York date
+    same_local = [datetime(2026, 9, 20, 23, 30, tzinfo=ZoneInfo("UTC")), datetime(2026, 9, 21, 2, 0, tzinfo=ZoneInfo("UTC"))]
+    assert _format_slot_options(same_local, ny) == "Sunday, September 20 at 7:30 PM, 10:00 PM"
+    # 03:00Z and 05:00Z (same UTC date) are 23:00 Sep 20 and 01:00 Sep 21 in New York: different local dates
+    diff_local = [datetime(2026, 9, 21, 3, 0, tzinfo=ZoneInfo("UTC")), datetime(2026, 9, 21, 5, 0, tzinfo=ZoneInfo("UTC"))]
+    assert _format_slot_options(diff_local, ny) == ", ".join(_format_local(x, ny) for x in diff_local)
+
+
+def test_real_orchestrator_slot_list_states_the_date_once(two_businesses, monkeypatch):
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    conversation_id = _create_conversation(business_id_a, _create_customer_with_contact(token_a))
+    monday = _next_monday()
+    _stub_providers(monkeypatch, _partial_booking_reply(service="Cleaning", date=monday.isoformat(), wants_availability=True))
+    body = _say(token_a, conversation_id, "what's open on monday for a cleaning?")
+    date_text = f"{monday.strftime('%A, %B ')}{monday.day}"
+    assert body.count(date_text) == 1, body
+    assert "9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM" in body, body
+
+
+# ---------------------------------------------------------------- formatting 1: service list on its own lines ----
+
+_SVC_NAMES = ["Teeth Cleaning", "Tooth Filling", "Root Canal", "Teeth Whitening", "Dental Consultation", "Braces Checkup"]
+# REAL outputs captured live from the running backend before this fix (Phase 14 reproduction).
+_REAL_LLM_SEMICOLONS = (
+    "We offer the following services: Teeth Cleaning (USD 1500.00, 30 min); Tooth Filling (USD 2500.00, 45 min); "
+    "Root Canal (USD 9000.00, 90 min); Teeth Whitening (USD 6000.00, 45 min); Dental Consultation (USD 500.00, "
+    "20 min); and Braces Checkup (USD 1200.00, 30 min)."
+)
+_REAL_LLM_DASHES = (
+    "We offer: Teeth Cleaning — USD 1500.00 (30 min); Tooth Filling — USD 2500.00 (45 min); Root Canal — USD 9000.00 "
+    "(90 min); Teeth Whitening — USD 6000.00 (45 min); Dental Consultation — USD 500.00 (20 min); Braces Checkup — "
+    "USD 1200.00 (30 min)."
+)
+_REAL_LLM_COMMAS_NEPALI = (
+    "Hami le yeta services dinchhau: Teeth Cleaning (USD 1500.00, 30 min), Tooth Filling (USD 2500.00, 45 min), Root "
+    "Canal (USD 9000.00, 90 min), Teeth Whitening (USD 6000.00, 45 min), Dental Consultation (USD 500.00, 20 min), "
+    "ani Braces Checkup (USD 1200.00, 30 min). Kun ko lagi appointment book garna mancha?"
+)
+
+
+def test_format_service_list_puts_each_real_service_on_its_own_line_for_all_real_captured_shapes():
+    from app.services.conversation.formatting import format_service_list
+
+    out = format_service_list(_REAL_LLM_SEMICOLONS, _SVC_NAMES)
+    assert out == (
+        "We offer the following services:\n- Teeth Cleaning (USD 1500.00, 30 min)\n- Tooth Filling (USD 2500.00, 45 min)\n"
+        "- Root Canal (USD 9000.00, 90 min)\n- Teeth Whitening (USD 6000.00, 45 min)\n"
+        "- Dental Consultation (USD 500.00, 20 min)\n- Braces Checkup (USD 1200.00, 30 min)"
+    )
+    dashes = format_service_list(_REAL_LLM_DASHES, _SVC_NAMES)
+    assert dashes.startswith("We offer:\n- Teeth Cleaning — USD 1500.00 (30 min)\n- Tooth Filling")
+    assert dashes.count("\n- ") == 6 and ";" not in dashes
+    nepali = format_service_list(_REAL_LLM_COMMAS_NEPALI, _SVC_NAMES)
+    assert nepali.count("\n- ") == 6
+    assert nepali.endswith("\n\nKun ko lagi appointment book garna mancha?"), "trailing sentence goes after a blank line"
+    assert "- Braces Checkup (USD 1200.00, 30 min)\n" in nepali and "ani Braces" not in nepali
+    two = format_service_list(
+        "We offer Basic Cleaning (USD 75.00, 30 min) and Whitening (USD 150.00, 45 min).", ["Basic Cleaning", "Whitening"]
+    )
+    assert two == "We offer:\n- Basic Cleaning (USD 75.00, 30 min)\n- Whitening (USD 150.00, 45 min)"
+
+
+def test_format_service_list_leaves_everything_that_is_not_a_list_alone():
+    from app.services.conversation.formatting import format_service_list
+
+    untouched = [
+        "Teeth Cleaning is a routine 30-minute procedure, while Root Canal treats infected tooth pulp.",  # comparison
+        "Teeth Cleaning (USD 1500) and Root Canal (USD 9000) are our most popular.",  # prose after an entry
+        "Would you like Teeth Cleaning, Tooth Filling or Root Canal?",  # a question that names services
+        "Root Canal costs USD 9000.00 and takes 90 min.",  # one service
+        "You're all set! I've booked Teeth Cleaning for Monday at 9 AM.",
+        "Yaha hamro services:\n- Teeth Cleaning — USD 1500.00, 30 min\n- Tooth Filling — USD 2500.00, 45 min",  # already lines
+        "",
+    ]
+    for text in untouched:
+        assert format_service_list(text, _SVC_NAMES) == text
+    assert format_service_list(_REAL_LLM_SEMICOLONS, ["Teeth Cleaning"]) == _REAL_LLM_SEMICOLONS, "needs 2+ real services"
+
+
+def test_real_orchestrator_breaks_an_llm_drafted_service_list_into_lines(two_businesses, monkeypatch):
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    for name, price in (("Teeth Cleaning", "1500"), ("Tooth Filling", "2500"), ("Root Canal", "9000")):
+        assert client.post("/api/v1/services", json={"name": name, "price": price, "duration_minutes": 30},
+                           headers=_auth_header(token_a)).status_code == 201
+    conversation_id = _create_conversation(business_id_a, _create_customer_with_contact(token_a))
+    llm_line = "We offer: Teeth Cleaning (USD 1500, 30 min); Tooth Filling (USD 2500, 30 min); and Root Canal (USD 9000, 30 min)."
+    _stub_providers(monkeypatch, json.dumps({"intent": "service_question", "response": llm_line, "needs_human_handoff": False}))
+    body = _say(token_a, conversation_id, "what services do you offer?")
+    assert body == ("We offer:\n- Teeth Cleaning (USD 1500, 30 min)\n- Tooth Filling (USD 2500, 30 min)\n"
+                    "- Root Canal (USD 9000, 30 min)"), body
+
+    # a non-list reply for the same intent is untouched, and so is a template-composed intent
+    _stub_providers(monkeypatch, json.dumps({"intent": "pricing_question", "response": "Root Canal is USD 9000 and takes 30 min.", "needs_human_handoff": False}))
+    assert _say(token_a, conversation_id, "how much is a root canal?") == "Root Canal is USD 9000 and takes 30 min."
+
+
+def _fake_urlopen_capturing(captured: list):
+    class _Resp:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self):
+            return json.dumps(self._payload).encode()
+
+    def _fake(request, timeout=None):
+        captured.append(json.loads(request.data.decode("utf-8")))
+        return _Resp({"messages": [{"id": "wamid.T"}], "message_id": "mid.T"})
+
+    return _fake
+
+
+def test_outbound_channel_payloads_carry_a_service_list_newline_and_link_unchanged(monkeypatch):
+    """WhatsApp, Messenger and Instagram all send the reply text verbatim inside their JSON body, so "\\n" is a real line
+    break on each (they render it natively) — checked at the exact payload each real send would POST."""
+    import app.services.channels.instagram as instagram_module
+    import app.services.channels.messenger as messenger_module
+    import app.services.channels.whatsapp as whatsapp_module
+
+    text = "We offer:\n- Teeth Cleaning (USD 1500, 30 min)\n- Root Canal (USD 9000, 90 min)\n\nOpen: https://example.test/qr/abc.123.def"
+    sent: list[dict] = []
+    for module in (whatsapp_module, messenger_module, instagram_module):
+        monkeypatch.setattr(module.urllib.request, "urlopen", _fake_urlopen_capturing(sent))
+    whatsapp_module.WhatsAppChannelAdapter().send_message(to="977980", text=text, phone_number_id="1", access_token="t")
+    messenger_module.MessengerChannelAdapter().send_message(psid="p1", text=text, page_access_token="t")
+    instagram_module.InstagramChannelAdapter().send_message(igsid="i1", text=text, ig_account_id="9", access_token="t")
+    assert sent[0]["text"]["body"] == text
+    assert sent[1]["message"]["text"] == text
+    assert sent[2]["message"]["text"] == text
+    assert all("\n- Teeth Cleaning" in json.dumps(x, ensure_ascii=False).replace("\\n", "\n") for x in sent)
+
+
+def test_widget_and_test_chat_render_newlines_and_only_linkify_http_urls():
+    """Static guard for the two browser surfaces (the real rendering is also verified live in a browser, see
+    PHASE_STATUS.md): both keep newlines via white-space:pre-wrap, and both insert message text as DOM text nodes."""
+    from pathlib import Path
+
+    static = Path(__file__).resolve().parents[2] / "app" / "static"
+    for name in ("widget.js", "test-chat.html"):
+        src = (static / name).read_text()
+        assert "white-space:pre-wrap" in src.replace(" ", "") , f"{name} must preserve newlines"
+        assert "fillWithLinks" in src and "createTextNode" in src, f"{name} must build message DOM without innerHTML"
+        assert "https?:" in src, f"{name} must only linkify http(s) URLs"
+        assert "bubble.innerHTML" not in src, f"{name} must not put message text into innerHTML"
+
+
+# ---------------------------------------------------------------- resend: signed QR link ------------------------
+
+
+def test_qr_token_is_signed_expiring_and_names_only_the_appointment():
+    from app.services import qr_link_service as q
+
+    appointment_id = uuid.uuid4()
+    scheduled = datetime(2026, 9, 21, 14, 0, tzinfo=ZoneInfo("UTC"))
+    token = q.make_token(appointment_id, scheduled, now=1_000.0)
+    assert q.verify_token(token, now=1_000.0) == appointment_id
+    assert q.verify_token(token, now=scheduled.timestamp() + 23 * 3600) == appointment_id
+    assert q.verify_token(token, now=scheduled.timestamp() + 25 * 3600) is None, "expires 24h after the appointment"
+
+    hex_id, exp, sig = token.split(".")
+    assert q.verify_token(f"{uuid.uuid4().hex}.{exp}.{sig}", now=1_000.0) is None, "id swap must fail the HMAC"
+    assert q.verify_token(f"{hex_id}.{int(exp) + 9999}.{sig}", now=1_000.0) is None, "expiry edit must fail the HMAC"
+    assert q.verify_token(f"{hex_id}.{exp}.{sig[:-2]}AA", now=1_000.0) is None
+    for garbage in ("", "x", "a.b.c", f"{hex_id}.{exp}", f"{hex_id}.abc.{sig}", "../../etc/passwd"):
+        assert q.verify_token(garbage, now=1_000.0) is None
+    # a link issued for a past appointment still lives >=1h so the customer can actually open it
+    past = q.make_token(appointment_id, datetime(2020, 1, 1, tzinfo=ZoneInfo("UTC")), now=5_000.0)
+    assert q.verify_token(past, now=5_000.0 + 3000) == appointment_id
+    assert q.mask_email("jordan@example.com") == "j***@example.com"
+
+
+def _qr_page(token: str):
+    return client.get(f"/qr/{token}")
+
+
+def test_qr_page_shows_the_same_qr_as_the_email_and_reveals_nothing_else(two_businesses):
+    import base64
+
+    from app.services import qr_link_service as q
+    from app.services.notifications.qr import generate_qr_png
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a, email=_unique_email("qr-page"))
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+    with SessionLocal() as db:
+        appointment = db.get(Appointment, appointment_id)
+        checkin_token, scheduled_at = str(appointment.checkin_token), appointment.scheduled_at
+        business = db.get(Business, business_id_a)
+        business.name = "A&B <Dental>"
+        db.commit()
+
+    resp = _qr_page(q.make_token(appointment_id, scheduled_at))
+    assert resp.status_code == 200 and resp.headers["content-type"].startswith("text/html")
+    assert resp.headers["cache-control"] == "no-store" and "noindex" in resp.headers["x-robots-tag"]
+    assert resp.headers["referrer-policy"] == "no-referrer" and "default-src 'none'" in resp.headers["content-security-policy"]
+    # the embedded PNG IS the Phase 46 QR (same bytes the confirmation email embeds), i.e. it encodes the check-in token
+    assert base64.b64encode(generate_qr_png(checkin_token)).decode() in resp.text
+    assert "A&amp;B &lt;Dental&gt;" in resp.text and "<Dental>" not in resp.text, "tenant-controlled text must be escaped"
+    # nothing that identifies the customer or grants more than the QR itself
+    assert checkin_token not in resp.text and appointment_id.hex not in resp.text and str(appointment_id) not in resp.text
+    assert "@" not in resp.text.split("<img")[0], "no email address on the page"
+
+
+def test_qr_page_every_failure_is_the_same_generic_404(two_businesses):
+    from app.services import qr_link_service as q
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a, email=_unique_email("qr-404"))
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+    other_id = _book_appointment(business_id_a, customer_id, service_id, hour=15)
+    with SessionLocal() as db:
+        scheduled_at = db.get(Appointment, appointment_id).scheduled_at
+    good = q.make_token(appointment_id, scheduled_at)
+    hex_id, exp, sig = good.split(".")
+    other_hex = other_id.hex
+
+    bodies = set()
+    for bad in (
+        "garbage", f"{other_hex}.{exp}.{sig}", f"{hex_id}.{exp}.{sig[:-1]}X",
+        q.make_token(appointment_id, scheduled_at, now=0.0).replace(exp, "1"),  # expired
+        f"{uuid.uuid4().hex}.{exp}.{q._sign(f'{uuid.uuid4().hex}.{exp}')}",  # validly signed but unknown appointment
+    ):
+        resp = _qr_page(bad)
+        assert resp.status_code == 404, (bad, resp.status_code)
+        bodies.add(resp.text)
+    with SessionLocal() as db:
+        booking_service.cancel_appointment(db, business_id=business_id_a, appointment_id=appointment_id)
+    resp = _qr_page(good)  # authentic + unexpired, but the appointment is now CANCELLED
+    assert resp.status_code == 404
+    bodies.add(resp.text)
+    assert len(bodies) == 1, "every failure must be byte-identical: the endpoint must not be an oracle"
+
+
+def test_qr_page_is_rate_limited_per_ip(two_businesses):
+    from app.core.rate_limit import qr_view_ip_rate_limiter
+
+    qr_view_ip_rate_limiter._attempts.clear()
+    try:
+        statuses = [_qr_page("garbage").status_code for _ in range(qr_view_ip_rate_limiter.max_attempts + 3)]
+    finally:
+        qr_view_ip_rate_limiter._attempts.clear()
+    assert statuses[: qr_view_ip_rate_limiter.max_attempts] == [404] * qr_view_ip_rate_limiter.max_attempts
+    assert statuses[-1] == 429
+
+
+# ---------------------------------------------------------------- resend: the shared atomic cap -------------------
+
+
+def test_resend_cap_is_one_shared_atomic_counter_under_8_concurrent_requests(two_businesses, monkeypatch):
+    """Same real threading.Barrier technique as Phase 45's reminder claim / Phase 46's check-in claim: 8 threads, each
+    with its own DB session, released at the same instant against ONE appointment, mixing all three delivery types
+    (email, chat link, both). Exactly 3 requests may win the atomic claim in TOTAL, whatever they asked for."""
+    from app.services.conversation.appointment_tools import ResendConfirmationTool
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    on_file = _unique_email("cap-onfile")
+    customer_id = _create_customer(token_a, email=on_file)
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+    fake = _capture_email(monkeypatch)
+
+    wanted = ["email", "chat", "both", "chat", "email", "both", "chat", "email"]
+    n = len(wanted)
+    barrier = threading.Barrier(n)
+    results: list = [None] * n
+
+    def worker(i):
+        with SessionLocal() as db:
+            barrier.wait()
+            try:
+                results[i] = ResendConfirmationTool().run(
+                    db, business_id=business_id_a, customer_id=customer_id, appointment_id=appointment_id,
+                    channel=wanted[i], conversation_channel="widget",
+                )
+            except Exception as exc:  # a crash is a failed proof, surfaced below
+                results[i] = exc
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(n)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not [r for r in results if isinstance(r, Exception)], results
+    granted = [i for i, r in enumerate(results) if not r["rate_limited"]]
+    refused = [i for i, r in enumerate(results) if r["rate_limited"]]
+    assert len(granted) == 3 and len(refused) == 5, f"granted={granted} refused={refused}"
+    with SessionLocal() as db:
+        assert db.get(Appointment, appointment_id).confirmation_resend_count == 3
+    # only granted requests delivered anything, and every email that went out went to the on-file address
+    assert len(fake.recipients) == sum(1 for i in granted if wanted[i] in ("email", "both"))
+    assert set(fake.recipients) <= {on_file}
+    assert all(not results[i]["channels"] for i in refused), "a refused request must not have delivered anything"
+
+
+# ---------------------------------------------------------------- resend: destination is never chat-supplied ------
+
+
+@pytest.mark.parametrize("field,value", [("email", "attacker@evil.example"), ("phone", "9811111111")])
+def test_resend_never_goes_to_a_destination_typed_into_the_chat(two_businesses, monkeypatch, field, value):
+    """The customer's message carries a DIFFERENT email/phone in the same breath as the resend request, and the LLM
+    duly extracts it as a contact_info_update. It must not be saved, must not become the destination, and the customer
+    must be told why — the resend goes to the exact contact info already on file."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    on_file_email, on_file_phone = _unique_email("onfile"), "9800000001"
+    customer_id = _create_customer(token_a, email=on_file_email, phone=on_file_phone)
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    fake = _capture_email(monkeypatch)
+
+    _stub_providers(monkeypatch, _resend_llm_reply(appointment_id, channel="email", contact_info_update={field: value}))
+    body = _say(token_a, conversation_id, f"please resend my confirmation to {value}")
+
+    assert fake.recipients == [on_file_email], "the ONLY send must be to the address already on file"
+    assert value not in body
+    assert f"{on_file_email[0]}***@example.com" in body, "reply must say which on-file address it went to (masked)"
+    assert "already on file" in body and "separately" in body, "customer must be told it was not used and how to change it"
+    with SessionLocal() as db:
+        customer = db.get(Customer, customer_id)
+        assert (customer.email, customer.phone) == (on_file_email, on_file_phone), "the redirect must not have been saved"
+        assert db.get(Appointment, appointment_id).confirmation_resend_count == 1
+
+
+def test_resend_chat_link_turn_also_ignores_a_typed_destination(two_businesses, monkeypatch):
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    on_file = _unique_email("onfile2")
+    customer_id = _create_customer(token_a, email=on_file)
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    fake = _capture_email(monkeypatch)
+
+    _stub_providers(monkeypatch, _resend_llm_reply(appointment_id, channel="both", contact_info_update={"email": "attacker@evil.example"}))
+    body = _say(token_a, conversation_id, "send my QR to attacker@evil.example and here too")
+    assert fake.recipients == [on_file] and "attacker@evil.example" not in body
+    assert "/qr/" in body and "already on file" in body
+    with SessionLocal() as db:
+        assert db.get(Customer, customer_id).email == on_file
+
+
+def test_a_separate_contact_update_request_still_works_as_its_own_action(two_businesses, monkeypatch):
+    """The boundary, stated honestly: a contact change is its own, separate request (existing behavior, unchanged). It
+    applies on its own turn — and only THEN does a later, separate resend go to the new on-file address."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    old, new = _unique_email("old"), _unique_email("new")
+    customer_id = _create_customer(token_a, email=old)
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    fake = _capture_email(monkeypatch)
+
+    _stub_providers(monkeypatch, json.dumps({"intent": "follow_up", "response": "ok", "contact_info_update": {"email": new}}))
+    _say(token_a, conversation_id, f"please update my email to {new}")
+    with SessionLocal() as db:
+        assert db.get(Customer, customer_id).email == new
+
+    _stub_providers(monkeypatch, _resend_llm_reply(appointment_id, channel="email"))
+    _say(token_a, conversation_id, "resend my confirmation email")
+    assert fake.recipients[-1] == new
+
+
+def test_resend_tool_refuses_any_caller_supplied_destination(two_businesses):
+    from app.services.conversation.appointment_tools import ResendConfirmationTool
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a, email=_unique_email("guard"))
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+    for kwarg in ("to", "email", "phone", "destination", "recipient", "address"):
+        with SessionLocal() as db, pytest.raises(ValueError):
+            ResendConfirmationTool().run(
+                db, business_id=business_id_a, customer_id=customer_id, appointment_id=appointment_id,
+                channel="email", conversation_channel="widget", **{kwarg: "attacker@evil.example"},
+            )
+    with SessionLocal() as db:
+        assert db.get(Appointment, appointment_id).confirmation_resend_count == 0, "a refused call must not consume the cap"
+
+
+# ---------------------------------------------------------------- resend: tenant / appointment isolation ---------
+
+
+def test_resend_can_only_ever_act_on_the_requesting_conversations_own_appointment(two_businesses, monkeypatch):
+    """The LLM is handed (or hallucinates / is talked into) appointment ids belonging to ANOTHER customer of the same
+    business and to ANOTHER tenant. Neither may be resent, nothing may be delivered, and no cap may be consumed."""
+    from app.services.conversation.appointment_tools import ResendConfirmationTool
+
+    token_a, token_b = two_businesses["token_a"], two_businesses["token_b"]
+    business_id_a, business_id_b = two_businesses["business_id_a"], two_businesses["business_id_b"]
+    service_a, service_b = _setup_booking_business(token_a), _setup_booking_business(token_b)
+    me = _create_customer(token_a, email=_unique_email("me"))
+    stranger_same_tenant = _create_customer(token_a, email=_unique_email("stranger"))
+    stranger_other_tenant = _create_customer(token_b, email=_unique_email("other-tenant"))
+    my_appt = _book_appointment(business_id_a, me, service_a)
+    foreign_same_tenant = _book_appointment(business_id_a, stranger_same_tenant, service_a, hour=15)
+    foreign_other_tenant = _book_appointment(business_id_b, stranger_other_tenant, service_b, hour=16)
+    conversation_id = _create_conversation(business_id_a, me)
+    fake = _capture_email(monkeypatch)
+
+    from app.db.models.notification import Notification
+
+    def _notification_count() -> int:
+        with SessionLocal() as db:
+            return db.query(Notification).filter(
+                Notification.appointment_id.in_([my_appt, foreign_same_tenant, foreign_other_tenant])
+            ).count()
+
+    notifications_before = _notification_count()  # booking itself created its own booking_confirmed rows
+    clarify = "make sure I send the right one"
+    for target in (foreign_same_tenant, foreign_other_tenant, uuid.uuid4()):
+        for channel in ("email", "both", None):
+            _stub_providers(monkeypatch, _resend_llm_reply(target, channel=channel))
+            body = _say(token_a, conversation_id, f"resend appointment {target}")
+            assert clarify in body, body
+            assert "/qr/" not in body
+    assert fake.recipients == []
+    with SessionLocal() as db:
+        for appointment_id in (my_appt, foreign_same_tenant, foreign_other_tenant):
+            assert db.get(Appointment, appointment_id).confirmation_resend_count == 0
+    assert _notification_count() == notifications_before, "the refused resend attempts must create no notification at all"
+
+    # defense in depth: even a direct tool call with a mismatched business/customer pair is refused and consumes nothing
+    for business_id, customer_id, appointment_id in (
+        (business_id_a, me, foreign_same_tenant), (business_id_a, me, foreign_other_tenant),
+        (business_id_b, stranger_other_tenant, my_appt), (business_id_b, me, foreign_other_tenant),
+    ):
+        with SessionLocal() as db:
+            result = ResendConfirmationTool().run(
+                db, business_id=business_id, customer_id=customer_id, appointment_id=appointment_id,
+                channel="both", conversation_channel="widget",
+            )
+        assert result["success"] is False and result["channels"] == {} and "not found" in result["message"].lower()
+    with SessionLocal() as db:
+        assert all(db.get(Appointment, a).confirmation_resend_count == 0 for a in (my_appt, foreign_same_tenant, foreign_other_tenant))
+
+    # and the legitimate request for MY appointment works, from the same conversation
+    _stub_providers(monkeypatch, _resend_llm_reply(my_appt, channel="whatsapp"))  # the LLM contract: whatsapp/email/both/null
+    assert "/qr/" in _say(token_a, conversation_id, "send me my QR")
+
+
+# ---------------------------------------------------------------- resend: the honest 4th attempt -----------------
+
+
+def test_fourth_resend_request_is_honest_and_creates_a_real_front_desk_handoff(two_businesses, monkeypatch):
+    from app.db.models.handoff import HumanHandoff
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    on_file = _unique_email("fourth")
+    customer_id = _create_customer(token_a, email=on_file)
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    fake = _capture_email(monkeypatch)
+
+    _stub_providers(monkeypatch, _resend_llm_reply(appointment_id, channel="email"))
+    for attempt in (1, 2, 3):
+        body = _say(token_a, conversation_id, "resend my confirmation email")
+        assert "on their way" in body, (attempt, body)
+    with SessionLocal() as db:
+        assert db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).count() == 0
+
+    body = _say(token_a, conversation_id, "resend it again please")
+    assert "already received this several times" in body and "front desk" in body, body
+    assert "a real person will follow up" in body, "the 'front desk' promise must be backed by a real handoff"
+    assert len(fake.recipients) == 3, "the 4th request must not send anything"
+    with SessionLocal() as db:
+        assert db.get(Appointment, appointment_id).confirmation_resend_count == 3
+        handoffs = db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).all()
+        assert len(handoffs) == 1 and handoffs[0].resolved_at is None
+        assert "resend limit" in handoffs[0].reason
+
+
+# ---------------------------------------------------------------- resend: the QR link across channels ------------
+
+
+@pytest.mark.parametrize("channel", ["whatsapp", "messenger", "instagram", "website"])
+def test_resend_qr_link_is_the_same_plain_link_on_every_chat_channel(two_businesses, monkeypatch, channel):
+    from app.core.config import settings
+    from app.services import qr_link_service
+    from app.services.conversation.response_templates import render
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)  # NO email/phone: the chat link needs no contact info at all
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+    with SessionLocal() as db:
+        conversation = Conversation(business_id=business_id_a, customer_id=customer_id, channel=channel, status="open")
+        db.add(conversation)
+        db.commit()
+        conversation_id = conversation.id
+
+    _stub_providers(monkeypatch, _resend_llm_reply(appointment_id, channel=None))  # customer named no channel
+    body = _say(token_a, conversation_id, "can you send me my QR code?")
+
+    url = re.search(r"https?://\S+", body).group(0)
+    assert url.startswith(f"{settings.backend_base_url.rstrip('/')}/qr/")
+    assert qr_link_service.verify_token(url.rsplit("/qr/", 1)[1]) == appointment_id
+    assert body == render("resend_qr_link", "en", url=url), "identical text on every channel, link on its own line"
+    assert body.endswith(url) and "\n" in body
+    with SessionLocal() as db:
+        assert db.get(Appointment, appointment_id).confirmation_resend_count == 1
+
+
+def test_resend_in_a_website_channel_conversation_defaults_to_the_qr_link(two_businesses, monkeypatch):
+    """The public widget creates its conversations with channel="website" (widget_service). A live run showed a channel
+    list that named it "widget" silently routed website visitors to email; this pins the routing for that channel value
+    (driven via the authenticated conversations API; the real widget endpoint is exercised in the live check)."""
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a, email=_unique_email("widget-resend"))
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+    with SessionLocal() as db:
+        conversation = Conversation(business_id=business_id_a, customer_id=customer_id, channel="website", status="open")
+        db.add(conversation)
+        db.commit()
+        conversation_id = conversation.id
+    fake = _capture_email(monkeypatch)
+    _stub_providers(monkeypatch, _resend_llm_reply(appointment_id, channel=None))
+    assert _say(token_a, conversation_id, "send me my QR code") != ""
+    with SessionLocal() as db:
+        from app.db.models.conversation import Message
+
+        reply = db.query(Message).filter(Message.conversation_id == conversation_id).order_by(Message.created_at.desc()).first().content
+    assert "/qr/" in reply and fake.recipients == [], "a website visitor gets the link in the chat, not an email"

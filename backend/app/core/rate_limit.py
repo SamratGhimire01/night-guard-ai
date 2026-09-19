@@ -76,3 +76,9 @@ widget_session_rate_limiter = RateLimiter(
 widget_business_rate_limiter = RateLimiter(
     max_attempts=WIDGET_BUSINESS_MAX_ATTEMPTS, window_seconds=WIDGET_WINDOW_SECONDS
 )
+
+# Phase 14: the public QR page (GET /qr/{token}). Tokens are 128-bit HMACs so guessing is infeasible; this per-IP cap
+# is defense in depth against enumeration/hammering, generous enough for a real customer opening a link a few times.
+QR_VIEW_MAX_ATTEMPTS = 30
+QR_VIEW_WINDOW_SECONDS = 60
+qr_view_ip_rate_limiter = RateLimiter(max_attempts=QR_VIEW_MAX_ATTEMPTS, window_seconds=QR_VIEW_WINDOW_SECONDS)

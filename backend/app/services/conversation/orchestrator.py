@@ -23,6 +23,7 @@ from app.services import booking_service, business_hours_service, handoff_servic
 from app.services.conversation import appointment_tools  # noqa: F401  registers CANCELLATION/RESCHEDULING tools
 from app.services.conversation import booking_tool  # noqa: F401  registers the BOOKING tool
 from app.services.conversation.contact_tool import UpdateContactInfoTool
+from app.services.conversation.formatting import format_service_list
 from app.services.conversation.intent import classify_and_respond
 from app.services.conversation.response_templates import render, render_contact_gate, render_missing_slots
 from app.services.conversation.tools import find_tool
@@ -63,6 +64,17 @@ def _resolve_booking_datetime(business: Business, date_str: str, time_str: str) 
 
 def _format_local(dt: datetime, tz: ZoneInfo) -> str:
     return dt.astimezone(tz).strftime("%A, %B %-d at %-I:%M %p")
+
+
+def _format_slot_options(slots: list[datetime], tz: ZoneInfo) -> str:
+    """The slot-list body of "here's what's open". When EVERY slot is on the same real local date, the date is stated
+    once and only times follow ("Monday, September 21 at 9:00 AM, 9:15 AM, 9:30 AM") instead of repeating the full date
+    before each time. If the slots span more than one real date, each keeps its own full date — dropping it there would
+    make the list ambiguous. A single slot is identical to _format_local (unchanged)."""
+    local = [slot.astimezone(tz) for slot in slots]
+    if len({slot.date() for slot in local}) == 1:
+        return f"{local[0].strftime('%A, %B %-d')} at " + ", ".join(slot.strftime("%-I:%M %p") for slot in local)
+    return ", ".join(_format_local(slot, tz) for slot in slots)
 
 
 def _is_valid_date_str(value: str) -> bool:
@@ -482,7 +494,7 @@ def _propose_available_slots(
         slot.astimezone(ZoneInfo("UTC")).isoformat() for slot in shown_slots
     )
 
-    options = ", ".join(_format_local(slot, tz) for slot in shown_slots)
+    options = _format_slot_options(shown_slots, tz)
     if requested_date_str and _is_valid_date_str(requested_date_str) and slots[0].astimezone(tz).date() != search_start:
         return render(
             "availability_none_with_next_day",
@@ -617,37 +629,41 @@ def _format_appointment_status_result(
 
 
 def _format_resend_result(result: dict, *, language: str | None) -> str:
-    """The ONLY place a resend-confirmation reply is composed — deterministic
-    Python reading ResendConfirmationTool's real result, same discipline as
-    every other _format_*_result function (rule 13: the LLM never gets to
-    claim this happened). Honest about partial success (e.g. WhatsApp sent
-    but no email on file) rather than a blanket success/fail."""
+    """The ONLY place a resend-confirmation reply is composed — deterministic Python reading ResendConfirmationTool's
+    real result, same discipline as every other _format_*_result function (rule 13: the LLM never gets to claim this
+    happened). Each delivery type reports honestly and independently: an email problem never hides a working QR link."""
     if result["rate_limited"]:
         return render("resend_rate_limited", language)
     if result["message"]:
         return render("resend_fail", language, message=result["message"].rstrip(".").lower())
 
     channels = result["channels"]
-    sent = [c for c, r in channels.items() if r["status"] in ("sent", "simulated")]
-    failed_no_recipient = [c for c, r in channels.items() if r["status"] == "no_recipient"]
-    failed_not_connected = [c for c, r in channels.items() if r["status"] == "not_connected"]
-    failed_send = [c for c, r in channels.items() if r["status"] == "failed"]
+    parts: list[str] = []
+    email = channels.get("email")
+    if email is not None:
+        if email["status"] in ("sent", "simulated"):
+            parts.append(render("resend_email_sent", language, to=email["to"]))
+        elif email["status"] == "no_recipient":
+            parts.append(render("resend_no_recipient", language, channels="email"))
+        else:
+            parts.append(render("resend_send_failed", language))
+    chat = channels.get("chat")
+    if chat is not None and chat["status"] == "sent":
+        parts.append(render("resend_qr_link", language, url=chat["url"]))
+    return "\n".join(parts) if parts else render("resend_send_failed", language)
 
-    if sent and not (failed_no_recipient or failed_not_connected or failed_send):
-        return render("resend_success", language, channels=" and ".join(sorted(sent)))
-    if sent:
-        problems = failed_no_recipient + failed_not_connected + failed_send
-        return render(
-            "resend_partial",
-            language,
-            sent_channels=" and ".join(sorted(sent)),
-            failed_channels=" and ".join(sorted(problems)),
-        )
-    if failed_no_recipient:
-        return render("resend_no_recipient", language, channels=" or ".join(sorted(failed_no_recipient)))
-    if failed_not_connected:
-        return render("resend_not_connected", language)
-    return render("resend_send_failed", language)
+
+def _resend_needs_front_desk(result: dict) -> str | None:
+    """The real reason to open a HumanHandoff after a resend turn — or None. The rate-limited and send-failed replies
+    both PROMISE "let me connect you with our front desk"; that promise must be backed by a real handoff row."""
+    if result["rate_limited"]:
+        return "Customer hit the confirmation/QR resend limit (3) for an appointment and was told to contact the front desk."
+    if result["message"]:
+        return None
+    statuses = [c["status"] for c in result["channels"].values()]
+    if statuses and not any(x in ("sent", "simulated") for x in statuses) and "failed" in statuses:
+        return "Sending the customer's appointment confirmation/QR failed; the customer was told to contact the front desk."
+    return None
 
 
 def _off_topic_response(business: Business | None, language: str | None) -> str:
@@ -1267,6 +1283,17 @@ def handle_incoming_message(
     # in-session, so `has_contact` below sees the fresh value with no refetch.
     customer_row = db.get(Customer, conversation.customer_id)
     contact_changes = _resolve_contact_update(customer_row, classification.contact_info_update)
+    # Phase 14 SECURITY: a resend only ever goes to the contact details ALREADY on file. A different email/phone typed
+    # into the same message as a resend request must not be saved (and so cannot become the destination): on a resend
+    # turn the contact update is dropped and the customer is told to make it a separate request.
+    resend_redirect_attempt = bool(contact_changes) and intent == ConversationIntent.RESEND_CONFIRMATION
+    if resend_redirect_attempt:
+        logger.warning(
+            "resend_confirmation: ignored a contact_info_update on a resend turn (fields=%s) conversation_id=%s",
+            sorted(contact_changes), conversation_id,
+        )
+        contact_changes = {}
+    resend_front_desk_reason: str | None = None
     contact_sentence = None
     if contact_changes:
         contact_result = UpdateContactInfoTool().run(
@@ -1551,6 +1578,7 @@ def handle_incoming_message(
                 conversation_channel=conversation.channel,
             )
             response_text = _format_resend_result(result, language=language)
+            resend_front_desk_reason = _resend_needs_front_desk(result)
             logger.info(
                 "resend_confirmation tool executed: conversation_id=%s success=%s rate_limited=%s",
                 conversation_id,
@@ -1568,12 +1596,22 @@ def handle_incoming_message(
         # _INFO_INTENTS), so this never creates a HumanHandoff.
         response_text = _off_topic_response(business, language)
 
+    # Phase 14: the service list is LLM-composed and live testing showed it comes back as one long ";"/","-separated line
+    # for some phrasings — put each real service on its own line (deterministic, reads the real service names; leaves
+    # anything that isn't clearly a list untouched). Only for the intents whose reply is the LLM's own free text.
+    if intent in (
+        ConversationIntent.SERVICE_QUESTION, ConversationIntent.PRICING_QUESTION, ConversationIntent.GENERAL_QUESTION
+    ):
+        response_text = format_service_list(response_text, [service.name for service in services])
+
     # Phase 23 urgent fix: contact info volunteered THIS turn (resolved above,
     # ahead of the booking dispatch — see the Phase 24 note there) is appended
     # to whatever response_text ended up being — the LLM's own draft for a
     # non-dispatched intent, or a dispatch branch's deterministic sentence.
     if contact_sentence:
         response_text = f"{response_text} {contact_sentence}"
+    if resend_redirect_attempt:
+        response_text = f"{response_text}\n{render('resend_contact_change_ignored', language)}"
 
     # Real gap found live (PHASE_STATUS.md, "silent service switch"): a
     # genuine switch away from a different, already-known service/date/time
@@ -1625,6 +1663,7 @@ def handle_incoming_message(
         best_similarity=best_similarity,
         llm_confirmed_answered=(True if classification.needs_human_handoff is False else None),
         is_language_switch_request=is_explicit_language_switch,
+        front_desk_reason=resend_front_desk_reason,
     )
     if handoff is not None:
         response_text = f"{response_text} {render('handoff_addendum', language)}"

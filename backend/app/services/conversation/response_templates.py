@@ -257,15 +257,34 @@ TEMPLATES: dict[str, dict[str, str]] = {
     # contact_resent above, which fires as a side effect of a contact-info
     # update, not a direct request, and doesn't need to report per-channel
     # detail or a rate limit the way this one does.
-    "resend_success": {
-        "en": "Sent! Your appointment confirmation and QR code are on their way to {channels}.",
-        "ne_deva": "पठाइयो! तपाईंको अपोइन्टमेन्ट पुष्टि र QR कोड {channels} मा जाँदैछ।",
-        "ne_roman": "Pathaiyo! Tapaiko appointment confirmation ra QR code {channels} ma jaandai cha.",
+    "resend_email_sent": {
+        "en": "Sent! Your appointment confirmation and QR code are on their way to {to} — the email we have on file.",
+        "ne_deva": "पठाइयो! तपाईंको अपोइन्टमेन्ट पुष्टि र QR कोड {to} मा जाँदैछ — हामीसँग रेकर्डमा भएको इमेल।",
+        "ne_roman": "Pathaiyo! Tapaiko appointment confirmation ra QR code {to} ma jaandai cha — hamisanga record ma bhayeko email.",
     },
-    "resend_partial": {
-        "en": "I sent it to {sent_channels}, but couldn't reach you on {failed_channels}.",
-        "ne_deva": "मैले {sent_channels} मा पठाएँ, तर {failed_channels} मा पुर्‍याउन सकिनँ।",
-        "ne_roman": "Maile {sent_channels} ma pathaye, tara {failed_channels} ma puryauna sakina.",
+    # "QR in chat": a signed, expiring link to the QR page (qr_link_service). Deliberately just a URL on its own line —
+    # WhatsApp/Messenger/Instagram auto-link it and the widget linkifies it, so every channel gets the same plain link.
+    "resend_qr_link": {
+        "en": "Here's your check-in QR code — open the link and show it at the front desk:\n{url}",
+        "ne_deva": "यो तपाईंको चेक-इन QR कोड हो — लिङ्क खोलेर फ्रन्ट डेस्कमा देखाउनुहोस्:\n{url}",
+        "ne_roman": "Yo tapaiko check-in QR code ho — link kholera front desk ma dekhaunuhos:\n{url}",
+    },
+    # Appended on a resend turn when the customer's message ALSO carried a different email/phone: a resend only ever
+    # goes to the contact details already on file (never a destination typed into the chat); changing them is its own
+    # separate request.
+    "resend_contact_change_ignored": {
+        "en": (
+            "For your security I can only send this to the contact details already on file, so I didn't use the new "
+            "one. If you'd like to change them, tell me separately (for example \"update my email to …\")."
+        ),
+        "ne_deva": (
+            "सुरक्षाका लागि म यो रेकर्डमा भएको सम्पर्क विवरणमा मात्र पठाउन सक्छु, त्यसैले नयाँ विवरण प्रयोग गरिनँ। "
+            "बदल्न चाहनुहुन्छ भने छुट्टै भन्नुहोस् (जस्तै \"मेरो इमेल … मा बदल्नुहोस्\")।"
+        ),
+        "ne_roman": (
+            "Surakshako lagi ma yo record ma bhayeko contact details ma matra pathauna sakchu, tesaile naya details "
+            "prayog garina. Badalna chahanu huncha bhane chhutte bhannuhos (jastai \"mero email … ma badalideu\")."
+        ),
     },
     "resend_no_recipient": {
         "en": "I don't have a {channels} on file for you yet — could you give me one?",

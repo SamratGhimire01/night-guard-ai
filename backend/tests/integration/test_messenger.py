@@ -20,6 +20,7 @@ MESSENGER_APP_SECRET/MESSENGER_VERIFY_TOKEN dev values.
 import hashlib
 import hmac
 import json as jsonlib
+import re
 import uuid
 
 import pytest
@@ -451,3 +452,25 @@ def test_whatsapp_and_messenger_conversations_for_the_same_business_never_cross_
         assert not any(m.external_message_id == wa_message_id for m in mg_msgs)
         assert any(m.external_message_id == wa_message_id for m in wa_msgs)
         assert not any(m.external_message_id == mg_message_id for m in wa_msgs)
+
+
+def test_resend_qr_link_reaches_messenger_as_a_plain_link_through_the_real_webhook(business_with_messenger, monkeypatch):
+    from app.services import qr_link_service
+    from tests.integration._resend_channel_support import run_resend_scenario
+
+    business_id, page_id = business_with_messenger["business_id"], business_with_messenger["page_id"]
+    with SessionLocal() as db:
+        integration = db.query(Integration).filter(Integration.business_id == business_id).one()
+        integration.config = {"page_id": page_id, "page_access_token": "tok-test"}
+        db.commit()
+
+    psid = "psid-resend-1"
+    build = lambda text: _build_payload(page_id=page_id, psid=psid, message_id=f"mid.{uuid.uuid4().hex}", text=text)  # noqa: E731
+    out = run_resend_scenario(monkeypatch, business_id=business_id, post_webhook=_post_webhook,
+                              first_payload=build("hello"), second_payload=build("send me my QR code"))
+    assert len(out["captured"]) == 1, out["captured"]
+    sent = out["captured"][0]
+    assert sent["recipient"] == {"id": psid} and set(sent["message"]) == {"text"}, "plain text, no attachment upload"
+    assert sent["message"]["text"] == out["stored_reply"]
+    url = re.search(r"https?://\S+", sent["message"]["text"]).group(0)
+    assert qr_link_service.verify_token(url.rsplit("/qr/", 1)[1]) == out["appointment_id"]
