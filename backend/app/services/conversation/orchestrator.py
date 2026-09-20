@@ -2,7 +2,7 @@ import logging
 import re
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -137,6 +137,66 @@ def _service_named_in(services: list[Service], text: str) -> Service | None:
         if any(key and re.search(rf"(?<![a-z]){re.escape(key)}(?![a-z])", lower) for key in keys):
             hits.append(service)
     return hits[0] if len(hits) == 1 else None
+
+
+# Weekday names a customer may type -> Monday=0. Latin words match exactly; Devanagari tokens by prefix (case suffixes: "शनिबारमा").
+_WEEKDAY_WORDS = {
+    "monday": 0, "tuesday": 1, "tues": 1, "wednesday": 2, "thursday": 3, "thurs": 3, "thur": 3, "friday": 4, "saturday": 5,
+    "sunday": 6,
+    "sombar": 0, "somabar": 0, "mangalbar": 1, "mangalvar": 1, "budhabar": 2, "budhbar": 2, "bihibar": 3, "bihibaar": 3,
+    "bihivar": 3, "sukrabar": 4, "shukrabar": 4, "sanibar": 5, "shanibar": 5, "aitabar": 6, "aaitabar": 6, "aitbar": 6,
+}
+_WEEKDAY_DEVANAGARI = (
+    ("सोमबार", 0), ("मंगलबार", 1), ("मङ्गलबार", 1), ("बुधबार", 2), ("बिहीबार", 3), ("बिहिबार", 3), ("शुक्रबार", 4),
+    ("शनिबार", 5), ("आइतबार", 6),
+)
+_TOKEN_RE = re.compile(r"[A-Za-z]+|[ऀ-ॿ]+")
+# Anything that makes "the weekday in this text" NOT the whole story: another date reference, a calendar date, a multi-week phrase,
+# or a negation ("not Thursday", "can't do Friday"). In those cases the model's date is left exactly as it is.
+_OTHER_DATE_OR_NEGATION_RE = re.compile(
+    r"\b(today|tonight|tomorrow|yesterday|week|weeks|month|weekend|next|last|aaja|bholi|parsi|hijo|"
+    r"january|february|march|april|may|june|july|august|september|october|november|december|"
+    r"jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|"
+    r"not|no|never|except|cannot|cant|wont|without|other than|rather than|instead of|but not)\b"
+    r"|n't|\d{4}-\d{2}-\d{2}|\d{1,2}\s*(st|nd|rd|th)\b|\d{1,2}\s*[/.]\s*\d{1,2}"
+    r"|आज|भोलि|पर्सि|हिजो|हप्ता|महिना",
+    re.IGNORECASE,
+)
+
+
+def _named_weekday(text: str) -> int | None:
+    """The ONE weekday (Monday=0) the customer's text names, else None (none named, or two different ones)."""
+    found = set()
+    for token in _TOKEN_RE.findall(text):
+        if token.lower() in _WEEKDAY_WORDS:
+            found.add(_WEEKDAY_WORDS[token.lower()])
+        else:
+            found.update(index for name, index in _WEEKDAY_DEVANAGARI if token.startswith(name))
+    return next(iter(found)) if len(found) == 1 else None
+
+
+def _verify_weekday_date(request: dict, text: str, today: date, *, fill_missing: bool = False) -> dict:
+    """Python verifies what the LLM extracts (same principle as _service_named_in): a weekday the customer literally typed is
+    resolved against the REAL calendar, and the model's date is overridden when it disagrees. Measured live: "Thursday" came back as
+    Wednesday's date (always exactly a day early), 68% correct on terse messages ("Monday works?"), at both reasoning efforts --
+    PHASE_STATUS.md Phase 18. Only acts when the text names exactly one weekday and carries no other date reference or negation
+    (see _OTHER_DATE_OR_NEGATION_RE); otherwise the model's date is returned untouched. A date the model gave that already falls on
+    the named weekday is never changed (it may be "next week's"). A wrong-weekday date is replaced by the named weekday's occurrence
+    within +-3 days of it (so the model's week is kept), moved a week forward only if that would be in the past. A MISSING date is filled only when `fill_missing` (booking-intent turns) and the named weekday
+    is not today's own (then "Thursday" could mean today or next week -- not ours to guess)."""
+    weekday = _named_weekday(text)
+    if weekday is None or _OTHER_DATE_OR_NEGATION_RE.search(text):
+        return request
+    model_date = request.get("date")
+    if model_date and _is_valid_date_str(model_date):
+        modelled = datetime.strptime(model_date, "%Y-%m-%d").date()
+        if modelled.weekday() == weekday:
+            return request
+        fixed = modelled + timedelta(days=(weekday - modelled.weekday() + 3) % 7 - 3)  # the named weekday within +-3 days of the model's
+        return {**request, "date": (fixed if fixed >= today else fixed + timedelta(days=7)).isoformat()}
+    if fill_missing and weekday != today.weekday():
+        return {**request, "date": (today + timedelta(days=(weekday - today.weekday()) % 7)).isoformat()}
+    return request
 
 
 def _merge_booking_draft(
@@ -1387,6 +1447,15 @@ def handle_incoming_message(
         named_service = _service_named_in(services, content)
         if named_service is not None:
             booking_request = {**booking_request, "service": named_service.name}
+    reschedule_request = classification.reschedule_request
+    if business is not None:
+        today_local = datetime.now(ZoneInfo(business.timezone)).date()
+        if booking_request is not None:
+            booking_request = _verify_weekday_date(
+                booking_request, content, today_local, fill_missing=intent == ConversationIntent.BOOKING
+            )
+        if reschedule_request is not None:
+            reschedule_request = _verify_weekday_date(reschedule_request, content, today_local)
     draft_switches = _merge_booking_draft(
         conversation, services, booking_request,
         offered_slots=offered_last_turn, tz=ZoneInfo(business.timezone) if business is not None else None,
@@ -1579,10 +1648,10 @@ def handle_incoming_message(
             # The LLM named an appointment_id that isn't in this customer's real
             # active/recent-past list — never pass an unresolved id to the tool.
             response_text = render("cancellation_clarify", language)
-    elif intent == ConversationIntent.RESCHEDULING and tool is not None and business is not None and classification.reschedule_request is not None:
-        appointment_id = _resolve_known_appointment(context, classification.reschedule_request["appointment_id"])
+    elif intent == ConversationIntent.RESCHEDULING and tool is not None and business is not None and reschedule_request is not None:
+        appointment_id = _resolve_known_appointment(context, reschedule_request["appointment_id"])
         scheduled_at = _resolve_booking_datetime(
-            business, classification.reschedule_request["date"], classification.reschedule_request["time"]
+            business, reschedule_request["date"], reschedule_request["time"]
         )
         if appointment_id is not None and scheduled_at is not None:
             result = tool.run(

@@ -16487,6 +16487,42 @@ Test data on the real business f0ca2a54: every row my measurements created (late
 
 ---
 
+## Phase 18 (2026-09-20 series) — wrong-weekday dates: a weekday the customer types is resolved against the real calendar
+
+**Bug (real, pre-existing, not caused by the effort change):** the model sometimes resolves a typed weekday to the wrong date, **always exactly one day early** ("Thursday" -> Wednesday's date; also Fri->Thu, Sat->Fri, Mon->Sun, Roman-Nepali `sukrabar` -> Thursday). It reaches the booking draft, so a booking can land on the wrong day.
+
+### 1. Reproduction first (real classifier / real server, before any fix)
+* **Live, running server (pre-fix), real widget API:** "book a teeth cleaning on Thursday at 10am" (today = Sunday 2026-09-20) -> **"Got it — Teeth Cleaning, Wednesday, September 23 at 10:00 AM…" in 4 of 15 sessions (27%)**; terse shape ("what times do you have … tomorrow?" then "actually, is Thursday morning possible instead?") 15/15 that run. Earlier the same terse message in the real `/test-chat` browser page also came back as Wednesday, September 23.
+* **Grid (real classifier, `tests/eval/weekday_accuracy.py`), every one of the 49 (today's-weekday x weekday-named) pairs x 4 phrasings (clear / 2 terse WITH a realistic booking conversation as context / Roman-Nepali), 196 samples per effort, model told a faked "today" per call:** model raw **low 189/196 (96%) — 7 wrong dates; default 194/196 (99%) — 2 wrong dates.**
+* **Correction to my own earlier claim ("up to 40% on terse requests"):** that figure came from a context-free single-message test, where the model (correctly) reads "is Thursday morning possible instead?" as not-a-booking and returns no date. My first grid (147/effort, no context) showed the same artifact (17-27 "no booking_request" rows = intent ambiguity, not date arithmetic). With realistic context the true wrong-date rate is **~3.6% at low, ~1% at default** — smaller than I said, still a real wrong-day-booking bug, and low effort made it ~3x more frequent.
+
+### 2. Fix — `orchestrator._verify_weekday_date` / `_named_weekday` (Python verifies what the LLM extracts; same principle as the service backfill)
+* Reads the ONE weekday named in the customer's text (English full names + `tues/thurs/thur`; Roman Nepali `sombar…aitabar`; Devanagari `सोमबार…आइतबार` by prefix). Deliberately NOT abbreviations like "sat"/"sun" (ordinary English words).
+* **Override:** if the model's date is a different weekday, replace it with the named weekday within ±3 days of the model's own date (keeps the model's week), moved a week forward only if that would be in the past. A date already on the named weekday is never touched (may be "next week's"). **Fill** a missing date only on booking-intent turns and never when the named weekday is today's own ("Thursday" on a Thursday = today or next week).
+* **Deliberately does nothing** (model's date returned untouched) when the text has two different weekdays, another date reference (today/tomorrow/next/week/month, month names, `2026-09-24`, `24th`, `9/24`, Nepali `aaja/bholi/parsi/आज/भोलि`), or a negation (`not/no/never/except/can't/n't/instead of/other than…`). Applied to `booking_request` (every intent, since the draft merges from any intent) and to the reschedule request.
+* **A bug of my own, caught by the full suite (not by anything I had run):** the first version assigned to `classification.reschedule_request`; the result object is immutable, so **every reschedule turn raised `AttributeError`** (2 existing reschedule tests failed). Now uses a local variable; new reschedule end-to-end test.
+* **Also found while testing it:** my first nearest-occurrence rule searched only a 14-day window from today, so a wrong-weekday date near the far edge was pulled *backward* a week; the exhaustive test caught it; replaced by the ±3-days-of-the-model's-date rule (simpler, no list).
+
+### 3. Before/after (same samples, fix applied offline to the saved raw model output — it is pure post-processing — plus live end-to-end)
+| | before (model raw) | after fix |
+|---|---|---|
+| **low**, 196 samples (clear 49 / terse 98 / Roman 49) | 189/196 (96%) | **196/196 (100%)** |
+| **default**, 196 samples | 194/196 (99%) | **196/196 (100%)** |
+| samples the fix turned from correct to WRONG | — | **0 (both efforts)** |
+| **live** Thursday-focused, 15 sessions x 2 shapes | clear 11/15, terse 15/15 | **clear 15/15, terse 15/15** |
+| **live** all 7 weekdays x 3 rounds x 2 shapes (42 sessions) | 35/36 unambiguous* | **42/42** |
+*six extra items were my checker being too strict ("Sunday" said on a Sunday = today, legitimately); the checker now accepts today or +7 in that case. The live all-weekday run cannot show a rate (a ~2-4% bug in 42 sessions); the classifier grid (392 samples) and the Thursday-focused live run are the quantitative evidence, the 42/42 is confirmation.
+* **Not regressed — requests that don't need the fix:** 96 real-classifier samples (8 shapes x 6 x 2 efforts: today, tomorrow, "September 24", `2026-09-24`, "the 24th", "Thursday the 24th", "Thursday, September 24", "not Wednesday, tomorrow…"): model correct **96/96 raw, 96/96 after, the fix changed 0 samples** (`tests/eval/nonweekday_check.py`).
+* Browser (real `/test-chat`): the exact conversation that failed — "…is Thursday morning possible instead?" -> **"Thursday, September 24"** (was "Wednesday, September 23"), with the correct "Switching to Thursday, September 24 instead of Monday, September 21".
+
+### 4. Tests / ops
+New `tests/integration/test_weekday_resolution.py` (25): `_named_weekday` (English/Roman/Devanagari, ambiguity, "sat"/"sun" not matched), **exhaustive** every-today x every-weekday x every-model-date-in-14-days invariants (result is the named weekday, never past, within ±3 days or one week on; a date already on the weekday never changed), the live case (Thursday from Sunday), fill rules, 11 guard/no-weekday shapes that must stay untouched, and end-to-end through the real endpoint (a booking the model put a day early lands on the typed weekday; reschedule the same; an explicit-date request booked exactly as the model said). Mutation-checked: with the fix disabled 10 tests fail, the 14 guard tests still pass. **Full suite (fixed code, force-recreated server StartedAt 11:32:30Z, fix confirmed loaded): 604 passed, 10 skipped, 0 failed** (579 + 25). `ruff` clean. New eval scripts: `weekday_accuracy.py`, `nonweekday_check.py`, `live_weekday_http.py`.
+* **Small unrelated observation, not changed:** after a draft-switch reply ("…Switching to Thursday…") a customer's "Thursday works, thanks" got the slot list again, because the Phase 15 repeat-breaker compares the previous reply verbatim and that reply had the switch note appended. One extra list, not a loop (the next repeat becomes the pick-a-time prompt).
+* Test data: live replays used only the throwaway "Phase 16 Test Clinic" business (969b60fc-…); its conversations were left in place. Nothing touched on the real Samaj Dental business this phase.
+* **Commit state:** NOT committed (awaiting review). The fix's orchestrator hunks and PHASE_STATUS entry sit in files that also contain the paused language work (Phase 16), so the commit will need the same hunk-split as `ceb98c7`; the new test file and eval scripts are standalone.
+
+---
+
 ## Phase L1 — conversation-lab sandbox (separate track)
 
 New top-level `conversation-lab/` (DSPy sandbox, judge, test UI). Full report, real judge scores and isolation
