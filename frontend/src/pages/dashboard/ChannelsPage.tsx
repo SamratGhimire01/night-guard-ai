@@ -144,6 +144,7 @@ interface ChannelSpec {
   fields: FieldSpec[]
   helpText: string
   docsUrl: string
+  docsLabel: string
   testable: boolean
 }
 
@@ -157,6 +158,7 @@ const CHANNELS: ChannelSpec[] = [
     ],
     helpText: 'Find these in Meta’s WhatsApp Business Platform dashboard, under your app’s API Setup page.',
     docsUrl: 'https://developers.facebook.com/docs/whatsapp/cloud-api/get-started',
+    docsLabel: 'Meta’s docs',
     testable: true,
   },
   {
@@ -168,6 +170,7 @@ const CHANNELS: ChannelSpec[] = [
     ],
     helpText: 'Find these in Meta’s Messenger Platform dashboard, under your app’s Messenger settings.',
     docsUrl: 'https://developers.facebook.com/docs/messenger-platform/get-started',
+    docsLabel: 'Meta’s docs',
     testable: true,
   },
   {
@@ -179,6 +182,20 @@ const CHANNELS: ChannelSpec[] = [
     ],
     helpText: 'Find these in Meta’s Instagram Messaging dashboard, under your app’s Instagram settings.',
     docsUrl: 'https://developers.facebook.com/docs/messenger-platform/instagram',
+    docsLabel: 'Meta’s docs',
+    testable: true,
+  },
+  {
+    type: 'email',
+    title: 'Email (Gmail)',
+    fields: [
+      { key: 'gmail_address', label: 'Gmail address', secret: false },
+      { key: 'app_password', label: 'App password', secret: true },
+    ],
+    helpText:
+      'Booking confirmations, reminders and reports are sent from this Gmail account. Use a Google app password — not your normal Gmail password. Your account needs 2-Step Verification turned on to create one.',
+    docsUrl: 'https://myaccount.google.com/apppasswords',
+    docsLabel: 'Create an app password',
     testable: true,
   },
 ]
@@ -237,7 +254,7 @@ function ChannelSection({ spec, integration, onSaved }: { spec: ChannelSpec; int
         <Text size="sm" c="dimmed">
           {spec.helpText}{' '}
           <Anchor href={spec.docsUrl} target="_blank" rel="noreferrer" size="sm">
-            Meta’s docs
+            {spec.docsLabel}
           </Anchor>
           .
         </Text>
@@ -321,7 +338,7 @@ export default function ChannelsPage() {
       <div>
         <Title order={2}>Channels</Title>
         <Text c="dimmed" size="sm">
-          Connect WhatsApp, Messenger, and Instagram using credentials you’ve already obtained from Meta. This page
+          Connect WhatsApp, Messenger, and Instagram using credentials you’ve already obtained from Meta, and Gmail for outgoing email. This page
           never asks for app secrets or verify tokens — those are platform-level settings, not something you enter
           here. Once saved, a credential is write-only: it’s never shown back to you.
         </Text>
@@ -329,6 +346,7 @@ export default function ChannelsPage() {
 
       {integrations === null ? (
         <Stack gap="md">
+          <Skeleton height={220} />
           <Skeleton height={220} />
           <Skeleton height={220} />
           <Skeleton height={220} />

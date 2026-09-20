@@ -14,6 +14,7 @@ from app.db.models.follow_up import FollowUp
 from app.schemas.conversation import ConversationIntent
 from app.services.followups.content import compose_followup_email
 from app.services.notifications.base import NotificationDeliveryError
+from app.services import integration_service
 from app.services.notifications.email_provider import EmailNotificationProvider
 
 logger = logging.getLogger(__name__)
@@ -177,7 +178,13 @@ def _process_candidate(
 
     subject, body, html_body = compose_followup_email(business=business, customer=customer, interest_message=interest_message)
     try:
-        detail = EmailNotificationProvider().send(to=customer.email, subject=subject, body=body, html_body=html_body)
+        detail = EmailNotificationProvider().send(
+            to=customer.email,
+            subject=subject,
+            body=body,
+            html_body=html_body,
+            credentials=integration_service.email_credentials(db, business_id=business.id),
+        )
         status = "sent"
     except NotificationDeliveryError as exc:
         detail = str(exc)

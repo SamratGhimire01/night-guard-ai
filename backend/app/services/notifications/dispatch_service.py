@@ -14,6 +14,7 @@ from app.db.models.payment import Payment
 from app.db.models.service import Service
 from app.services.notifications.base import NotificationDeliveryError
 from app.services.notifications.content import compose_email, compose_sms
+from app.services import integration_service
 from app.services.notifications.email_provider import EmailNotificationProvider
 from app.services.notifications.sms_provider import SMSNotificationProvider, TwilioSMSProvider
 
@@ -96,7 +97,11 @@ def _dispatch(db: Session, notification: Notification) -> None:
             customer=customer,
             payment=payment,
         )
-        send_kwargs = {"html_body": html_body, "inline_images": inline_images}
+        send_kwargs = {
+            "html_body": html_body,
+            "inline_images": inline_images,
+            "credentials": integration_service.email_credentials(db, business_id=business.id),
+        }
     elif notification.channel == "sms":
         provider = _resolve_sms_provider()
         recipient = customer.phone or ""

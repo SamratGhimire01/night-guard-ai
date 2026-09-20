@@ -14,6 +14,7 @@ from app.db.models.business import Business
 from app.db.models.conversation import Conversation
 from app.db.models.customer import Customer
 from app.services.notifications.base import NotificationDeliveryError
+from app.services import integration_service
 from app.services.notifications.email_provider import EmailNotificationProvider
 from app.services.notifications.templates.render import render_monthly_report_email
 from app.services.reporting.excel_export import monthly_report_to_xlsx_bytes
@@ -312,6 +313,7 @@ def send_monthly_report_email(db: Session, *, business_id: uuid.UUID, year: int,
             attachments=[
                 (filename, xlsx_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             ],
+            credentials=integration_service.email_credentials(db, business_id=business.id),
         )
     except NotificationDeliveryError as exc:
         return {"sent": False, "recipient": recipient, "reason": str(exc), "transient": exc.transient}

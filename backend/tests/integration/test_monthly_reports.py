@@ -440,7 +440,7 @@ def test_send_monthly_report_email_attaches_real_xlsx_stubbed_network(business_r
     captured = {}
 
     class _FakeEmailProvider:
-        def send(self, *, to, subject, body, html_body=None, attachments=None):
+        def send(self, *, to, subject, body, html_body=None, attachments=None, credentials=None):
             captured["to"] = to
             captured["attachments"] = attachments
             captured["html_body"] = html_body
@@ -468,7 +468,7 @@ def test_send_monthly_report_endpoint_owner_can_trigger_it(business_ready, monke
     year, month = _this_year_month()
 
     class _FakeEmailProvider:
-        def send(self, *, to, subject, body, html_body=None, attachments=None):
+        def send(self, *, to, subject, body, html_body=None, attachments=None, credentials=None):
             return "250 ok"
 
     monkeypatch.setattr(monthly_report_service, "EmailNotificationProvider", lambda: _FakeEmailProvider())

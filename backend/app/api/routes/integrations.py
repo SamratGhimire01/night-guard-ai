@@ -47,7 +47,7 @@ def upsert_integration(
 
 @router.post("/integrations/{type}/test-connection", response_model=IntegrationTestResult)
 def test_connection(
-    type: Literal["whatsapp", "messenger", "instagram"],
+    type: Literal["whatsapp", "messenger", "instagram", "email"],
     current_user: BusinessUser = Depends(require_role(["owner", "admin"])),
     db: Session = Depends(get_db),
 ) -> IntegrationTestResult:

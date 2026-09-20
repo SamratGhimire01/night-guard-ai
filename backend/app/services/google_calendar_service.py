@@ -64,6 +64,13 @@ class GoogleCalendarError(Exception):
     app/llm/azure_openai.py."""
 
 
+class GoogleAuthRejectedError(GoogleCalendarError):
+    """Google definitively rejected the stored credentials (refresh token
+    `invalid_grant` = expired/revoked, or a 401 on the API) — only a fresh
+    user consent fixes this. Distinct from a transport error or 5xx, where
+    Google's answer about the token is simply unknown."""
+
+
 # --- OAuth connect/disconnect/status ---------------------------------------
 
 
@@ -91,6 +98,14 @@ def _post_token_endpoint(data: dict) -> dict:
     except httpx.TransportError as exc:
         raise GoogleCalendarError(f"token endpoint transport error: {type(exc).__name__}") from None
     if response.status_code != 200:
+        # Only the `error` code is read from the body (never logged/echoed) —
+        # it names the failure class, never a token.
+        try:
+            error_code = response.json().get("error")
+        except ValueError:
+            error_code = None
+        if response.status_code == 400 and error_code == "invalid_grant":
+            raise GoogleAuthRejectedError("token endpoint rejected the refresh token (invalid_grant)")
         raise GoogleCalendarError(f"token endpoint failed with HTTP {response.status_code}")
     return response.json()
 
@@ -116,6 +131,8 @@ def _get_calendar_summary(access_token: str) -> str:
         )
     except httpx.TransportError as exc:
         raise GoogleCalendarError(f"calendar lookup transport error: {type(exc).__name__}") from None
+    if response.status_code == 401:
+        raise GoogleAuthRejectedError("calendar lookup rejected the access token (HTTP 401)")
     if response.status_code != 200:
         raise GoogleCalendarError(f"calendar lookup failed with HTTP {response.status_code}")
     return response.json().get("summary") or "Google Calendar"
@@ -174,11 +191,31 @@ def disconnect(db: Session, *, business_id: uuid.UUID) -> bool:
 
 def get_status(db: Session, *, business_id: uuid.UUID) -> dict:
     """Never returns raw tokens — only connected + the connected calendar's
-    real display name, per the ticket's explicit requirement."""
+    real display name, per the ticket's explicit requirement.
+
+    A stored row is NOT proof the connection works (a revoked/expired refresh
+    token leaves it sitting there while every sync silently fails), so a
+    saved integration is checked for real: refresh the access token if due,
+    then one lightweight calendar read. `needs_reconnect` is True only when
+    Google definitively rejects the credentials; if Google can't be reached
+    at all, `verified` is False (unknown) rather than guessing either way."""
     integration = integration_service.get_integration(db, business_id=business_id, type_=INTEGRATION_TYPE)
     if integration is None or not integration.enabled:
-        return {"connected": False, "calendar_name": None}
-    return {"connected": True, "calendar_name": integration.config.get("calendar_summary")}
+        return {"connected": False, "calendar_name": None, "needs_reconnect": False, "verified": True}
+    status = {
+        "connected": True,
+        "calendar_name": integration.config.get("calendar_summary"),
+        "needs_reconnect": False,
+        "verified": True,
+    }
+    try:
+        _get_calendar_summary(_fresh_access_token(db, integration))
+    except GoogleAuthRejectedError:
+        status["needs_reconnect"] = True
+    except Exception:
+        logger.warning("google calendar status check inconclusive for business_id=%s", business_id, exc_info=True)
+        status["verified"] = False
+    return status
 
 
 # --- Token refresh + applicability ------------------------------------------

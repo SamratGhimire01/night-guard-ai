@@ -69,6 +69,13 @@ export default function GoogleCalendarPage() {
   }
 
   const isPremium = plan?.plan === 'premium'
+  const badge = !status?.connected
+    ? { color: 'gray', label: 'Not connected' }
+    : status.needs_reconnect
+      ? { color: 'red', label: 'Needs reconnect' }
+      : status.verified
+        ? { color: 'green', label: 'Connected' }
+        : { color: 'yellow', label: 'Connected (unverified)' }
 
   return (
     <Stack gap="md" maw={560}>
@@ -94,8 +101,8 @@ export default function GoogleCalendarPage() {
             <div>
               <Group gap="xs" mb={4}>
                 <Text fw={600}>Status</Text>
-                <Badge color={status.connected ? 'green' : 'gray'} variant="light">
-                  {status.connected ? 'Connected' : 'Not connected'}
+                <Badge color={badge.color} variant="light">
+                  {badge.label}
                 </Badge>
               </Group>
               {status.connected && (
@@ -104,16 +111,31 @@ export default function GoogleCalendarPage() {
                 </Text>
               )}
             </div>
-            {status.connected ? (
-              <Button color="red" variant="light" loading={disconnecting} onClick={handleDisconnect}>
-                Disconnect
-              </Button>
-            ) : (
-              <Button disabled={!isPremium} loading={connecting} onClick={handleConnect}>
-                Connect Google Calendar
-              </Button>
-            )}
+            <Group gap="xs">
+              {(!status.connected || status.needs_reconnect) && (
+                <Button disabled={!isPremium} loading={connecting} onClick={handleConnect}>
+                  {status.needs_reconnect ? 'Reconnect Google Calendar' : 'Connect Google Calendar'}
+                </Button>
+              )}
+              {status.connected && (
+                <Button color="red" variant="light" loading={disconnecting} onClick={handleDisconnect}>
+                  Disconnect
+                </Button>
+              )}
+            </Group>
           </Group>
+          {status.needs_reconnect && (
+            <Alert color="red" variant="light" mt="md" title="Google Calendar needs to be reconnected">
+              Google no longer accepts the saved access (it expired or was revoked). New bookings are not being added
+              to your calendar, and your calendar's busy time is not being used when proposing slots, until you
+              reconnect. Bookings themselves are unaffected.
+            </Alert>
+          )}
+          {status.connected && !status.verified && (
+            <Alert color="yellow" variant="light" mt="md" title="Could not check the connection">
+              Google could not be reached just now, so the connection could not be verified. Refresh in a moment.
+            </Alert>
+          )}
         </Paper>
       )}
 

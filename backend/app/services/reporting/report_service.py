@@ -16,6 +16,7 @@ from app.db.models.handoff import HumanHandoff
 from app.db.models.service import Service
 from app.db.models.staff import Staff
 from app.services.notifications.base import NotificationDeliveryError
+from app.services import integration_service
 from app.services.notifications.email_provider import EmailNotificationProvider
 from app.services.notifications.templates.render import render_daily_report_email
 from app.services.reporting.excel_export import report_to_xlsx_bytes
@@ -396,6 +397,7 @@ def send_daily_report_email(db: Session, *, business_id: uuid.UUID, report_date:
             attachments=[
                 (filename, xlsx_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             ],
+            credentials=integration_service.email_credentials(db, business_id=business.id),
         )
     except NotificationDeliveryError as exc:
         return {"sent": False, "recipient": recipient, "reason": str(exc), "transient": exc.transient}

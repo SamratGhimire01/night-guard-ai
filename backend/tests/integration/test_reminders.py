@@ -44,7 +44,7 @@ class _FakeProvider:
         self.calls = 0
         self.recipients = []
 
-    def send(self, *, to, subject, body, html_body=None, attachments=None, inline_images=None):
+    def send(self, *, to, subject, body, html_body=None, attachments=None, inline_images=None, credentials=None):
         self.calls += 1
         self.recipients.append(to)
         return "ok"

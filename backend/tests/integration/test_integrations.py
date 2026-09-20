@@ -217,3 +217,120 @@ def test_test_connection_makes_a_real_graph_api_call_with_saved_credentials(two_
     body = resp.json()
     assert body["ok"] is False
     assert "oauth" in body["detail"].lower() or "token" in body["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Per-business Gmail credentials (type="email")
+# ---------------------------------------------------------------------------
+
+_EMAIL_CONFIG = {"gmail_address": "owner@gmail.com", "app_password": "abcd efgh ijkl mnop"}
+
+
+class _FakeSMTP:
+    """Stands in for smtplib.SMTP — records the real handshake calls; a login
+    raising SMTPAuthenticationError simulates Gmail rejecting the password."""
+
+    logins: list = []
+    messages: list = []
+    reject_login = False
+
+    def __init__(self, host, port, timeout=None):
+        assert (host, port) == ("smtp.gmail.com", 587)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def starttls(self):
+        pass
+
+    def login(self, address, password):
+        import smtplib
+
+        if _FakeSMTP.reject_login:
+            raise smtplib.SMTPAuthenticationError(535, b"5.7.8 Username and Password not accepted secret-echo")
+        _FakeSMTP.logins.append((address, password))
+
+    def send_message(self, message):
+        _FakeSMTP.messages.append(message)
+        return {}
+
+
+@pytest.fixture
+def fake_smtp(monkeypatch):
+    from app.services.notifications import email_provider
+
+    _FakeSMTP.logins, _FakeSMTP.messages, _FakeSMTP.reject_login = [], [], False
+    monkeypatch.setattr(email_provider.smtplib, "SMTP", _FakeSMTP)
+    return _FakeSMTP
+
+
+def _save_email(token, config=None):
+    return client.post(
+        "/api/v1/integrations",
+        json={"type": "email", "config": config or _EMAIL_CONFIG},
+        headers=_auth_header(token),
+    )
+
+
+def test_email_integration_saves_normalized_password_and_never_echoes_it(two_businesses):
+    resp = _save_email(two_businesses["token_a"])
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["config"] == {"gmail_address": "owner@gmail.com"}
+    listed = client.get("/api/v1/integrations", headers=_auth_header(two_businesses["token_a"]))
+    assert "app_password" not in listed.text and "abcd" not in listed.text
+
+    from app.services import integration_service
+
+    with SessionLocal() as db:
+        creds = integration_service.email_credentials(db, business_id=uuid.UUID(two_businesses["business_id_a"]))
+        assert creds == ("owner@gmail.com", "abcdefghijklmnop")  # Google's display spaces stripped
+        assert integration_service.email_credentials(db, business_id=uuid.UUID(two_businesses["business_id_b"])) is None
+
+
+@pytest.mark.parametrize(
+    "config",
+    [{"gmail_address": "owner@gmail.com"}, {"gmail_address": "not-an-email", "app_password": "abcdefghijklmnop"}],
+)
+def test_email_integration_validates_config(two_businesses, config):
+    assert _save_email(two_businesses["token_a"], config).status_code == 422
+
+
+def test_email_test_connection_reports_success_using_the_saved_credentials(two_businesses, fake_smtp):
+    _save_email(two_businesses["token_a"])
+    resp = client.post("/api/v1/integrations/email/test-connection", headers=_auth_header(two_businesses["token_a"]))
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["ok"] is True
+    assert fake_smtp.logins == [("owner@gmail.com", "abcdefghijklmnop")]
+    assert fake_smtp.messages == [], "test connection must never send mail"
+
+
+def test_email_test_connection_reports_auth_failure_without_leaking_server_text(two_businesses, fake_smtp):
+    _save_email(two_businesses["token_a"])
+    fake_smtp.reject_login = True
+    body = client.post("/api/v1/integrations/email/test-connection", headers=_auth_header(two_businesses["token_a"])).json()
+    assert body["ok"] is False
+    assert "app password" in body["detail"].lower()
+    assert "secret-echo" not in body["detail"] and "abcdefghijklmnop" not in body["detail"]
+
+
+def test_email_test_connection_without_saved_credentials_reports_not_connected(two_businesses):
+    body = client.post("/api/v1/integrations/email/test-connection", headers=_auth_header(two_businesses["token_a"])).json()
+    assert body["ok"] is False and "not connected" in body["detail"].lower()
+
+
+def test_email_provider_sends_as_the_business_own_gmail_and_falls_back_to_platform(fake_smtp, monkeypatch):
+    from app.core.config import settings
+    from app.services.notifications.email_provider import EmailNotificationProvider
+
+    monkeypatch.setattr(settings, "gmail_address", "platform@gmail.com")
+    monkeypatch.setattr(settings, "gmail_app_password", "platformpw")
+    provider = EmailNotificationProvider()
+
+    provider.send(to="c@example.com", subject="s", body="b", credentials=("owner@gmail.com", "ownerpw"))
+    provider.send(to="c@example.com", subject="s", body="b")
+
+    assert fake_smtp.logins == [("owner@gmail.com", "ownerpw"), ("platform@gmail.com", "platformpw")]
+    assert [m["From"] for m in fake_smtp.messages] == ["owner@gmail.com", "platform@gmail.com"]

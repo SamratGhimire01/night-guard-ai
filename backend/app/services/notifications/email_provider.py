@@ -29,6 +29,7 @@ class EmailNotificationProvider(NotificationProvider):
         html_body: str | None = None,
         attachments: list[tuple[str, bytes, str]] | None = None,
         inline_images: list[tuple[str, bytes, str]] | None = None,
+        credentials: tuple[str, str] | None = None,
     ) -> str:
         """`html_body` (Phase 17, email-only — same status as `attachments`
         below, not part of the shared NotificationProvider interface): when
@@ -56,16 +57,21 @@ class EmailNotificationProvider(NotificationProvider):
         which is what makes `cid:` resolution work in every real mail
         client. EmailMessage's high-level API handles the real resulting
         `multipart/mixed(multipart/alternative(text, multipart/related(html,
-        image)), attachment)` nesting automatically."""
-        if not settings.gmail_address or not settings.gmail_app_password:
+        image)), attachment)` nesting automatically.
+
+        `credentials` (address, app_password): the business's OWN Gmail login
+        (see integration_service.email_credentials). None falls back to the
+        platform-wide GMAIL_ADDRESS/GMAIL_APP_PASSWORD."""
+        address, app_password = credentials or (settings.gmail_address, settings.gmail_app_password)
+        if not address or not app_password:
             raise NotificationDeliveryError(
-                "GMAIL_ADDRESS/GMAIL_APP_PASSWORD are not configured.", transient=False
+                "No Gmail address/app password configured for this business or for the platform.", transient=False
             )
         if not to:
             raise NotificationDeliveryError("No recipient email address on file.", transient=False)
 
         message = EmailMessage()
-        message["From"] = settings.gmail_address
+        message["From"] = address
         message["To"] = to
         message["Subject"] = subject
         message.set_content(body)
@@ -85,7 +91,7 @@ class EmailNotificationProvider(NotificationProvider):
         try:
             with smtplib.SMTP(_SMTP_HOST, _SMTP_PORT, timeout=15) as smtp:
                 smtp.starttls()
-                smtp.login(settings.gmail_address, settings.gmail_app_password)
+                smtp.login(address, app_password)
                 refused = smtp.send_message(message)
                 if refused:
                     # send_message only returns non-empty here on a *partial*
@@ -114,3 +120,24 @@ class EmailNotificationProvider(NotificationProvider):
             raise NotificationDeliveryError(
                 f"{type(exc).__name__}: could not reach SMTP host", transient=True
             ) from None
+
+
+def test_smtp_credentials(address: str, app_password: str) -> tuple[bool, str]:
+    """Real SMTP handshake (connect, STARTTLS, LOGIN) against Gmail with the
+    given credentials — proves they authenticate, without sending any mail.
+    Never raises. `detail` is safe to show a user: only a fixed message per
+    failure class, never the server's raw AUTH response or the password."""
+    if not address or not app_password:
+        return False, "Missing Gmail address or app password."
+    try:
+        with smtplib.SMTP(_SMTP_HOST, _SMTP_PORT, timeout=15) as smtp:
+            smtp.starttls()
+            smtp.login(address, app_password)
+    except smtplib.SMTPAuthenticationError:
+        return False, (
+            "Gmail rejected this address/app password. Use a 16-character app password (not your normal Gmail "
+            "password), and make sure 2-Step Verification is on for that account."
+        )
+    except (smtplib.SMTPException, OSError) as exc:
+        return False, f"Could not complete the Gmail SMTP connection ({type(exc).__name__}). Please try again."
+    return True, f"Connected — Gmail accepted the login for {address}."

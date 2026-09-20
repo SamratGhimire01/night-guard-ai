@@ -221,7 +221,12 @@ def test_callback_success_stores_tokens_and_never_leaks_them(two_businesses, mon
 
     status = client.get("/api/v1/integrations/google-calendar/status", headers=_auth_header(two_businesses["token_a"]))
     assert status.status_code == 200
-    assert status.json() == {"connected": True, "calendar_name": "Jordan's Calendar"}
+    assert status.json() == {
+        "connected": True,
+        "calendar_name": "Jordan's Calendar",
+        "needs_reconnect": False,
+        "verified": True,
+    }
     assert "real-access-token-value" not in status.text
     assert "real-refresh-token-value" not in status.text
 
@@ -237,7 +242,7 @@ def test_callback_success_stores_tokens_and_never_leaks_them(two_businesses, mon
 def test_status_disconnected_when_no_integration(two_businesses):
     resp = client.get("/api/v1/integrations/google-calendar/status", headers=_auth_header(two_businesses["token_a"]))
     assert resp.status_code == 200
-    assert resp.json() == {"connected": False, "calendar_name": None}
+    assert resp.json() == {"connected": False, "calendar_name": None, "needs_reconnect": False, "verified": True}
 
 
 def test_disconnect_removes_integration_even_if_revoke_call_fails(two_businesses, monkeypatch):
@@ -253,7 +258,7 @@ def test_disconnect_removes_integration_even_if_revoke_call_fails(two_businesses
         "/api/v1/integrations/google-calendar/disconnect", headers=_auth_header(two_businesses["token_a"])
     )
     assert resp.status_code == 200, resp.text
-    assert resp.json() == {"connected": False, "calendar_name": None}
+    assert resp.json() == {"connected": False, "calendar_name": None, "needs_reconnect": False, "verified": True}
 
     with SessionLocal() as db:
         remaining = db.execute(
@@ -524,7 +529,7 @@ def test_business_b_status_unaffected_by_business_a_connection(two_businesses):
         "/api/v1/integrations/google-calendar/status", headers=_auth_header(two_businesses["token_b"])
     )
     assert status_b.status_code == 200
-    assert status_b.json() == {"connected": False, "calendar_name": None}
+    assert status_b.json() == {"connected": False, "calendar_name": None, "needs_reconnect": False, "verified": True}
 
 
 def test_business_b_availability_unaffected_by_business_a_google_busy_interval(two_businesses, monkeypatch):
@@ -560,3 +565,118 @@ def test_business_b_availability_unaffected_by_business_a_google_busy_interval(t
             db, business_id=business_id_b, service_id=service_id_b, date_from=target_date, date_to=target_date
         )
     assert busy_start in slots_b, "Business A's Google Calendar busy time must never affect Business B's slots"
+
+
+# --- honest "needs reconnect" status ------------------------------------------
+
+
+def _expire_token(business_id: uuid.UUID) -> None:
+    with SessionLocal() as db:
+        row = integration_service.get_integration(db, business_id=business_id, type_="google_calendar")
+        row.config = {**row.config, "token_expiry": (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()}
+        db.commit()
+
+
+def _status(two_businesses) -> dict:
+    resp = client.get("/api/v1/integrations/google-calendar/status", headers=_auth_header(two_businesses["token_a"]))
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+def test_status_needs_reconnect_when_google_rejects_the_refresh_token(two_businesses, monkeypatch):
+    """The real incident: stored row exists, refresh token is dead (invalid_grant)."""
+    _connect_integration(two_businesses["business_id_a"], calendar_summary="Jordan's Calendar")
+    _expire_token(two_businesses["business_id_a"])
+
+    def rejected(data):
+        raise google_calendar_service.GoogleAuthRejectedError("invalid_grant")
+
+    monkeypatch.setattr(google_calendar_service, "_post_token_endpoint", rejected)
+    assert _status(two_businesses) == {
+        "connected": True,
+        "calendar_name": "Jordan's Calendar",
+        "needs_reconnect": True,
+        "verified": True,
+    }
+
+
+def test_status_needs_reconnect_when_a_still_fresh_access_token_is_rejected(two_businesses, monkeypatch):
+    _connect_integration(two_businesses["business_id_a"])
+
+    def rejected(access_token):
+        raise google_calendar_service.GoogleAuthRejectedError("401")
+
+    monkeypatch.setattr(google_calendar_service, "_get_calendar_summary", rejected)
+    assert _status(two_businesses)["needs_reconnect"] is True
+
+
+def test_status_healthy_connection_is_not_flagged(two_businesses, monkeypatch):
+    _connect_integration(two_businesses["business_id_a"])
+    monkeypatch.setattr(google_calendar_service, "_get_calendar_summary", lambda access_token: "Real Calendar")
+    body = _status(two_businesses)
+    assert body["connected"] is True and body["needs_reconnect"] is False and body["verified"] is True
+
+
+def test_status_unreachable_google_is_unverified_not_falsely_broken(two_businesses, monkeypatch):
+    _connect_integration(two_businesses["business_id_a"])
+
+    def unreachable(access_token):
+        raise google_calendar_service.GoogleCalendarError("calendar lookup transport error: ConnectError")
+
+    monkeypatch.setattr(google_calendar_service, "_get_calendar_summary", unreachable)
+    body = _status(two_businesses)
+    assert body["connected"] is True and body["needs_reconnect"] is False and body["verified"] is False
+
+
+def test_status_flips_from_needs_reconnect_to_connected_after_a_real_reconnect(two_businesses, monkeypatch):
+    business_id = two_businesses["business_id_a"]
+    _set_plan(business_id, BusinessPlan.PREMIUM)
+    _connect_integration(business_id)
+    _expire_token(business_id)
+
+    def dead(data):
+        raise google_calendar_service.GoogleAuthRejectedError("invalid_grant")
+
+    monkeypatch.setattr(google_calendar_service, "_post_token_endpoint", dead)
+    assert _status(two_businesses)["needs_reconnect"] is True
+
+    # The user completes Google's consent again: callback exchanges the code for fresh tokens.
+    monkeypatch.setattr(
+        google_calendar_service,
+        "_post_token_endpoint",
+        lambda data: {"access_token": "new-access", "refresh_token": "new-refresh", "expires_in": 3600},
+    )
+    monkeypatch.setattr(google_calendar_service, "_get_calendar_summary", lambda access_token: "Real Calendar")
+    resp = client.get(
+        "/api/v1/integrations/google-calendar/callback",
+        params={"code": "c", "state": create_oauth_state_token(business_id)},
+        follow_redirects=False,
+    )
+    assert "gcal_connected=1" in resp.headers["location"]
+    body = _status(two_businesses)
+    assert body["connected"] is True and body["needs_reconnect"] is False and body["verified"] is True
+
+
+class _FakeResponse:
+    def __init__(self, status_code, payload=None):
+        self.status_code, self._payload = status_code, payload
+
+    def json(self):
+        if self._payload is None:
+            raise ValueError("not json")
+        return self._payload
+
+
+@pytest.mark.parametrize(
+    "status_code, payload, expected",
+    [
+        (400, {"error": "invalid_grant"}, google_calendar_service.GoogleAuthRejectedError),
+        (400, {"error": "invalid_request"}, google_calendar_service.GoogleCalendarError),
+        (500, None, google_calendar_service.GoogleCalendarError),
+    ],
+)
+def test_token_endpoint_only_invalid_grant_counts_as_a_definitive_rejection(monkeypatch, status_code, payload, expected):
+    monkeypatch.setattr(google_calendar_service.httpx, "post", lambda *a, **k: _FakeResponse(status_code, payload))
+    with pytest.raises(google_calendar_service.GoogleCalendarError) as exc_info:
+        google_calendar_service._post_token_endpoint({})
+    assert type(exc_info.value) is expected

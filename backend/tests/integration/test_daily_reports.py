@@ -471,7 +471,7 @@ def test_send_daily_report_email_attaches_a_real_xlsx_stubbed_network(business_r
     captured = {}
 
     class _FakeEmailProvider:
-        def send(self, *, to, subject, body, html_body=None, attachments=None):
+        def send(self, *, to, subject, body, html_body=None, attachments=None, credentials=None):
             captured["to"] = to
             captured["subject"] = subject
             captured["attachments"] = attachments
@@ -500,7 +500,7 @@ def test_send_daily_report_email_provider_failure_never_crashes(business_ready, 
     )
 
     class _FailingProvider:
-        def send(self, *, to, subject, body, html_body=None, attachments=None):
+        def send(self, *, to, subject, body, html_body=None, attachments=None, credentials=None):
             raise NotificationDeliveryError("smtp down", transient=True)
 
     monkeypatch.setattr(report_service, "EmailNotificationProvider", lambda: _FailingProvider())
@@ -515,7 +515,7 @@ def test_send_daily_report_email_provider_failure_never_crashes(business_ready, 
 
 def test_send_daily_report_endpoint_owner_can_trigger_it(business_ready, monkeypatch):
     class _FakeEmailProvider:
-        def send(self, *, to, subject, body, html_body=None, attachments=None):
+        def send(self, *, to, subject, body, html_body=None, attachments=None, credentials=None):
             return "250 ok"
 
     monkeypatch.setattr(report_service, "EmailNotificationProvider", lambda: _FakeEmailProvider())

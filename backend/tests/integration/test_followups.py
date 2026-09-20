@@ -143,7 +143,7 @@ class _FakeEmailProvider:
         self.should_fail = should_fail
         self.calls = []
 
-    def send(self, *, to, subject, body, html_body=None, attachments=None, inline_images=None):
+    def send(self, *, to, subject, body, html_body=None, attachments=None, inline_images=None, credentials=None):
         self.calls.append({"to": to, "subject": subject, "body": body, "html_body": html_body})
         if self.should_fail:
             raise NotificationDeliveryError("smtp down", transient=True)

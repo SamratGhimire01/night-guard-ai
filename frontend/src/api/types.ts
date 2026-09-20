@@ -95,18 +95,22 @@ export interface BusinessReferenceData {
 export interface GoogleCalendarStatus {
   connected: boolean
   calendar_name: string | null
+  // Google rejected the stored token (real check) — reconnect required.
+  needs_reconnect: boolean
+  // false = Google couldn't be reached, so the token's state is unknown.
+  verified: boolean
 }
 
 export interface GoogleCalendarAuthorizationURL {
   authorization_url: string
 }
 
-export type ChannelType = 'whatsapp' | 'messenger' | 'instagram'
+export type ChannelType = 'whatsapp' | 'messenger' | 'instagram' | 'email'
 
 export interface IntegrationRead {
   id: string
   type: ChannelType | 'google_calendar'
-  // Secrets (access_token / page_access_token) are stripped by the backend
+  // Secrets (access_token / page_access_token / app_password) are stripped by the backend
   // before this ever reaches the dashboard — write-only, like a password.
   config: Record<string, string>
   enabled: boolean

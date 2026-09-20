@@ -360,7 +360,7 @@ def test_real_booking_dispatches_a_real_html_email_with_matching_data(business_r
     class _FakeProvider:
         SIMULATED = False
 
-        def send(self, *, to, subject, body, html_body=None, attachments=None, inline_images=None):
+        def send(self, *, to, subject, body, html_body=None, attachments=None, inline_images=None, credentials=None):
             captured["to"] = to
             captured["html_body"] = html_body
             captured["body"] = body

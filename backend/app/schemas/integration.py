@@ -14,6 +14,7 @@ _REQUIRED_CONFIG_KEYS: dict[str, set[str]] = {
     "whatsapp": {"phone_number_id", "access_token"},
     "messenger": {"page_id", "page_access_token"},
     "instagram": {"ig_account_id", "access_token"},
+    "email": {"gmail_address", "app_password"},
 }
 
 # Which of the required keys above are secrets that must never be echoed back
@@ -23,6 +24,7 @@ _SECRET_CONFIG_KEYS: dict[str, set[str]] = {
     "whatsapp": {"access_token"},
     "messenger": {"page_access_token"},
     "instagram": {"access_token"},
+    "email": {"app_password"},
 }
 
 
@@ -31,7 +33,7 @@ class IntegrationUpsert(BaseModel):
     exists yet, otherwise replaces its config/enabled (see
     integration_service.upsert_integration)."""
 
-    type: Literal["whatsapp", "messenger", "instagram"]
+    type: Literal["whatsapp", "messenger", "instagram", "email"]
     config: dict[str, safe_str(500)]
     enabled: bool = True
 
@@ -41,6 +43,11 @@ class IntegrationUpsert(BaseModel):
         missing = [key for key in sorted(required) if not self.config.get(key)]
         if missing:
             raise ValueError(f"config for type={self.type!r} is missing required key(s): {missing}")
+        if self.type == "email":
+            if "@" not in self.config["gmail_address"]:
+                raise ValueError("gmail_address must be an email address")
+            # Google displays app passwords as four space-separated groups.
+            self.config["app_password"] = "".join(self.config["app_password"].split())
         return self
 
 

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.models.integration import Integration
 from app.schemas.integration import IntegrationUpsert
+from app.services.notifications.email_provider import test_smtp_credentials
 from app.services.channels.graph_api import instagram_graph_host, test_graph_credentials, test_messenger_credentials
 
 
@@ -50,6 +51,10 @@ def _check_instagram(config: dict) -> tuple[bool, str]:
     )
 
 
+def _check_email(config: dict) -> tuple[bool, str]:
+    return test_smtp_credentials(config.get("gmail_address", ""), config.get("app_password", ""))
+
+
 # Per-type real connection check — each channel now genuinely reflects its
 # own real send capability (see the three functions above), not one generic
 # mechanism applied uniformly regardless of whether it fits.
@@ -57,6 +62,7 @@ _TEST_CONNECTION_CHECKS: dict[str, Callable[[dict], tuple[bool, str]]] = {
     "whatsapp": _check_whatsapp,
     "messenger": _check_messenger,
     "instagram": _check_instagram,
+    "email": _check_email,
 }
 
 
@@ -137,6 +143,20 @@ def test_connection(db: Session, *, business_id: uuid.UUID, type_: str) -> tuple
         return False, "Not connected yet — save your credentials first."
 
     return check(integration.config or {})
+
+
+def email_credentials(db: Session, *, business_id: uuid.UUID) -> tuple[str, str] | None:
+    """This business's own Gmail (address, app_password) if it has saved an
+    enabled one, else None -> EmailNotificationProvider falls back to the
+    platform-wide account. Never falls back once a business HAS saved its own:
+    a broken login must surface as a failed send, not silently go out from a
+    different sender."""
+    integration = get_integration(db, business_id=business_id, type_="email")
+    if integration is None or not integration.enabled:
+        return None
+    config = integration.config or {}
+    address, password = config.get("gmail_address"), config.get("app_password")
+    return (address, password) if address and password else None
 
 
 def delete_integration(db: Session, *, business_id: uuid.UUID, type_: str) -> bool:

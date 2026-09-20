@@ -12,7 +12,12 @@ class GoogleCalendarAuthorizationURL(BaseModel):
 
 class GoogleCalendarStatus(BaseModel):
     """Never carries a token — connected + the real connected calendar's
-    display name only, per the ticket's explicit requirement."""
+    display name only, per the ticket's explicit requirement.
+    `needs_reconnect`: Google rejected the stored token (a real check, see
+    google_calendar_service.get_status). `verified=False`: Google couldn't be
+    reached, so the token's state is unknown."""
 
     connected: bool
     calendar_name: str | None = None
+    needs_reconnect: bool = False
+    verified: bool = True
