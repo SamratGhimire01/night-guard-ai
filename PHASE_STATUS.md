@@ -16429,6 +16429,64 @@ Side effects: ~10 test businesses/conversations on the standing test DB; test bu
 
 ---
 
+## Phase 17 (2026-09-20 series) — reply speed: `reasoning_effort="low"` in production, full-turn timing, prompt-size measurement
+
+**Change:** `Settings.azure_openai_reasoning_effort` (default `"low"`, validated at startup: default|minimal|low|medium|high|xhigh — an invalid value makes Azure answer HTTP 400 on every chat call, so a typo now fails at boot, not at the first customer) is sent as `reasoning_effort` in every `AzureChatProvider.chat` request. **One-env-var rollback: `AZURE_OPENAI_REASONING_EFFORT=default`** (sends nothing = the deployment's medium). It applies to every chat call, including conversation summarization (its quality at low was not separately measured). Verified against the real Foundry API first: default 448 reasoning tokens / 4.6s vs low 128 tokens / 3.3s on a trivial prompt; a bogus value -> HTTP 400.
+
+### 1. Real before/after latency (real orchestrator + real Azure, same day, arms interleaved)
+* **The exact "10 representative messages" from the earlier latency phase were never recorded in the repo (only their numbers).** I used a fixed, checked-in set of 10 real customer messages (verbatim from this project's real transcripts; mixed Roman-Nepali / English / Devanagari; `backend/tests/eval/latency_bench.py`), each as the first message of a fresh conversation on the real Samaj Dental business, 3 rounds, default vs low alternating (30 turns per arm):
+| | default | **low** | change |
+|---|---|---|---|
+| full turn, mean | 8,632 ms | **5,370 ms** | **-38%** |
+| full turn, median / p90 | 8,542 / 11,566 | 5,135 / 6,553 | -40% / -43% |
+| LLM call, mean | 7,798 ms | 4,434 ms | -43% |
+* **The lab's "10.4s -> 4.2s (roughly half)" did NOT carry over in full**: it was measured on short reply-style prompts. The production call is an ~8k-token prompt that also does intent classification + slot extraction, so its floor is higher: real gain **-38%, not -60%**.
+* **Live over real HTTP** (force-recreated server, widget endpoint, same 10 messages x 2 rounds, n=20): **mean 4,621 ms, median 4,741, p90 5,684, min 3,242, max 5,952**. A deterministic bare-digit slot pick ("2") answers in ~1.0s (no LLM, no embedding).
+
+### 2. Quality gate at low — and the regression it exposed (this is the part the lab could not see)
+* The lab scored **reply text** (n=12). Production also depends on the model's structured **extraction** (which service, date, time). Spec-conformance suite (27 cases, real orchestrator), scored by me against each case's stated expectation, one rubric for every arm:
+| run | PASS / PARTIAL / FAIL |
+|---|---|
+| original baseline (earlier phase) | 17 / 9 / 1 |
+| default effort, today D1 / D2 (same-day controls) | 17 / 8 / 2 · 16 / 9 / 2 |
+| **low + final code (L4)** | **18 / 8 / 1** |
+The one FAIL is `sec12-no-repetition` (known, accepted deterministic-template case; identical in every run). One scorer, run-to-run noise between the two controls is 1-2 cases — read the table as "no meaningful regression", not as a win.
+* **First low-effort suite run (L1) was INVALID and excluded**: 23 `ConnectError`s (a transient network blip mid-run; TCP-level, so unrelated to request contents; 0 in the controls) turned 13 cases into the provider-failure fallback. Re-run twice cleanly. (Side note: the provider-failure path worked as designed — honest fallback + a real handoff — but it does create a handoff for a transient blip.)
+* **Real regression found by counting, not anecdote:** turns where the customer NAMED "teeth cleaning" yet the reply still asked "which service?": default 3/22 and 2/22; **low, no mitigation 9/22**. Direct extraction test (7 real messages x 12 samples, real classifier, no DB): service resolved **default 99% (83/84) vs low 88% (74/84) and 94% (79/84)**; dates/times **72/72 at both**. Concentrated in question-shaped availability messages ("what times do you have for a teeth cleaning tomorrow?" 8/12). Failure mode is safe (an extra "which service?" turn, never a wrong booking) but it is the highest-traffic flow and eats the speed win.
+* **Fix — deterministic backfill (`orchestrator._service_named_in`, applied just before `_merge_booking_draft`):** on a **booking-intent** turn where the service is missing OR is not exactly a real service name, use the ONE real service the customer literally named (full name or name minus its parenthetical, whole words, case-insensitive; zero or several matches -> do nothing). "LLM observes, Python decides"; also lifts default effort (99% -> 100%). **First version was too narrow (only null service) and was caught by the human-read step, not by my own tests/harness**: the live `/test-chat` conversation returned service `"Teeth Cleaning"` (short, non-empty, not an exact match) and still asked "which service?". Widened to "does not resolve to a real service", new test for the short-name shape, mutation-checked (fails on the old trigger).
+* **After (final code):** extraction harness low **84/84 (100%)** (raw 94% -> 100%), default 84/84; spec suite L4: "named service but still asked which service" **0/22** (L2 raw low 9/22, L3 narrow-backfill 11/22 — confirming the narrow version did nothing), explicit-booking first turns booked **8/8** (L3 3/8, L2 6/8, D1 8/8, D2 7/8). Live `/test-chat`: "what times do you have for a teeth cleaning tomorrow?" -> real slot list; "2" -> slot 10:15 picked deterministically.
+* **Human read** (3 real browser conversations via `/test-chat`, real backend at low): Romanized-Nepali flow (info -> price -> "bholi 2 baje milcha?" -> contact request) natural and correctly answered; English availability flow works after the fix; "thanks" -> "You're welcome!". **One thing I did not like:** "actually, is Thursday morning possible instead?" answered **Wednesday, September 23** (today is Sunday 20th; Thursday is the 24th).
+* **That date error is PRE-EXISTING and NOT caused by low effort** (measured, `tests/eval/date_accuracy.py`, 6 weekday phrasings x 12): weekday -> correct date **low 53/72, default 52/72**. "Thursday" comes back as Wednesday ~8% on clear requests ("book ... on Thursday at 10am" 11/12 at both efforts) and ~40% on terse ones ("is Thursday morning possible instead?" 8/12 low, 7/12 default). This can put a booking on the wrong day. **Not fixed here (out of scope); recommended follow-up:** resolve weekday names in the customer's text deterministically against today's date and override a model date whose weekday disagrees.
+
+### 3. Where the time goes now (Part 2; means over 30 turns at low; full turn 5,370 ms)
+| stage | ms | share |
+|---|---|---|
+| LLM chat completion | 4,434 | **83%** |
+| embedding call | 868 | **16%** |
+| knowledge search | 7 | ~0% |
+| context assembly + summarization check | 6 | ~0% |
+| tool dispatch + response composition + DB persist | 54 | 1% |
+(default effort for comparison: LLM 7,798 = 90%, embedding 734 = 8.5%.) Left to attack: (a) LLM output length/effort — ~83%; (b) the embedding call, ~0.8s, is the largest non-LLM piece and is wasted on turns that need no knowledge (only bare-digit picks skip it today); (c) unmeasured: network distance to the Azure region (`uaenorth`) from the users. Streaming is still not feasible without redesigning the single-JSON turn.
+
+### 4. System-prompt size (Part 3) — measured, deliberately NOT trimmed
+Current system prompt: **6,104 words ~ 8,139 tokens** (word/0.75 proxy; 5,796 at the first measurement, 7,004 at the last recorded one). Sensitivity of the LLM call at low effort (same user prompt, 15 calls each, interleaved):
+| system prompt | ~tokens | LLM call mean |
+|---|---|---|
+| full | 8,139 | 4,274 ms |
+| minus the 10 largest few-shot examples | 5,476 (-33%) | 3,908 ms (**-9%**) |
+| minus ALL examples (unshippable bound) | 4,023 (-51%) | 3,601 ms (**-16%**) |
+Even deleting every example (which would break what they fix) buys ~0.7s; a careful ~1,000-1,500-token trim would buy ~0.1-0.2s, inside the call-to-call noise (individual calls 2.4-5.8s). Not worth the regression risk; no prompt text was changed.
+
+### 5. Honest bottom line
+Typical end-to-end reply is now **~4.6-5.4 s (range ~3.2-6.0 s), down from ~8.6 s** — a real ~40% cut, but **still not "instant"**: it feels like a normal chat assistant that takes a moment, not a fast one. Sub-2s would need a different lever (shorter/cheaper outputs, skipping the embedding, streaming), not more of this one.
+
+### 6. Tests / ops
+**Full suite (final code, force-recreated server): 579 passed, 10 skipped, 0 failed (663s)** = 561 (Phase 15 baseline) + 12 (Phase 16 language-mode tests) + 6 new this phase; every earlier phase of the night (booking-loop fix, date-switch fix, resend feature, formatting fixes) still passes. `ruff` clean on everything touched.
+New tests (all in `test_conversation.py`): matcher unit test, backfill x2 (null / short name), not-invented, booking-intent-only. One existing test's customer text was adjusted (`test_genuine_date_switch_is_now_acknowledged` said "book a cleaning" while its stub deliberately omits the service; with the backfill that turn now correctly books, so the text no longer names a service). **My own bug caught by the full run:** the language-mode tests I added earlier defined a module-level `_say` that shadowed an existing `_say` helper (12 resend tests failed); renamed. New eval scripts (not collected by pytest): `tests/eval/{latency_bench,extraction_reliability,date_accuracy,live_latency_http}.py`. **Production 429s:** the client retries only 404 and transport errors, so an HTTP 429 (rate limit) is a hard failure; my extraction bench hit one with 4 concurrent ~8k-token calls (bench now backs off). Worth a retry-with-backoff for 429 if traffic ever bursts.
+Test data on the real business f0ca2a54: every row my measurements created (latency bench, live HTTP run, /test-chat sessions, debug script) was deleted by exact match; the spec-conformance runner cleans up after itself.
+
+---
+
 ## Phase L1 — conversation-lab sandbox (separate track)
 
 New top-level `conversation-lab/` (DSPy sandbox, judge, test UI). Full report, real judge scores and isolation

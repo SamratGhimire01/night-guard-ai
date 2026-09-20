@@ -2480,7 +2480,7 @@ def test_genuine_date_switch_is_now_acknowledged(two_businesses, monkeypatch):
     resp = client.post(
         f"/api/v1/conversations/{conversation_id}/messages",
         headers=_auth_header(token_a),
-        json={"content": "book a cleaning next monday at 2pm"},
+        json={"content": "book me next monday at 2pm"},  # names no service: this test wants a draft the stub leaves service-less
     )
     assert resp.status_code == 201, resp.text
 
@@ -4340,3 +4340,91 @@ def test_pick_one_template_exists_in_every_language():
 
     for lang in ("en", "ne_deva", "ne_roman"):
         assert "9:00 AM" in render("availability_pick_one", lang, options="9:00 AM, 9:15 AM")
+
+
+# --- Phase 17: deterministic backfill of a service the customer literally named but the LLM left null -----------------
+
+
+def _post_message(token: str, conversation_id: uuid.UUID, content: str) -> dict:
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token), json={"content": content}
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+def _conversation_state(conversation_id: uuid.UUID) -> Conversation:
+    with SessionLocal() as db:
+        return db.get(Conversation, conversation_id)
+
+
+
+class _Svc:
+    def __init__(self, name):
+        self.name = name
+
+
+def test_service_named_in_matches_only_one_real_service_by_whole_words():
+    from app.services.conversation.orchestrator import _service_named_in
+
+    services = [_Svc("Teeth Cleaning (Scaling & Polishing)"), _Svc("Teeth Whitening"), _Svc("Root Canal Treatment"), _Svc("Dental Consultation")]
+    assert _service_named_in(services, "what times do you have for a teeth cleaning tomorrow?") is services[0]
+    assert _service_named_in(services, "TEETH CLEANING (Scaling & Polishing) please") is services[0]  # full name, any case
+    assert _service_named_in(services, "bholi 2 baje teeth whitening ko lagi milcha?") is services[1]
+    assert _service_named_in(services, "not the teeth cleaning, the teeth whitening") is None  # two named: never a guess
+    assert _service_named_in(services, "what times do you have tomorrow?") is None  # none named
+    assert _service_named_in(services, "I need a cleaning") is None  # a bare fragment is the LLM's call, not ours
+    assert _service_named_in(services, "unteeth cleanings") is None  # whole words only
+    assert _service_named_in([], "teeth cleaning") is None
+
+
+def test_booking_intent_naming_a_service_the_llm_dropped_still_shows_real_availability(two_businesses, monkeypatch):
+    """Measured at low reasoning effort: the model sometimes returns booking_request.service=null for "what times do you have for a
+    cleaning tomorrow?", so the customer got "which service?" for a service they had just named. The service is now filled in
+    from the message itself, and the real slot list is shown."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    monday = _next_monday()
+    _stub_providers(monkeypatch, _partial_booking_reply(service=None, date=monday.isoformat(), wants_availability=True))
+    body = _post_message(token_a, conversation_id, "what times do you have for a Cleaning on monday?")["response"]
+    assert "9:00 AM" in body and "Which works for you?" in body, body
+    assert _conversation_state(conversation_id).booking_draft_service_id is not None
+
+
+def test_service_is_not_invented_when_the_message_names_none(two_businesses, monkeypatch):
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    _stub_providers(monkeypatch, _partial_booking_reply(service=None, date=_next_monday().isoformat(), wants_availability=True))
+    body = _post_message(token_a, conversation_id, "what times do you have on monday?")["response"]
+    assert "Which works for you?" not in body and "9:00 AM" not in body, body
+    assert _conversation_state(conversation_id).booking_draft_service_id is None
+
+
+def test_backfill_only_applies_to_booking_intent(two_businesses, monkeypatch):
+    """A pricing question that mentions a service (LLM left it null) is not silently turned into a booking draft."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    reply = json.dumps({"intent": "pricing_question", "response": "It is $50.", "booking_request": {"service": None, "date": None, "time": None, "wants_availability": False}})
+    _stub_providers(monkeypatch, reply)
+    _post_message(token_a, conversation_id, "how much is a Cleaning?")
+    assert _conversation_state(conversation_id).booking_draft_service_id is None
+
+
+def test_backfill_also_covers_a_short_service_name_that_is_not_an_exact_real_one(two_businesses, monkeypatch):
+    """Found live: the model wrote service="Teeth Cleaning" for the real "Teeth Cleaning (Scaling & Polishing)". The resolver is
+    exact-match by design, so the draft stayed service-less and the customer was asked "which service?" for one they had named."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    resp = client.post(
+        "/api/v1/services",
+        json={"name": "Teeth Whitening (Laser Session)", "price": "80.00", "duration_minutes": 30},
+        headers=_auth_header(token_a),
+    )
+    assert resp.status_code == 201, resp.text
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    _stub_providers(monkeypatch, _partial_booking_reply(service="Teeth Whitening", date=_next_monday().isoformat(), wants_availability=True))
+    body = _post_message(token_a, conversation_id, "what times do you have for a teeth whitening on monday?")["response"]
+    assert "9:00 AM" in body and "Which works for you?" in body, body

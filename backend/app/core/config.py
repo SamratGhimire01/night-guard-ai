@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,6 +26,19 @@ class Settings(BaseSettings):
     azure_openai_deployment: str = ""
     azure_openai_embedding_deployment: str = ""
     azure_openai_api_version: str = "2024-05-01-preview"
+    # Reasoning effort sent with every chat completion (gpt-5-family reasoning models). "low" roughly halves reply latency with
+    # no measurable quality loss (PHASE_STATUS.md, Phase 17). "default" (or empty) sends nothing = the deployment's own default
+    # (medium): the one-env-var rollback, AZURE_OPENAI_REASONING_EFFORT=default.
+    azure_openai_reasoning_effort: str = "low"
+
+    @field_validator("azure_openai_reasoning_effort")
+    @classmethod
+    def _valid_reasoning_effort(cls, value: str) -> str:
+        # An unsupported value makes Azure answer HTTP 400 on EVERY chat call, so a typo here must fail at startup, not at the
+        # first customer message.
+        if value.strip().lower() not in {"", "default", "minimal", "low", "medium", "high", "xhigh"}:
+            raise ValueError("AZURE_OPENAI_REASONING_EFFORT must be one of: default, minimal, low, medium, high, xhigh")
+        return value
 
     # Gmail SMTP — the real EmailNotificationProvider (app/services/notifications/).
     # Empty by default: the provider treats missing credentials as a real,

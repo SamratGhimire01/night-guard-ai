@@ -112,7 +112,9 @@ class AzureEmbeddingProvider(EmbeddingProvider):
 
 class AzureChatProvider(ChatProvider):
     def chat(self, messages: list[dict[str, str]]) -> str:
-        data = _post(
-            "chat/completions", {"messages": messages, "model": settings.azure_openai_deployment}
-        )
+        body = {"messages": messages, "model": settings.azure_openai_deployment}
+        effort = settings.azure_openai_reasoning_effort.strip().lower()
+        if effort and effort != "default":
+            body["reasoning_effort"] = effort
+        data = _post("chat/completions", body)
         return data["choices"][0]["message"]["content"] or ""

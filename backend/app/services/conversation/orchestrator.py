@@ -124,6 +124,21 @@ def _offered_slot_pick(
     return (True, next(iter(days))) if len(days) == 1 else (False, None)
 
 
+def _service_named_in(services: list[Service], text: str) -> Service | None:
+    """The ONE real service the customer literally named in `text`, else None (no match, or more than one -- never a guess).
+    Matches the full service name or the name without a trailing parenthetical ("Teeth Cleaning (Scaling & Polishing)" ->
+    "Teeth Cleaning"), whole words only, case-insensitive. Backstop for the LLM leaving `booking_request.service` null on a
+    booking-intent message that plainly names one (measured at low reasoning effort: 88% vs 99% extraction, concentrated in
+    "what times do you have for a <service>?"-shaped questions -- PHASE_STATUS.md Phase 17)."""
+    lower = text.lower()
+    hits = []
+    for service in services:
+        keys = {service.name.lower(), re.sub(r"\s*\(.*?\)\s*", " ", service.name).strip().lower()}
+        if any(key and re.search(rf"(?<![a-z]){re.escape(key)}(?![a-z])", lower) for key in keys):
+            hits.append(service)
+    return hits[0] if len(hits) == 1 else None
+
+
 def _merge_booking_draft(
     conversation: Conversation,
     services: list[Service],
@@ -1361,8 +1376,19 @@ def handle_incoming_message(
     # this turn's booking_request is null (the overwhelmingly common case
     # for non-booking turns), so this changes nothing for any turn that
     # doesn't actually name a slot.
+    booking_request = classification.booking_request
+    if (
+        intent == ConversationIntent.BOOKING
+        and booking_request is not None
+        and (not booking_request.get("service") or _resolve_service_by_name(services, booking_request["service"]) is None)
+    ):
+        # the model left the service out, or wrote a name that is not exactly a real one ("Teeth Cleaning" for "Teeth Cleaning
+        # (Scaling & Polishing)"): either way the draft would stay service-less, so use the service the customer literally named
+        named_service = _service_named_in(services, content)
+        if named_service is not None:
+            booking_request = {**booking_request, "service": named_service.name}
     draft_switches = _merge_booking_draft(
-        conversation, services, classification.booking_request,
+        conversation, services, booking_request,
         offered_slots=offered_last_turn, tz=ZoneInfo(business.timezone) if business is not None else None,
     )
 
