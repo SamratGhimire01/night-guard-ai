@@ -1,9 +1,24 @@
 import { useEffect, useState } from 'react'
-import { Badge, Card, Center, Group, Loader, Paper, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core'
+import { Anchor, Group, Paper, SimpleGrid, Skeleton, Stack, Table, Text, Title } from '@mantine/core'
+import {
+  IconCalendarEvent,
+  IconCalendarOff,
+  IconCalendarStats,
+  IconCash,
+  IconCircleCheck,
+  IconClipboardList,
+  IconHeadset,
+  IconTrendingUp,
+} from '@tabler/icons-react'
 import { Link, useOutletContext } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch } from '../../api/client'
 import type { AppointmentListItem, BusinessRead, HandoffListItem, MonthlyReport } from '../../api/types'
+import EmptyState from '../../components/EmptyState'
+import PageHeader from '../../components/PageHeader'
+import StatCard from '../../components/StatCard'
+import StatusBadge from '../../components/StatusBadge'
+import TableSkeleton from '../../components/TableSkeleton'
 
 type DashboardContext = { business: BusinessRead | null }
 
@@ -17,16 +32,28 @@ function timeInZone(iso: string, timeZone: string) {
   return new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit' }).format(new Date(iso))
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+const ICON = { size: 20, stroke: 1.75 }
+
+function StatGridSkeleton() {
   return (
-    <Paper withBorder p="sm" radius="md">
-      <Text size="xs" c="dimmed">
-        {label}
-      </Text>
-      <Text size="xl" fw={700}>
-        {value}
-      </Text>
-    </Paper>
+    <SimpleGrid cols={{ base: 2, sm: 4 }}>
+      {[0, 1, 2, 3].map((i) => (
+        <Skeleton key={i} height={96} radius="md" />
+      ))}
+    </SimpleGrid>
+  )
+}
+
+function SectionHeader({ title, to, linkLabel }: { title: string; to?: string; linkLabel?: string }) {
+  return (
+    <Group justify="space-between" mb="sm">
+      <Title order={3}>{title}</Title>
+      {to && (
+        <Anchor component={Link} to={to} size="sm">
+          {linkLabel} →
+        </Anchor>
+      )}
+    </Group>
   )
 }
 
@@ -55,29 +82,36 @@ export default function OverviewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canSeeReports])
 
+  const money = (value: string) =>
+    new Intl.NumberFormat(undefined, { style: 'currency', currency: business?.currency ?? 'USD', maximumFractionDigits: 0 }).format(Number(value))
+
   return (
-    <Stack gap="lg">
-      <Title order={2}>Overview</Title>
+    <Stack gap="xl">
+      <PageHeader title="Overview" description="Today's activity and this month at a glance." />
 
       <div>
-        <Text fw={600} size="sm" mb="xs">
-          Today
-        </Text>
+        <SectionHeader title="Today" />
         {todayAppts === null || openHandoffs === null ? (
-          <Center py="md">
-            <Loader size="sm" />
-          </Center>
+          <StatGridSkeleton />
         ) : (
           <SimpleGrid cols={{ base: 2, sm: 4 }}>
-            <StatCard label="Appointments today" value={todayAppts.length} />
+            <StatCard label="Appointments today" value={todayAppts.length} icon={<IconCalendarEvent {...ICON} />} />
             <StatCard
               label="Confirmed today"
               value={todayAppts.filter((a) => a.status === 'confirmed').length}
+              icon={<IconCircleCheck {...ICON} />}
+              color="teal"
             />
-            <StatCard label="Open handoffs" value={openHandoffs.length >= 200 ? '200+' : openHandoffs.length} />
+            <StatCard
+              label="Open handoffs"
+              value={openHandoffs.length >= 200 ? '200+' : openHandoffs.length}
+              icon={<IconHeadset {...ICON} />}
+              color="orange"
+            />
             <StatCard
               label="This month scheduled"
               value={monthly === 'skip' || monthly === null ? '—' : monthly.appointments.scheduled_for_month}
+              icon={<IconCalendarStats {...ICON} />}
             />
           </SimpleGrid>
         )}
@@ -85,16 +119,12 @@ export default function OverviewPage() {
 
       {canSeeReports && (
         <div>
-          <Text fw={600} size="sm" mb="xs">
-            This month
-          </Text>
+          <SectionHeader title="This month" />
           {monthly === null ? (
-            <Center py="md">
-              <Loader size="sm" />
-            </Center>
+            <StatGridSkeleton />
           ) : monthly === 'skip' ? null : (
             <SimpleGrid cols={{ base: 2, sm: 4 }}>
-              <StatCard label="Requested" value={monthly.appointments.requested} />
+              <StatCard label="Requested" value={monthly.appointments.requested} icon={<IconClipboardList {...ICON} />} />
               <StatCard
                 label="Cancellation rate"
                 value={
@@ -102,6 +132,8 @@ export default function OverviewPage() {
                     ? 'N/A'
                     : `${(monthly.cancellation_rate.value * 100).toFixed(1)}%`
                 }
+                icon={<IconCalendarOff {...ICON} />}
+                color="red"
               />
               <StatCard
                 label="Booking conversion"
@@ -110,28 +142,25 @@ export default function OverviewPage() {
                     ? 'N/A'
                     : `${(monthly.booking_conversion.value * 100).toFixed(1)}%`
                 }
+                icon={<IconTrendingUp {...ICON} />}
+                color="teal"
               />
-              <StatCard label="Estimated billed value" value={`$${Number(monthly.revenue_estimate.value).toFixed(2)}`} />
+              <StatCard
+                label="Estimated billed value"
+                value={money(monthly.revenue_estimate.value)}
+                icon={<IconCash {...ICON} />}
+                color="teal"
+              />
             </SimpleGrid>
           )}
         </div>
       )}
 
       <div>
-        <Text fw={600} size="sm" mb="xs">
-          Today's appointments
-        </Text>
-        {todayAppts === null ? (
-          <Center py="md">
-            <Loader size="sm" />
-          </Center>
-        ) : todayAppts.length === 0 ? (
-          <Text c="dimmed" size="sm">
-            No appointments scheduled for today.
-          </Text>
-        ) : (
+        <SectionHeader title="Today's appointments" to="/dashboard/appointments" linkLabel="See all appointments" />
+        <Paper p={0} style={{ overflow: 'hidden' }}>
           <Table.ScrollContainer minWidth={500}>
-            <Table striped>
+            <Table>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Customer</Table.Th>
@@ -141,59 +170,71 @@ export default function OverviewPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {todayAppts.map((a) => (
-                  <Table.Tr key={a.id}>
-                    <Table.Td>{a.customer_name}</Table.Td>
-                    <Table.Td>{a.service_name ?? '—'}</Table.Td>
-                    <Table.Td>{timeInZone(a.scheduled_at, timezone)}</Table.Td>
-                    <Table.Td>
-                      <Badge variant="light">{a.status}</Badge>
+                {todayAppts === null ? (
+                  <TableSkeleton cols={4} rows={3} />
+                ) : todayAppts.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={4}>
+                      <EmptyState
+                        icon={<IconCalendarEvent {...ICON} />}
+                        title="No appointments today"
+                        hint="New bookings from your channels will show up here."
+                      />
                     </Table.Td>
                   </Table.Tr>
-                ))}
+                ) : (
+                  todayAppts.map((a) => (
+                    <Table.Tr key={a.id}>
+                      <Table.Td>{a.customer_name}</Table.Td>
+                      <Table.Td>{a.service_name ?? '—'}</Table.Td>
+                      <Table.Td style={{ whiteSpace: 'nowrap' }}>{timeInZone(a.scheduled_at, timezone)}</Table.Td>
+                      <Table.Td>
+                        <StatusBadge status={a.status} />
+                      </Table.Td>
+                    </Table.Tr>
+                  ))
+                )}
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
-        )}
-        <Text size="xs" mt={4}>
-          <Link to="/dashboard/appointments">See all appointments →</Link>
-        </Text>
+        </Paper>
       </div>
 
       <div>
-        <Text fw={600} size="sm" mb="xs">
-          Recent open handoffs
-        </Text>
+        <SectionHeader title="Recent open handoffs" to="/dashboard/handoffs" linkLabel="See all handoffs" />
         {openHandoffs === null ? (
-          <Center py="md">
-            <Loader size="sm" />
-          </Center>
+          <Stack gap="xs">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} height={62} radius="md" />
+            ))}
+          </Stack>
         ) : openHandoffs.length === 0 ? (
-          <Text c="dimmed" size="sm">
-            No open handoffs — nothing waiting on a real person right now.
-          </Text>
+          <Paper>
+            <EmptyState
+              icon={<IconHeadset {...ICON} />}
+              title="No open handoffs"
+              hint="Nothing is waiting on a real person right now."
+            />
+          </Paper>
         ) : (
           <Stack gap="xs">
             {openHandoffs.slice(0, 5).map((h) => (
-              <Card key={h.id} withBorder p="xs" radius="sm">
-                <Group justify="space-between">
+              <Paper key={h.id} p="sm">
+                <Group justify="space-between" wrap="nowrap" align="flex-start">
                   <Text size="sm" fw={600}>
                     {h.customer_name}
                   </Text>
-                  <Text size="xs" c="dimmed">
+                  <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
                     {new Date(h.created_at).toLocaleString()}
                   </Text>
                 </Group>
-                <Text size="xs" c="dimmed">
+                <Text size="sm" c="dimmed" mt={2}>
                   {h.reason}
                 </Text>
-              </Card>
+              </Paper>
             ))}
           </Stack>
         )}
-        <Text size="xs" mt={4}>
-          <Link to="/dashboard/handoffs">See all handoffs →</Link>
-        </Text>
       </div>
     </Stack>
   )

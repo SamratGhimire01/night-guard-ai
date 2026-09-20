@@ -56,7 +56,7 @@ export default function AuthPage() {
   }
 
   return (
-    <Box style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f6f7fb' }}>
+    <Box style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--mantine-color-body)' }}>
       <Paper withBorder shadow="sm" radius="md" p="xl" w={380}>
         <Stack gap="md">
           <Title order={3} ta="center">

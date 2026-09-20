@@ -1,29 +1,31 @@
 import { useEffect, useState } from 'react'
 import {
-  ActionIcon,
   Badge,
   Button,
-  Center,
   Group,
-  Loader,
   Modal,
   MultiSelect,
   NumberInput,
+  Paper,
   Select,
   Stack,
   Switch,
   Table,
   Text,
-  Textarea,
   TextInput,
-  Title,
+  Textarea,
   Tooltip,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
+import { IconDental, IconPlus } from '@tabler/icons-react'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch, ApiError } from '../../api/client'
 import type { BusinessRead, KnowledgeDocumentRead, ServiceRead, ServiceWrite, StaffRead } from '../../api/types'
+import { EmptyRow } from '../../components/EmptyState'
+import PageHeader from '../../components/PageHeader'
+import RowActions from '../../components/RowActions'
+import TableSkeleton from '../../components/TableSkeleton'
 
 export default function ServicesPage() {
   const { role } = useAuth()
@@ -196,106 +198,81 @@ export default function ServicesPage() {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between">
-        <Title order={2}>Services</Title>
-        {canWrite ? (
-          <Button onClick={openCreate}>Add service</Button>
-        ) : (
-          <Tooltip label="Owners and admins only">
-            <Button disabled>Add service</Button>
-          </Tooltip>
-        )}
-      </Group>
+      <PageHeader
+        title="Services"
+        description="What customers can book, with price, duration and deposit."
+        actions={
+          canWrite ? (
+            <Button leftSection={<IconPlus size={16} stroke={2} />} onClick={openCreate}>
+              Add service
+            </Button>
+          ) : (
+            <Tooltip label="Owners and admins only">
+              <Button disabled leftSection={<IconPlus size={16} stroke={2} />}>
+                Add service
+              </Button>
+            </Tooltip>
+          )
+        }
+      />
 
-      <Table.ScrollContainer minWidth={700}>
-        <Table verticalSpacing="sm">
+      <Paper p={0} style={{ overflow: 'hidden' }}>
+      <Table.ScrollContainer minWidth={560}>
+        <Table>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Name</Table.Th>
               <Table.Th>Price</Table.Th>
               <Table.Th>Duration</Table.Th>
               <Table.Th>Deposit</Table.Th>
-              <Table.Th>Staff</Table.Th>
+              <Table.Th visibleFrom="md">Staff</Table.Th>
               <Table.Th>Documents</Table.Th>
               <Table.Th />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {loading && (
-              <Table.Tr>
-                <Table.Td colSpan={7}>
-                  <Center py="md">
-                    <Loader size="sm" />
-                  </Center>
-                </Table.Td>
-              </Table.Tr>
-            )}
+            {loading && <TableSkeleton cols={7} />}
             {!loading && services.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={7}>
-                  <Text c="dimmed" ta="center" py="md">
-                    No services yet.
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
+              <EmptyRow
+                colSpan={7}
+                icon={<IconDental size={22} stroke={1.75} />}
+                title="No services yet"
+                hint="Add the treatments customers can book."
+              />
             )}
             {services.map((service) => (
               <Table.Tr key={service.id}>
                 <Table.Td>{service.name}</Table.Td>
-                <Table.Td>{currency} {service.price}</Table.Td>
-                <Table.Td>{service.duration_minutes} min</Table.Td>
+                <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                  {currency} {service.price}
+                </Table.Td>
+                <Table.Td style={{ whiteSpace: 'nowrap' }}>{service.duration_minutes} min</Table.Td>
                 <Table.Td>
                   {service.deposit_enabled ? (
-                    <Badge color="grape" variant="light">
+                    <Badge color="gray" variant="light">
                       {service.deposit_percentage}%
                     </Badge>
                   ) : (
-                    <Text c="dimmed" size="sm">
+                    <Text c="dimmed" size="sm" style={{ whiteSpace: 'nowrap' }}>
                       Pay at clinic
                     </Text>
                   )}
                 </Table.Td>
-                <Table.Td>{staffName(service.staff_id)}</Table.Td>
+                <Table.Td visibleFrom="md">{staffName(service.staff_id)}</Table.Td>
                 <Table.Td>
                   <Button variant="subtle" size="compact-sm" onClick={() => openDocs(service)}>
                     Manage
                   </Button>
                 </Table.Td>
                 <Table.Td>
-                  <Group gap={4} justify="flex-end">
-                    {canWrite ? (
-                      <>
-                        <ActionIcon variant="subtle" onClick={() => openEdit(service)} aria-label="Edit">
-                          ✏️
-                        </ActionIcon>
-                        <ActionIcon
-                          variant="subtle"
-                          color="red"
-                          onClick={() => handleDelete(service)}
-                          aria-label="Delete"
-                        >
-                          🗑️
-                        </ActionIcon>
-                      </>
-                    ) : (
-                      <Tooltip label="Owners and admins only">
-                        <Group gap={4}>
-                          <ActionIcon variant="subtle" disabled aria-label="Edit (disabled)">
-                            ✏️
-                          </ActionIcon>
-                          <ActionIcon variant="subtle" color="red" disabled aria-label="Delete (disabled)">
-                            🗑️
-                          </ActionIcon>
-                        </Group>
-                      </Tooltip>
-                    )}
-                  </Group>
+                  <RowActions canWrite={canWrite} onEdit={() => openEdit(service)} onDelete={() => handleDelete(service)} />
                 </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
+      </Paper>
 
       <Modal opened={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit service' : 'Add service'}>
         <form onSubmit={form.onSubmit(handleSubmit)}>

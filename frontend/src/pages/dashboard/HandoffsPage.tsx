@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Badge, Button, Center, Group, Loader, SegmentedControl, Stack, Table, Text, Title } from '@mantine/core'
+import { ActionIcon, Button, Group, Paper, SegmentedControl, Stack, Table, Text, Tooltip } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { IconCheck, IconHeadset } from '@tabler/icons-react'
 import { apiFetch, ApiError } from '../../api/client'
 import type { HandoffListItem } from '../../api/types'
+import { EmptyRow } from '../../components/EmptyState'
+import PageHeader from '../../components/PageHeader'
+import StatusBadge from '../../components/StatusBadge'
+import TableSkeleton from '../../components/TableSkeleton'
 
 const PAGE_SIZE = 50
 
@@ -38,11 +43,10 @@ export default function HandoffsPage() {
 
   return (
     <Stack gap="md">
-      <Title order={2}>Human Handoffs</Title>
-      <Text c="dimmed" size="sm">
-        Conversations the AI escalated to a real person — a customer asked for one, or the AI couldn't confidently
-        help.
-      </Text>
+      <PageHeader
+        title="Human Handoffs"
+        description="Conversations the AI escalated to a real person — a customer asked for one, or the AI couldn't confidently help."
+      />
 
       <SegmentedControl
         value={statusFilter}
@@ -55,65 +59,77 @@ export default function HandoffsPage() {
         w={280}
       />
 
-      {handoffs === null ? (
-        <Center py="xl">
-          <Loader />
-        </Center>
-      ) : handoffs.length === 0 ? (
-        <Text c="dimmed" ta="center" py="lg">
-          No {statusFilter === 'all' ? '' : statusFilter} handoffs.
-        </Text>
-      ) : (
-        <>
-          <Table.ScrollContainer minWidth={650}>
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Customer</Table.Th>
-                  <Table.Th>Channel</Table.Th>
-                  <Table.Th>Reason</Table.Th>
-                  <Table.Th>Created</Table.Th>
-                  <Table.Th>Status</Table.Th>
-                  <Table.Th></Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {handoffs.map((h) => (
+      <Paper p={0} style={{ overflow: 'hidden' }}>
+        <Table.ScrollContainer minWidth={600}>
+          <Table>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Customer</Table.Th>
+                <Table.Th visibleFrom="md">Channel</Table.Th>
+                <Table.Th>Reason</Table.Th>
+                <Table.Th>Created</Table.Th>
+                <Table.Th>Status</Table.Th>
+                <Table.Th />
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {handoffs === null ? (
+                <TableSkeleton cols={6} rows={6} />
+              ) : handoffs.length === 0 ? (
+                <EmptyRow
+                  colSpan={6}
+                  icon={<IconHeadset size={22} stroke={1.75} />}
+                  title={`No ${statusFilter === 'all' ? '' : statusFilter + ' '}handoffs`}
+                  hint="When the AI hands a conversation to a person, it shows up here."
+                />
+              ) : (
+                handoffs.map((h) => (
                   <Table.Tr key={h.id}>
-                    <Table.Td>{h.customer_name}</Table.Td>
-                    <Table.Td style={{ textTransform: 'capitalize' }}>{h.channel}</Table.Td>
-                    <Table.Td>{h.reason}</Table.Td>
-                    <Table.Td>{new Date(h.created_at).toLocaleString()}</Table.Td>
+                    <Table.Td style={{ whiteSpace: 'nowrap' }}>{h.customer_name}</Table.Td>
+                    <Table.Td visibleFrom="md" style={{ textTransform: 'capitalize' }}>
+                      {h.channel}
+                    </Table.Td>
+                    <Table.Td miw={200}>
+                      <Text size="sm">{h.reason}</Text>
+                    </Table.Td>
+                    <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                      {new Date(h.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                    </Table.Td>
                     <Table.Td>
-                      <Badge color={h.status === 'resolved' ? 'teal' : 'orange'} variant="light" miw={78}>
-                        {h.status}
-                      </Badge>
+                      <StatusBadge status={h.status} />
                     </Table.Td>
                     <Table.Td>
                       {h.status !== 'resolved' && (
-                        <Button size="compact-sm" variant="light" onClick={() => resolve(h.id)}>
-                          Mark resolved
-                        </Button>
+                        <Tooltip label="Mark resolved">
+                          <ActionIcon color="teal" aria-label="Mark resolved" onClick={() => resolve(h.id)}>
+                            <IconCheck size={17} stroke={1.75} />
+                          </ActionIcon>
+                        </Tooltip>
                       )}
                     </Table.Td>
                   </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-          <Group justify="center" gap="sm">
-            <Button variant="default" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-              Previous
-            </Button>
-            <Text size="sm" c="dimmed">
-              Page {page + 1}
-            </Text>
-            <Button variant="default" disabled={handoffs.length < PAGE_SIZE} onClick={() => setPage((p) => p + 1)}>
-              Next
-            </Button>
-          </Group>
-        </>
-      )}
+                ))
+              )}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      </Paper>
+
+      <Group justify="center" gap="sm">
+        <Button variant="default" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+          Previous
+        </Button>
+        <Text size="sm" c="dimmed">
+          Page {page + 1}
+        </Text>
+        <Button
+          variant="default"
+          disabled={handoffs === null || handoffs.length < PAGE_SIZE}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Next
+        </Button>
+      </Group>
     </Stack>
   )
 }

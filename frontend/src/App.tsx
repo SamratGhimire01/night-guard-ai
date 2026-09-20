@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { MantineProvider } from '@mantine/core'
 import { Notifications } from '@mantine/notifications'
+import { theme, cssVariablesResolver } from './theme'
 import { AuthProvider } from './auth/AuthContext'
 import RequireAuth from './auth/RequireAuth'
 import LandingPage from './pages/LandingPage'
@@ -29,7 +30,7 @@ import '@mantine/charts/styles.css'
 
 export default function App() {
   return (
-    <MantineProvider defaultColorScheme="light">
+    <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver} defaultColorScheme="dark">
       <Notifications />
       <BrowserRouter>
         <AuthProvider>

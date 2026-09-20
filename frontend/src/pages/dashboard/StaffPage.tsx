@@ -1,23 +1,15 @@
 import { useEffect, useState } from 'react'
-import {
-  ActionIcon,
-  Button,
-  Center,
-  Group,
-  Loader,
-  Modal,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Title,
-  Tooltip,
-} from '@mantine/core'
+import { Button, Modal, Paper, Stack, Table, TextInput, Tooltip } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
+import { IconPlus, IconUsers } from '@tabler/icons-react'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch, ApiError } from '../../api/client'
 import type { StaffRead, StaffWrite } from '../../api/types'
+import { EmptyRow } from '../../components/EmptyState'
+import PageHeader from '../../components/PageHeader'
+import RowActions from '../../components/RowActions'
+import TableSkeleton from '../../components/TableSkeleton'
 
 export default function StaffPage() {
   const { role } = useAuth()
@@ -96,19 +88,27 @@ export default function StaffPage() {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between">
-        <Title order={2}>Staff</Title>
-        {canWrite ? (
-          <Button onClick={openCreate}>Add staff member</Button>
-        ) : (
-          <Tooltip label="Owners and admins only">
-            <Button disabled>Add staff member</Button>
-          </Tooltip>
-        )}
-      </Group>
+      <PageHeader
+        title="Staff"
+        description="The people customers can be booked with."
+        actions={
+          canWrite ? (
+            <Button leftSection={<IconPlus size={16} stroke={2} />} onClick={openCreate}>
+              Add staff member
+            </Button>
+          ) : (
+            <Tooltip label="Owners and admins only">
+              <Button disabled leftSection={<IconPlus size={16} stroke={2} />}>
+                Add staff member
+              </Button>
+            </Tooltip>
+          )
+        }
+      />
 
+      <Paper p={0} style={{ overflow: 'hidden' }}>
       <Table.ScrollContainer minWidth={500}>
-        <Table verticalSpacing="sm">
+        <Table>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Name</Table.Th>
@@ -117,63 +117,28 @@ export default function StaffPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {loading && (
-              <Table.Tr>
-                <Table.Td colSpan={3}>
-                  <Center py="md">
-                    <Loader size="sm" />
-                  </Center>
-                </Table.Td>
-              </Table.Tr>
-            )}
+            {loading && <TableSkeleton cols={3} rows={3} />}
             {!loading && staff.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={3}>
-                  <Text c="dimmed" ta="center" py="md">
-                    No staff members yet.
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
+              <EmptyRow
+                colSpan={3}
+                icon={<IconUsers size={22} stroke={1.75} />}
+                title="No staff members yet"
+                hint="Add the dentists and staff customers can book with."
+              />
             )}
             {staff.map((member) => (
               <Table.Tr key={member.id}>
                 <Table.Td>{member.name}</Table.Td>
                 <Table.Td>{member.role}</Table.Td>
                 <Table.Td>
-                  <Group gap={4} justify="flex-end">
-                    {canWrite ? (
-                      <>
-                        <ActionIcon variant="subtle" onClick={() => openEdit(member)} aria-label="Edit">
-                          ✏️
-                        </ActionIcon>
-                        <ActionIcon
-                          variant="subtle"
-                          color="red"
-                          onClick={() => handleDelete(member)}
-                          aria-label="Delete"
-                        >
-                          🗑️
-                        </ActionIcon>
-                      </>
-                    ) : (
-                      <Tooltip label="Owners and admins only">
-                        <Group gap={4}>
-                          <ActionIcon variant="subtle" disabled aria-label="Edit (disabled)">
-                            ✏️
-                          </ActionIcon>
-                          <ActionIcon variant="subtle" color="red" disabled aria-label="Delete (disabled)">
-                            🗑️
-                          </ActionIcon>
-                        </Group>
-                      </Tooltip>
-                    )}
-                  </Group>
+                  <RowActions canWrite={canWrite} onEdit={() => openEdit(member)} onDelete={() => handleDelete(member)} />
                 </Table.Td>
               </Table.Tr>
             ))}
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
+      </Paper>
 
       <Modal opened={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit staff member' : 'Add staff member'}>
         <form onSubmit={form.onSubmit(handleSubmit)}>

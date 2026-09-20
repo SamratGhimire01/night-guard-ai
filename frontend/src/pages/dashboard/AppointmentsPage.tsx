@@ -1,31 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
-import {
-  Badge,
-  Button,
-  Center,
-  Group,
-  Loader,
-  Modal,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Title,
-  Tooltip,
-} from '@mantine/core'
+import { ActionIcon, Button, Group, Modal, Paper, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { IconCalendarEvent, IconCalendarTime, IconCheck, IconX } from '@tabler/icons-react'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch, ApiError } from '../../api/client'
 import type { AppointmentListItem, AppointmentStatus, BusinessRead } from '../../api/types'
+import { EmptyRow } from '../../components/EmptyState'
+import PageHeader from '../../components/PageHeader'
+import StatusBadge from '../../components/StatusBadge'
+import TableSkeleton from '../../components/TableSkeleton'
 
-const STATUS_COLORS: Record<AppointmentStatus, string> = {
-  pending: 'yellow',
-  confirmed: 'blue',
-  arrived: 'grape',
-  cancelled: 'red',
-  completed: 'teal',
-}
 const CANCELLABLE: AppointmentStatus[] = ['pending', 'confirmed']
 const PAGE_SIZE = 20
 
@@ -160,7 +144,7 @@ export default function AppointmentsPage() {
 
   return (
     <Stack gap="md">
-      <Title order={2}>Appointments</Title>
+      <PageHeader title="Appointments" description="Every booking across your channels. Times are in your business's timezone." />
 
       <Group gap="sm" wrap="wrap">
         <Select
@@ -182,48 +166,52 @@ export default function AppointmentsPage() {
         <TextInput label="To" type="date" value={dateTo} onChange={(e) => setDateTo(e.currentTarget.value)} />
       </Group>
 
-      {appointments === null ? (
-        <Center py="xl">
-          <Loader />
-        </Center>
-      ) : (
-        <>
-          <Table.ScrollContainer minWidth={700}>
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Customer</Table.Th>
-                  <Table.Th>Service</Table.Th>
-                  <Table.Th>Time</Table.Th>
-                  <Table.Th>Status</Table.Th>
-                  <Table.Th></Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {appointments.map((appt) => {
+      <Paper p={0} style={{ overflow: 'hidden' }}>
+        <Table.ScrollContainer minWidth={640}>
+          <Table>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Customer</Table.Th>
+                <Table.Th>Service</Table.Th>
+                <Table.Th>Time</Table.Th>
+                <Table.Th>Status</Table.Th>
+                <Table.Th />
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {appointments === null ? (
+                <TableSkeleton cols={5} rows={8} />
+              ) : appointments.length === 0 ? (
+                <EmptyRow
+                  colSpan={5}
+                  icon={<IconCalendarEvent size={22} stroke={1.75} />}
+                  title="No appointments match these filters"
+                  hint="Try a different status or date range."
+                />
+              ) : (
+                appointments.map((appt) => {
                   const cancellable = CANCELLABLE.includes(appt.status)
+                  const { date, time } = utcIsoToZonedParts(appt.scheduled_at, timezone)
                   return (
                     <Table.Tr key={appt.id}>
                       <Table.Td>{appt.customer_name}</Table.Td>
                       <Table.Td>{appt.service_name ?? '—'}</Table.Td>
-                      <Table.Td>
-                        {(() => {
-                          const { date, time } = utcIsoToZonedParts(appt.scheduled_at, timezone)
-                          return `${date} ${time}`
-                        })()}
+                      <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                        {date} <Text span inherit c="dimmed">
+                          {time}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                        <StatusBadge status={appt.status} />
                       </Table.Td>
                       <Table.Td>
-                        <Badge color={STATUS_COLORS[appt.status]} variant="light">
-                          {appt.status}
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>
-                        <Group gap="xs" wrap="nowrap">
+                        <Group gap={4} wrap="nowrap" justify="flex-end">
                           {appt.status === 'arrived' && (
                             <Button
                               size="compact-sm"
                               color="teal"
                               variant="light"
+                              leftSection={<IconCheck size={15} stroke={2} />}
                               onClick={() => handleComplete(appt)}
                             >
                               Mark complete
@@ -231,23 +219,25 @@ export default function AppointmentsPage() {
                           )}
                           {canWrite ? (
                             <>
-                              <Button
-                                size="compact-sm"
-                                variant="light"
-                                disabled={!cancellable}
-                                onClick={() => openReschedule(appt)}
-                              >
-                                Reschedule
-                              </Button>
-                              <Button
-                                size="compact-sm"
-                                color="red"
-                                variant="light"
-                                disabled={!cancellable}
-                                onClick={() => handleCancel(appt)}
-                              >
-                                Cancel
-                              </Button>
+                              <Tooltip label="Reschedule">
+                                <ActionIcon
+                                  aria-label="Reschedule"
+                                  disabled={!cancellable}
+                                  onClick={() => openReschedule(appt)}
+                                >
+                                  <IconCalendarTime size={17} stroke={1.75} />
+                                </ActionIcon>
+                              </Tooltip>
+                              <Tooltip label="Cancel appointment">
+                                <ActionIcon
+                                  aria-label="Cancel appointment"
+                                  color="red"
+                                  disabled={!cancellable}
+                                  onClick={() => handleCancel(appt)}
+                                >
+                                  <IconX size={17} stroke={1.75} />
+                                </ActionIcon>
+                              </Tooltip>
                             </>
                           ) : (
                             appt.status !== 'arrived' && (
@@ -262,32 +252,28 @@ export default function AppointmentsPage() {
                       </Table.Td>
                     </Table.Tr>
                   )
-                })}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-          {appointments.length === 0 && (
-            <Text c="dimmed" ta="center" py="lg">
-              No appointments match these filters.
-            </Text>
-          )}
-          <Group justify="center" gap="sm">
-            <Button variant="default" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-              Previous
-            </Button>
-            <Text size="sm" c="dimmed">
-              Page {page + 1}
-            </Text>
-            <Button
-              variant="default"
-              disabled={appointments.length < PAGE_SIZE}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </Group>
-        </>
-      )}
+                })
+              )}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      </Paper>
+
+      <Group justify="center" gap="sm">
+        <Button variant="default" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+          Previous
+        </Button>
+        <Text size="sm" c="dimmed">
+          Page {page + 1}
+        </Text>
+        <Button
+          variant="default"
+          disabled={appointments === null || appointments.length < PAGE_SIZE}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Next
+        </Button>
+      </Group>
 
       <Modal opened={!!rescheduling} onClose={() => setRescheduling(null)} title="Reschedule appointment">
         {rescheduling && (
