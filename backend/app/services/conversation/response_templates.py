@@ -405,6 +405,13 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "ne_deva": "{service} का लागि यी समयहरू खाली छन्: {options}। कुन मिल्छ?",
         "ne_roman": "{service} ko lagi yi samaya haru khali chan: {options}. Kun milcha?",
     },
+    # The customer answered a slot list without naming a time ("does that work?", "book that for me") and the list
+    # would have been repeated word for word -- ask for the one missing piece instead.
+    "availability_pick_one": {
+        "en": "Yes, that day works. Those are the times still open: {options}. Just tell me which one you'd like (say the time, or \"the first one\") and I'll book it.",
+        "ne_deva": "हुन्छ, त्यो दिन मिल्छ। अझै खाली समयहरू: {options}। कुन समय चाहिन्छ भन्नुहोस् (समय वा \"पहिलो\") र म बुक गरिदिन्छु।",
+        "ne_roman": "Huncha, tyo din milcha. Ajhai khali samaya haru: {options}. Kun samaya chahinchha bhanuhos (samaya ya \"pahilo\") ra ma book gari dinchu.",
+    },
     # Phase 33: the honest "that specific day has nothing, here's the real
     # next opening" case — required so a fully-booked/closed day is never
     # answered with a silent empty list or an invented slot.

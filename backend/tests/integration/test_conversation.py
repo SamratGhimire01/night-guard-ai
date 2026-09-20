@@ -4296,3 +4296,47 @@ def test_resend_in_a_website_channel_conversation_defaults_to_the_qr_link(two_bu
 
         reply = db.query(Message).filter(Message.conversation_id == conversation_id).order_by(Message.created_at.desc()).first().content
     assert "/qr/" in reply and fake.recipients == [], "a website visitor gets the link in the chat, not an email"
+
+
+# --- 2026-09-20 live bug: the identical slot list repeated forever when the customer named no specific time --------
+
+
+def test_slot_list_is_never_repeated_verbatim_when_the_customer_names_no_time(two_businesses, monkeypatch):
+    """Real transcript: after the slot list, "I think I'll come on Monday morning instead, does that work?" and "Great,
+    can you book that for me?" both extract (service/date, NO time, wants_availability=true), so the orchestrator
+    re-rendered the identical list word for word, three times. Language-independent state bug, not an English
+    extraction failure. The same list must never be sent twice in a row; the repeat asks for a time instead, and
+    naming a time then still progresses the booking."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    monday = _next_monday()
+
+    def say(content: str) -> str:
+        resp = client.post(
+            f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a), json={"content": content}
+        )
+        assert resp.status_code == 201, resp.text
+        return resp.json()["response"]
+
+    _stub_providers(monkeypatch, _partial_booking_reply(service="Cleaning", date=monday.isoformat(), wants_availability=True))
+    first = say("I'd like a cleaning on Monday")
+    assert "9:00 AM" in first and "Which works for you?" in first
+
+    second = say("I think I'll come on Monday morning instead, does that work?")
+    third = say("Great, can you book that for me?")
+    assert first not in (second, third), "the identical slot list was repeated"
+    for reply in (second, third):
+        assert "tell me which one" in reply and "9:00 AM" in reply, f"repeat must ask for a time, keeping the options: {reply}"
+
+    # the customer finally names a time: the flow advances past the list (no more "which works for you" list)
+    _stub_providers(monkeypatch, _partial_booking_reply(time="09:15", response="Great."))
+    fourth = say("9:15 please")
+    assert "Which works for you?" not in fourth and "tell me which one" not in fourth, fourth
+
+
+def test_pick_one_template_exists_in_every_language():
+    from app.services.conversation.response_templates import render
+
+    for lang in ("en", "ne_deva", "ne_roman"):
+        assert "9:00 AM" in render("availability_pick_one", lang, options="9:00 AM, 9:15 AM")

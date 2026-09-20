@@ -16402,6 +16402,33 @@ Side effects: ~10 test businesses/conversations on the standing test DB; test bu
 
 ---
 
+## Phase 15 (2026-09-20 series, after Phase 14) — URGENT: identical slot list repeated forever ("book that for me")
+
+**Reported (real, business f0ca2a54-…, website widget):** after the Monday Sept 21 slot list, "I think I'll come on Monday morning instead, does that work?" and then "Great, can you book that for me?" each got the identical list back, word for word (3× total).
+
+### Root cause (traced, not guessed)
+* **Reproduced first** against the real orchestrator + real Azure LLM + real DB (transcript replayed turn by turn, extraction and persisted draft printed). Both English turns extract `{service/date: Monday, time: null, wants_availability: true}` ("does that work?" / "book that" name no time). The Phase 33 branch (`elif wants_availability and service is not None`) then calls `_propose_available_slots` again, which renders the same list from the same real availability. **Nothing in that path knew the customer had already seen that list**, so any turn that yields `wants_availability=true` with no time repeats it forever.
+* **Not an English-extraction problem:** the extraction is correct in both languages; it is a state bug (no "already shown" memory). The reply language in the transcript was Roman Nepali because the conversation's language lock (Phase 25) was set by the first Roman-Nepali messages, by design.
+* **Not a regression from tonight's changes:** replayed on the tree at `05f011e` (before Phases 13/14) — the same loop, identical except the (Phase 14) un-deduplicated "Monday, September 21 at …" formatting. The branch dates from Phase 33 (`96d28dc`); it had simply not been caught. (Older, pre-09-19-series code showed a different non-advancing message, the contact gate, because the gate then ran before availability.)
+
+### Fix (one place: `_propose_available_slots`, the shared path)
+* New optional `previous_reply` param; `orchestrator._last_agent_reply` reads the last AGENT message. If the reply about to be sent equals the previous reply (or the "pick one" reply itself), it is replaced by the new template `availability_pick_one` (en / ne_deva / ne_roman): keeps the real options and asks for the one missing thing — which time ("say the time, or 'the first one'"). Slots stay persisted, so a bare digit / "first one" still resolves. Works for the "nothing that day, next opening is …" variant too.
+* **Caught by my own test:** the first version compared only against the list, so replies alternated list → pick-one → list. Fixed by treating both replies as "already shown".
+
+### Proof
+* **Before (live, real backend, exact transcript):** turns 5 and 6 → identical list. **After (live, force-recreated, StartedAt 04:38:43Z, new code confirmed loaded):** turn 6 → "Huncha, tyo din milcha. Ajhai khali samaya haru: … Kun samaya chahinchha bhanuhos (samaya ya "pahilo") ra ma book gari dinchu."; then "the first one please" → advances ("Bujhe — … Monday, September 21 at 10:00 AM. Lock garna malai tapaiko naam ra phone number wa email chahincha." = contact gate; that customer has no contact on file).
+* **Regression tests** (`test_conversation.py`): `test_slot_list_is_never_repeated_verbatim_when_the_customer_names_no_time` (3 turns via the real endpoint + a 4th naming a time advances; **verified to FAIL without the fix**), `test_pick_one_template_exists_in_every_language`.
+* **Full suite: 561 passed, 10 skipped, 0 failed (655.7s)** = 559 (Phase 14 baseline) + 2 new; zero regressions.
+
+### Honest limits
+* The FIRST re-show after an unrelated interleaved turn (the weekend-hours question) still prints the list once (the previous reply was the hours answer, not the list) — one repeat, not a loop; deliberately not changed.
+* A customer who keeps saying "book that" still gets the pick-one prompt each time (asking for the missing time, not a bug). Not handled: auto-booking when exactly one slot was offered.
+* Test data: a few `Repro Visitor` / widget conversations left on business f0ca2a54 (real business) from the reproductions.
+
+**Files:** `app/services/conversation/orchestrator.py`, `app/services/conversation/response_templates.py`, `tests/integration/test_conversation.py`, this file. **Not committed** — awaiting your review (standing rule #6).
+
+---
+
 ## Phase L1 — conversation-lab sandbox (separate track)
 
 New top-level `conversation-lab/` (DSPy sandbox, judge, test UI). Full report, real judge scores and isolation

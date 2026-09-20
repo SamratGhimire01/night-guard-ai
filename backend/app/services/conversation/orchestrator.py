@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.entitlements import ensure_plan
@@ -418,6 +419,7 @@ def _propose_available_slots(
     conversation: Conversation,
     tz: ZoneInfo,
     language: str | None,
+    previous_reply: str | None = None,
 ) -> str:
     """Phase 33 — the ONLY place a "here's what's open" sentence is composed,
     same discipline as every other _format_*_result function: real,
@@ -496,14 +498,32 @@ def _propose_available_slots(
 
     options = _format_slot_options(shown_slots, tz)
     if requested_date_str and _is_valid_date_str(requested_date_str) and slots[0].astimezone(tz).date() != search_start:
-        return render(
+        reply = render(
             "availability_none_with_next_day",
             language,
             service=service.name,
             requested=_format_date_only(requested_date_str),
             options=options,
         )
-    return render("availability_options", language, service=service.name, options=options)
+    else:
+        reply = render("availability_options", language, service=service.name, options=options)
+    # Live bug (2026-09-20): "Monday morning instead, does that work?" / "can you book that for me?" carry no specific
+    # time, so the extraction keeps wants_availability=true and the identical list came back turn after turn. The same
+    # words twice never move the customer forward: when the reply would repeat the previous one verbatim, say so and
+    # ask for the one thing missing -- which time -- instead. (The slots stay persisted above, so a digit still works.)
+    pick_one = render("availability_pick_one", language, options=options)
+    return pick_one if previous_reply in (reply, pick_one) else reply
+
+
+def _last_agent_reply(db: Session, conversation_id: uuid.UUID) -> str | None:
+    """The most recent reply WE sent in this conversation (the current customer message is persisted only at the end
+    of the turn, so at dispatch time this is still the previous turn's reply)."""
+    return db.execute(
+        select(Message.content)
+        .where(Message.conversation_id == conversation_id, Message.sender_type == MessageSenderType.AGENT)
+        .order_by(Message.created_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
 
 
 _BARE_DIGIT_RE = re.compile(r"^[1-9]$")
@@ -1466,6 +1486,7 @@ def handle_incoming_message(
                 conversation=conversation,
                 tz=ZoneInfo(business.timezone),
                 language=language,
+                previous_reply=_last_agent_reply(db, conversation_id),
             )
             logger.info(
                 "propose_available_slots: conversation_id=%s service_id=%s",
