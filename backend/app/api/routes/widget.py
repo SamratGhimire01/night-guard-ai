@@ -7,8 +7,19 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
 from app.core.exceptions import NotFoundError, TooManyRequestsError
-from app.core.rate_limit import widget_business_rate_limiter, widget_ip_rate_limiter, widget_session_rate_limiter
-from app.schemas.widget import WidgetConfigResponse, WidgetMessageRequest, WidgetMessageResponse
+from app.core.rate_limit import (
+    widget_business_rate_limiter,
+    widget_ip_rate_limiter,
+    widget_poll_rate_limiter,
+    widget_session_rate_limiter,
+)
+from app.schemas.widget import (
+    WidgetConfigResponse,
+    WidgetMessageRequest,
+    WidgetMessageResponse,
+    WidgetUpdate,
+    WidgetUpdatesResponse,
+)
 from app.services.channels import widget_service
 
 router = APIRouter()
@@ -122,4 +133,25 @@ def post_widget_message(
         session_token=session_token,
         response=orchestrated["response"],
         intent=orchestrated["intent"].value,
+        agent_message_id=orchestrated.get("agent_message_id"),
+    )
+
+
+@router.get("/api/v1/widget/{business_id}/updates", response_model=WidgetUpdatesResponse)
+def get_widget_updates(
+    business_id: uuid.UUID, session_token: str, after: uuid.UUID, db: Session = Depends(get_db)
+) -> WidgetUpdatesResponse:
+    """Public, session-token-gated: messages the system sent into this widget session unprompted since the reply
+    `after` (e.g. the "payment received" confirmation) — the widget polls this while a payment link is outstanding.
+    Same session isolation as `POST .../messages`: a token that isn't this business's own gets an empty list, never
+    an error that tells a guesser anything."""
+    session_key = f"{business_id}:{session_token[:500]}"
+    if widget_poll_rate_limiter.is_blocked(session_key):
+        raise TooManyRequestsError("Too many requests. Please slow down.")
+    widget_poll_rate_limiter.record_attempt(session_key)
+    messages = widget_service.get_agent_messages_after(
+        db, business_id=business_id, session_token=session_token[:500], after_message_id=after
+    )
+    return WidgetUpdatesResponse(
+        messages=[WidgetUpdate(id=m.id, content=m.content, created_at=m.created_at) for m in messages or []]
     )

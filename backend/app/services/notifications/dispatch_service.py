@@ -81,7 +81,7 @@ def _dispatch(db: Session, notification: Notification) -> None:
     # treat payment=None as "say nothing about payment."
     payment = (
         db.execute(select(Payment).where(Payment.appointment_id == appointment.id)).scalar_one_or_none()
-        if notification.event_type == "booking_confirmed"
+        if notification.event_type in ("booking_confirmed", "payment_requested")
         else None
     )
 

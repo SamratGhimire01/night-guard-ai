@@ -1,3 +1,6 @@
+import uuid
+from datetime import datetime
+
 from pydantic import BaseModel, field_validator
 
 from app.schemas.common import safe_str
@@ -29,6 +32,18 @@ class WidgetMessageResponse(BaseModel):
     session_token: str
     response: str
     intent: str
+    # what the widget passes back to GET .../updates so it only ever receives messages newer than this reply
+    agent_message_id: uuid.UUID | None = None
+
+
+class WidgetUpdate(BaseModel):
+    id: uuid.UUID
+    content: str
+    created_at: datetime
+
+
+class WidgetUpdatesResponse(BaseModel):
+    messages: list[WidgetUpdate]
 
 
 class WidgetVoiceMessageResponse(BaseModel):

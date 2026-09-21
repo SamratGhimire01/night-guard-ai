@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.business import Business
 from app.db.models.channel_identity import ChannelIdentity
-from app.db.models.conversation import Conversation
+from app.db.models.conversation import Conversation, Message, MessageSenderType
 from app.services.channels.base import WebsiteChannelAdapter
 
 _website_adapter = WebsiteChannelAdapter()
@@ -92,6 +92,48 @@ def get_locked_language(db: Session, *, business_id: uuid.UUID, session_token: s
         .order_by(Conversation.created_at.desc())
     ).scalars().first()
     return conversation.detected_language if conversation else None
+
+
+def get_agent_messages_after(
+    db: Session, *, business_id: uuid.UUID, session_token: str, after_message_id: uuid.UUID
+) -> list[Message] | None:
+    """Messages the system sent into this widget session on its own (a "payment received" confirmation) since
+    `after_message_id` — the widget has no push channel, so it asks. Same session isolation as everywhere else here:
+    the token is only trusted when its hash matches a ChannelIdentity of THIS business, and an unknown token/message
+    id returns None (the route answers with an empty list — no oracle). Never creates anything."""
+    identity = db.execute(
+        select(ChannelIdentity).where(
+            ChannelIdentity.business_id == business_id,
+            ChannelIdentity.channel == _website_adapter.channel,
+            ChannelIdentity.external_ref == _hash_token(session_token),
+        )
+    ).scalar_one_or_none()
+    if identity is None:
+        return None
+    conversation = db.execute(
+        select(Conversation)
+        .where(
+            Conversation.business_id == business_id,
+            Conversation.customer_id == identity.customer_id,
+            Conversation.channel == _website_adapter.channel,
+            Conversation.status == "open",
+        )
+        .order_by(Conversation.created_at.desc())
+    ).scalars().first()
+    after = db.get(Message, after_message_id)
+    if conversation is None or after is None or after.conversation_id != conversation.id:
+        return None
+    return list(
+        db.execute(
+            select(Message)
+            .where(
+                Message.conversation_id == conversation.id,
+                Message.sender_type == MessageSenderType.AGENT,
+                Message.created_at > after.created_at,
+            )
+            .order_by(Message.created_at)
+        ).scalars()
+    )
 
 
 def get_widget_config(db: Session, *, business_id: uuid.UUID) -> Business | None:

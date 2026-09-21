@@ -151,7 +151,7 @@ class Settings(BaseSettings):
     # Platform-wide credentials, same pattern as Twilio above — Night Guard AI
     # itself is the merchant of record for every business's payment
     # collection (a business picks WHICH of these two gateways to use via
-    # Business.payment_provider, not its own separate merchant account).
+    # Business.payment_providers, not its own separate merchant account).
     # esewa_* defaults are eSewa's own publicly documented UAT sandbox
     # credentials (developer.esewa.com.np) — safe to commit, not a real
     # secret. khalti_secret_key has no safe public default (Khalti requires a

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.entitlements import ensure_plan
 from app.core.exceptions import NotFoundError, PlanRequiredError
+from app.db.models.appointment import Appointment
 from app.db.models.business import Business, BusinessPlan
 from app.db.models.conversation import Conversation, Message, MessageSenderType
 from app.db.models.customer import Customer
@@ -20,7 +21,14 @@ from app.memory import assemble_context
 from app.memory.conversations import get_conversation
 from app.memory.summarization import maybe_summarize_conversation
 from app.schemas.conversation import ConversationIntent, ConversationLanguage
-from app.services import booking_service, business_hours_service, handoff_service, knowledge_service, service_service
+from app.services import (
+    booking_service,
+    business_hours_service,
+    handoff_service,
+    knowledge_service,
+    payment_service,
+    service_service,
+)
 from app.services.conversation import appointment_tools  # noqa: F401  registers CANCELLATION/RESCHEDULING tools
 from app.services.conversation import booking_tool  # noqa: F401  registers the BOOKING tool
 from app.services.conversation.contact_tool import UpdateContactInfoTool
@@ -448,23 +456,28 @@ def _format_booking_result(
     if result["success"]:
         appointment = result["appointment"]
         when = _format_local(appointment["scheduled_at"], tz)
-        text = render(
-            "booking_success",
-            language,
-            who=who,
-            service=service.name,
-            when=when,
-            duration=str(appointment["duration_minutes"]),
-            id=str(appointment["id"]),
-        )
         payment = result.get("payment")
-        if payment is not None:
-            # Phase 44: a real Payment row exists for this booking — state
-            # the real deposit/remainder honestly, never silently omitted.
-            # See response_templates.TEMPLATES["payment_deposit_required"]'s
-            # own comment for why this is never a bare number.
-            text = f"{text} {render('payment_deposit_required', language, percentage=str(payment['percentage']), currency=payment['currency'], amount=str(payment['amount']), remaining=str(payment['remaining']), link=payment['payment_url'])}"
-        return text
+        if payment is None:
+            return render(
+                "booking_success",
+                language,
+                who=who,
+                service=service.name,
+                when=when,
+                duration=str(appointment["duration_minutes"]),
+                id=str(appointment["id"]),
+            )
+        # Phase 44/47: a real Payment row exists (or the customer still has to pick a gateway) — the slot IS reserved,
+        # but not yet paid for, so this reads as "reserved, pending your deposit", never "you're all set" (that
+        # wording is kept for the payment-received message). See response_templates.TEMPLATES["booking_reserved_pay"].
+        fields = dict(
+            who=who, service=service.name, when=when, id=str(appointment["id"]), currency=payment["currency"],
+            amount=str(payment["amount"]), remaining=str(payment["remaining"]),
+        )
+        if payment["payment_url"] is None:
+            # the business offers both gateways and none is chosen yet: ask (see _payment_choice_turn)
+            return render("booking_reserved_choose", language, **fields)
+        return render("booking_reserved_pay", language, link=payment["payment_url"], qr=payment["qr_url"], **fields)
 
     message = result["message"].rstrip(".").lower()
     alternatives = result.get("alternative_slots") or []
@@ -1104,6 +1117,82 @@ def _handle_premium_test_message(
     }
 
 
+_PAYMENT_PROVIDER_NAMES = {
+    "esewa": re.compile(r"\be[\s\-]?sewa\b|[इई][\s\-]?सेवा", re.IGNORECASE),
+    "khalti": re.compile(r"khalti|खल्ती|खल्टी", re.IGNORECASE),
+}
+
+
+def _named_payment_provider(text: str) -> str | None:
+    """The one gateway a message names, or None if it names neither or both ("eSewa or Khalti?" is a question, not an
+    answer)."""
+    named = [name for name, pattern in _PAYMENT_PROVIDER_NAMES.items() if pattern.search(text)]
+    return named[0] if len(named) == 1 else None
+
+
+def _payment_choice_turn(
+    db: Session, *, conversation: Conversation, business: Business, content: str,
+    external_message_id: str | None, language: str | None,
+) -> dict | None:
+    """The customer's answer to "eSewa or Khalti?" (asked by _format_booking_result right after a booking) — no LLM call,
+    same as the bare-digit slot pick: a message naming exactly one gateway, while a booking is waiting on that answer,
+    creates the real payment request through that gateway and replies with its link and QR. Returns the finished turn, or
+    None to fall through to the normal flow (nothing waiting, or the message doesn't clearly pick one)."""
+    if conversation.payment_choice_appointment_id is None:
+        return None
+    provider_name = _named_payment_provider(content)
+    if provider_name is None:
+        return None
+    appointment = db.get(Appointment, conversation.payment_choice_appointment_id)
+    if appointment is None or appointment.business_id != business.id or not payment_service.awaits_provider_choice(db, appointment):
+        conversation.payment_choice_appointment_id = None
+        db.commit()
+        return None
+    payment = payment_service.choose_provider(
+        db, appointment=appointment, provider_name=provider_name, conversation_id=conversation.id
+    )
+    if payment is None:
+        return None  # not one of this business's gateways: leave the question open and let the normal flow answer
+    conversation.payment_choice_appointment_id = None
+    label = {"esewa": "eSewa", "khalti": "Khalti"}[provider_name]
+    if payment.status.value != "pending" or not payment.payment_url:
+        response_text = render("payment_link_failed", language, provider=label)
+    else:
+        response_text = "{}\n{}".format(
+            render(
+                "payment_link_chosen", language, provider=label, currency=payment.currency,
+                amount=str(payment.amount), link=payment.payment_url,
+            ),
+            render("payment_qr_line", language, qr=payment_service.qr_page_url(payment)),
+        )
+        booking_tool.queue_payment_request_email(db, appointment=appointment)
+    customer_message = Message(
+        conversation_id=conversation.id,
+        sender_type=MessageSenderType.CUSTOMER,
+        content=content,
+        detected_intent=ConversationIntent.BOOKING.value,
+        external_message_id=external_message_id,
+    )
+    db.add(customer_message)
+    db.commit()
+    db.refresh(customer_message)
+    agent_message = Message(conversation_id=conversation.id, sender_type=MessageSenderType.AGENT, content=response_text)
+    db.add(agent_message)
+    db.commit()
+    db.refresh(agent_message)
+    logger.info(
+        "payment provider chosen (no LLM call): conversation_id=%s provider=%s status=%s",
+        conversation.id, provider_name, payment.status.value,
+    )
+    return {
+        "intent": ConversationIntent.BOOKING,
+        "response": response_text,
+        "customer_message_id": customer_message.id,
+        "agent_message_id": agent_message.id,
+        "detected_language": conversation.detected_language,
+    }
+
+
 def handle_incoming_message(
     db: Session,
     *,
@@ -1168,6 +1257,14 @@ def handle_incoming_message(
             content=content,
             external_message_id=external_message_id,
         )
+
+    if business is not None:
+        chosen = _payment_choice_turn(
+            db, conversation=conversation, business=business, content=content,
+            external_message_id=external_message_id, language=force_language or conversation.detected_language,
+        )
+        if chosen is not None:
+            return chosen
 
     services = service_service.list_services(db, business_id=business_id)
     # Real conversation-quality spec-conformance finding (PHASE_STATUS.md): a
@@ -1235,6 +1332,7 @@ def handle_incoming_message(
                     service_id=service.id,
                     staff_id=None,
                     scheduled_at=picked_slot,
+                    conversation_id=conversation.id,
                 )
                 response_text = _format_booking_result(
                     result,
@@ -1548,6 +1646,7 @@ def handle_incoming_message(
                     service_id=service.id,
                     staff_id=None,
                     scheduled_at=scheduled_at,
+                    conversation_id=conversation.id,
                 )
                 response_text = _format_booking_result(
                     result, service=service, tz=ZoneInfo(business.timezone), customer_name=customer_name, language=language
@@ -1623,6 +1722,7 @@ def handle_incoming_message(
                 service_id=service.id,
                 staff_id=None,
                 scheduled_at=scheduled_at,
+                conversation_id=conversation.id,
             )
             response_text = _format_booking_result(
                 result, service=service, tz=ZoneInfo(business.timezone), customer_name=customer_name, language=language

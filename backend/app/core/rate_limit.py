@@ -47,6 +47,11 @@ WIDGET_SESSION_MAX_ATTEMPTS = 10
 WIDGET_BUSINESS_MAX_ATTEMPTS = 200
 WIDGET_WINDOW_SECONDS = 60
 
+# The widget's payment-confirmation poll (widget.js checks every 5s while a payment link is outstanding): keyed per
+# session, well above the ~12/min it needs, and separate from the chat limiters so polling can never eat chat budget.
+WIDGET_POLL_MAX_ATTEMPTS = 30
+
+
 class RateLimiter:
     def __init__(self, max_attempts: int = MAX_ATTEMPTS, window_seconds: int = WINDOW_SECONDS):
         self.max_attempts = max_attempts
@@ -82,3 +87,4 @@ widget_business_rate_limiter = RateLimiter(
 QR_VIEW_MAX_ATTEMPTS = 30
 QR_VIEW_WINDOW_SECONDS = 60
 qr_view_ip_rate_limiter = RateLimiter(max_attempts=QR_VIEW_MAX_ATTEMPTS, window_seconds=QR_VIEW_WINDOW_SECONDS)
+widget_poll_rate_limiter = RateLimiter(max_attempts=WIDGET_POLL_MAX_ATTEMPTS, window_seconds=WIDGET_WINDOW_SECONDS)

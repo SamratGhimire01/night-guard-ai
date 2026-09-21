@@ -45,16 +45,16 @@ def signed_form_fields(*, payment_id: uuid.UUID, amount: Decimal) -> dict[str, s
     booking deposit, not a itemized cart)."""
     total_amount = _format_amount(amount)
     transaction_uuid = str(payment_id)
-    # `payment_id` is carried as our own query param on both URLs — real,
-    # live testing found eSewa's "Cancel Payment" button redirects to
-    # failure_url with NO `data` param at all (unlike a real declined
-    # payment attempt, which does carry one), so decoding `data` alone
-    # can't be the only way to know which payment this is. Verification
-    # itself still never trusts anything from the query string except this
-    # id — it only ever decides "completed" from the real, independent
-    # status-check API response (see _handle_esewa_return).
-    success_url = f"{settings.backend_base_url}/api/v1/payments/esewa/success?payment_id={transaction_uuid}"
-    failure_url = f"{settings.backend_base_url}/api/v1/payments/esewa/failure?payment_id={transaction_uuid}"
+    # `payment_id` is carried in the URL PATH of both URLs, never as a query param. eSewa appends its own payload to
+    # these URLs as a literal "?data=<base64>" WITHOUT checking whether the URL already has a query string — so a
+    # success_url of ".../success?payment_id=X" came back as ".../success?payment_id=X?data=..." (two "?"), which parsed
+    # as a single payment_id value of "X?data=..." and stranded a real, completed payment at PENDING (found live in
+    # Phase 47's real sandbox run). A path segment survives that append intact. The id itself is needed because eSewa's
+    # "Cancel Payment" button redirects to failure_url with NO `data` at all, so `data` alone can't identify the
+    # payment. Verification itself still never trusts anything from the URL except this id — only the real,
+    # independent status-check API decides "completed" (see _handle_esewa_return).
+    success_url = f"{settings.backend_base_url}/api/v1/payments/esewa/success/{transaction_uuid}"
+    failure_url = f"{settings.backend_base_url}/api/v1/payments/esewa/failure/{transaction_uuid}"
     return {
         "amount": total_amount,
         "tax_amount": "0",

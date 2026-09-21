@@ -13,6 +13,7 @@
   var apiBase = new URL(scriptEl.src).origin;
   var configEndpoint = apiBase + "/api/v1/widget/" + encodeURIComponent(businessId) + "/config";
   var messagesEndpoint = apiBase + "/api/v1/widget/" + encodeURIComponent(businessId) + "/messages";
+  var updatesEndpoint = apiBase + "/api/v1/widget/" + encodeURIComponent(businessId) + "/updates";
   var voiceMessageEndpoint = apiBase + "/api/v1/widget/" + encodeURIComponent(businessId) + "/voice-message";
   var storageKey = "nightguard_widget_session_" + businessId;
 
@@ -195,6 +196,37 @@
          still gets a fully working, generically-branded widget */
     });
 
+  // ---- payment confirmation: the widget has no push channel, so while a reply's payment link is outstanding it asks
+  // the server every 5s (up to 30 min) for anything newer than the last reply -- the "payment received" message the
+  // backend sends once the gateway itself confirms. ----
+  var lastAgentMessageId = null, pollTimer = null, pollDeadline = 0;
+
+  function stopPolling() {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  function pollUpdates() {
+    var token = getSessionToken();
+    if (!token || !lastAgentMessageId || Date.now() > pollDeadline) return stopPolling();
+    if (inputEl.disabled) return; /* a reply is in flight: it will be appended by the submit handler itself */
+    fetch(updatesEndpoint + "?session_token=" + encodeURIComponent(token) + "&after=" + encodeURIComponent(lastAgentMessageId))
+      .then(function (res) { return res.ok ? res.json() : { messages: [] }; })
+      .then(function (data) {
+        (data.messages || []).forEach(function (m) {
+          appendMessage(m.content, "agent");
+          lastAgentMessageId = m.id;
+        });
+      })
+      .catch(function () { /* transient: the next tick retries */ });
+  }
+
+  function watchForPaymentConfirmation(replyText) {
+    if (!/\/pay-qr\/|\/payments\//.test(replyText)) return;
+    pollDeadline = Date.now() + 30 * 60 * 1000;
+    if (!pollTimer) pollTimer = setInterval(pollUpdates, 5000);
+  }
+
   function setSending(disabled) {
     inputEl.disabled = disabled;
     sendEl.disabled = disabled;
@@ -224,6 +256,8 @@
         setSessionToken(data.session_token);
         setTyping(false);
         appendMessage(data.response, "agent");
+        if (data.agent_message_id) lastAgentMessageId = data.agent_message_id;
+        watchForPaymentConfirmation(data.response);
       })
       .catch(function () {
         setTyping(false);

@@ -182,6 +182,7 @@ def create_appointment(
     staff_id: uuid.UUID | None,
     scheduled_at: datetime,
     group_booking_id: uuid.UUID | None = None,
+    defer_payment_choice: bool = False,
     _commit: bool = True,
 ) -> Appointment:
     """The ONLY path that writes an Appointment row. Re-derives availability for
@@ -279,7 +280,7 @@ def create_appointment(
             # Notification is queued/sent, not before, since the payment
             # link it may create should already be there for that email to
             # include (see notifications/content.py).
-            payment_service.create_payment_for_appointment(db, appointment)
+            payment_service.create_payment_for_appointment(db, appointment, defer_choice=defer_payment_choice)
             dispatch_notification(db, notification)
         else:
             db.flush()

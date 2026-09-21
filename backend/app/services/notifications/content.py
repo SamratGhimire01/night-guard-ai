@@ -6,7 +6,7 @@ from app.db.models.business import Business
 from app.db.models.customer import Customer
 from app.db.models.payment import Payment
 from app.db.models.service import Service
-from app.services.notifications.qr import QR_CONTENT_ID, generate_qr_png
+from app.services.notifications.qr import PAYMENT_QR_CONTENT_ID, QR_CONTENT_ID, generate_qr_png
 from app.services.notifications.templates.render import render_appointment_email
 
 # Deliberately duplicates orchestrator._format_local's formatting (same
@@ -29,7 +29,13 @@ _STATUS_STYLE = {
     # re-checked CONFIRMED row) — same green pill as booking_confirmed, this
     # is honest, not a placeholder.
     "appointment_reminder": ("Confirmed", "#065f46", "#d1fae5"),
+    # Sent after the customer picks eSewa/Khalti in chat: the appointment is confirmed, the deposit is what's due.
+    "payment_requested": ("Deposit due", "#92400e", "#fef3c7"),
 }
+
+
+# the events whose email/SMS carries the deposit link (and its QR)
+_PAYMENT_EVENTS = frozenset({"booking_confirmed", "payment_requested"})
 
 
 def _format_local(dt: datetime, tz: ZoneInfo) -> str:
@@ -88,6 +94,9 @@ def compose_email(
     elif event_type == "appointment_reminder":
         subject = f"Reminder: your appointment at {business.name} is coming up"
         headline = "This is a reminder about your upcoming appointment."
+    elif event_type == "payment_requested":
+        subject = f"Your deposit payment link for {business.name}"
+        headline = "Here is the link to pay your appointment deposit."
     else:
         raise ValueError(f"Unknown notification event_type: {event_type!r}")
 
@@ -106,12 +115,18 @@ def compose_email(
     if business_contact:
         body += f"\n{business.name} · {business_contact}\n"
 
-    payment_ctx = _payment_context(payment, service) if event_type == "booking_confirmed" else None
+    payment_ctx = _payment_context(payment, service) if event_type in _PAYMENT_EVENTS else None
+    inline_images: list[tuple[str, bytes, str]] | None = None
+    payment_qr_cid: str | None = None
     if payment_ctx is not None:
+        # the same real payment link, also as a scannable QR (CID-embedded like the check-in QR — see below)
+        payment_qr_cid = PAYMENT_QR_CONTENT_ID
+        inline_images = [(PAYMENT_QR_CONTENT_ID, generate_qr_png(payment_ctx["payment_url"]), "image/png")]
         body += (
             f"\nA {payment_ctx['percentage']}% deposit of {payment_ctx['currency']} {payment_ctx['amount']} is "
             f"required to confirm this appointment — the remaining {payment_ctx['currency']} "
             f"{payment_ctx['remaining']} is due at the clinic.\nPay here: {payment_ctx['payment_url']}\n"
+            "The same link is also a QR code in the HTML version of this email — scan it with your phone camera.\n"
         )
 
     # Phase 46: a real, scannable check-in QR only makes sense on the
@@ -133,11 +148,10 @@ def compose_email(
     # for images in HTML email (RFC 2392). See qr.py and
     # EmailNotificationProvider.send's `inline_images` parameter.
     qr_cid: str | None = None
-    inline_images: list[tuple[str, bytes, str]] | None = None
     if event_type == "booking_confirmed":
         qr_png = generate_qr_png(str(appointment.checkin_token))
         qr_cid = QR_CONTENT_ID
-        inline_images = [(QR_CONTENT_ID, qr_png, "image/png")]
+        inline_images = [*(inline_images or []), (QR_CONTENT_ID, qr_png, "image/png")]
         body += "\nA check-in QR code is included in the HTML version of this email — please show it at the clinic.\n"
 
     status_label, status_color, status_bg = _STATUS_STYLE[event_type]
@@ -158,6 +172,7 @@ def compose_email(
         booking_id=booking_id,
         qr_cid=qr_cid,
         payment=payment_ctx,
+        payment_qr_cid=payment_qr_cid,
     )
     return subject, body, html_body, inline_images
 
@@ -185,11 +200,13 @@ def compose_sms(
         verb = "rescheduled"
     elif event_type == "appointment_reminder":
         verb = "coming up"
+    elif event_type == "payment_requested":
+        verb = "confirmed"
     else:
         raise ValueError(f"Unknown notification event_type: {event_type!r}")
 
     text = f"{business.name}: your {service.name} appointment on {when} is {verb}. Booking ID {booking_id}."
-    payment_ctx = _payment_context(payment, service) if event_type == "booking_confirmed" else None
+    payment_ctx = _payment_context(payment, service) if event_type in _PAYMENT_EVENTS else None
     if payment_ctx is not None:
         text += (
             f" A {payment_ctx['percentage']}% deposit of {payment_ctx['currency']} {payment_ctx['amount']} is "

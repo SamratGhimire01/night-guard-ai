@@ -49,7 +49,7 @@ class Payment(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMixin, 
 
     appointment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
     # "esewa" | "khalti" — whichever provider was configured on the business
-    # at the moment this payment was created (Business.payment_provider may
+    # at the moment this payment was created (Business.payment_providers may
     # change later; this row keeps the one it was actually created against).
     provider: Mapped[str] = mapped_column(String(20), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -79,3 +79,10 @@ class Payment(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMixin, 
     # inferred from a check-in scan alone, per the ticket's explicit ask.
     collected_in_person_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     collected_in_person_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The chat conversation this booking/payment came from (NULL for a dashboard/API-made booking) — the address the
+    # proactive "payment received" message goes back to (payment_service.notify_payment_completed). No FK: a deleted
+    # conversation must never block anything here, and the send path re-checks the conversation exists.
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    # Atomic once-only claim for that message (same shape as Appointment.reminder_sent_at): a single conditional UPDATE
+    # sets it, so a gateway redirect hit twice, or the redirect racing a repeat, can never send it twice.
+    completion_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -5,9 +5,15 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, NotFoundError, UnprocessableEntityError
+from app.db.models.appointment import Appointment
+from app.db.models.business import Business
+from app.db.models.conversation import Conversation
+from app.db.models.customer import Customer
+from app.db.models.notification import Notification, NotificationStatus
 from app.db.models.payment import PaymentStatus
 from app.schemas.conversation import ConversationIntent
 from app.services import booking_service, payment_service, service_service
+from app.services.notifications import dispatch_notification
 from app.services.conversation.tools import TOOL_REGISTRY, ConversationTool
 
 logger = logging.getLogger(__name__)
@@ -16,6 +22,25 @@ logger = logging.getLogger(__name__)
 # to be unavailable — small and fixed, this is a chat reply, not a slot picker UI.
 _ALTERNATIVES_COUNT = 5
 _ALTERNATIVES_SEARCH_DAYS = 7
+
+
+def queue_payment_request_email(db: Session, *, appointment: Appointment) -> None:
+    """After the customer picks a gateway in chat, the booking-confirmation email (already sent, before there was a
+    payment to mention) is followed by a `payment_requested` one carrying the real link and its QR — same
+    Notification/dispatch pipeline and channel choice as every other booking notice. Never raises (dispatch itself
+    doesn't)."""
+    business = db.get(Business, appointment.business_id)
+    customer = db.get(Customer, appointment.customer_id)
+    notification = Notification(
+        business_id=appointment.business_id,
+        appointment_id=appointment.id,
+        channel=booking_service._notification_channel(business, customer),
+        event_type="payment_requested",
+        status=NotificationStatus.QUEUED,
+    )
+    db.add(notification)
+    db.commit()
+    dispatch_notification(db, notification)
 
 
 class BookAppointmentTool(ConversationTool):
@@ -38,6 +63,7 @@ class BookAppointmentTool(ConversationTool):
         service_id: uuid.UUID,
         staff_id: uuid.UUID | None,
         scheduled_at: datetime,
+        conversation_id: uuid.UUID | None = None,
         **kwargs,
     ) -> dict:
         try:
@@ -48,6 +74,8 @@ class BookAppointmentTool(ConversationTool):
                 service_id=service_id,
                 staff_id=staff_id,
                 scheduled_at=scheduled_at,
+                # a chat booking can ask the customer which gateway to use; nothing else can
+                defer_payment_choice=conversation_id is not None,
             )
         except (NotFoundError, UnprocessableEntityError, ConflictError) as exc:
             logger.info(
@@ -78,12 +106,22 @@ class BookAppointmentTool(ConversationTool):
             "message": None,
             "alternative_slots": [],
             "payment": self._payment_info(
-                db, business_id=business_id, appointment_id=appointment.id, service_id=service_id
+                db,
+                business_id=business_id,
+                appointment=appointment,
+                service_id=service_id,
+                conversation_id=conversation_id,
             ),
         }
 
     def _payment_info(
-        self, db: Session, *, business_id: uuid.UUID, appointment_id: uuid.UUID, service_id: uuid.UUID
+        self,
+        db: Session,
+        *,
+        business_id: uuid.UUID,
+        appointment: Appointment,
+        service_id: uuid.UUID,
+        conversation_id: uuid.UUID | None,
     ) -> dict | None:
         """Phase 44: reads back whatever payment_service.
         create_payment_for_appointment already decided during
@@ -92,21 +130,46 @@ class BookAppointmentTool(ConversationTool):
         toggle off, or this service has no deposit configured) — the ONLY
         thing that makes _format_booking_result able to honestly say nothing
         about payment for a booking that doesn't need it (see
-        response_templates.py)."""
+        response_templates.py).
+
+        Two shapes otherwise: a real pending Payment (`payment_url` + `qr_url` set), or — the business offers both
+        eSewa and Khalti and none is chosen yet — `payment_url` None, which _format_booking_result turns into the
+        "which one?" question. The conversation is remembered either way (on the Payment row, or as
+        Conversation.payment_choice_appointment_id) so the customer's answer, and later the gateway-verified
+        "payment received" message, both find their way back to this chat."""
         payment = payment_service.get_payment_for_appointment(
-            db, business_id=business_id, appointment_id=appointment_id
+            db, business_id=business_id, appointment_id=appointment.id
         )
-        if payment is None or payment.status != PaymentStatus.PENDING:
+        service = service_service.get_service(db, business_id=business_id, service_id=service_id)
+        if payment is None:
+            conversation = db.get(Conversation, conversation_id) if conversation_id else None
+            if conversation is None or not payment_service.awaits_provider_choice(db, appointment):
+                return None
+            conversation.payment_choice_appointment_id = appointment.id
+            db.commit()
+            amount = payment_service.deposit_amount(service)
+            return {
+                "amount": amount,
+                "currency": db.get(Business, business_id).currency,
+                "payment_url": None,
+                "qr_url": None,
+                "percentage": service.deposit_percentage,
+                "remaining": service.price - amount,
+            }
+        if payment.status != PaymentStatus.PENDING:
             # A FAILED payment_url is never shown to a customer as something
             # to pay — the appointment is confirmed regardless (see Payment's
             # own docstring); staff sees the real failure in the dashboard's
             # pending-payments view instead.
             return None
-        service = service_service.get_service(db, business_id=business_id, service_id=service_id)
+        if conversation_id is not None and payment.conversation_id is None:
+            payment.conversation_id = conversation_id
+            db.commit()
         return {
             "amount": payment.amount,
             "currency": payment.currency,
             "payment_url": payment.payment_url,
+            "qr_url": payment_service.qr_page_url(payment),
             "percentage": service.deposit_percentage if service else None,
             "remaining": (service.price - payment.amount) if service else None,
         }

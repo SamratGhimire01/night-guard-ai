@@ -7,7 +7,6 @@ import {
   Center,
   Loader,
   Paper,
-  Select,
   Stack,
   Switch,
   Table,
@@ -20,6 +19,11 @@ import { useAuth } from '../../auth/AuthContext'
 import type { BusinessRead, PaymentRead, PlanRead } from '../../api/types'
 
 type DashboardContext = { business: BusinessRead | null; plan: PlanRead | null }
+
+const GATEWAYS = [
+  { value: 'esewa', label: 'eSewa' },
+  { value: 'khalti', label: 'Khalti' },
+]
 
 const STATUS_COLORS: Record<PaymentRead['status'], string> = {
   pending: 'yellow',
@@ -34,7 +38,7 @@ export default function PaymentsPage() {
   const isPremium = plan?.plan === 'premium'
 
   const [enabled, setEnabled] = useState(business?.payment_collection_enabled ?? false)
-  const [provider, setProvider] = useState<string | null>(business?.payment_provider ?? null)
+  const [providers, setProviders] = useState<string[]>(business?.payment_providers ?? [])
   const [saving, setSaving] = useState(false)
   const [payments, setPayments] = useState<PaymentRead[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,16 +54,20 @@ export default function PaymentsPage() {
     try {
       const updated = await apiFetch<BusinessRead>('/business/payment-settings', {
         method: 'PATCH',
-        body: JSON.stringify({ payment_collection_enabled: enabled, payment_provider: enabled ? provider : null }),
+        body: JSON.stringify({ payment_collection_enabled: enabled, payment_providers: enabled ? providers : [] }),
       })
       setEnabled(updated.payment_collection_enabled)
-      setProvider(updated.payment_provider)
+      setProviders(updated.payment_providers)
       notifications.show({ message: 'Payment settings saved.', color: 'green' })
     } catch (err) {
       notifications.show({ message: err instanceof ApiError ? err.message : 'Save failed.', color: 'red' })
     } finally {
       setSaving(false)
     }
+  }
+
+  function toggleProvider(value: string, on: boolean) {
+    setProviders((prev) => (on ? [...new Set([...prev, value])] : prev.filter((p) => p !== value)))
   }
 
   const nonNpr = business != null && business.currency !== 'NPR'
@@ -95,20 +103,25 @@ export default function PaymentsPage() {
             onChange={(e) => setEnabled(e.currentTarget.checked)}
           />
           {enabled && (
-            <Select
-              label="Payment gateway"
-              placeholder="Choose a gateway"
-              data={[
-                { value: 'esewa', label: 'eSewa' },
-                { value: 'khalti', label: 'Khalti' },
-              ]}
-              value={provider}
-              onChange={setProvider}
-              disabled={!canWrite}
-            />
+            <Stack gap="xs" pl="md">
+              {GATEWAYS.map((g) => (
+                <Switch
+                  key={g.value}
+                  label={g.label}
+                  checked={providers.includes(g.value)}
+                  disabled={!canWrite}
+                  onChange={(e) => toggleProvider(g.value, e.currentTarget.checked)}
+                />
+              ))}
+              {providers.length > 1 && (
+                <Alert variant="light" color="blue">
+                  With both on, customers booking in chat are asked which one they'd like to use.
+                </Alert>
+              )}
+            </Stack>
           )}
           {canWrite && (
-            <Button onClick={handleSave} loading={saving} disabled={!isPremium || nonNpr || (enabled && !provider)}>
+            <Button onClick={handleSave} loading={saving} disabled={!isPremium || nonNpr || (enabled && providers.length === 0)}>
               Save
             </Button>
           )}

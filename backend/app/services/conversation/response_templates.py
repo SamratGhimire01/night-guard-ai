@@ -336,26 +336,81 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "ne_deva": "{old} को सट्टा {new}।",
         "ne_roman": "{old} ko sattama {new}.",
     },
-    # Phase 44: appended to booking_success ONLY when a real Payment row was
-    # actually created for this booking (payment_service.
-    # create_payment_for_appointment — Premium + payment collection enabled
-    # + this specific service has deposit_enabled=true). Always states the
-    # real percentage and both real amounts (deposit now, remainder at the
-    # clinic) — never a bare number with no context, since only some
-    # services require a deposit and a customer seeing this for the first
-    # time has no other way to know why.
-    "payment_deposit_required": {
+    # Phase 47: a booking whose service requires a deposit. The appointment IS reserved in the database at once (a
+    # gateway problem must never block a real booking — Phase 44), but the customer hasn't paid, so this deliberately
+    # does NOT say "you're all set"/"confirmed" and mentions the booking id once, low-key, as a reference. The
+    # definitive confirmation is `payment_received` below, sent only after the gateway itself confirms the deposit.
+    # Used INSTEAD of booking_success (no-deposit bookings keep booking_success untouched). `{qr}` is the QR page link.
+    "booking_reserved_pay": {
         "en": (
-            "A {percentage}% deposit of {currency} {amount} is required to confirm this appointment "
-            "— the remaining {currency} {remaining} is due at the clinic. Pay here: {link}"
+            "Great{who}, I've reserved {service} for {when}. To lock it in, please complete your {currency} {amount} "
+            "deposit here: {link}\nOr scan it with your phone: {qr}\nThe remaining {currency} {remaining} is due at "
+            "the clinic. I'll confirm everything once the deposit is received. (Ref: {id})"
         ),
         "ne_deva": (
-            "यो अपोइन्टमेन्ट पुष्टि गर्न {percentage}% डिपोजिट {currency} {amount} तिर्नुपर्छ — बाँकी "
-            "{currency} {remaining} क्लिनिकमा तिर्नुहोस्। यहाँ भुक्तानी गर्नुहोस्: {link}"
+            "ठीक छ{who}, मैले {when} को लागि {service} रिजर्भ गरिदिएँ। यसलाई पक्का गर्न कृपया {currency} {amount} "
+            "डिपोजिट यहाँ तिर्नुहोस्: {link}\nवा फोनले स्क्यान गर्नुहोस्: {qr}\nबाँकी {currency} {remaining} "
+            "क्लिनिकमा तिर्नुहोस्। डिपोजिट प्राप्त भएपछि म सबै पुष्टि गर्नेछु। (सन्दर्भ: {id})"
         ),
         "ne_roman": (
-            "Yo appointment confirm garna {percentage}% deposit {currency} {amount} tirnu parcha — baki "
-            "{currency} {remaining} clinic ma tirnuhos. Yaha payment garnuhos: {link}"
+            "Huncha{who}, maile {when} ko lagi {service} reserve gari diye. Yo pakka garna kripaya {currency} {amount} "
+            "deposit yaha tirnuhos: {link}\nYa phone le scan garnuhos: {qr}\nBaki {currency} {remaining} clinic ma "
+            "tirnuhos. Deposit prapta bhayepachi ma sabai confirm garchhu. (Ref: {id})"
+        ),
+    },
+    # Same, when the business offers both eSewa and Khalti and the customer hasn't picked yet — the answer is read by
+    # orchestrator._payment_choice_turn, which replies with `payment_link_chosen`.
+    "booking_reserved_choose": {
+        "en": (
+            "Great{who}, I've reserved {service} for {when}. To lock it in, a {currency} {amount} deposit is needed "
+            "(the remaining {currency} {remaining} is due at the clinic) — would you like to pay with eSewa or Khalti? "
+            "I'll confirm everything once it's received. (Ref: {id})"
+        ),
+        "ne_deva": (
+            "ठीक छ{who}, मैले {when} को लागि {service} रिजर्भ गरिदिएँ। यसलाई पक्का गर्न {currency} {amount} डिपोजिट "
+            "चाहिन्छ (बाँकी {currency} {remaining} क्लिनिकमा तिर्नुहोस्) — eSewa वा Khalti मध्ये कुनबाट तिर्न "
+            "चाहनुहुन्छ? प्राप्त भएपछि म सबै पुष्टि गर्नेछु। (सन्दर्भ: {id})"
+        ),
+        "ne_roman": (
+            "Huncha{who}, maile {when} ko lagi {service} reserve gari diye. Yo pakka garna {currency} {amount} deposit "
+            "chahincha (baki {currency} {remaining} clinic ma tirnuhos) — eSewa ki Khalti, kunbata tirna "
+            "chahanuhuncha? Prapta bhayepachi ma sabai confirm garchhu. (Ref: {id})"
+        ),
+    },
+    # A QR of the same real payment link, for a customer reading this on a laptop (scan it with a phone camera)
+    # instead of tapping — a link to a small page showing it, same "QR in chat" delivery as resend_qr_link.
+    "payment_qr_line": {
+        "en": "Or scan it with your phone: {qr}",
+        "ne_deva": "वा फोनले स्क्यान गर्नुहोस्: {qr}",
+        "ne_roman": "Ya phone le scan garnuhos: {qr}",
+    },
+    # The customer named a gateway; this is the real link (and QR) that gateway just produced.
+    "payment_link_chosen": {
+        "en": "Great, here's your {provider} link for the {currency} {amount} deposit: {link}",
+        "ne_deva": "हुन्छ, {currency} {amount} डिपोजिटका लागि तपाईंको {provider} लिङ्क: {link}",
+        "ne_roman": "Huncha, {currency} {amount} deposit ko lagi tapaiko {provider} link: {link}",
+    },
+    # The gateway request could not be created (the booking itself is still confirmed).
+    "payment_link_failed": {
+        "en": "Sorry, I couldn't set up the {provider} payment just now. Your appointment is still confirmed — you can pay at the clinic instead.",
+        "ne_deva": "माफ गर्नुहोस्, अहिले {provider} भुक्तानी तयार गर्न सकिएन। तपाईंको अपोइन्टमेन्ट अझै पक्का छ — क्लिनिकमा तिर्न सक्नुहुन्छ।",
+        "ne_roman": "Maaf garnuhos, ahile {provider} payment tayar garna sakiyena. Tapaiko appointment ajhai pakka cha — clinic ma tirna saknuhuncha.",
+    },
+    # Sent by the system, unprompted, once the gateway's own independent lookup says the payment completed — the ONE
+    # definitive confirmation of a deposit booking (booking_reserved_* above deliberately never says "confirmed"): the
+    # strong "all set" wording, the time, the amount received and the booking id all live here.
+    "payment_received": {
+        "en": (
+            "Payment received — you're all set{who}! Your {service} appointment on {when} is now confirmed. "
+            "We got your {currency} {amount} deposit. Booking ID: {id}"
+        ),
+        "ne_deva": (
+            "भुक्तानी प्राप्त भयो — तपाईंको बुकिङ भइसक्यो{who}! {when} को तपाईंको {service} अपोइन्टमेन्ट अब पक्का भयो। "
+            "तपाईंको {currency} {amount} डिपोजिट प्राप्त भयो। बुकिङ आईडी: {id}"
+        ),
+        "ne_roman": (
+            "Payment prapta bhayo — sabai milyo{who}! {when} ko tapaiko {service} appointment ab pakka bhayo. "
+            "Tapaiko {currency} {amount} deposit prapta bhayo. Booking ID: {id}"
         ),
     },
     "handoff_addendum": {

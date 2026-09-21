@@ -2,13 +2,16 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
+from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.exceptions import NotFoundError, UnprocessableEntityError
 from app.db.models.appointment import Appointment
 from app.db.models.business import Business
+from app.db.models.customer import Customer
 from app.db.models.payment import Payment, PaymentStatus
 from app.db.models.service import Service
 from app.schemas.business import PaymentSettingsUpdate
@@ -41,13 +44,13 @@ def update_payment_settings(db: Session, *, business_id: uuid.UUID, payload: Pay
             f"{business.currency}."
         )
     business.payment_collection_enabled = payload.payment_collection_enabled
-    business.payment_provider = payload.payment_provider
+    business.payment_providers = payload.payment_providers
     db.commit()
     db.refresh(business)
     return business
 
 
-def _deposit_amount(service: Service) -> Decimal:
+def deposit_amount(service: Service) -> Decimal:
     # ROUND_HALF_UP to 2dp — the same precision as Service.price's own
     # Numeric(10, 2) column; this codebase has no per-currency decimal-places
     # table (e.g. treating JPY as 0dp) anywhere else, so introducing one only
@@ -57,33 +60,45 @@ def _deposit_amount(service: Service) -> Decimal:
     return (service.price * fraction).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def create_payment_for_appointment(db: Session, appointment: Appointment) -> None:
-    """Best-effort payment request, called right after a real booking's own
-    commit — same resilience discipline as Phase 40's
-    google_calendar_service.sync_appointment_created: NEVER raises. A
-    gateway failure must never be reported to the customer as a failed
-    booking, since the booking already committed in Postgres before this
-    ever runs. A no-op (no Payment row at all) whenever payment collection
-    isn't real for this booking — free plan, toggle off, or the specific
-    service has no deposit configured — never a stray pending row for a
-    booking nobody asked to pay for."""
-    business = db.get(Business, appointment.business_id)
-    service = db.get(Service, appointment.service_id)
-    if business is None or service is None:
-        return
-    if business.plan.value != "premium" or not business.payment_collection_enabled or not business.payment_provider:
-        return
-    if not service.deposit_enabled:
-        return
+def qr_page_url(payment: Payment) -> str:
+    """The small public page showing this payment link as a scannable QR (api/routes/qr_view.py) — what chat gets
+    alongside the plain link."""
+    return f"{settings.backend_base_url.rstrip('/')}/pay-qr/{payment.id}"
 
+
+def _deposit_due(business: Business | None, service: Service | None) -> bool:
+    """True only when payment collection is genuinely real for this booking: Premium, toggled on with at least one
+    gateway, and this specific service has a deposit configured."""
+    return bool(
+        business is not None
+        and service is not None
+        and business.plan.value == "premium"
+        and business.payment_collection_enabled
+        and business.payment_providers
+        and service.deposit_enabled
+    )
+
+
+def _start_payment(
+    db: Session,
+    *,
+    business: Business,
+    service: Service,
+    appointment: Appointment,
+    provider_name: str,
+    conversation_id: uuid.UUID | None = None,
+) -> Payment | None:
+    """Creates the Payment row, then the real gateway request for it. Never raises; None only if the row itself could
+    not be written (a gateway failure still leaves a FAILED row, exactly as before)."""
     payment = Payment(
         business_id=business.id,
         appointment_id=appointment.id,
-        provider=business.payment_provider,
-        amount=_deposit_amount(service),
+        provider=provider_name,
+        amount=deposit_amount(service),
         currency=business.currency,
         status=PaymentStatus.PENDING,
         payment_url="",
+        conversation_id=conversation_id,
     )
     db.add(payment)
     try:
@@ -91,9 +106,9 @@ def create_payment_for_appointment(db: Session, appointment: Appointment) -> Non
     except Exception:
         logger.exception("failed to create payment row for appointment_id=%s", appointment.id)
         db.rollback()
-        return
+        return None
 
-    provider = get_provider(business.payment_provider)
+    provider = get_provider(provider_name)
     try:
         initiation = provider.initiate_payment(
             payment_id=payment.id, amount=payment.amount, product_name=f"{service.name} deposit — {business.name}"
@@ -102,11 +117,68 @@ def create_payment_for_appointment(db: Session, appointment: Appointment) -> Non
         logger.exception("payment initiation failed for payment_id=%s provider=%s", payment.id, provider.name)
         payment.status = PaymentStatus.FAILED
         db.commit()
-        return
+        return payment
 
     payment.payment_url = initiation.payment_url
     payment.gateway_reference = initiation.gateway_reference
     db.commit()
+    return payment
+
+
+def create_payment_for_appointment(db: Session, appointment: Appointment, *, defer_choice: bool = False) -> None:
+    """Best-effort payment request, called right after a real booking's own
+    commit — same resilience discipline as Phase 40's
+    google_calendar_service.sync_appointment_created: NEVER raises. A
+    gateway failure must never be reported to the customer as a failed
+    booking, since the booking already committed in Postgres before this
+    ever runs. A no-op (no Payment row at all) whenever payment collection
+    isn't real for this booking — free plan, toggle off, or the specific
+    service has no deposit configured — never a stray pending row for a
+    booking nobody asked to pay for.
+
+    When the business offers more than one gateway, `defer_choice=True` (the chat booking path) creates nothing yet:
+    the customer is asked which they prefer and `choose_provider` creates the request through their pick. Any caller
+    that can't ask (dashboard/API bookings) leaves it False and gets the business's first configured gateway."""
+    business = db.get(Business, appointment.business_id)
+    service = db.get(Service, appointment.service_id)
+    if not _deposit_due(business, service):
+        return
+    if defer_choice and len(business.payment_providers) > 1:
+        return
+    _start_payment(
+        db, business=business, service=service, appointment=appointment, provider_name=business.payment_providers[0]
+    )
+
+
+def awaits_provider_choice(db: Session, appointment: Appointment) -> bool:
+    """A confirmed booking that owes a deposit, over more than one gateway, with no request created yet."""
+    business = db.get(Business, appointment.business_id)
+    service = db.get(Service, appointment.service_id)
+    return (
+        _deposit_due(business, service)
+        and len(business.payment_providers) > 1
+        and appointment.status.value == "confirmed"
+        and get_payment_for_appointment(db, business_id=business.id, appointment_id=appointment.id) is None
+    )
+
+
+def choose_provider(
+    db: Session, *, appointment: Appointment, provider_name: str, conversation_id: uuid.UUID | None
+) -> Payment | None:
+    """The customer's answer to "eSewa or Khalti?": creates the real payment request through exactly that gateway.
+    None if the choice is no longer valid (not one of this business's gateways, or nothing is awaiting one)."""
+    business = db.get(Business, appointment.business_id)
+    service = db.get(Service, appointment.service_id)
+    if business is None or provider_name not in business.payment_providers or not awaits_provider_choice(db, appointment):
+        return None
+    return _start_payment(
+        db,
+        business=business,
+        service=service,
+        appointment=appointment,
+        provider_name=provider_name,
+        conversation_id=conversation_id,
+    )
 
 
 def get_payment_for_appointment(db: Session, *, business_id: uuid.UUID, appointment_id: uuid.UUID) -> Payment | None:
@@ -150,7 +222,60 @@ def verify_and_update(db: Session, payment: Payment) -> Payment:
         payment.gateway_reference = result.gateway_reference
     db.commit()
     db.refresh(payment)
+    if payment.status == PaymentStatus.COMPLETED:
+        notify_payment_completed(db, payment)
     return payment
+
+
+def notify_payment_completed(db: Session, payment: Payment) -> None:
+    """Proactive "payment received" message into the chat the booking came from — sent only after the gateway's own
+    independent verification said COMPLETED (verify_and_update is the only caller), never off a redirect claim.
+    Exactly once: a single conditional UPDATE claims `completion_notified_at`, so a redirect hit twice or two racing
+    verifications cannot double-send. Claimed BEFORE sending — a crash in between loses one message rather than
+    repeating it. No conversation (a dashboard/API booking) means nothing to send. Never raises: a chat-send failure
+    must not undo a payment that already verified."""
+    if payment.conversation_id is None:
+        return
+    try:
+        # function-level imports: the channel/conversation layer imports this module (booking_tool), so a module-level
+        # import here would be a cycle
+        from app.db.models.conversation import Conversation
+        from app.services.channels.proactive import send_to_conversation
+        from app.services.conversation.response_templates import render
+
+        claimed = db.execute(
+            update(Payment)
+            .where(Payment.id == payment.id, Payment.completion_notified_at.is_(None))
+            .values(completion_notified_at=datetime.now(timezone.utc))
+        ).rowcount
+        db.commit()
+        if claimed != 1:
+            return
+        conversation = db.get(Conversation, payment.conversation_id)
+        appointment = db.get(Appointment, payment.appointment_id)
+        service = db.get(Service, appointment.service_id) if appointment else None
+        if conversation is None or appointment is None or service is None:
+            return
+        business = db.get(Business, payment.business_id)
+        customer = db.get(Customer, appointment.customer_id)
+        text = render(
+            "payment_received",
+            conversation.detected_language,
+            who=f", {customer.name}" if customer and customer.name else "",
+            when=appointment.scheduled_at.astimezone(ZoneInfo(business.timezone)).strftime("%A, %B %-d at %-I:%M %p"),
+            currency=payment.currency,
+            amount=str(payment.amount),
+            service=service.name,
+            id=str(appointment.id),
+        )
+        logger.info(
+            "payment completed, notifying conversation_id=%s payment_id=%s: %s",
+            conversation.id,
+            payment.id,
+            send_to_conversation(db, conversation=conversation, text=text),
+        )
+    except Exception:
+        logger.exception("payment-completed notification failed for payment_id=%s", payment.id)
 
 
 def get_payment_for_business(db: Session, *, business_id: uuid.UUID, payment_id: uuid.UUID) -> Payment | None:

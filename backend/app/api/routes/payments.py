@@ -111,7 +111,7 @@ def _handle_esewa_return(payment_id_param: str | None, data: str | None, db: Ses
     exact same real, independent verification rather than trusting which URL
     was hit.
 
-    `payment_id_param` (our own query param, see signed_form_fields) is the
+    `payment_id_param` (the id from our own success/failure URL, see signed_form_fields) is the
     primary way this payment is identified — real, live testing found
     eSewa's "Cancel Payment" button redirects to failure_url with NO `data`
     param at all, unlike a real declined payment attempt. `data` (eSewa's
@@ -122,7 +122,8 @@ def _handle_esewa_return(payment_id_param: str | None, data: str | None, db: Ses
     payment_id: uuid.UUID | None = None
     if payment_id_param:
         try:
-            payment_id = uuid.UUID(payment_id_param)
+            # old-shape URLs deliver "<uuid>?data=..." as the id (see esewa_success_legacy): the id is what precedes it
+            payment_id = uuid.UUID(payment_id_param.split("?", 1)[0])
         except ValueError:
             pass
     if payment_id is None and data:
@@ -150,13 +151,26 @@ def _handle_esewa_return(payment_id_param: str | None, data: str | None, db: Ses
     )
 
 
-@router.get("/payments/esewa/success", response_class=HTMLResponse)
-def esewa_success(payment_id: str | None = None, data: str | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
+@router.get("/payments/esewa/success/{payment_id}", response_class=HTMLResponse)
+def esewa_success(payment_id: str, data: str | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
     return _handle_esewa_return(payment_id, data, db)
 
 
-@router.get("/payments/esewa/failure", response_class=HTMLResponse)
-def esewa_failure(payment_id: str | None = None, data: str | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
+@router.get("/payments/esewa/failure/{payment_id}", response_class=HTMLResponse)
+def esewa_failure(payment_id: str, data: str | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
+    return _handle_esewa_return(payment_id, data, db)
+
+
+# Backward compatibility ONLY for eSewa sessions opened before the path-based URLs above: those carry the id as
+# `?payment_id=` and eSewa appended its own `?data=` after it (see esewa.signed_form_fields), so the id arrives as
+# "<uuid>?data=..." — _handle_esewa_return keeps just the part before the "?". New payments never use these routes.
+@router.get("/payments/esewa/success", response_class=HTMLResponse, include_in_schema=False)
+def esewa_success_legacy(payment_id: str | None = None, data: str | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
+    return _handle_esewa_return(payment_id, data, db)
+
+
+@router.get("/payments/esewa/failure", response_class=HTMLResponse, include_in_schema=False)
+def esewa_failure_legacy(payment_id: str | None = None, data: str | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
     return _handle_esewa_return(payment_id, data, db)
 
 

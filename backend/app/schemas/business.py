@@ -56,7 +56,7 @@ class BusinessRead(BaseModel):
     # only writer is PATCH /business/payment-settings (app/api/routes/
     # payments.py), which re-checks the Premium gate on every call.
     payment_collection_enabled: bool
-    payment_provider: str | None
+    payment_providers: list[str]
     # Phase 45 — writable via BusinessUpdate below (unlike payment_collection_
     # enabled): not plan-gated, see Business.reminder_enabled's own comment.
     reminder_enabled: bool
@@ -159,13 +159,24 @@ class PaymentSettingsUpdate(BaseModel):
     something a generic PATCH endpoint has no per-field way to do."""
 
     payment_collection_enabled: bool
+    payment_providers: list[str] = []
+    # Phase 44's original single-gateway field, still accepted so existing API clients keep working: folded into
+    # `payment_providers` below and never returned.
     payment_provider: str | None = None
 
     @model_validator(mode="after")
-    def provider_required_when_enabled(self) -> "PaymentSettingsUpdate":
+    def providers_required_when_enabled(self) -> "PaymentSettingsUpdate":
+        if self.payment_provider and not self.payment_providers:
+            self.payment_providers = [self.payment_provider]
+        self.payment_provider = None
+        unknown = set(self.payment_providers) - SUPPORTED_PAYMENT_PROVIDERS
+        if unknown:
+            raise ValueError(f"payment_providers may only contain: {', '.join(sorted(SUPPORTED_PAYMENT_PROVIDERS))}.")
+        # de-duplicated, in a stable order (so "which is the default when a booking can't ask" is deterministic)
+        self.payment_providers = sorted(set(self.payment_providers))
         if self.payment_collection_enabled:
-            if self.payment_provider not in SUPPORTED_PAYMENT_PROVIDERS:
-                raise ValueError(f"payment_provider must be one of: {', '.join(sorted(SUPPORTED_PAYMENT_PROVIDERS))}.")
+            if not self.payment_providers:
+                raise ValueError("Enable at least one payment provider (esewa and/or khalti).")
         else:
-            self.payment_provider = None
+            self.payment_providers = []
         return self

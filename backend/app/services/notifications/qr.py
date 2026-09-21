@@ -6,6 +6,7 @@ import qrcode
 # reuse across different emails since a Content-ID only needs to be unique
 # WITHIN a single MIME message, never globally.
 QR_CONTENT_ID = "checkin-qrcode"
+PAYMENT_QR_CONTENT_ID = "payment-qrcode"
 
 
 def generate_qr_png(data: str) -> bytes:

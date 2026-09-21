@@ -7,6 +7,7 @@ service and the time. No customer name/email/phone, no appointment id. EVERY fai
 unknown appointment, cancelled/completed) returns the same generic 404 page, so the endpoint is never an oracle."""
 import base64
 import html
+import uuid
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Request
@@ -17,6 +18,7 @@ from app.core.rate_limit import qr_view_ip_rate_limiter
 from app.db.database import get_db
 from app.db.models.appointment import Appointment, AppointmentStatus
 from app.db.models.business import Business
+from app.db.models.payment import Payment, PaymentStatus
 from app.db.models.service import Service
 from app.services import qr_link_service
 from app.services.notifications.qr import generate_qr_png
@@ -79,3 +81,30 @@ def view_qr(token: str, request: Request, db: Session = Depends(get_db)) -> HTML
         '<p class="small">Show this QR code at the front desk when you arrive.</p>'
     )
     return _page("Your check-in QR", body)
+
+
+@router.get("/pay-qr/{payment_id}", response_class=HTMLResponse, include_in_schema=False)
+def view_payment_qr(payment_id: uuid.UUID, request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    """The payment link as a scannable QR — what chat carries alongside the plain link (same "QR in chat" delivery as
+    `/qr/{token}` above, and the same generator). The QR encodes exactly `Payment.payment_url`, the real eSewa/Khalti
+    checkout link; nothing new is issued. The unguessable payment id is already the only credential the plain link
+    carries (`/payments/esewa/redirect/{payment_id}`), so it is no less private here. Only shown while the payment is
+    still PENDING — a paid, failed or unknown one gets the same generic 404 page."""
+    client_ip = request.client.host if request.client else "unknown"
+    if qr_view_ip_rate_limiter.is_blocked(client_ip):
+        return _page("Slow down", "<h1>Too many requests</h1><p>Please wait a minute and try again.</p>", 429)
+    qr_view_ip_rate_limiter.record_attempt(client_ip)
+
+    payment = db.get(Payment, payment_id)
+    if payment is None or payment.status != PaymentStatus.PENDING or not payment.payment_url:
+        return _invalid()
+    business = db.get(Business, payment.business_id)
+    provider_label = {"esewa": "eSewa", "khalti": "Khalti"}.get(payment.provider, payment.provider)
+    png = base64.b64encode(generate_qr_png(payment.payment_url)).decode()
+    body = (
+        f"<h1>{html.escape(business.name if business else 'Deposit payment')}</h1>"
+        f"<p><b>{html.escape(payment.currency)} {payment.amount}</b> deposit via {html.escape(provider_label)}</p>"
+        f'<img alt="Payment QR code" src="data:image/png;base64,{png}">'
+        '<p class="small">Scan with your phone camera to open the payment page.</p>'
+    )
+    return _page("Your payment QR", body)

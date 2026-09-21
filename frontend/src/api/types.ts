@@ -41,14 +41,14 @@ export interface BusinessRead {
   brand_color: string
   logo_url: string | null
   payment_collection_enabled: boolean
-  payment_provider: 'esewa' | 'khalti' | null
+  payment_providers: ('esewa' | 'khalti')[]
   reminder_enabled: boolean
   reminder_minutes_before: number
 }
 
 export interface PaymentSettingsUpdate {
   payment_collection_enabled: boolean
-  payment_provider?: 'esewa' | 'khalti' | null
+  payment_providers: ('esewa' | 'khalti')[]
 }
 
 export interface PaymentRead {

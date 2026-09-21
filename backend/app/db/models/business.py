@@ -95,11 +95,12 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     payment_collection_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
-    # "esewa" | "khalti" | NULL. NULL whenever payment_collection_enabled is
-    # false — enforced at the schema layer (PaymentSettingsUpdate), not a DB
-    # CHECK constraint, matching this codebase's existing convention for
-    # conditionally-meaningful fields (e.g. Service.deposit_percentage).
-    payment_provider: Mapped[str | None] = mapped_column(String(20))
+    # Which gateways this business offers, any subset of {"esewa", "khalti"} — both may be on at once, in which case a
+    # chat customer is asked which they'd like (see payment_service.create_payment_for_appointment). Empty whenever
+    # payment_collection_enabled is false — enforced at the schema layer (PaymentSettingsUpdate), not a DB CHECK.
+    payment_providers: Mapped[list[str]] = mapped_column(
+        ARRAY(String(20)), nullable=False, default=list, server_default="{}"
+    )
     # Phase 45: appointment reminders — off by default (same "never on by
     # default" discipline as sms_enabled/follow_ups_enabled), and, unlike
     # payment_collection_enabled, NOT plan-gated: Phase 34's own PLAN_FEATURES

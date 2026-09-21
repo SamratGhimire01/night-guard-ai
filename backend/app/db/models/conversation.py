@@ -114,6 +114,11 @@ class Conversation(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMi
     # left to survive long enough for a much-later, unrelated bare digit to
     # be misread as a stale slot selection.
     booking_draft_proposed_slots: Mapped[str | None] = mapped_column(Text)
+    # Payment-gateway choice: set right after a booking whose deposit could go through either eSewa or Khalti (the
+    # business offers both), to the appointment still waiting on the customer's answer. Consumed by the next message
+    # that clearly names one gateway (orchestrator._resolve_payment_choice_turn) — cleared then, or if the appointment
+    # is no longer a confirmed one with no payment yet. Plain UUID, no FK, same shape as booking_draft_service_id.
+    payment_choice_appointment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
 
 
 class Message(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
