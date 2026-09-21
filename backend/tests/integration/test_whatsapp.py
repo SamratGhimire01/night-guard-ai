@@ -498,3 +498,147 @@ def test_resend_qr_link_reaches_whatsapp_as_a_plain_link_through_the_real_webhoo
     assert sent["text"]["body"] == out["stored_reply"], "what WhatsApp received is exactly what was stored/answered"
     url = re.search(r"https?://\S+", sent["text"]["body"]).group(0)
     assert qr_link_service.verify_token(url.rsplit("/qr/", 1)[1]) == out["appointment_id"]
+
+
+# ---------------------------------------------------------------------------
+# Phase 50 — WhatsApp usernames: Meta omits the sender's phone number (`from` / `wa_id`) and sends only a business-scoped
+# user id (BSUID). Found live: such a user's "hi" was silently dropped, so they "couldn't chat".
+# ---------------------------------------------------------------------------
+
+# byte-for-byte the shape Meta really delivered (ngrok inspector capture), only the phone_number_id/message id swapped
+_BSUID = "NP.28874496152238272"
+
+
+def _bsuid_only_payload(*, phone_number_id: str, message_id: str, text: str = "hi", bsuid: str = _BSUID) -> dict:
+    return {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "id": "1393681432091899",
+                "changes": [
+                    {
+                        "value": {
+                            "messaging_product": "whatsapp",
+                            "metadata": {"display_phone_number": "9779840923251", "phone_number_id": phone_number_id},
+                            "contacts": [{"profile": {"name": "Aadarsha Ghimire", "username": "aadarshaghimire"}, "user_id": bsuid}],
+                            "messages": [{"from_user_id": bsuid, "id": message_id, "timestamp": "1789983258", "text": {"body": text}, "type": "text"}],
+                        },
+                        "field": "messages",
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def test_extract_reads_a_message_from_a_user_with_no_phone_number():
+    from app.services.channels.whatsapp_webhook import extract_incoming_text_messages
+
+    (msg,) = extract_incoming_text_messages(_bsuid_only_payload(phone_number_id="pn1", message_id="wamid.x"))
+    assert msg["wa_id"] == _BSUID and msg["bsuid"] == _BSUID  # reply address falls back to the BSUID
+    assert msg["contact_name"] == "Aadarsha Ghimire" and msg["text"] == "hi" and msg["phone_number_id"] == "pn1"
+
+
+def test_extract_prefers_the_phone_number_when_meta_sends_both():
+    from app.services.channels.whatsapp_webhook import extract_incoming_text_messages
+
+    payload = _build_payload(phone_number_id="pn1", wa_id="9779823045928", message_id="wamid.y", text="Yo", contact_name="Samrat")
+    payload["entry"][0]["changes"][0]["value"]["messages"][0]["from_user_id"] = "NP.2883195738732363"
+    payload["entry"][0]["changes"][0]["value"]["contacts"][0]["user_id"] = "NP.2883195738732363"
+    (msg,) = extract_incoming_text_messages(payload)
+    assert msg["wa_id"] == "9779823045928" and msg["bsuid"] == "NP.2883195738732363" and msg["contact_name"] == "Samrat"
+
+
+def test_bsuid_only_user_gets_a_conversation_and_a_reply_addressed_by_recipient(business_with_whatsapp, monkeypatch):
+    from app.services.channels.whatsapp import WhatsAppChannelAdapter
+
+    sent: list[dict] = []
+    monkeypatch.setattr(WhatsAppChannelAdapter, "send_message", lambda self, **kw: (sent.append(kw), "sent")[1])
+    status, body = _post_webhook(
+        _bsuid_only_payload(phone_number_id=business_with_whatsapp["phone_number_id"], message_id=f"wamid.{uuid.uuid4().hex}")
+    )
+    assert status == 200, body
+    assert [s["to"] for s in sent] == [_BSUID], "the reply goes to the BSUID (send_message turns it into `recipient`)"
+    with SessionLocal() as db:
+        (conversation,) = db.query(Conversation).filter(Conversation.business_id == business_with_whatsapp["business_id"]).all()
+        assert db.query(Message).filter(Message.conversation_id == conversation.id).count() == 2  # customer + agent
+
+
+def test_a_bsuid_is_linked_to_the_phone_identity_so_a_later_username_user_keeps_their_conversation(
+    business_with_whatsapp, monkeypatch
+):
+    from app.services.channels.whatsapp import WhatsAppChannelAdapter
+
+    monkeypatch.setattr(WhatsAppChannelAdapter, "send_message", lambda self, **kw: "sent")
+    pnid, bsuid, phone = business_with_whatsapp["phone_number_id"], "NP.4444444444444", "9779800000042"
+    both = _build_payload(phone_number_id=pnid, wa_id=phone, message_id=f"wamid.{uuid.uuid4().hex}", text="hello")
+    both["entry"][0]["changes"][0]["value"]["messages"][0]["from_user_id"] = bsuid
+    assert _post_webhook(both)[0] == 200
+    assert _post_webhook(_bsuid_only_payload(phone_number_id=pnid, message_id=f"wamid.{uuid.uuid4().hex}", bsuid=bsuid))[0] == 200
+    with SessionLocal() as db:
+        conversations = db.query(Conversation).filter(Conversation.business_id == business_with_whatsapp["business_id"]).all()
+        assert len(conversations) == 1, "same person, one customer, one conversation"
+        assert db.query(Message).filter(Message.conversation_id == conversations[0].id).count() == 4
+
+
+def test_send_message_addresses_a_bsuid_by_recipient_on_a_new_enough_api_version_and_a_phone_by_to(monkeypatch):
+    import io
+    import json as j
+    import urllib.request
+
+    from app.services.channels.whatsapp import WhatsAppChannelAdapter
+
+    seen: list[tuple[str, dict]] = []
+
+    class _Resp(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(request, timeout=None):
+        seen.append((request.full_url, j.loads(request.data)))
+        return _Resp(b'{"messages":[{"id":"wamid.ok"}]}')
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(settings, "whatsapp_api_version", "v20.0")
+    adapter = WhatsAppChannelAdapter()
+    adapter.send_message(to=_BSUID, text="hi", phone_number_id="PN", access_token="tok")
+    adapter.send_message(to="9779840923250", text="hi", phone_number_id="PN", access_token="tok")
+    (bs_url, bs_body), (ph_url, ph_body) = seen
+    assert "/v26.0/PN/messages" in bs_url and bs_body["recipient"] == _BSUID and "to" not in bs_body
+    assert "/v20.0/PN/messages" in ph_url and ph_body["to"] == "9779840923250" and "recipient" not in ph_body
+
+    monkeypatch.setattr(settings, "whatsapp_api_version", "v27.0")  # never downgraded
+    adapter.send_message(to=_BSUID, text="hi", phone_number_id="PN", access_token="tok")
+    assert "/v27.0/PN/messages" in seen[-1][0]
+
+
+def test_proactive_send_prefers_the_phone_identity_over_a_bsuid_alias(business_with_whatsapp, monkeypatch):
+    from app.db.models.channel_identity import ChannelIdentity
+    from app.services.channels import proactive
+    from app.services.channels.whatsapp import WhatsAppChannelAdapter
+
+    sent: list[dict] = []
+    monkeypatch.setattr(WhatsAppChannelAdapter, "send_message", lambda self, **kw: (sent.append(kw), "sent")[1])
+    with SessionLocal() as db:
+        biz = business_with_whatsapp["business_id"]
+        customer = Customer(business_id=biz, name="Both")
+        db.add(customer)
+        db.flush()
+        db.add_all(
+            [
+                ChannelIdentity(business_id=biz, channel="whatsapp", external_ref="NP.999", customer_id=customer.id),
+                ChannelIdentity(business_id=biz, channel="whatsapp", external_ref="9779800000077", customer_id=customer.id),
+            ]
+        )
+        conv = Conversation(business_id=biz, customer_id=customer.id, channel="whatsapp", status="open")
+        db.add(conv)
+        db.commit()
+        pn = business_with_whatsapp["phone_number_id"]
+        integ = db.query(Integration).filter(Integration.business_id == biz, Integration.type == "whatsapp").one()
+        integ.config = {"phone_number_id": pn, "access_token": "t"}
+        db.commit()
+        proactive.send_to_conversation(db, conversation=conv, text="Payment received")
+    assert [s["to"] for s in sent] == ["9779800000077"]

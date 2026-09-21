@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import urllib.error
 import urllib.request
 import uuid
@@ -15,6 +16,30 @@ logger = logging.getLogger(__name__)
 
 _SEND_URL_TEMPLATE = "https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
 _SEND_TIMEOUT_SECONDS = 15
+# A business-scoped user id (BSUID): ISO country code + "." + alphanumerics, e.g. "NP.28874496152238272". A phone number
+# is digits only, so the two can never be confused.
+_BSUID_RE = re.compile(r"^[A-Z]{2}\.[A-Za-z0-9]{1,128}$")
+# Meta's Cloud API only accepts a BSUID as the message recipient from this Graph API version on
+# (developers.facebook.com/documentation/business-messaging/whatsapp/business-scoped-user-ids).
+_BSUID_MIN_API_VERSION = 26
+
+
+def is_bsuid(ref: str) -> bool:
+    return bool(_BSUID_RE.match(ref))
+
+
+def _recipient(to: str) -> tuple[dict, str]:
+    """(the request-body field that addresses `to`, the Graph API version to send with). A phone number goes in `to` on
+    the configured version exactly as before; a BSUID goes in `recipient` and needs at least v26.0 — only those calls are
+    bumped, nothing else about the integration changes."""
+    if not is_bsuid(to):
+        return {"to": to}, settings.whatsapp_api_version
+    configured = settings.whatsapp_api_version
+    try:
+        major = int(configured.lstrip("v").split(".")[0])
+    except ValueError:
+        major = 0
+    return {"recipient": to}, configured if major >= _BSUID_MIN_API_VERSION else f"v{_BSUID_MIN_API_VERSION}.0"
 
 
 class WhatsAppChannelAdapter(ChannelAdapter):
@@ -94,12 +119,13 @@ class WhatsAppChannelAdapter(ChannelAdapter):
             logger.info("SIMULATED WhatsApp send to %s: %s", to, text)
             return "simulated — no real WhatsApp access token configured"
 
-        url = _SEND_URL_TEMPLATE.format(api_version=settings.whatsapp_api_version, phone_number_id=phone_number_id)
+        address, api_version = _recipient(to)
+        url = _SEND_URL_TEMPLATE.format(api_version=api_version, phone_number_id=phone_number_id)
         body = json.dumps(
             {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual",
-                "to": to,
+                **address,
                 "type": "text",
                 "text": {"preview_url": False, "body": text},
             }
@@ -179,11 +205,12 @@ class WhatsAppChannelAdapter(ChannelAdapter):
             logger.warning("WhatsApp media upload returned no media id")
             return "failed: media upload returned no id"
 
-        send_url = _SEND_URL_TEMPLATE.format(api_version=settings.whatsapp_api_version, phone_number_id=phone_number_id)
+        address, api_version = _recipient(to)
+        send_url = _SEND_URL_TEMPLATE.format(api_version=api_version, phone_number_id=phone_number_id)
         body = {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
-            "to": to,
+            **address,
             "type": "image",
             "image": {"id": media_id, "caption": caption},
         }

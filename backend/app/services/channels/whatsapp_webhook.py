@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.db.models.channel_identity import ChannelIdentity
 from app.db.models.conversation import Message
 from app.db.models.integration import Integration
 from app.services.channels.meta_webhook_signature import verify_signature
@@ -25,7 +26,9 @@ def extract_incoming_text_messages(payload: dict) -> list[dict]:
     """Walks Meta's real webhook envelope shape
     (entry[].changes[].value.{metadata,contacts,messages}[]) and returns one
     normalized dict per real incoming TEXT message found:
-    {phone_number_id, wa_id, contact_name, message_id, text}.
+    {phone_number_id, wa_id, bsuid, contact_name, message_id, text} — `wa_id` is the address to reply to: the sender's
+    phone number, or their BSUID when Meta withholds the number (WhatsApp usernames); `bsuid` is the BSUID whenever
+    Meta sent one (None on older-format payloads).
 
     Deliberately tolerant, not a strict schema: Meta sends the same endpoint
     for message-status webhooks (delivered/read receipts, no "messages" key)
@@ -38,12 +41,24 @@ def extract_incoming_text_messages(payload: dict) -> list[dict]:
         for change in entry.get("changes", []) or []:
             value = change.get("value", {}) or {}
             phone_number_id = (value.get("metadata") or {}).get("phone_number_id")
-            contacts = {c.get("wa_id"): (c.get("profile") or {}).get("name") for c in value.get("contacts", []) or []}
+            # A contact is keyed by phone (`wa_id`) and/or business-scoped user id (`user_id`, the BSUID) — a user with a
+            # WhatsApp username has ONLY the latter.
+            contacts = {}
+            for c in value.get("contacts", []) or []:
+                for key in (c.get("wa_id"), c.get("user_id")):
+                    if key:
+                        contacts[key] = (c.get("profile") or {}).get("name")
             for message in value.get("messages", []) or []:
                 if message.get("type") != "text":
                     continue
                 text_body = (message.get("text") or {}).get("body")
-                wa_id = message.get("from")
+                # Real bug found live (Phase 50): when the sender has a WhatsApp username, Meta OMITS `from` (their phone
+                # number) and sends only `from_user_id` (a BSUID such as "NP.2887…"). Requiring `from` silently dropped
+                # every message from such a user — no reply, no conversation, nothing in the logs. The reply address is
+                # the phone when present, else the BSUID (which the Cloud API accepts as `recipient`, see
+                # WhatsAppChannelAdapter.send_message).
+                bsuid = message.get("from_user_id")
+                wa_id = message.get("from") or bsuid
                 message_id = message.get("id")
                 if not (phone_number_id and wa_id and message_id and text_body):
                     continue
@@ -51,7 +66,8 @@ def extract_incoming_text_messages(payload: dict) -> list[dict]:
                     {
                         "phone_number_id": phone_number_id,
                         "wa_id": wa_id,
-                        "contact_name": contacts.get(wa_id),
+                        "bsuid": bsuid,
+                        "contact_name": contacts.get(message.get("from")) or contacts.get(bsuid),
                         "message_id": message_id,
                         "text": text_body,
                     }
@@ -76,6 +92,35 @@ def _resolve_integration(db: Session, *, phone_number_id: str) -> Integration | 
             Integration.config["phone_number_id"].astext == phone_number_id,
         )
     ).scalar_one_or_none()
+
+
+def _link_bsuid_alias(db: Session, *, business_id, wa_id: str, bsuid: str | None) -> None:
+    """When Meta sends BOTH a phone number and a BSUID, remember the BSUID as a second identity of the SAME customer, so
+    if that person later turns on a username (Meta then omits the number) their messages still land in the same
+    customer/conversation instead of starting a stranger. Best-effort: never raises."""
+    if not bsuid or bsuid == wa_id:
+        return
+    try:
+        identity = db.execute(
+            select(ChannelIdentity).where(
+                ChannelIdentity.business_id == business_id,
+                ChannelIdentity.channel == "whatsapp",
+                ChannelIdentity.external_ref == wa_id,
+            )
+        ).scalar_one_or_none()
+        if identity is None:
+            return
+        db.add(
+            ChannelIdentity(
+                business_id=business_id, channel="whatsapp", external_ref=bsuid, customer_id=identity.customer_id
+            )
+        )
+        db.commit()
+    except IntegrityError:
+        db.rollback()  # already linked (the unique constraint is the real guard)
+    except Exception:
+        db.rollback()
+        logger.exception("whatsapp webhook: could not link BSUID alias (non-fatal)")
 
 
 def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
@@ -131,6 +176,7 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
             outcomes.append({"message_id": incoming["message_id"], "status": "business_not_found"})
             continue
 
+        _link_bsuid_alias(db, business_id=business_id, wa_id=incoming["wa_id"], bsuid=incoming.get("bsuid"))
         send_detail = _adapter.send_message(
             to=incoming["wa_id"],
             text=result["response"],

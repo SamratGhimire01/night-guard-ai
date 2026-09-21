@@ -16671,3 +16671,25 @@ The remaining NPR 1188.00 is due at the clinic. I'll confirm everything once the
 * You asked me to log in as analytics-demo@example.com and capture `/dashboard/analytics`. **I did not: entering a password to authenticate is something I don't do, even with credentials you supply.** The tab is parked on the login page, the Vite dev server is up (:5173) and the demo data is loaded (including 13 forfeited deposits, NPR 3,680) — once you're signed in, one message and I capture the page (dark theme, all five cards, trend, heatmap).
 * No commit — awaiting explicit confirmation (standing rule #6).
 
+---
+
+## Phase 50 (2026-09-21 series) — "9862214260 can't chat on WhatsApp": WhatsApp username (BSUID) senders were silently dropped. Not committed.
+
+**Report:** the number 9862214260 (Aadarsha Ghimire, an existing Samaj Dental customer, created 2026-09-05) "is not able to chat". **Investigation:** no channel identity/conversation/message ever existed for the number; other WhatsApp numbers (11 in the last 10 days) chat fine; the webhook works; no code filters by phone number; Meta's connection check for the saved token/number was healthy (`+977 984-0923251`, GREEN, webhook → our tunnel). With the user re-sending "hi" and the webhook logs showing `received: 0`, ngrok's local inspector (`127.0.0.1:4040`) gave the raw body Meta delivered:
+```
+"contacts":[{"profile":{"name":"Aadarsha Ghimire","username":"aadarshaghimire"},"user_id":"NP.28874496152238272"}],
+"messages":[{"from_user_id":"NP.28874496152238272","id":"wamid.…","text":{"body":"hi"},"type":"text"}]      <- no "from", no "wa_id"
+```
+**Root cause:** the sender has a WhatsApp *username*, so Meta omits their phone number and identifies them only by a business-scoped user id (BSUID). `extract_incoming_text_messages` required `message["from"]` and `continue`d without a trace when it was missing — no reply, no conversation, nothing in the logs except `received: 0`. Every username user would have hit this. (Meta docs: business-scoped-user-ids; BSUIDs in webhooks since 2026-03-31; sending to a BSUID needs the `recipient` field and Graph API ≥ v26.0 — we are on v20.0.)
+
+**Fix (`whatsapp_webhook.py`, `whatsapp.py`, `proactive.py`):**
+* Inbound: reply address = `from` (phone) if present, else `from_user_id` (BSUID); contact name resolved via either `wa_id` or `user_id`; the BSUID is carried as `bsuid`.
+* Outbound: a BSUID recipient (regex `^[A-Z]{2}\.[A-Za-z0-9]+$`, never confusable with an all-digit phone) is sent as `"recipient"` instead of `"to"`, on `max(configured version, v26.0)` — **only BSUID sends are bumped; phone-number sends, typing indicator, media and signup stay on the configured v20.0 exactly as before.** Applied to text and image sends.
+* Identity: when Meta sends BOTH a phone and a BSUID, the BSUID is stored as a second `ChannelIdentity` of the same customer, so a person who later turns on a username keeps their customer/conversation instead of becoming a stranger. Proactive sends (`send_to_conversation`, e.g. the payment-received message) prefer the phone identity.
+* **Tests (6 new in `test_whatsapp.py`):** extraction of the verbatim real payload; phone preferred when both present; BSUID-only user gets a conversation + a reply addressed to the BSUID through the real signed webhook; BSUID→phone alias keeps one customer/one conversation; `send_message` body/URL (`recipient` + v26.0 for a BSUID, `to` + configured version for a phone, never downgraded); proactive prefers phone. WhatsApp/Messenger/Instagram/embedded-signup/payment/wording/conversation suites: all pass.
+* **Live proof (backend force-recreated, StartedAt 09:37:54Z):** the user re-sent "hi" → `webhook_received:1, processed:1`; new identity `NP.28874496152238272`; conversation: CUSTOMER "hi" 09:38:32 → AGENT "Hi! Welcome to Samaj Dental Clinic — how can I help you today?" 09:38:36; **Meta's own delivery receipts for the reply (ngrok inspector): `sent`, `delivered`, `read`** — the recipient really got it, addressed by BSUID.
+
+**Caveats / open:**
+* The two earlier "hi" messages (09:29 and 09:34 UTC) were dropped before the fix and are not recoverable (Meta got a 200, so it never retries).
+* This person is now a NEW customer ("WhatsApp Contact") — Meta never tells us the phone number of a username user, so nothing can link them to the existing "Aadarsha Ghimire / 9862214260" customer row automatically. If they give their phone in chat, the existing contact-update flow saves it on the new customer; merging the two rows is not built.
+* Messenger/Instagram were not touched (different id schemes; no such report). No commit — awaiting explicit confirmation (standing rule #6).

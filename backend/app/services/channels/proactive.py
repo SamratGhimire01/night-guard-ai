@@ -8,7 +8,7 @@ from app.db.models.conversation import Conversation, Message, MessageSenderType
 from app.services import integration_service
 from app.services.channels.instagram import InstagramChannelAdapter
 from app.services.channels.messenger import MessengerChannelAdapter
-from app.services.channels.whatsapp import WhatsAppChannelAdapter
+from app.services.channels.whatsapp import WhatsAppChannelAdapter, is_bsuid
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +25,15 @@ def send_to_conversation(db: Session, *, conversation: Conversation, text: str) 
     if conversation.channel == "website":
         return "recorded for widget poll"
     try:
-        identity = db.execute(
+        identities = db.execute(
             select(ChannelIdentity).where(
                 ChannelIdentity.business_id == conversation.business_id,
                 ChannelIdentity.channel == conversation.channel,
                 ChannelIdentity.customer_id == conversation.customer_id,
             )
-        ).scalars().first()
+        ).scalars().all()
+        # a WhatsApp customer may have both a phone identity and a BSUID alias: prefer the phone number
+        identity = min(identities, key=lambda i: is_bsuid(i.external_ref), default=None)
         integration = integration_service.get_integration(
             db, business_id=conversation.business_id, type_=conversation.channel
         )
