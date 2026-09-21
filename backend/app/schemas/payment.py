@@ -22,6 +22,8 @@ class PaymentRead(BaseModel):
     # Phase 46 — a real, distinct staff action; never set by anything else.
     collected_in_person_amount: Decimal | None
     collected_in_person_at: datetime | None
+    # Phase 49 — when a completed deposit was kept because the appointment became a no-show; None otherwise.
+    forfeited_due_to_no_show_at: datetime | None
 
 
 class RecordInPersonPaymentRequest(BaseModel):

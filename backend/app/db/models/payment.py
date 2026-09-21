@@ -86,3 +86,8 @@ class Payment(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMixin, 
     # Atomic once-only claim for that message (same shape as Appointment.reminder_sent_at): a single conditional UPDATE
     # sets it, so a gateway redirect hit twice, or the redirect racing a repeat, can never send it twice.
     completion_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Phase 49: set (once, atomically with the appointment's CONFIRMED -> NO_SHOW flip — see
+    # no_show_service.flag_no_shows) when a COMPLETED deposit belongs to a no-show. It is a record of WHY the clinic keeps
+    # money it genuinely received, never a payment operation: nothing is refunded, `status` stays COMPLETED, and the
+    # customer is never messaged about it (the clinic handles that with the customer directly, if at all).
+    forfeited_due_to_no_show_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

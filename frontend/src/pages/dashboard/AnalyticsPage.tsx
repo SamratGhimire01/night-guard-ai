@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Alert, Group, Paper, Select, SegmentedControl, SimpleGrid, Skeleton, Stack, Text, Title, Tooltip } from '@mantine/core'
 import { BarChart } from '@mantine/charts'
-import { IconAlertTriangle, IconCalendarStats, IconClockHour4, IconFlame, IconUserOff } from '@tabler/icons-react'
+import { IconAlertTriangle, IconCalendarStats, IconClockHour4, IconCoinOff, IconFlame, IconUserOff } from '@tabler/icons-react'
 import { apiFetch, ApiError } from '../../api/client'
 import { useAuth } from '../../auth/AuthContext'
 import type { BusinessRead } from '../../api/types'
@@ -26,6 +26,7 @@ interface BookingAnalytics {
   no_show_denominator: number
   median_lead_time_hours: number | null
   lead_time_sample_size: number
+  forfeited_deposits: { currency: string; total: string; count: number }[]
   popular_slots: { weekday: number; hour: number; count: number }[]
 }
 
@@ -48,6 +49,12 @@ function formatLeadTime(hours: number | null): string {
   if (hours < 1) return `${Math.round(hours * 60)} min`
   if (hours < 48) return `${hours} hr`
   return `${Math.round((hours / 24) * 10) / 10} days`
+}
+
+// e.g. "NPR 1,200". A range with no forfeited deposit shows the business's own currency at 0 rather than a bare dash.
+function formatForfeited(items: BookingAnalytics['forfeited_deposits'], fallbackCurrency: string): string {
+  if (items.length === 0) return `${fallbackCurrency} 0`
+  return items.map((f) => `${f.currency} ${Number(f.total).toLocaleString('en-US', { maximumFractionDigits: 2 })}`).join(' + ')
 }
 
 function formatPeriod(period: string, granularity: Granularity): string {
@@ -250,7 +257,7 @@ export default function AnalyticsPage() {
     <Stack gap="lg">
       {header}
 
-      <SimpleGrid cols={{ base: 2, md: 4 }}>
+      <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }}>
         <StatCard label="Bookings" value={data.total_bookings} icon={<IconCalendarStats {...ICON} />} />
         <StatCard
           label="No-show rate"
@@ -265,9 +272,16 @@ export default function AnalyticsPage() {
           color="teal"
         />
         <StatCard label="Busiest time slot" value={busiest} icon={<IconFlame {...ICON} />} color="grape" />
+        <StatCard
+          label="Forfeited deposits"
+          value={formatForfeited(data.forfeited_deposits, business?.currency ?? '')}
+          icon={<IconCoinOff {...ICON} />}
+          color="red"
+        />
       </SimpleGrid>
       <Text size="xs" c="dimmed" mt={-8}>
-        {noShowNote}
+        {noShowNote} Forfeited deposits are paid deposits kept because the appointment became a no-show
+        {data.forfeited_deposits.length > 0 ? ` (${data.forfeited_deposits.reduce((n, f) => n + f.count, 0)} in this range)` : ''}.
         Lead time is the median gap between when a booking was made and its appointment time
         {data.lead_time_sample_size > 0 ? ` (${data.lead_time_sample_size} bookings)` : ''} — a median, so a few far-ahead bookings don't skew it.
       </Text>

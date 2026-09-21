@@ -9,9 +9,13 @@ import threading
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
+import pytest
+
 from app.core.exceptions import ConflictError, UnprocessableEntityError
 from app.db.database import SessionLocal
 from app.db.models.appointment import Appointment, AppointmentStatus
+from app.db.models.conversation import Conversation, Message
+from app.db.models.notification import Notification
 from app.db.models.payment import Payment, PaymentStatus
 from app.memory.appointment_context import get_appointment_context
 from app.services import booking_service, checkin_service, no_show_service, scheduler
@@ -229,3 +233,163 @@ def test_cancel_racing_the_scan_a_successful_cancel_is_never_left_no_show(busine
         else:
             assert final == AppointmentStatus.NO_SHOW  # the scan won and the cancel was refused as too late
 
+
+# --- Phase 49: a completed deposit on a no-show is recorded as forfeited (never refunded, never announced) ------------
+
+
+def _payment(db, ctx, appt, status=PaymentStatus.COMPLETED, amount="12.00", conversation_id=None) -> Payment:
+    payment = Payment(
+        business_id=ctx["business_id"], appointment_id=appt.id, provider="esewa", amount=Decimal(amount),
+        currency="NPR", status=status, payment_url="https://x.example/p", conversation_id=conversation_id,
+    )
+    db.add(payment)
+    db.commit()
+    db.refresh(payment)
+    return payment
+
+
+def _pay(payment_id) -> Payment:
+    with SessionLocal() as db:
+        return db.get(Payment, payment_id)
+
+
+def test_completed_deposit_on_a_no_show_is_marked_forfeited_and_nothing_else_changes(business_ready):
+    with SessionLocal() as db:
+        appt = _appt(db, business_ready, minutes_from_now=-90)
+        payment = _payment(db, business_ready, appt)
+        appt_id, payment_id = appt.id, payment.id
+    assert _flag(business_ready) == 1
+    p = _pay(payment_id)
+    assert p.forfeited_due_to_no_show_at is not None
+    assert (p.status, p.amount, p.currency, p.gateway_reference) == (PaymentStatus.COMPLETED, Decimal("12.00"), "NPR", None)
+    assert _status(appt_id) == AppointmentStatus.NO_SHOW
+    stamp = p.forfeited_due_to_no_show_at
+    assert _flag(business_ready) == 0
+    assert _pay(payment_id).forfeited_due_to_no_show_at == stamp, "set once, never rewritten"
+
+
+def test_only_completed_deposits_are_forfeited_pending_and_failed_ones_are_left_alone(business_ready):
+    with SessionLocal() as db:
+        ids = [
+            _payment(db, business_ready, _appt(db, business_ready, minutes_from_now=-90 - 40 * i), status=st).id
+            for i, st in enumerate((PaymentStatus.PENDING, PaymentStatus.FAILED))
+        ]
+    assert _flag(business_ready) == 2
+    assert [_pay(i).forfeited_due_to_no_show_at for i in ids] == [None, None]
+    assert [_pay(i).status for i in ids] == [PaymentStatus.PENDING, PaymentStatus.FAILED]
+
+
+def test_deposit_of_an_appointment_that_was_checked_in_or_cancelled_is_never_forfeited(business_ready, fake_email_provider):
+    with SessionLocal() as db:
+        arrived = _appt(db, business_ready, minutes_from_now=-90)
+        cancelled = _appt(db, business_ready, minutes_from_now=-130)
+        pay_arrived, pay_cancelled = _payment(db, business_ready, arrived).id, _payment(db, business_ready, cancelled).id
+        checkin_service.check_in_appointment(db, business_id=business_ready["business_id"], token=arrived.checkin_token)
+        booking_service.cancel_appointment(db, business_id=business_ready["business_id"], appointment_id=cancelled.id)
+    assert _flag(business_ready) == 0
+    assert _pay(pay_arrived).forfeited_due_to_no_show_at is None and _pay(pay_cancelled).forfeited_due_to_no_show_at is None
+
+
+def test_flipping_the_status_and_recording_the_forfeiture_commit_together_or_not_at_all(business_ready, monkeypatch):
+    with SessionLocal() as db:
+        appt = _appt(db, business_ready, minutes_from_now=-90)
+        payment = _payment(db, business_ready, appt)
+        appt_id, payment_id = appt.id, payment.id
+    with SessionLocal() as db:
+        real_execute, calls = db.execute, []
+
+        def failing_second_statement(*args, **kwargs):
+            calls.append(1)
+            if len(calls) == 2:  # the forfeiture UPDATE, after the appointment UPDATE already ran in this transaction
+                raise RuntimeError("simulated failure between the two statements")
+            return real_execute(*args, **kwargs)
+
+        monkeypatch.setattr(db, "execute", failing_second_statement)
+        with pytest.raises(RuntimeError):
+            no_show_service.flag_no_shows(db, business_id=business_ready["business_id"])
+        db.rollback()
+    assert _status(appt_id) == AppointmentStatus.CONFIRMED, "the NO_SHOW flip must not survive without its forfeiture"
+    assert _pay(payment_id).forfeited_due_to_no_show_at is None
+    assert _flag(business_ready) == 1 and _pay(payment_id).forfeited_due_to_no_show_at is not None  # and a retry works
+
+
+def test_eight_concurrent_scans_forfeit_a_deposit_exactly_once(business_ready):
+    with SessionLocal() as db:
+        appt = _appt(db, business_ready, minutes_from_now=-90)
+        payment_id = _payment(db, business_ready, appt).id
+    bid = business_ready["business_id"]
+    results = _race([lambda db: no_show_service.flag_no_shows(db, business_id=bid)] * 8)
+    assert sorted(results) == [0] * 7 + [1]
+    with SessionLocal() as db:
+        assert db.query(Payment).filter(Payment.id == payment_id, Payment.forfeited_due_to_no_show_at.is_not(None)).count() == 1
+
+
+def test_no_message_of_any_kind_goes_to_the_customer_when_a_deposit_is_forfeited(
+    business_ready, fake_email_provider, monkeypatch
+):
+    """The chat conversation the deposit was paid in exists and is linked to the payment (exactly what
+    notify_payment_completed uses to message the customer) — flagging must not touch it, email, or SMS."""
+    from app.services.channels import proactive
+    from app.services.notifications import dispatch_service
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("a no-show/forfeiture must never message the customer")
+
+    monkeypatch.setattr(proactive, "send_to_conversation", forbidden)
+    monkeypatch.setattr(dispatch_service, "dispatch_notification", forbidden)
+    monkeypatch.setattr(dispatch_service, "_dispatch", forbidden)
+    with SessionLocal() as db:
+        conversation = Conversation(
+            business_id=business_ready["business_id"], customer_id=business_ready["customer_id"], channel="website", status="open"
+        )
+        db.add(conversation)
+        db.commit()
+        appt = _appt(db, business_ready, minutes_from_now=-90)
+        payment = _payment(db, business_ready, appt, conversation_id=conversation.id)
+        appt_id, payment_id, conv_id = appt.id, payment.id, conversation.id
+
+    def counts():
+        with SessionLocal() as db:
+            return (
+                db.query(Notification).filter(Notification.appointment_id == appt_id).count(),
+                db.query(Message).filter(Message.conversation_id == conv_id).count(),
+            )
+
+    before = counts()
+    assert _flag(business_ready) == 1
+    assert _pay(payment_id).forfeited_due_to_no_show_at is not None
+    assert counts() == before == (0, 0), "no Notification row and no chat Message was created"
+    assert fake_email_provider.calls == 0, "and no email left the building"
+
+
+def test_settings_refuse_a_lookback_long_enough_to_backfill_old_history(monkeypatch):
+    from pydantic import ValidationError
+
+    from app.core.config import Settings
+
+    assert Settings().no_show_lookback_hours == 24
+    for hours in (73, 720, 0):
+        with pytest.raises(ValidationError):
+            Settings(no_show_lookback_hours=hours)
+
+
+def test_a_paid_deposit_on_old_pre_feature_history_is_never_forfeited(business_ready):
+    with SessionLocal() as db:
+        old = _appt(db, business_ready, minutes_from_now=-60 * 24 * 5)  # ended ~5 days ago
+        payment_id = _payment(db, business_ready, old).id
+        old_id = old.id
+    assert _flag(business_ready) == 0
+    assert _status(old_id) == AppointmentStatus.CONFIRMED and _pay(payment_id).forfeited_due_to_no_show_at is None
+
+
+def test_a_deposit_that_completes_only_after_the_flag_is_not_retroactively_forfeited(business_ready):
+    with SessionLocal() as db:
+        appt = _appt(db, business_ready, minutes_from_now=-90)
+        payment = _payment(db, business_ready, appt, status=PaymentStatus.PENDING)
+        payment_id = payment.id
+    assert _flag(business_ready) == 1
+    with SessionLocal() as db:
+        db.get(Payment, payment_id).status = PaymentStatus.COMPLETED  # the customer paid the still-live link late
+        db.commit()
+    assert _flag(business_ready) == 0
+    assert _pay(payment_id).forfeited_due_to_no_show_at is None

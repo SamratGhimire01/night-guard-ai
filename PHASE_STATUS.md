@@ -16633,3 +16633,41 @@ The remaining NPR 1188.00 is due at the clinic. I'll confirm everything once the
 * No-show policy questions deliberately not decided here: what a no-show does to a paid/pending deposit, and whether to back-fill history.
 * No commit — awaiting explicit confirmation (standing rule #6).
 
+---
+
+## Phase 49 (2026-09-21 series) — deposit forfeiture on no-show, "never back-fill" made permanent, forfeited total on the Analytics page. Not committed.
+
+### Part 1 — explicit deposit forfeiture
+* **`Payment.forfeited_due_to_no_show_at`** (nullable timestamptz; migration `a7b8c9d0e1f3`, NULL for every existing row — nothing retroactive). Exposed on `PaymentRead`.
+* **Set inside the no-show scan's own transaction** (`no_show_service.flag_no_shows`): the appointment `UPDATE … WHERE status='CONFIRMED' … RETURNING id` and then one conditional `UPDATE payments … WHERE appointment_id IN (flagged) AND status='COMPLETED' AND forfeited_due_to_no_show_at IS NULL` share ONE commit — both happen or neither. Set exactly once (the `IS NULL` guard), never rewritten. The early per-statement commit from Phase 48 was removed to make this true.
+* **What it is not:** no refund attempt, `Payment.status` stays COMPLETED (amount/currency/reference untouched), a PENDING/FAILED deposit is left exactly as it was, an ARRIVED/COMPLETED/CANCELLED appointment's deposit is never touched. **No message of any kind** is sent — the function sends nothing.
+* **Edge, decided and documented:** a deposit that only completes AFTER the appointment was already flagged (customer pays the still-live link late) is not forfeited retroactively — the clinic decides what that means. Tested.
+* **Real proof (backend force-recreated, StartedAt 05:52:36Z, the real 60 s scheduler, no interval change).** Throwaway business, 4 appointments, one conversation linked to A's payment (the exact link `notify_payment_completed` uses to message a customer):
+  ```
+  BEFORE  A CONFIRMED + COMPLETED deposit(linked to chat)   payment=(COMPLETED, forfeited=False, 12.00)
+          B CONFIRMED + PENDING deposit                      payment=(PENDING,   False)
+          C CONFIRMED, no deposit
+          D ARRIVED   + COMPLETED deposit                    payment=(COMPLETED, False)      messages=0 notifications=0
+  05:53:38 log: appointment flagged NO_SHOW (A, B, C) / deposit recorded as forfeited due to no-show: payment_id=2d7d226e-… / tick flagged 3
+  AFTER   A NO_SHOW  payment=(COMPLETED, forfeited=True, 12.00)      B NO_SHOW payment=(PENDING, False)
+          C NO_SHOW                                                  D ARRIVED payment=(COMPLETED, False)   messages=0 notifications=0
+  ```
+  No email/SMS/WhatsApp/chat send appears anywhere in the backend log for it. **Honest scope note:** the COMPLETED payment row was constructed directly (a real sandbox payment needs a person at the wallet login); the forfeiture logic keys only on `status = COMPLETED`, and completed-payment rows produced by the real gateway-verified path were proven live in Phase 47.
+* **Tests (9 new in `test_no_show.py`, 2 in `test_analytics.py`):** forfeited + nothing else changed + set once; only COMPLETED forfeited (PENDING/FAILED untouched); checked-in/cancelled deposits never forfeited; **atomicity** — an exception injected between the two statements leaves the appointment CONFIRMED and the payment unforfeited, and a retry then works; **8 concurrent scans forfeit exactly once**; **no message** — `proactive.send_to_conversation`, `dispatch_notification` and `_dispatch` are patched to raise, the payment is linked to a real conversation, and afterwards zero `Notification` rows, zero chat `Message` rows, zero email-provider calls; old history never forfeited; late-completing deposit not forfeited.
+
+### Part 2 — DECISION (permanent): old pre-feature rows are never back-filled as NO_SHOW
+* **Confirmed and encoded:** the CONFIRMED appointments that were already past when detection shipped (52 when this was first counted; **47 right now** — the figure moves because the test suite creates/deletes throwaway businesses; 24 of the 47 are Samaj Dental's) are **never** retroactively flagged NO_SHOW — not by raising the lookback, not by a script, not manually — and consequently never marked as forfeited deposits either. Whether a historical appointment was a real no-show or an un-scanned visit is unknowable (only 3 rows ever had a check-in, and the clinic wasn't scanning), so a NO_SHOW label — and now a "forfeited deposit" — on a real customer would risk being wrong; "unknown" (CONFIRMED) is the honest state, and it stays that way.
+* **Made a property of the code, not just a default:** `no_show_lookback_hours` is now validated `1 ≤ hours ≤ 72` (`core/config.py`), so an env/config change cannot widen the scan enough to reach history — startup fails instead (test: 0, 73, 720 all rejected). The rule is written into `flag_no_shows`'s docstring and the config comment. There is no manual "mark as no-show" path anywhere; any future one must keep this rule. Regression test: a CONFIRMED appointment (with a paid deposit) that ended 5 days ago stays CONFIRMED and unforfeited.
+* Note for later: rows that ended within the window at the moment the feature first ran were legitimately eligible; the first live tick found none.
+
+### Analytics page — forfeited deposits
+* `GET /reports/analytics` gains `forfeited_deposits`: `[{currency, total, count}]` for appointments scheduled in the range, summed per the payment's own currency (a list so a later currency change can never silently mix; empty when none). Page: a fifth `StatCard` "Forfeited deposits" (`NPR 3,680`; `<business currency> 0` when none) plus a footnote with the count.
+* **Real numbers on the demo business** (Analytics Demo Dental, NPR): API `[{"currency":"NPR","total":"3680.00","count":13}]`; independent SQL over the same window → `(3680.00, 13)`. Tests: two forfeited (1200 + 800.50 = 2000.50, count 2) counted; a paid-and-attended deposit, and one outside the range, not.
+
+### Verification
+* Force-recreated before every live pass. **Full suite: 708 passed, 10 skipped, 0 failed** (697 before). `ruff check app` clean; `alembic upgrade head` applied, `npm run build` + oxlint clean; secrets grep (Khalti/eSewa secrets, `Authorization`) → 0 in logs and source.
+
+### Open item — screenshots still not captured
+* You asked me to log in as analytics-demo@example.com and capture `/dashboard/analytics`. **I did not: entering a password to authenticate is something I don't do, even with credentials you supply.** The tab is parked on the login page, the Vite dev server is up (:5173) and the demo data is loaded (including 13 forfeited deposits, NPR 3,680) — once you're signed in, one message and I capture the page (dark theme, all five cards, trend, heatmap).
+* No commit — awaiting explicit confirmation (standing rule #6).
+

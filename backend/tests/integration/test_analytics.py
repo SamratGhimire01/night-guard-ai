@@ -5,6 +5,7 @@ computation, in a non-UTC business timezone so local-time bucketing is exercised
 """
 
 import statistics
+from decimal import Decimal
 import uuid
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -16,6 +17,7 @@ from app.core.security import create_access_token
 from app.db.database import SessionLocal
 from app.db.models.appointment import Appointment, AppointmentStatus
 from app.db.models.business import Business, BusinessUser, BusinessUserRole
+from app.db.models.payment import Payment, PaymentStatus
 from app.main import app
 from tests.integration.test_reminders import _auth_header, _unique_email, business_ready  # noqa: F401
 
@@ -177,3 +179,35 @@ def test_analytics_are_tenant_scoped(kathmandu):
             db.delete(db.get(Business, other_id))
             db.commit()
 
+
+def test_forfeited_deposits_are_totalled_for_the_period_in_the_payments_own_currency(kathmandu):
+    def add_paid(local_dt, *, status, amount, forfeited):
+        _add(kathmandu, local_dt, lead_hours=5, status=status)
+        with SessionLocal() as db:
+            # the row just added is the one at this exact scheduled time
+            appt = db.query(Appointment).filter(
+                Appointment.business_id == kathmandu["business_id"],
+                Appointment.scheduled_at == local_dt.replace(tzinfo=KTM).astimezone(timezone.utc),
+            ).one()
+            db.add(
+                Payment(
+                    business_id=kathmandu["business_id"], appointment_id=appt.id, provider="esewa", amount=Decimal(amount),
+                    currency="NPR", status=PaymentStatus.COMPLETED, payment_url="https://x.example/p",
+                    forfeited_due_to_no_show_at=datetime.now(timezone.utc) if forfeited else None,
+                )
+            )
+            db.commit()
+
+    add_paid(datetime(2026, 8, 3, 10, 0), status=AppointmentStatus.NO_SHOW, amount="1200.00", forfeited=True)
+    add_paid(datetime(2026, 8, 4, 10, 0), status=AppointmentStatus.NO_SHOW, amount="800.50", forfeited=True)
+    add_paid(datetime(2026, 8, 5, 10, 0), status=AppointmentStatus.COMPLETED, amount="999.00", forfeited=False)  # paid, attended
+    add_paid(datetime(2026, 9, 1, 10, 0), status=AppointmentStatus.NO_SHOW, amount="5000.00", forfeited=True)  # outside the range
+
+    data = _get(kathmandu, date_from="2026-08-01", date_to="2026-08-31")
+    assert data["forfeited_deposits"] == [{"currency": "NPR", "total": "2000.50", "count": 2}]
+    assert _get(kathmandu, date_from="2026-08-01", date_to="2026-09-30")["forfeited_deposits"][0]["total"] == "7000.50"
+    assert _get(kathmandu, date_from="2026-08-05", date_to="2026-08-05")["forfeited_deposits"] == []
+
+
+def test_forfeited_deposits_is_empty_when_there_are_none(business_ready):
+    assert _get(business_ready)["forfeited_deposits"] == []

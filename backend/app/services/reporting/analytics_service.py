@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import NotFoundError
 from app.db.models.appointment import Appointment, AppointmentStatus
 from app.db.models.business import Business
+from app.db.models.payment import Payment
 
 Granularity = Literal["day", "week", "month"]
 
@@ -49,6 +50,9 @@ def booking_analytics(
       percentile_cont(0.5). Deliberately not the mean: a handful of bookings made months ahead drag an average far from
       any typical booking (Cal.com's own finding). Appointments created after their own scheduled time (a staff
       back-fill) have no lead time and are excluded; `lead_time_sample_size` says how many count.
+    * forfeited_deposits — completed deposits kept because their appointment became a no-show (Phase 49), for
+      appointments in the range, summed per payment currency (normally just the business's own; a list so a currency
+      change after collecting can never be silently mixed). Empty when none.
     * popular_slots — non-cancelled appointment counts per (weekday, hour) in local time; weekday 0 = Monday."""
     business = db.get(Business, business_id)
     if business is None:
@@ -90,6 +94,17 @@ def booking_analytics(
         )
     ).one()
 
+    forfeited = [
+        {"currency": currency, "total": str(total), "count": n}
+        for currency, total, n in db.execute(
+            select(Payment.currency, func.sum(Payment.amount), func.count())
+            .join(Appointment, Appointment.id == Payment.appointment_id)
+            .where(*in_range, Payment.forfeited_due_to_no_show_at.is_not(None))
+            .group_by(Payment.currency)
+            .order_by(Payment.currency)
+        ).all()
+    ]
+
     weekday_expr, hour_expr = extract("isodow", local), extract("hour", local)
     slots = [
         {"weekday": int(dow) - 1, "hour": int(hour), "count": n}
@@ -113,6 +128,7 @@ def booking_analytics(
         "no_show_denominator": resolved,
         "median_lead_time_hours": round(median_seconds / 3600, 1) if median_seconds is not None else None,
         "lead_time_sample_size": sample,
+        "forfeited_deposits": forfeited,
         "popular_slots": slots,
     }
 

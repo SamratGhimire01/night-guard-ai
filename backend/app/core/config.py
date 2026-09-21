@@ -1,4 +1,4 @@
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -177,7 +177,10 @@ class Settings(BaseSettings):
     reminder_poll_interval_seconds: int = 60
 
     # Phase 48: how far back the no-show scan looks (see no_show_service.flag_no_shows). Rides the same scheduler loop.
-    no_show_lookback_hours: int = 24
+    # Capped at 72 on purpose (settings validation fails at startup above that): it is what makes "old pre-feature
+    # appointments are NEVER back-filled as no-shows" a permanent property rather than a default someone can casually
+    # raise — see no_show_service.flag_no_shows and PHASE_STATUS.md Phase 49.
+    no_show_lookback_hours: int = Field(default=24, ge=1, le=72)
 
     # Deepgram (pre-recorded/batch speech-to-text for the widget's
     # push-to-talk voice input, app/voice/deepgram.py, Phase 43h). Empty by
