@@ -1,6 +1,6 @@
 import { Children, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Alert, Box, Flex, Group, Paper, Select, SegmentedControl, Skeleton, Stack, Text, Title, Tooltip } from '@mantine/core'
+import { Alert, Box, Flex, Group, Paper, Select, SegmentedControl, Skeleton, Stack, Table, Text, Title, Tooltip } from '@mantine/core'
 import { BarChart } from '@mantine/charts'
 import { IconAlertTriangle, IconCalendarStats, IconClockHour4, IconCoinOff, IconFlame, IconUserOff } from '@tabler/icons-react'
 import { apiFetch, ApiError } from '../../api/client'
@@ -345,20 +345,40 @@ export default function AnalyticsPage() {
             No conversations or channel-tracked bookings in this range.
           </Text>
         ) : (
-          <BarChart
-            h={300}
-            data={data.channels.map((c) => ({ channel: CHANNEL_LABELS[c.channel] ?? c.channel, Bookings: c.bookings, Conversations: c.conversations }))}
-            dataKey="channel"
-            series={[
-              { name: 'Conversations', color: 'gray.6' },
-              { name: 'Bookings', color: 'brand.5' },
-            ]}
-            tickLine="y"
-            gridAxis="x"
-            withBarValueLabel
-            withLegend
-            withTooltip
-          />
+          <>
+            <BarChart
+              h={300}
+              data={data.channels.map((c) => ({ channel: CHANNEL_LABELS[c.channel] ?? c.channel, Bookings: c.bookings, Conversations: c.conversations }))}
+              dataKey="channel"
+              series={[
+                { name: 'Conversations', color: 'gray.6' },
+                { name: 'Bookings', color: 'brand.5' },
+              ]}
+              tickLine="y"
+              gridAxis="x"
+              withLegend
+              withTooltip
+            />
+            {/* the bars' own value labels don't render, and a 1 next to a 68 is a sliver: state the numbers */}
+            <Table mt="md" fz="sm" withRowBorders>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Channel</Table.Th>
+                  <Table.Th ta="right">Conversations</Table.Th>
+                  <Table.Th ta="right">Bookings</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {data.channels.map((c) => (
+                  <Table.Tr key={c.channel}>
+                    <Table.Td>{CHANNEL_LABELS[c.channel] ?? c.channel}</Table.Td>
+                    <Table.Td ta="right">{c.conversations}</Table.Td>
+                    <Table.Td ta="right">{c.bookings}</Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </>
         )}
       </Paper>
 
