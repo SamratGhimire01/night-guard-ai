@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Children, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Alert, Group, Paper, Select, SegmentedControl, SimpleGrid, Skeleton, Stack, Text, Title, Tooltip } from '@mantine/core'
+import { Alert, Box, Flex, Group, Paper, Select, SegmentedControl, Skeleton, Stack, Text, Title, Tooltip } from '@mantine/core'
 import { BarChart } from '@mantine/charts'
 import { IconAlertTriangle, IconCalendarStats, IconClockHour4, IconCoinOff, IconFlame, IconUserOff } from '@tabler/icons-react'
 import { apiFetch, ApiError } from '../../api/client'
@@ -31,6 +31,20 @@ interface BookingAnalytics {
 }
 
 const ICON = { size: 20, stroke: 1.75 }
+
+// A wrapping row of cards: each takes at least 170px and grows to share the row, so five cards sit in one line when
+// there is room and otherwise wrap into full rows (3 + 2 stretched to fill) instead of leaving an empty grid cell.
+function CardRow({ children }: { children: ReactNode }) {
+  return (
+    <Flex wrap="wrap" gap="md">
+      {Children.map(children, (child) => (
+        <Box flex="1 1 170px" miw={0}>
+          {child}
+        </Box>
+      ))}
+    </Flex>
+  )
+}
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const RANGES = [
   { value: '30', label: 'Last 30 days' },
@@ -236,11 +250,11 @@ export default function AnalyticsPage() {
     return (
       <Stack gap="md">
         {header}
-        <SimpleGrid cols={{ base: 2, md: 4 }}>
-          {[0, 1, 2, 3].map((i) => (
+        <CardRow>
+          {[0, 1, 2, 3, 4].map((i) => (
             <Skeleton key={i} height={110} radius="md" />
           ))}
-        </SimpleGrid>
+        </CardRow>
         <Skeleton height={320} radius="md" />
         <Skeleton height={300} radius="md" />
       </Stack>
@@ -257,7 +271,7 @@ export default function AnalyticsPage() {
     <Stack gap="lg">
       {header}
 
-      <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }}>
+      <CardRow>
         <StatCard label="Bookings" value={data.total_bookings} icon={<IconCalendarStats {...ICON} />} />
         <StatCard
           label="No-show rate"
@@ -278,7 +292,7 @@ export default function AnalyticsPage() {
           icon={<IconCoinOff {...ICON} />}
           color="red"
         />
-      </SimpleGrid>
+      </CardRow>
       <Text size="xs" c="dimmed" mt={-8}>
         {noShowNote} Forfeited deposits are paid deposits kept because the appointment became a no-show
         {data.forfeited_deposits.length > 0 ? ` (${data.forfeited_deposits.reduce((n, f) => n + f.count, 0)} in this range)` : ''}.
@@ -304,7 +318,7 @@ export default function AnalyticsPage() {
             No bookings in this range.
           </Text>
         ) : (
-          <BarChart h={300} data={trend} dataKey="period" series={[{ name: 'Bookings', color: 'brand.5' }]} tickLine="y" gridAxis="y" withTooltip />
+          <BarChart h={300} data={trend} dataKey="period" series={[{ name: 'Bookings', color: 'brand.5' }]} tickLine="y" gridAxis="x" withTooltip />
         )}
       </Paper>
 
