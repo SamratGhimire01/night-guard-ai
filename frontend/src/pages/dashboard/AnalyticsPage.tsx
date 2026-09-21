@@ -28,6 +28,8 @@ interface BookingAnalytics {
   lead_time_sample_size: number
   forfeited_deposits: { currency: string; total: string; count: number }[]
   popular_slots: { weekday: number; hour: number; count: number }[]
+  channels: { channel: string; bookings: number; conversations: number }[]
+  bookings_channel_not_recorded: number
 }
 
 const ICON = { size: 20, stroke: 1.75 }
@@ -44,6 +46,13 @@ function CardRow({ children }: { children: ReactNode }) {
       ))}
     </Flex>
   )
+}
+const CHANNEL_LABELS: Record<string, string> = {
+  whatsapp: 'WhatsApp',
+  messenger: 'Messenger',
+  instagram: 'Instagram',
+  website: 'Website widget',
+  other: 'Other',
 }
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const RANGES = [
@@ -319,6 +328,37 @@ export default function AnalyticsPage() {
           </Text>
         ) : (
           <BarChart h={300} data={trend} dataKey="period" series={[{ name: 'Bookings', color: 'brand.5' }]} tickLine="y" gridAxis="x" withTooltip />
+        )}
+      </Paper>
+
+      <Paper p="md">
+        <Title order={4} mb={4}>
+          By channel
+        </Title>
+        <Text size="sm" c="dimmed" mb="md">
+          Bookings (appointments in {data.date_from} to {data.date_to}) and conversations (started in that range) per channel.
+          {data.bookings_channel_not_recorded > 0 &&
+            ` ${data.bookings_channel_not_recorded} bookings aren't counted here: they were made from the dashboard or before channels were tracked.`}
+        </Text>
+        {data.channels.every((c) => c.bookings === 0 && c.conversations === 0) ? (
+          <Text c="dimmed" ta="center" py="xl">
+            No conversations or channel-tracked bookings in this range.
+          </Text>
+        ) : (
+          <BarChart
+            h={300}
+            data={data.channels.map((c) => ({ channel: CHANNEL_LABELS[c.channel] ?? c.channel, Bookings: c.bookings, Conversations: c.conversations }))}
+            dataKey="channel"
+            series={[
+              { name: 'Conversations', color: 'gray.6' },
+              { name: 'Bookings', color: 'brand.5' },
+            ]}
+            tickLine="y"
+            gridAxis="x"
+            withBarValueLabel
+            withLegend
+            withTooltip
+          />
         )}
       </Paper>
 

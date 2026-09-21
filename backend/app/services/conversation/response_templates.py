@@ -377,6 +377,30 @@ TEMPLATES: dict[str, dict[str, str]] = {
             "chahanuhuncha? Prapta bhayepachi ma sabai confirm garchhu. (Ref: {id})"
         ),
     },
+    # Richer booking confirmation (same detail level as the confirmation email): lines appended under booking_success /
+    # booking_reserved_* by orchestrator._confirmation_extras, each only when its real data exists. `{url}` is the signed
+    # check-in QR page (qr_link_service — the same link a resend request returns), `{email}` the MASKED on-file address
+    # (never the raw one, exactly like a resend) and only ever shown when the confirmation email was really sent.
+    "booking_for": {
+        "en": "Booked for: {customer}",
+        "ne_deva": "बुकिङ गरिएको: {customer}",
+        "ne_roman": "Tapaiko naam ma: {customer}",
+    },
+    "booking_where": {
+        "en": "Where: {place}",
+        "ne_deva": "कहाँ: {place}",
+        "ne_roman": "Kahan: {place}",
+    },
+    "booking_checkin_qr": {
+        "en": "Your check-in QR (show it at the front desk when you arrive): {url}",
+        "ne_deva": "तपाईंको चेक-इन QR (आउँदा फ्रन्ट डेस्कमा देखाउनुहोस्): {url}",
+        "ne_roman": "Tapaiko check-in QR (aauda front desk ma dekhaunuhos): {url}",
+    },
+    "booking_email_note": {
+        "en": "A copy of these details, with your check-in QR, is also in your email ({email}).",
+        "ne_deva": "यी विवरणहरू र तपाईंको चेक-इन QR को प्रतिलिपि तपाईंको इमेल ({email}) मा पनि पठाइएको छ।",
+        "ne_roman": "Yi details ra tapaiko check-in QR ko copy tapaiko email ({email}) ma pani pathaiyeko cha.",
+    },
     # A QR of the same real payment link, for a customer reading this on a laptop (scan it with a phone camera)
     # instead of tapping — a link to a small page showing it, same "QR in chat" delivery as resend_qr_link.
     "payment_qr_line": {

@@ -183,6 +183,7 @@ def create_appointment(
     scheduled_at: datetime,
     group_booking_id: uuid.UUID | None = None,
     defer_payment_choice: bool = False,
+    source_channel: str | None = None,
     _commit: bool = True,
 ) -> Appointment:
     """The ONLY path that writes an Appointment row. Re-derives availability for
@@ -251,6 +252,7 @@ def create_appointment(
             duration_minutes=service.duration_minutes,
             status=AppointmentStatus.CONFIRMED,
             group_booking_id=group_booking_id,
+            source_channel=source_channel,
         )
         db.add(appointment)
         try:
@@ -393,6 +395,7 @@ def create_group_appointments(
     customer_id: uuid.UUID,
     people: list[dict],
     all_or_nothing: bool = False,
+    source_channel: str | None = None,
 ) -> dict:
     """Books one Appointment per distinct (service, staff, time) requested across
     `people` (each `{"label", "service_id", "staff_id", "scheduled_at"}`),
@@ -422,15 +425,18 @@ def create_group_appointments(
 
     if all_or_nothing:
         return _create_group_all_or_nothing(
-            db, business_id=business_id, customer_id=customer_id, clusters=clusters, group_booking_id=group_booking_id
+            db, business_id=business_id, customer_id=customer_id, clusters=clusters, group_booking_id=group_booking_id,
+            source_channel=source_channel,
         )
     return _create_group_partial(
-        db, business_id=business_id, customer_id=customer_id, clusters=clusters, group_booking_id=group_booking_id
+        db, business_id=business_id, customer_id=customer_id, clusters=clusters, group_booking_id=group_booking_id,
+        source_channel=source_channel,
     )
 
 
 def _create_group_partial(
-    db: Session, *, business_id: uuid.UUID, customer_id: uuid.UUID, clusters: list[dict], group_booking_id: uuid.UUID
+    db: Session, *, business_id: uuid.UUID, customer_id: uuid.UUID, clusters: list[dict], group_booking_id: uuid.UUID,
+    source_channel: str | None = None,
 ) -> dict:
     bookings = []
     for cluster in clusters:
@@ -443,6 +449,7 @@ def _create_group_partial(
                 staff_id=cluster["staff_id"],
                 scheduled_at=cluster["scheduled_at"],
                 group_booking_id=group_booking_id,
+                source_channel=source_channel,
                 _commit=False,
             )
         except (NotFoundError, UnprocessableEntityError, ConflictError) as exc:
@@ -503,7 +510,8 @@ def _create_group_partial(
 
 
 def _create_group_all_or_nothing(
-    db: Session, *, business_id: uuid.UUID, customer_id: uuid.UUID, clusters: list[dict], group_booking_id: uuid.UUID
+    db: Session, *, business_id: uuid.UUID, customer_id: uuid.UUID, clusters: list[dict], group_booking_id: uuid.UUID,
+    source_channel: str | None = None,
 ) -> dict:
     failures: dict[int, str] = {}
     for i, cluster in enumerate(clusters):
@@ -561,6 +569,7 @@ def _create_group_all_or_nothing(
                 staff_id=cluster["staff_id"],
                 scheduled_at=cluster["scheduled_at"],
                 group_booking_id=group_booking_id,
+                source_channel=source_channel,
                 _commit=False,
             )
             for cluster in clusters

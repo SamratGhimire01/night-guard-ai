@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import datetime, timedelta
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, NotFoundError, UnprocessableEntityError
@@ -12,7 +13,7 @@ from app.db.models.customer import Customer
 from app.db.models.notification import Notification, NotificationStatus
 from app.db.models.payment import PaymentStatus
 from app.schemas.conversation import ConversationIntent
-from app.services import booking_service, payment_service, service_service
+from app.services import booking_service, payment_service, qr_link_service, service_service
 from app.services.notifications import dispatch_notification
 from app.services.conversation.tools import TOOL_REGISTRY, ConversationTool
 
@@ -66,6 +67,7 @@ class BookAppointmentTool(ConversationTool):
         conversation_id: uuid.UUID | None = None,
         **kwargs,
     ) -> dict:
+        conversation = db.get(Conversation, conversation_id) if conversation_id else None
         try:
             appointment = booking_service.create_appointment(
                 db,
@@ -74,6 +76,7 @@ class BookAppointmentTool(ConversationTool):
                 service_id=service_id,
                 staff_id=staff_id,
                 scheduled_at=scheduled_at,
+                source_channel=conversation.channel if conversation else None,
                 # a chat booking can ask the customer which gateway to use; nothing else can
                 defer_payment_choice=conversation_id is not None,
             )
@@ -105,6 +108,7 @@ class BookAppointmentTool(ConversationTool):
             },
             "message": None,
             "alternative_slots": [],
+            "confirmation": self._confirmation_info(db, appointment=appointment),
             "payment": self._payment_info(
                 db,
                 business_id=business_id,
@@ -112,6 +116,29 @@ class BookAppointmentTool(ConversationTool):
                 service_id=service_id,
                 conversation_id=conversation_id,
             ),
+        }
+
+    @staticmethod
+    def _confirmation_info(db: Session, *, appointment: Appointment) -> dict:
+        """What the chat confirmation adds so it matches the confirmation email: the business's name/address/phone, the
+        SAME signed check-in QR link a resend returns (qr_link_service — valid for a CONFIRMED appointment, deposit
+        pending or not), and the customer's on-file email masked as a resend does — but only if the confirmation email
+        was actually sent (booking_service queued and dispatched it just before this), so chat never claims an email
+        that didn't go out."""
+        business = db.get(Business, appointment.business_id)
+        customer = db.get(Customer, appointment.customer_id)
+        email_sent = customer.email and db.execute(
+            select(Notification.id).where(
+                Notification.appointment_id == appointment.id,
+                Notification.event_type == "booking_confirmed",
+                Notification.channel == "email",
+                Notification.status.in_([NotificationStatus.SENT, NotificationStatus.SIMULATED]),
+            )
+        ).first()
+        return {
+            "place": " · ".join(filter(None, [business.name, business.address, business.phone])),
+            "checkin_qr_url": qr_link_service.build_url(appointment.id, appointment.scheduled_at),
+            "email_to": qr_link_service.mask_email(customer.email) if email_sent else None,
         }
 
     def _payment_info(
@@ -182,6 +209,7 @@ class BookAppointmentTool(ConversationTool):
         customer_id: uuid.UUID,
         people: list[dict],
         all_or_nothing: bool,
+        source_channel: str | None = None,
         **kwargs,
     ) -> dict:
         """Phase 12: the group-booking write path. Every person's slot goes
@@ -196,6 +224,7 @@ class BookAppointmentTool(ConversationTool):
             customer_id=customer_id,
             people=people,
             all_or_nothing=all_or_nothing,
+            source_channel=source_channel,
         )
 
     def _alternatives(

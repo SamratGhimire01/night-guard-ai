@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import NotFoundError
 from app.db.models.appointment import Appointment, AppointmentStatus
 from app.db.models.business import Business
+from app.db.models.conversation import Conversation
 from app.db.models.payment import Payment
 
 Granularity = Literal["day", "week", "month"]
@@ -16,6 +17,16 @@ Granularity = Literal["day", "week", "month"]
 # Outcomes that say what actually happened to an appointment whose time has come. CONFIRMED/PENDING are still "unknown"
 # (upcoming, or too old for the no-show scan to have judged), CANCELLED never had an outcome to judge.
 _RESOLVED = (AppointmentStatus.NO_SHOW, AppointmentStatus.ARRIVED, AppointmentStatus.COMPLETED)
+
+
+# The four channels the dashboard breaks down, in display order, keyed by the raw value stored on
+# Conversation.channel / Appointment.source_channel ("website" is the website chat widget). Any other chat channel
+# (sms, legacy "widget", test channels) is summed into "other".
+CHANNELS = ("whatsapp", "messenger", "instagram", "website")
+
+
+def _channel_bucket(channel: str) -> str:
+    return channel if channel in CHANNELS else "other"
 
 
 def _next_bucket(d: date, granularity: Granularity) -> date:
@@ -53,6 +64,7 @@ def booking_analytics(
     * forfeited_deposits — completed deposits kept because their appointment became a no-show (Phase 49), for
       appointments in the range, summed per payment currency (normally just the business's own; a list so a currency
       change after collecting can never be silently mixed). Empty when none.
+    * channels / bookings_channel_not_recorded — bookings and conversations per chat channel (see below).
     * popular_slots — non-cancelled appointment counts per (weekday, hour) in local time; weekday 0 = Monday."""
     business = db.get(Business, business_id)
     if business is None:
@@ -116,6 +128,25 @@ def booking_analytics(
         ).all()
     ]
 
+    # Channel breakdown, same range and same business timezone as everything above. Bookings: the `live` appointments
+    # grouped by the channel of the conversation that booked them; NULL (dashboard/staff bookings and everything before
+    # the column existed) is reported separately, never guessed into a channel. Conversations: started (created_at, in
+    # the business's timezone) inside the range — a conversation has no scheduled time to filter on.
+    by_channel = {c: {"channel": c, "bookings": 0, "conversations": 0} for c in (*CHANNELS, "other")}
+    not_recorded = 0
+    for channel, n in db.execute(select(Appointment.source_channel, func.count()).where(*live).group_by(Appointment.source_channel)).all():
+        if channel is None:
+            not_recorded += n
+        else:
+            by_channel[_channel_bucket(channel)]["bookings"] += n
+    conversation_day = func.date(func.timezone(business.timezone, func.timezone("UTC", Conversation.created_at)))
+    for channel, n in db.execute(
+        select(Conversation.channel, func.count())
+        .where(Conversation.business_id == business_id, conversation_day >= date_from, conversation_day <= date_to)
+        .group_by(Conversation.channel)
+    ).all():
+        by_channel[_channel_bucket(channel)]["conversations"] += n
+
     return {
         "timezone": business.timezone,
         "date_from": date_from.isoformat(),
@@ -130,6 +161,8 @@ def booking_analytics(
         "lead_time_sample_size": sample,
         "forfeited_deposits": forfeited,
         "popular_slots": slots,
+        "channels": list(by_channel.values()),
+        "bookings_channel_not_recorded": not_recorded,
     }
 
 

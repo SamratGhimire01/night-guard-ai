@@ -141,6 +141,26 @@ def submit_feedback(
     return training_question
 
 
+def author_qa(
+    db: Session, *, business_id: uuid.UUID, question: str, answer: str, authored_by: uuid.UUID
+) -> KnowledgeDocument:
+    """The direct path into the same knowledge pipeline `submit_feedback` uses for a correction, minus the test-first
+    step: the owner writes a question AND its correct answer, and it becomes an APPROVED training_room
+    KnowledgeDocument at once (same owner/admin gate and the same reasons as submit_feedback's DESIGN DECISION;
+    equally visible/editable/archivable on the Knowledge page). Unlike a correction — whose chunk is just the answer,
+    the question living only in the title — the chunk text here carries both, so a customer phrasing the question
+    differently still lands near it in embedding space. No TrainingQuestion row: nothing was asked of the AI."""
+    return knowledge_service.create_document(
+        db,
+        business_id=business_id,
+        title=f"Training Q&A: {question}"[:_TITLE_MAX_LEN],
+        content=f"Q: {question}\nA: {answer}",
+        source="training_room",
+        status=KnowledgeDocumentStatus.APPROVED,
+        approved_by=authored_by,
+    )
+
+
 def list_history(
     db: Session, *, business_id: uuid.UUID, limit: int = 50, offset: int = 0
 ) -> list[TrainingQuestion]:

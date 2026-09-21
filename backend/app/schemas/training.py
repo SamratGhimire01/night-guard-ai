@@ -57,3 +57,22 @@ class TrainingQuestionRead(BaseModel):
     correction_knowledge_document_id: uuid.UUID | None
     feedback_at: datetime | None
     created_at: datetime
+
+
+class TrainingQARequest(BaseModel):
+    """Direct authoring: the owner writes the question AND its correct answer, no test run first."""
+
+    question: str
+    answer: str
+
+    @field_validator("question", "answer")
+    @classmethod
+    def not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("This field must not be blank.")
+        return value.strip()
+
+
+class TrainingQARead(BaseModel):
+    knowledge_document_id: uuid.UUID
+    title: str

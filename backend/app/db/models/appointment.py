@@ -105,6 +105,13 @@ class Appointment(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMix
     # about Phase 10/11's booking path changes.
     group_booking_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
 
+    # The chat channel ("whatsapp", "messenger", "instagram", "website", ...) of the conversation that booked this
+    # appointment; NULL for anything booked outside a conversation (dashboard/staff/API) AND for every appointment made
+    # before this column existed — deliberately never back-filled (a channel can't be reliably reconstructed after the
+    # fact, and a guess would put fake numbers on the Analytics page). The Analytics channel breakdown shows those as
+    # "Not recorded".
+    source_channel: Mapped[str | None] = mapped_column(String(50))
+
     # Phase 40: best-effort Google Calendar reflection, same non-authoritative
     # discipline as Notification (Phase 13) — a plain nullable String, not a new
     # Postgres enum, since this is an internal diagnostic field with exactly two

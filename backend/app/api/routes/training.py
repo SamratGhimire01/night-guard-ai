@@ -9,6 +9,8 @@ from app.schemas.training import (
     TrainingAskResponse,
     TrainingFeedbackRequest,
     TrainingKnowledgeChunkUsed,
+    TrainingQARead,
+    TrainingQARequest,
     TrainingQuestionRead,
 )
 from app.services import training_service
@@ -65,6 +67,22 @@ def submit_training_feedback(
     if training_question is None:
         raise NotFoundError("Training question not found.")
     return TrainingQuestionRead.model_validate(training_question)
+
+
+@router.post("/training/qa", response_model=TrainingQARead, status_code=201)
+def author_training_qa(
+    payload: TrainingQARequest,
+    current_user: BusinessUser = Depends(require_role(_TRAINING_ROLES)),
+    db: Session = Depends(get_db),
+) -> TrainingQARead:
+    document = training_service.author_qa(
+        db,
+        business_id=current_user.business_id,
+        question=payload.question,
+        answer=payload.answer,
+        authored_by=current_user.id,
+    )
+    return TrainingQARead(knowledge_document_id=document.id, title=document.title)
 
 
 @router.get("/training/history", response_model=list[TrainingQuestionRead])

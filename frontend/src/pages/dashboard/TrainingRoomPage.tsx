@@ -56,6 +56,10 @@ export default function TrainingRoomPage() {
   const [correcting, setCorrecting] = useState(false)
   const [correctedAnswer, setCorrectedAnswer] = useState('')
 
+  const [qaQuestion, setQaQuestion] = useState('')
+  const [qaAnswer, setQaAnswer] = useState('')
+  const [saving, setSaving] = useState(false)
+
   const [history, setHistory] = useState<TrainingQuestion[] | null>(null)
   const [page, setPage] = useState(0)
 
@@ -114,6 +118,20 @@ export default function TrainingRoomPage() {
       loadHistory()
     } catch (err) {
       notifications.show({ message: err instanceof ApiError ? err.message : 'Feedback failed.', color: 'red' })
+    }
+  }
+
+  async function handleSaveQA() {
+    setSaving(true)
+    try {
+      await apiFetch('/training/qa', { method: 'POST', body: JSON.stringify({ question: qaQuestion, answer: qaAnswer }) })
+      notifications.show({ message: 'Saved. The AI will use this answer straight away.', color: 'green' })
+      setQaQuestion('')
+      setQaAnswer('')
+    } catch (err) {
+      notifications.show({ message: err instanceof ApiError ? err.message : 'Save failed.', color: 'red' })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -212,6 +230,34 @@ export default function TrainingRoomPage() {
             )}
           </Stack>
         )}
+      </Card>
+
+      <Card withBorder radius="md" p="md">
+        <Stack gap="sm">
+          <Title order={4}>Teach the AI directly</Title>
+          <Text c="dimmed" size="sm">
+            No test needed: write a question a customer might ask and the exact answer you want given. It becomes approved
+            knowledge immediately (find it under Knowledge, source "training_room").
+          </Text>
+          <TextInput
+            label="Question"
+            placeholder="e.g. Do you offer teeth whitening?"
+            value={qaQuestion}
+            onChange={(e) => setQaQuestion(e.currentTarget.value)}
+          />
+          <Textarea
+            label="Correct answer"
+            autosize
+            minRows={2}
+            value={qaAnswer}
+            onChange={(e) => setQaAnswer(e.currentTarget.value)}
+          />
+          <Group>
+            <Button onClick={handleSaveQA} loading={saving} disabled={!qaQuestion.trim() || !qaAnswer.trim()}>
+              Save Q&amp;A
+            </Button>
+          </Group>
+        </Stack>
       </Card>
 
       <Stack gap="xs">

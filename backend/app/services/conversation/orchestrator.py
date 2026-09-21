@@ -441,6 +441,23 @@ def _resolve_known_appointment(context: dict | None, appointment_id_str: str | N
         return None
 
 
+def _confirmation_extras(confirmation: dict | None, customer_name: str | None, language: str | None) -> str:
+    """The email-level detail lines under a booking confirmation (who it's for, where, the check-in QR link, and — only
+    when the confirmation email was really sent — a note saying so), from BookAppointmentTool._confirmation_info's real
+    data. Empty when the tool supplied none, which keeps every other caller's message unchanged."""
+    if not confirmation:
+        return ""
+    lines = []
+    if customer_name:
+        lines.append(render("booking_for", language, customer=customer_name))
+    if confirmation["place"]:
+        lines.append(render("booking_where", language, place=confirmation["place"]))
+    lines.append(render("booking_checkin_qr", language, url=confirmation["checkin_qr_url"]))
+    if confirmation["email_to"]:
+        lines.append(render("booking_email_note", language, email=confirmation["email_to"]))
+    return "\n" + "\n".join(lines)
+
+
 def _format_booking_result(
     result: dict, *, service: Service, tz: ZoneInfo, customer_name: str | None, language: str | None
 ) -> str:
@@ -457,6 +474,7 @@ def _format_booking_result(
         appointment = result["appointment"]
         when = _format_local(appointment["scheduled_at"], tz)
         payment = result.get("payment")
+        extras = _confirmation_extras(result.get("confirmation"), customer_name, language)
         if payment is None:
             return render(
                 "booking_success",
@@ -466,7 +484,7 @@ def _format_booking_result(
                 when=when,
                 duration=str(appointment["duration_minutes"]),
                 id=str(appointment["id"]),
-            )
+            ) + extras
         # Phase 44/47: a real Payment row exists (or the customer still has to pick a gateway) — the slot IS reserved,
         # but not yet paid for, so this reads as "reserved, pending your deposit", never "you're all set" (that
         # wording is kept for the payment-received message). See response_templates.TEMPLATES["booking_reserved_pay"].
@@ -476,8 +494,8 @@ def _format_booking_result(
         )
         if payment["payment_url"] is None:
             # the business offers both gateways and none is chosen yet: ask (see _payment_choice_turn)
-            return render("booking_reserved_choose", language, **fields)
-        return render("booking_reserved_pay", language, link=payment["payment_url"], qr=payment["qr_url"], **fields)
+            return render("booking_reserved_choose", language, **fields) + extras
+        return render("booking_reserved_pay", language, link=payment["payment_url"], qr=payment["qr_url"], **fields) + extras
 
     message = result["message"].rstrip(".").lower()
     alternatives = result.get("alternative_slots") or []
@@ -1589,6 +1607,7 @@ def handle_incoming_message(
                     customer_id=conversation.customer_id,
                     people=people,
                     all_or_nothing=classification.group_booking_request["all_or_nothing"],
+                    source_channel=conversation.channel,
                 )
                 response_text = _format_group_booking_result(
                     result, services=services, tz=ZoneInfo(business.timezone), customer_name=customer_name, language=language
