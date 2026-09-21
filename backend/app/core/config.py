@@ -176,6 +176,9 @@ class Settings(BaseSettings):
     # short in committed config).
     reminder_poll_interval_seconds: int = 60
 
+    # Phase 48: how far back the no-show scan looks (see no_show_service.flag_no_shows). Rides the same scheduler loop.
+    no_show_lookback_hours: int = 24
+
     # Deepgram (pre-recorded/batch speech-to-text for the widget's
     # push-to-talk voice input, app/voice/deepgram.py, Phase 43h). Empty by
     # default: app/voice/deepgram.py raises a clear, caught error (never a

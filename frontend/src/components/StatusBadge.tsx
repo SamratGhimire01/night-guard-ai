@@ -10,7 +10,7 @@ interface StatusBadgeProps extends Omit<BadgeProps, 'color' | 'children'> {
 export default function StatusBadge({ status, label, ...rest }: StatusBadgeProps) {
   return (
     <Badge color={statusColor(status)} tt="capitalize" miw="max-content" {...rest}>
-      {label ?? status}
+      {label ?? status.replace(/_/g, ' ')}
     </Badge>
   )
 }

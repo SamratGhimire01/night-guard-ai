@@ -1,11 +1,14 @@
 from datetime import date
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db, require_plan, require_role
 from app.db.models.business import BusinessPlan, BusinessUser
-from app.services.reporting import monthly_report_service, report_service, yearly_report_service
+from app.core.exceptions import UnprocessableEntityError
+from app.db.models.business import Business
+from app.services.reporting import analytics_service, monthly_report_service, report_service, yearly_report_service
 from app.services.reporting.excel_export import (
     XLSX_MEDIA_TYPE,
     monthly_report_to_xlsx_bytes,
@@ -19,6 +22,34 @@ router = APIRouter()
 # data — same owner/admin bar as every other business-config write in this
 # codebase (Phase 4), applied here to reads since this data is sensitive.
 _REPORT_ROLES = ["owner", "admin"]
+
+
+# a year of daily buckets is the most a chart can sensibly show
+_MAX_ANALYTICS_DAYS = 366
+
+
+@router.get("/reports/analytics")
+def get_booking_analytics(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    granularity: Literal["day", "week", "month"] = "week",
+    current_user: BusinessUser = Depends(require_role(_REPORT_ROLES)),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Booking analytics for the dashboard's Analytics page (bookings trend, no-show rate, median lead time, popular
+    time slots) — same owner/admin bar as every other report. Defaults to the last 90 days in the business's own
+    timezone."""
+    business = db.get(Business, current_user.business_id)
+    if date_from is None or date_to is None:
+        default_from, default_to = analytics_service.default_range(analytics_service.local_today(business))
+        date_from, date_to = date_from or default_from, date_to or default_to
+    if date_from > date_to:
+        raise UnprocessableEntityError("date_from must not be after date_to.")
+    if (date_to - date_from).days >= _MAX_ANALYTICS_DAYS:
+        raise UnprocessableEntityError(f"The range can be at most {_MAX_ANALYTICS_DAYS} days.")
+    return analytics_service.booking_analytics(
+        db, business_id=current_user.business_id, date_from=date_from, date_to=date_to, granularity=granularity
+    )
 
 
 @router.get("/reports/daily")

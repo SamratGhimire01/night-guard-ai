@@ -170,7 +170,7 @@ export interface StaffWrite {
   role: string
 }
 
-export type AppointmentStatus = 'pending' | 'confirmed' | 'arrived' | 'cancelled' | 'completed'
+export type AppointmentStatus = 'pending' | 'confirmed' | 'arrived' | 'cancelled' | 'completed' | 'no_show'
 
 export interface AppointmentListItem {
   id: string

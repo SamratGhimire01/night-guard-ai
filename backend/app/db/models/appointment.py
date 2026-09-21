@@ -33,6 +33,9 @@ class AppointmentStatus(str, enum.Enum):
     # later, explicit staff action.
     ARRIVED = "arrived"
     COMPLETED = "completed"
+    # Phase 48 — terminal: the appointment's whole slot (scheduled_at + duration) went by while it was still CONFIRMED,
+    # i.e. never checked in (ARRIVED) and never cancelled. Set only by no_show_service.flag_no_shows.
+    NO_SHOW = "no_show"
 
 
 class Appointment(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMixin, Base):

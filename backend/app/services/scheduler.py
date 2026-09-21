@@ -3,7 +3,7 @@ import logging
 
 from app.core.config import settings
 from app.db.database import SessionLocal
-from app.services import reminder_service
+from app.services import no_show_service, reminder_service
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,14 @@ async def _tick() -> None:
                 logger.info("reminder scheduler tick: sent %d real reminder(s)", sent)
     except Exception:
         logger.exception("reminder scheduler tick failed")
+    # its own try/except and fresh session: a failure in one job must never skip the other
+    try:
+        with SessionLocal() as db:
+            flagged = no_show_service.flag_no_shows(db)
+            if flagged:
+                logger.info("no-show scheduler tick: flagged %d appointment(s) NO_SHOW", flagged)
+    except Exception:
+        logger.exception("no-show scheduler tick failed")
 
 
 async def run_forever() -> None:

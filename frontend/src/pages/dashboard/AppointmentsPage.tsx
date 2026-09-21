@@ -157,6 +157,7 @@ export default function AppointmentsPage() {
             { value: 'arrived', label: 'Arrived' },
             { value: 'cancelled', label: 'Cancelled' },
             { value: 'completed', label: 'Completed' },
+            { value: 'no_show', label: 'No-show' },
           ]}
           value={statusFilter}
           onChange={setStatusFilter}

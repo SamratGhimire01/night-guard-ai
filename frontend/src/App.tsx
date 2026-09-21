@@ -16,6 +16,7 @@ import TrainingRoomPage from './pages/dashboard/TrainingRoomPage'
 import HandoffsPage from './pages/dashboard/HandoffsPage'
 import FollowUpsPage from './pages/dashboard/FollowUpsPage'
 import OverviewPage from './pages/dashboard/OverviewPage'
+import AnalyticsPage from './pages/dashboard/AnalyticsPage'
 import ReportsPage from './pages/dashboard/ReportsPage'
 import WebsiteWidgetPage from './pages/dashboard/WebsiteWidgetPage'
 import GoogleCalendarPage from './pages/dashboard/GoogleCalendarPage'
@@ -50,6 +51,7 @@ export default function App() {
                 <Route path="training" element={<TrainingRoomPage />} />
                 <Route path="handoffs" element={<HandoffsPage />} />
                 <Route path="reports" element={<ReportsPage />} />
+                <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="followups" element={<FollowUpsPage />} />
                 <Route path="widget" element={<WebsiteWidgetPage />} />
                 <Route path="google-calendar" element={<GoogleCalendarPage />} />

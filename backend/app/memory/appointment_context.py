@@ -8,7 +8,7 @@ from app.db.models.service import Service
 from app.db.models.staff import Staff
 
 _ACTIVE_STATUSES = (AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED, AppointmentStatus.ARRIVED)
-_PAST_STATUSES = (AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED)
+_PAST_STATUSES = (AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW)
 RECENT_PAST_LIMIT = 3
 
 

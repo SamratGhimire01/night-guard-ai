@@ -11,6 +11,7 @@ const STATUS_COLOR: Record<string, string> = {
   sent: 'teal',
   connected: 'teal',
   cancelled: 'red',
+  no_show: 'orange',
   failed: 'red',
   error: 'red',
   open: 'orange',
