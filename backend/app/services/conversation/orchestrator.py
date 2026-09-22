@@ -58,13 +58,21 @@ KNOWLEDGE_TOP_K = 3
 _LANGUAGE_LOCK_STREAK_THRESHOLD = 3
 
 
+_PARENTHETICAL_RE = re.compile(r"\s*\([^()]*\)")
+
+
 def _resolve_service_by_name(services: list[Service], name: str) -> Service | None:
-    """Exact (case-insensitive) match only — the LLM is told to copy the name
-    verbatim from the real list it was given, so a fuzzy/partial match would only
-    paper over a genuine ambiguity. No match (including >1, which can't actually
-    happen with unique names but is handled the same way as no match) means "not
-    enough information yet", never a guess."""
-    matches = [s for s in services if s.name.strip().lower() == name.strip().lower()]
+    """Exact (case-insensitive) match on the full name, else on the name with every "(...)" group removed on BOTH sides —
+    the LLM is told to copy the name verbatim, but measured live it sometimes copies the services list's own suffix too
+    ("Teeth Whitening (NPR 6000.00, 45 min)", or "Teeth Cleaning" for "Teeth Cleaning (Scaling & Polishing)"), which an
+    exact-only match dropped and turned into the generic "which service, date and time?" question (PHASE_STATUS.md Phase 19).
+    Still never a guess: the match must be unique. No match (including >1, e.g. two services differing only in their
+    parenthetical) means "not enough information yet"."""
+    wanted = name.strip().lower()
+    matches = [s for s in services if s.name.strip().lower() == wanted]
+    if len(matches) != 1:
+        base = _PARENTHETICAL_RE.sub("", wanted).strip()
+        matches = [s for s in services if base and _PARENTHETICAL_RE.sub("", s.name).strip().lower() == base]
     return matches[0] if len(matches) == 1 else None
 
 

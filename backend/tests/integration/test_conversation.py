@@ -4596,6 +4596,45 @@ def test_parse_language_choice_only_accepts_a_short_single_language_answer():
         assert parse(not_an_answer) is None, not_an_answer
 
 
+# --- service-name resolution tolerates the list's own "(...)" suffix (Phase 19) ---------------------------------
+
+
+def _svc(name):
+    from app.db.models.service import Service
+
+    return Service(name=name)
+
+
+@pytest.mark.parametrize(
+    "said, expected",
+    [
+        ("Teeth Cleaning (Scaling & Polishing)", "Teeth Cleaning (Scaling & Polishing)"),  # exact, unchanged
+        ("teeth cleaning", "Teeth Cleaning (Scaling & Polishing)"),  # model dropped the parenthetical
+        ("Teeth Cleaning (NPR 1500.00, 30 min)", "Teeth Cleaning (Scaling & Polishing)"),  # model copied the price suffix
+        ("Teeth Whitening (NPR 6000.00, 45 min)", "Teeth Whitening"),
+        ("Dental Implant", "Dental Implant (per tooth)"),
+        ("Cleaning", None),  # a different name is never a match
+        ("Teeth", None),
+        ("", None),
+        ("(NPR 1)", None),  # nothing left after stripping
+    ],
+)
+def test_resolve_service_by_name_tolerates_parenthetical_suffixes_but_never_guesses(said, expected):
+    from app.services.conversation.orchestrator import _resolve_service_by_name
+
+    services = [_svc("Teeth Cleaning (Scaling & Polishing)"), _svc("Teeth Whitening"), _svc("Dental Implant (per tooth)")]
+    resolved = _resolve_service_by_name(services, said)
+    assert (resolved.name if resolved else None) == expected
+
+
+def test_resolve_service_by_name_refuses_when_two_services_share_a_base_name():
+    from app.services.conversation.orchestrator import _resolve_service_by_name
+
+    services = [_svc("Cleaning (Kids)"), _svc("Cleaning (Adults)")]
+    assert _resolve_service_by_name(services, "Cleaning") is None  # ambiguous -> never a guess
+    assert _resolve_service_by_name(services, "Cleaning (Kids)").name == "Cleaning (Kids)"  # exact still wins
+
+
 # --- Phase 54: per-business content scope (single_business vs aggregator) -----------------------------------------
 # Real gap found dogfooding SikshyaNepal (PHASE_STATUS.md Phase 53/54): the off_topic rule 0 in intent.py's system
 # prompt was written assuming every tenant is a single local business, where naming another company really is out
