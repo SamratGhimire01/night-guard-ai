@@ -1,7 +1,7 @@
 import enum
 import uuid
 
-from sqlalchemy import Enum, ForeignKey, ForeignKeyConstraint, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Enum, ForeignKey, ForeignKeyConstraint, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -63,6 +63,9 @@ class Conversation(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMi
     # relocks once this crosses a real threshold (a sustained switch), never on
     # a single stray message. Reset to 0 whenever a message matches the lock.
     language_switch_streak: Mapped[int] = mapped_column(nullable=False, server_default="0")
+    # Phase 16: "ask upfront" language mode -- True once this conversation's first reply asked the customer which language
+    # they prefer, so the next message is read as the answer (once, never asked twice). Always False in automatic mode.
+    language_prompted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     # Phase 25a: real, persisted slot-tracking for an in-progress single
     # booking (see orchestrator._merge_booking_draft/_resolve_booking_draft).
     # Root-cause fix for an infinite confirmation loop: the LLM's job each

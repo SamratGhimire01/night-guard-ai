@@ -679,7 +679,8 @@ def _build_user_prompt(
         parts.append(
             f"This conversation's locked language: {LANGUAGE_LABELS[locked_language]}. "
             "Write `response` in this exact language/script regardless of minor drift in "
-            "the customer's current message."
+            "the customer's current message. This lock decides ONLY the language of `response`: report "
+            "`message_language` from the customer's own words alone (plain English is \"en\" even here)."
         )
 
     if context.get("summary"):

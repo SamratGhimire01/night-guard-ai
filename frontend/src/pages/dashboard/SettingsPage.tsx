@@ -19,7 +19,7 @@ import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch, ApiError } from '../../api/client'
-import type { BusinessReferenceData, BusinessRead, BusinessUpdate, ContentScope } from '../../api/types'
+import type { BusinessReferenceData, BusinessRead, BusinessUpdate, ContentScope, LanguageMode } from '../../api/types'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
@@ -89,6 +89,8 @@ export default function SettingsPage() {
     },
   })
 
+  const languageForm = useForm<{ language_mode: LanguageMode }>({ initialValues: { language_mode: 'automatic' } })
+
   const contentScopeForm = useForm<{ content_scope: ContentScope }>({
     initialValues: { content_scope: 'single_business' },
   })
@@ -110,6 +112,7 @@ export default function SettingsPage() {
       reminder_enabled: business.reminder_enabled,
       reminder_minutes_before: business.reminder_minutes_before,
     })
+    languageForm.setValues({ language_mode: business.language_mode })
     contentScopeForm.setValues({ content_scope: business.content_scope })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [business])
@@ -157,6 +160,19 @@ export default function SettingsPage() {
       })
       setBusiness(updated)
       notifications.show({ message: 'Reminder settings updated.', color: 'green' })
+    } catch (err) {
+      notifications.show({ message: err instanceof ApiError ? err.message : 'Save failed.', color: 'red' })
+    }
+  }
+
+  async function handleLanguageSubmit(values: { language_mode: LanguageMode }) {
+    try {
+      const updated = await apiFetch<BusinessRead>('/business/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ language_mode: values.language_mode }),
+      })
+      setBusiness(updated)
+      notifications.show({ message: 'Language setting updated — it applies to new conversations.', color: 'green' })
     } catch (err) {
       notifications.show({ message: err instanceof ApiError ? err.message : 'Save failed.', color: 'red' })
     }
@@ -210,6 +226,7 @@ export default function SettingsPage() {
           <Tabs.Tab value="profile">Business Profile</Tabs.Tab>
           <Tabs.Tab value="widget">Website Widget</Tabs.Tab>
           <Tabs.Tab value="reminders">Reminders</Tabs.Tab>
+          <Tabs.Tab value="language">Language</Tabs.Tab>
           <Tabs.Tab value="content_scope">Content Scope</Tabs.Tab>
         </Tabs.List>
 
@@ -312,6 +329,39 @@ export default function SettingsPage() {
                   error={reminderForm.errors.reminder_minutes_before}
                 />
               )}
+              {saveButton('Save changes')}
+            </Stack>
+          </form>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="language" pt="md">
+          <Text c="dimmed" size="sm" mb="sm">
+            How your chat assistant chooses the language it talks to each customer in. English, Nepali (Devanagari) and
+            Romanized Nepali are supported. Changes apply to new conversations; ones already in progress are not
+            interrupted.
+          </Text>
+          <form onSubmit={languageForm.onSubmit(handleLanguageSubmit)}>
+            <Stack gap="sm">
+              <Radio.Group
+                label="Language mode"
+                value={languageForm.values.language_mode}
+                onChange={(v) => languageForm.setFieldValue('language_mode', v as LanguageMode)}
+              >
+                <Stack gap="xs" mt="xs">
+                  <Radio
+                    value="automatic"
+                    disabled={!canWrite}
+                    label="Automatic"
+                    description="Detects and matches the customer's language naturally, and follows them if they clearly switch."
+                  />
+                  <Radio
+                    value="ask"
+                    disabled={!canWrite}
+                    label="Ask upfront"
+                    description="Always asks the customer's language preference first, like many hotels do, then keeps to their answer for the whole conversation. Customers can still ask to switch at any time."
+                  />
+                </Stack>
+              </Radio.Group>
               {saveButton('Save changes')}
             </Stack>
           </form>

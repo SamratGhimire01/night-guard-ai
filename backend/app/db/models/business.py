@@ -31,6 +31,15 @@ class BusinessPlan(str, enum.Enum):
     PREMIUM = "premium"
 
 
+class LanguageMode(str, enum.Enum):
+    """How a business's chat handles the customer's language. AUTOMATIC = today's behavior (match the customer's own
+    language, lock it, follow a sustained change). ASK = the very first reply of a new conversation asks the customer which
+    language they prefer and locks to the answer; only an explicit "switch to X" request changes it afterwards."""
+
+    AUTOMATIC = "automatic"
+    ASK = "ask"
+
+
 class ContentScope(str, enum.Enum):
     """Phase 54: whether naming another named organization/institution in a customer
     question is itself a sign of real scope drift. SINGLE_BUSINESS (the default,
@@ -129,6 +138,13 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # field: a harmless default value sitting unused while reminder_enabled
     # is false needs no cross-field validation at all.
     reminder_minutes_before: Mapped[int] = mapped_column(nullable=False, default=60, server_default="60")
+    # Phase 16: per-business language mode (see LanguageMode). Every existing business keeps today's behavior.
+    language_mode: Mapped[LanguageMode] = mapped_column(
+        Enum(LanguageMode, name="business_language_mode"),
+        nullable=False,
+        default=LanguageMode.AUTOMATIC,
+        server_default="AUTOMATIC",
+    )
     # Phase 54: per-business content scope (see ContentScope). Every existing business defaults to
     # SINGLE_BUSINESS on migration — zero behavior change unless explicitly set to AGGREGATOR.
     content_scope: Mapped[ContentScope] = mapped_column(

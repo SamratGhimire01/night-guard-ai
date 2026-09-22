@@ -4430,6 +4430,172 @@ def test_backfill_also_covers_a_short_service_name_that_is_not_an_exact_real_one
     assert "9:00 AM" in body and "Which works for you?" in body, body
 
 
+# --- Phase 16: per-business language mode ("automatic" vs "ask upfront") ---------------------------------------------
+
+
+def _set_language_mode(token: str, mode: str):
+    return client.patch("/api/v1/business/me", headers=_auth_header(token), json={"language_mode": mode})
+
+
+
+def _lang_reply(message_language: str, switch: str | None = None, text: str = "Sure.") -> str:
+    return json.dumps(
+        {"intent": "greeting", "response": text, "message_language": message_language, "language_switch_request": switch}
+    )
+
+
+
+def test_language_mode_defaults_to_automatic_and_is_settable_via_the_business_api(two_businesses):
+    token = two_businesses["token_a"]
+    assert client.get("/api/v1/business/me", headers=_auth_header(token)).json()["language_mode"] == "automatic"
+    resp = _set_language_mode(token, "ask")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["language_mode"] == "ask"
+    assert client.get("/api/v1/business/me", headers=_auth_header(token)).json()["language_mode"] == "ask"
+    assert _set_language_mode(token, "automatic").json()["language_mode"] == "automatic"
+    # a value outside the enum, and an explicit null, are rejected -- never reach the DB
+    assert _set_language_mode(token, "sometimes").status_code == 422
+    assert client.patch("/api/v1/business/me", headers=_auth_header(token), json={"language_mode": None}).status_code == 422
+    # other businesses are unaffected
+    assert client.get("/api/v1/business/me", headers=_auth_header(two_businesses["token_b"])).json()["language_mode"] == "automatic"
+
+
+def test_automatic_mode_never_asks_and_goes_straight_to_the_llm(two_businesses, monkeypatch):
+    stub = _stub_providers(monkeypatch, _lang_reply("en", text="Hi! How can I help?"))
+    token = two_businesses["token_a"]
+    conversation_id = _create_conversation(two_businesses["business_id_a"], _create_customer(token))
+    body = _post_message(token, conversation_id, "hello")
+    assert body["response"] == "Hi! How can I help?"
+    assert len(stub.calls) == 1
+    assert _conversation_state(conversation_id).language_prompted is False
+
+
+def test_ask_mode_first_reply_asks_then_locks_to_the_answer_then_only_an_explicit_request_switches(two_businesses, monkeypatch):
+    """The full ask-mode conversation: question (no LLM call) -> answer locks (no LLM call) -> 4 plain-English messages do NOT
+    move the lock (no passive-drift detection in this mode) -> an explicit "switch to English" request does."""
+    stub = _stub_providers(monkeypatch, _lang_reply("en"))
+    token = two_businesses["token_a"]
+    assert _set_language_mode(token, "ask").status_code == 200
+    conversation_id = _create_conversation(two_businesses["business_id_a"], _create_customer(token))
+
+    first = _post_message(token, conversation_id, "hello")
+    assert "Which language would you like to chat in" in first["response"] and "Conv A" in first["response"]
+    assert "भाषा" in first["response"]  # the Devanagari half of the two-language question
+    assert len(stub.calls) == 0, "the language question is deterministic -- no LLM call"
+    state = _conversation_state(conversation_id)
+    assert state.language_prompted is True and state.detected_language is None
+
+    second = _post_message(token, conversation_id, "Nepali")
+    assert second["response"].startswith("Huncha, Nepali ma kura garaun")
+    assert len(stub.calls) == 0
+    state = _conversation_state(conversation_id)
+    assert state.detected_language == "ne_roman" and state.language_switch_streak == 0
+
+    for text in ("What are your hours?", "Do you take walk-ins?", "How much is a cleaning?", "Is there parking nearby?"):
+        _post_message(token, conversation_id, text)  # the stub reports message_language="en" every time (the L7 anchoring shape)
+    state = _conversation_state(conversation_id)
+    assert state.detected_language == "ne_roman", "ask mode must not follow passive drift"
+    assert state.language_switch_streak == 0
+    assert len(stub.calls) == 4
+    assert "locked language: Nepali, written in Romanized" in stub.calls[-1][1]["content"], "the LLM is told the locked language"
+
+    _stub_providers(monkeypatch, _lang_reply("en", switch="en", text="Of course! Switching to English."))
+    _post_message(token, conversation_id, "Can we switch to English please?")
+    assert _conversation_state(conversation_id).detected_language == "en"
+
+
+@pytest.mark.parametrize(
+    "answer,expected",
+    [("English", "en"), ("english please", "en"), ("Nepali", "ne_roman"), ("नेपाली", "ne_deva"), ("Nepali in Devanagari", "ne_deva")],
+)
+def test_ask_mode_answer_variants_lock_the_right_language(two_businesses, monkeypatch, answer, expected):
+    _stub_providers(monkeypatch, _lang_reply("en"))
+    token = two_businesses["token_a"]
+    _set_language_mode(token, "ask")
+    conversation_id = _create_conversation(two_businesses["business_id_a"], _create_customer(token))
+    _post_message(token, conversation_id, "hi")
+    _post_message(token, conversation_id, answer)
+    assert _conversation_state(conversation_id).detected_language == expected
+
+
+def test_ask_mode_answer_that_is_really_a_question_falls_through_to_the_normal_flow(two_businesses, monkeypatch):
+    """The customer ignores the question and asks something: no second question, the normal flow answers and locks from the
+    message itself (same as automatic mode's first-clear-signal lock). The language question is asked exactly once."""
+    stub = _stub_providers(monkeypatch, _lang_reply("en", text="We're open 9 to 5."))
+    token = two_businesses["token_a"]
+    _set_language_mode(token, "ask")
+    conversation_id = _create_conversation(two_businesses["business_id_a"], _create_customer(token))
+    _post_message(token, conversation_id, "hello")
+    body = _post_message(token, conversation_id, "What time do you open on weekdays?")
+    assert body["response"] == "We're open 9 to 5." and len(stub.calls) == 1
+    assert _conversation_state(conversation_id).detected_language == "en"
+    _post_message(token, conversation_id, "And on Saturday?")
+    assert len(stub.calls) == 2  # still no further language question
+
+
+def test_ask_mode_does_not_ask_a_conversation_that_started_before_the_switch(two_businesses, monkeypatch):
+    stub = _stub_providers(monkeypatch, _lang_reply("en", text="Hi!"))
+    token = two_businesses["token_a"]
+    conversation_id = _create_conversation(two_businesses["business_id_a"], _create_customer(token))
+    _post_message(token, conversation_id, "hello")  # automatic mode: an ordinary first turn
+    _set_language_mode(token, "ask")
+    body = _post_message(token, conversation_id, "what are your hours?")
+    assert body["response"] == "Hi!" and len(stub.calls) == 2
+    assert _conversation_state(conversation_id).language_prompted is False
+
+
+def test_toggling_the_setting_changes_the_next_conversation_and_never_another_tenants(two_businesses, monkeypatch):
+    stub = _stub_providers(monkeypatch, _lang_reply("en", text="Hi!"))
+    token_a, token_b = two_businesses["token_a"], two_businesses["token_b"]
+
+    def first_reply(token, business_id):
+        conversation_id = _create_conversation(business_id, _create_customer(token))
+        return _post_message(token, conversation_id, "hello")["response"]
+
+    assert first_reply(token_a, two_businesses["business_id_a"]) == "Hi!"  # default: automatic
+    _set_language_mode(token_a, "ask")
+    asked = first_reply(token_a, two_businesses["business_id_a"])
+    assert "Which language would you like to chat in" in asked
+    assert first_reply(token_b, two_businesses["business_id_b"]) == "Hi!", "tenant B is still automatic"
+    _set_language_mode(token_a, "automatic")
+    assert first_reply(token_a, two_businesses["business_id_a"]) == "Hi!"
+    assert len(stub.calls) == 3
+
+
+def test_ask_mode_does_not_ask_a_voice_turn_whose_language_is_already_known(two_businesses, monkeypatch):
+    from app.services.conversation.orchestrator import handle_incoming_message
+
+    stub = _stub_providers(monkeypatch, _lang_reply("ne_roman", text="Namaste!"))
+    token = two_businesses["token_a"]
+    _set_language_mode(token, "ask")
+    conversation_id = _create_conversation(two_businesses["business_id_a"], _create_customer(token))
+    with SessionLocal() as db:
+        result = handle_incoming_message(
+            db,
+            conversation_id=conversation_id,
+            business_id=two_businesses["business_id_a"],
+            content="नमस्ते",
+            force_language="ne_roman",
+        )
+    assert result["response"] == "Namaste!" and len(stub.calls) == 1
+
+
+def test_parse_language_choice_only_accepts_a_short_single_language_answer():
+    from app.services.conversation.response_templates import parse_language_choice as parse
+
+    assert parse("English") == "en" and parse("English ma") == "en" and parse("इङ्लिश") == "en"
+    assert parse("Nepali") == "ne_roman" and parse("Romanized Nepali") == "ne_roman"
+    assert parse("नेपालीमा") == "ne_deva" and parse("Devanagari nepali please") == "ne_deva"
+    for not_an_answer in (
+        "hello",
+        "",
+        "English or Nepali both fine",
+        "what is the price of a cleaning in English?",
+        "teeth cleaning kati ho?",
+    ):
+        assert parse(not_an_answer) is None, not_an_answer
+
+
 # --- Phase 54: per-business content scope (single_business vs aggregator) -----------------------------------------
 # Real gap found dogfooding SikshyaNepal (PHASE_STATUS.md Phase 53/54): the off_topic rule 0 in intent.py's system
 # prompt was written assuming every tenant is a single local business, where naming another company really is out

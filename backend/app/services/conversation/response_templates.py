@@ -1,3 +1,5 @@
+import re
+
 from app.schemas.conversation import ConversationLanguage
 
 # Phase 25 urgent fix: real testing showed the agent inconsistently switching
@@ -507,6 +509,12 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "ne_deva": "अहिलेलाई {service} को लागि कुनै खाली समय देखिँदैन — के म तपाईंलाई हाम्रो टिमसँग जोडिदिऊँ?",
         "ne_roman": "Ahile lai {service} ko lagi kunai khali samaya dekhindaina — ma tapailai hamro team sanga jodidiu?",
     },
+    # Phase 16 ("ask upfront" language mode): confirmation once the customer has named a language.
+    "language_chosen": {
+        "en": "Great, we'll continue in English. How can I help you today?",
+        "ne_deva": "हुन्छ, नेपालीमा कुरा गरौँ। म तपाईंलाई कसरी मद्दत गर्न सक्छु?",
+        "ne_roman": "Huncha, Nepali ma kura garaun. Ma tapailai kasari madat garna sakchu?",
+    },
 }
 
 # Human-readable label for the "this conversation's locked language" line
@@ -569,3 +577,37 @@ def render_contact_gate(known_summary: str | None, language: str | None) -> str:
     if known_summary is None:
         return render("booking_no_contact", language)
     return render("booking_gate_with_progress", language, summary=known_summary)
+
+
+def render_language_question(business_name: str) -> str:
+    """Phase 16 ("ask upfront" language mode) -- the first reply of a new conversation. Nothing is locked yet, so this is one
+    fixed two-language line (English, then Devanagari Nepali) that every customer can read whichever they prefer."""
+    return (
+        f"Welcome to {business_name}! Which language would you like to chat in — English or Nepali?\n\n"
+        f"{business_name} मा स्वागत छ! तपाईं कुन भाषामा कुरा गर्न चाहनुहुन्छ — English कि नेपाली?"
+    )
+
+
+_CHOICE_WORD_RE = re.compile(r"[A-Za-z]+|[ऀ-ॿ]+")
+_ENGLISH_WORDS = ("english", "inglish", "angrezi", "angreji", "अंग्रेजी", "अङ्ग्रेजी", "अंग्रेज़ी", "इङ्लिश", "इंग्लिश")
+_NEPALI_WORDS = ("nepali", "nepalese", "नेपाली")
+_MAX_ANSWER_WORDS = 6
+
+
+def parse_language_choice(text: str) -> str | None:
+    """Phase 16 -- read the customer's answer to the language question: "en", "ne_deva" or "ne_roman", or None when the message
+    is not a plain answer (a real question, both languages named, or no language named at all). Only a SHORT message that names
+    exactly one of English / Nepali counts, so "English please" locks English while "what is the price of a cleaning in
+    English?" is left for the normal flow. Nepali typed in Latin letters locks Romanized Nepali; Devanagari script (typed, or
+    asked for by name) locks Devanagari."""
+    words = [w.lower() for w in _CHOICE_WORD_RE.findall(text)]
+    if not words or len(words) > _MAX_ANSWER_WORDS:
+        return None
+    english = any(w.startswith(e) for w in words for e in _ENGLISH_WORDS)
+    nepali = any(w.startswith(n) for w in words for n in _NEPALI_WORDS)
+    if english == nepali:
+        return None
+    if english:
+        return "en"
+    devanagari = bool(re.search(r"[ऀ-ॿ]", text)) or any(w.startswith(("devanagari", "देवनागरी")) for w in words)
+    return "ne_deva" if devanagari else "ne_roman"

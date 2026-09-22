@@ -5,13 +5,13 @@ import uuid
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.entitlements import ensure_plan
 from app.core.exceptions import NotFoundError, PlanRequiredError
 from app.db.models.appointment import Appointment
-from app.db.models.business import Business, BusinessPlan
+from app.db.models.business import Business, BusinessPlan, LanguageMode
 from app.db.models.conversation import Conversation, Message, MessageSenderType
 from app.db.models.customer import Customer
 from app.db.models.notification import NotificationStatus
@@ -34,7 +34,13 @@ from app.services.conversation import booking_tool  # noqa: F401  registers the 
 from app.services.conversation.contact_tool import UpdateContactInfoTool
 from app.services.conversation.formatting import format_service_list
 from app.services.conversation.intent import classify_and_respond
-from app.services.conversation.response_templates import render, render_contact_gate, render_missing_slots
+from app.services.conversation.response_templates import (
+    parse_language_choice,
+    render,
+    render_contact_gate,
+    render_language_question,
+    render_missing_slots,
+)
 from app.services.conversation.tools import find_tool
 
 logger = logging.getLogger(__name__)
@@ -1135,6 +1141,51 @@ def _handle_premium_test_message(
     }
 
 
+def _language_question_turn(
+    db: Session, *, conversation: Conversation, business: Business, content: str, external_message_id: str | None
+) -> dict | None:
+    """Phase 16 -- "ask upfront" language mode, no LLM call. A NEW conversation (no messages yet) gets one short question as
+    its first reply; the next message is read as the answer and locks the conversation's language. Returns the finished turn,
+    or None to fall through to the normal flow (any other conversation state, or an answer that is really a question or names
+    no single language -- the normal flow then locks from the message itself, exactly as automatic mode does)."""
+    if not conversation.language_prompted:
+        if db.scalar(select(func.count()).select_from(Message).where(Message.conversation_id == conversation.id)):
+            return None  # started before the owner switched modes: leave it on automatic
+        conversation.language_prompted = True
+        response_text = render_language_question(business.name)
+    else:
+        choice = parse_language_choice(content)
+        if choice is None:
+            return None
+        conversation.detected_language = choice
+        conversation.language_switch_streak = 0
+        response_text = render("language_chosen", choice)
+    customer_message = Message(
+        conversation_id=conversation.id,
+        sender_type=MessageSenderType.CUSTOMER,
+        content=content,
+        detected_intent=ConversationIntent.UNKNOWN.value,
+        external_message_id=external_message_id,
+    )
+    db.add(customer_message)
+    db.commit()
+    db.refresh(customer_message)
+    agent_message = Message(conversation_id=conversation.id, sender_type=MessageSenderType.AGENT, content=response_text)
+    db.add(agent_message)
+    db.commit()
+    db.refresh(agent_message)
+    logger.info(
+        "language mode ask: conversation_id=%s locked=%s", conversation.id, conversation.detected_language
+    )
+    return {
+        "intent": ConversationIntent.UNKNOWN,
+        "response": response_text,
+        "customer_message_id": customer_message.id,
+        "agent_message_id": agent_message.id,
+        "detected_language": conversation.detected_language,
+    }
+
+
 _PAYMENT_PROVIDER_NAMES = {
     "esewa": re.compile(r"\be[\s\-]?sewa\b|[इई][\s\-]?सेवा", re.IGNORECASE),
     "khalti": re.compile(r"khalti|खल्ती|खल्टी", re.IGNORECASE),
@@ -1275,6 +1326,20 @@ def handle_incoming_message(
             content=content,
             external_message_id=external_message_id,
         )
+
+    # Phase 16: "ask upfront" businesses ask the customer's language on the first reply and lock to the answer. A voice turn
+    # (force_language) already knows the language, so it never asks.
+    if (
+        business is not None
+        and business.language_mode == LanguageMode.ASK
+        and conversation.detected_language is None
+        and not force_language
+    ):
+        asked = _language_question_turn(
+            db, conversation=conversation, business=business, content=content, external_message_id=external_message_id
+        )
+        if asked is not None:
+            return asked
 
     if business is not None:
         chosen = _payment_choice_turn(
@@ -1470,6 +1535,10 @@ def handle_incoming_message(
         is_explicit_language_switch = False
     else:
         message_language = _resolve_message_language(content, classification.message_language)
+        if business is not None and business.language_mode == LanguageMode.ASK and conversation.detected_language:
+            # Phase 16: the customer told us their language up front, so passive-drift detection is off in ask mode; only an
+            # explicit "switch to X" request (below) moves the lock.
+            message_language = None
         # Phase 25b: an explicit, unambiguous "switch to X" request (as opposed
         # to passive drift) overrides the lock immediately, this same turn —
         # see _resolve_locked_language's docstring.

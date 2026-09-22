@@ -16771,3 +16771,78 @@ Regression control, Samaj Dental Clinic (`single_business`, untouched): the exac
 Gap 1 (zero-services tenants still getting booking-flavored greeting/intent) — untouched, exactly as scoped by the user's request. Still open in Phase 53's writeup above.
 
 **Not committed** — per standing rule #6, awaiting the user's explicit go-ahead.
+
+---
+
+## Phase 16 completion (2026-09-22) — the paused language-anchoring fix + per-business language mode, finally finished and committed. Picked back up after Phases 47-54 had landed in between.
+
+Phase 16 (2026-09-20 series, above) built the per-business `language_mode` feature and validated the anchoring-bug fix in
+`conversation-lab`, but explicitly left two things undone: the production port of the anchoring fix, and a full close-out. This
+entry finishes both, re-verified against everything that landed since (Phases 47-54, including today's own Phase 54
+`content_scope` work, which touches the same `intent.py` file).
+
+### Step 1 — re-orientation: re-confirmed, not re-guessed
+* **"Ask upfront" mode:** re-run live, fresh, on the real Samaj Dental Clinic tenant (toggled to `ask` via a direct DB write,
+  reverted to `automatic` immediately after each run — never left in a test state) — full 7-message conversation (greeting
+  question -> "Nepali" answer -> 4 real business questions answered in Romanized Nepali -> explicit "Can we switch to English
+  please?" -> next answer in English) worked exactly as before. Confirmed unaffected by Phase 54's `content_scope` prompt
+  change (that touches rule 0/off_topic only; `_build_user_prompt`'s lock-line injection, which ask mode's locked turns also go
+  through, is untouched by it).
+* **Anchoring fix status:** confirmed still NOT ported — `_build_user_prompt`'s lock line in production `intent.py` was still
+  byte-for-byte the pre-fix wording (`"...regardless of minor drift in the customer's current message."`, nothing after).
+
+### Step 2 — ported the lab-validated `prod_fixB` fix, nothing more
+`prod_fixB` (`conversation-lab/lab/lang_anchor.py`) is the ablation that isolates JUST the per-turn lock-line wording — no
+system-prompt/JSON-key reordering (that's `prod_fixA`/`prod_fix`, not ported; not needed). The neutral-token guard variant
+(`prod_fixBN`) is explicitly **not** ported either — its own lab validation run was paused/killed for the latency work and
+never finished (see the original Phase 16 entry above), so there is no real validated result to port; porting an unvalidated
+guard would be a bigger, unreviewed change than what this ticket asked for. This is a real, documented limitation carried
+forward from Phase 25/Phase 16, not a new one.
+
+`_build_user_prompt` (`intent.py`) now appends one sentence to the lock line:
+> This lock decides ONLY the language of `response`: report `message_language` from the customer's own words alone (plain
+> English is "en" even here).
+
+Verified byte-for-byte equal to lab's `LOCK_LINE_NEW` constant via direct comparison (`_build_user_prompt` output vs.
+`ast.literal_eval`'d `LOCK_LINE_NEW` from `lang_anchor.py`) — the production port is not just "similar," it is the exact
+validated string.
+
+**Real live proof, backend force-recreated first, throwaway business (default automatic mode), fresh conversation each time:**
+* **BEFORE the fix** (`Anchor Test Biz`, business id `b6832ac8-16c4-409c-8e32-611ad9848b45`): locked to Romanized Nepali via 2
+  genuine Nepali messages, then 3 genuine English business questions in a row ("What time do you open tomorrow?", "How much
+  does a cleaning cost?", "Do you accept walk-in customers?") — every reply still came back in Romanized Nepali. DB check:
+  `detected_language=ne_roman`, `language_switch_streak=1` (not 3) — the anchoring bug reproduced live, right now, on current
+  code, exactly as Phase 16/L8 originally found.
+* **AFTER the fix** (fresh business id `932c5a66-db23-4d93-990d-94c6cca40397`): same setup (2 Nepali messages to lock, then the
+  same 3 genuine English questions) — the 3rd message's own reply still renders in the OLD locked language by design
+  (`_resolve_locked_language` never flips mid-turn), but a 4th message ("Is parking available nearby?") immediately after came
+  back **fully in English**: *"I don't have parking info on file for Anchor Test Biz Final — would you like me to connect you
+  with our team so they can confirm nearby options?..."* DB confirms the lock flipped exactly on schedule:
+  `detected_language=en`, `language_switch_streak=0` after the 3rd differing message.
+
+### Step 3 — full re-verification at the current, larger baseline
+* Full backend regression suite (`docker exec night_guard_ai-backend-1 python3 -m pytest tests/ --ignore=tests/eval`):
+  **851 passed, 10 skipped, 0 failed** (0:09:39) — the current, larger baseline (up from Phase 54's own 851/10/0 run; same
+  numbers because this phase adds no new test — the 4 tests it depends on were already counted since Phase 16's original
+  session).
+* Frontend: `tsc -b` clean (no frontend files touched this phase).
+* Both language modes re-verified live, together, after the fix, on real conversations: ask mode's 8-turn conversation on
+  Samaj Dental Clinic (above, reverted to automatic afterward) and automatic mode's anchoring-fix conversation (above, the
+  throwaway businesses). No regression in either.
+* Backend force-recreated before every live check in this phase (per CLAUDE.md), even though only `intent.py` changed.
+
+### Step 4 — commit
+This phase's real content spans 9 files (`business.py`/`conversation.py` models, `schemas/business.py`, `orchestrator.py`,
+`response_templates.py`, `intent.py`, `test_conversation.py`, `types.ts`, `SettingsPage.tsx`) plus the untracked migration
+`d4e5f6a7b8c0`. Every one of those except `intent.py` and the migration file was still interleaved, line-by-line, with other
+paused phases sitting in the same working tree (`orchestrator.py` especially: Phase 19's service-name resolver fix, Phase
+20/21's resend-throttle guard, and — most structurally — Phase 52's human-takeover rewrite, which split
+`handle_incoming_message` into a thin wrapper + `_handle_turn` and threaded a `ReplyLock` through the exact code paths Phase
+16's ask-mode check sits inside). **Not cleanly standalone** — confirmed, not assumed, by re-diffing every touched file against
+git HEAD before writing a single line of this section. Same byte-for-byte reconstruction technique as Phase 54: each file's
+committed version was built as `HEAD content + only this phase's precise insertions` (verified by diff against both HEAD and
+the working tree before staging), leaving Phase 19/20/21/52's real content untouched and still pending in the working tree,
+exactly as it was.
+
+`git diff --stat` and `git log --oneline` confirmed before and after committing (pasted in the session, not narrated after the
+fact) — same discipline as Phase 54.
