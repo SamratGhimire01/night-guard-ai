@@ -4428,3 +4428,90 @@ def test_backfill_also_covers_a_short_service_name_that_is_not_an_exact_real_one
     _stub_providers(monkeypatch, _partial_booking_reply(service="Teeth Whitening", date=_next_monday().isoformat(), wants_availability=True))
     body = _post_message(token_a, conversation_id, "what times do you have for a teeth whitening on monday?")["response"]
     assert "9:00 AM" in body and "Which works for you?" in body, body
+
+
+# --- Phase 54: per-business content scope (single_business vs aggregator) -----------------------------------------
+# Real gap found dogfooding SikshyaNepal (PHASE_STATUS.md Phase 53/54): the off_topic rule 0 in intent.py's system
+# prompt was written assuming every tenant is a single local business, where naming another company really is out
+# of scope -- wrong for an aggregator/info-hub tenant whose real content is inherently ABOUT other named
+# institutions. content_scope="aggregator" relaxes that ONE rule's wording (never disables off_topic entirely);
+# every pre-existing business defaults to "single_business" and sees today's exact prompt, unchanged.
+
+
+def _set_content_scope(token: str, scope: str):
+    return client.patch("/api/v1/business/me", headers=_auth_header(token), json={"content_scope": scope})
+
+
+def test_content_scope_defaults_to_single_business_and_is_settable_via_the_business_api(two_businesses):
+    token = two_businesses["token_a"]
+    assert client.get("/api/v1/business/me", headers=_auth_header(token)).json()["content_scope"] == "single_business"
+    resp = _set_content_scope(token, "aggregator")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["content_scope"] == "aggregator"
+    assert client.get("/api/v1/business/me", headers=_auth_header(token)).json()["content_scope"] == "aggregator"
+    assert _set_content_scope(token, "single_business").json()["content_scope"] == "single_business"
+    # a value outside the enum, and an explicit null, are rejected -- never reach the DB
+    assert _set_content_scope(token, "nonsense").status_code == 422
+    assert client.patch("/api/v1/business/me", headers=_auth_header(token), json={"content_scope": None}).status_code == 422
+    # other businesses are unaffected
+    assert (
+        client.get("/api/v1/business/me", headers=_auth_header(two_businesses["token_b"])).json()["content_scope"]
+        == "single_business"
+    )
+
+
+def test_system_prompt_carries_aggregator_exception_only_for_aggregator_businesses(two_businesses, monkeypatch):
+    """Real regression: SINGLE_BUSINESS (every pre-existing tenant, and the default for every new one) must see
+    EXACTLY today's rule 0 wording -- this is the literal text sent to the real LLM, not just a Python-side flag,
+    so the two must never silently drift apart."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    stub = _stub_providers(monkeypatch, json.dumps({"intent": "greeting", "response": "Hi!"}))
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    _post_message(token_a, conversation_id, "hi")
+    system_prompt = stub.calls[0][0]["content"]
+    assert "AGGREGATOR EXCEPTION" not in system_prompt
+
+    assert _set_content_scope(token_a, "aggregator").status_code == 200
+    stub.calls.clear()
+    conversation_id2 = _create_conversation(business_id_a, _create_customer(token_a))
+    _post_message(token_a, conversation_id2, "hi")
+    system_prompt2 = stub.calls[0][0]["content"]
+    assert "AGGREGATOR EXCEPTION" in system_prompt2
+    assert "naming an external institution is normal and expected" in system_prompt2
+
+
+def test_off_topic_still_declines_for_a_genuinely_unrelated_question_on_an_aggregator_business(two_businesses, monkeypatch):
+    """The narrowing must never become "off_topic disabled" -- a real aggregator tenant (SikshyaNepal-style) still
+    declines something truly unrelated, exactly like a single_business tenant does, and still creates no handoff."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    assert _set_content_scope(token_a, "aggregator").status_code == 200
+    _stub_providers(
+        monkeypatch,
+        json.dumps({"intent": "off_topic", "response": "whatever the llm drafted", "needs_human_handoff": False}),
+    )
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    body = _post_message(token_a, conversation_id, "What's today's weather like in Kathmandu?")
+    assert body["intent"] == "off_topic"
+    assert "is there something about that i can help with" in body["response"].lower()
+
+    with SessionLocal() as db:
+        from app.db.models.handoff import HumanHandoff
+
+        assert db.query(HumanHandoff).filter(HumanHandoff.business_id == business_id_a).count() == 0
+
+
+def test_aggregator_business_answers_normally_when_llm_recognizes_real_content(two_businesses, monkeypatch):
+    """When the LLM (per the relaxed prompt) classifies a question naming an external institution as a real,
+    answerable business question -- not off_topic -- the orchestrator lets that answer through untouched, exactly
+    as it would for any other general_question."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    assert _set_content_scope(token_a, "aggregator").status_code == 200
+    real_answer = "Kathmandu University's latest notice is about the Fall 2026 admission deadline, Oct 15."
+    _stub_providers(
+        monkeypatch,
+        json.dumps({"intent": "general_question", "response": real_answer, "needs_human_handoff": False}),
+    )
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    body = _post_message(token_a, conversation_id, "What's the latest notice from Kathmandu University?")
+    assert body["intent"] == "general_question"
+    assert body["response"] == real_answer

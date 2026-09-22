@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import NamedTuple
 from zoneinfo import ZoneInfo
 
-from app.db.models.business import Business, BusinessHours
+from app.db.models.business import Business, BusinessHours, ContentScope
 from app.db.models.knowledge import KnowledgeChunk, KnowledgeDocument
 from app.db.models.service import Service
 from app.llm import get_chat_provider
@@ -45,7 +45,8 @@ knowledge-gap phrasing, and this isn't a knowledge gap — it's simply not what 
 Instead, in `response`, politely decline and redirect in one short sentence, e.g. "I'm \
 just here to help with things related to {business_name} — appointments, services, \
 hours, and the like. Is there something about that I can help with?" An off_topic \
-message never needs a human follow-up — leave `needs_human_handoff` false for it.
+message never needs a human follow-up — leave `needs_human_handoff` false for it.\
+{aggregator_scope_note}
 1. Only use the "Retrieved knowledge" and conversation context given to you below to \
 answer questions about the business (hours, pricing, services, policies, location, \
 etc.). If they don't contain the answer, say so honestly and offer to connect the \
@@ -561,15 +562,42 @@ commentary before or after it:
 "language_switch_request": null or "<one of en, ne_deva, ne_roman, mixed>"}}"""
 
 
+# Phase 54: rule 0's off_topic instruction above is written for a SINGLE_BUSINESS
+# tenant (a dental clinic, a salon) — there, a question naming another company
+# really is out of scope. An AGGREGATOR tenant's own real content is inherently
+# ABOUT other named institutions (SikshyaNepal: Kathmandu University, Tribhuvan
+# University, specific colleges), so that same rule fired on the institution name
+# itself before knowledge was ever consulted — see PHASE_STATUS.md Phase 53/54 for
+# the real false-positive this fixes. Only appended for AGGREGATOR businesses;
+# SINGLE_BUSINESS (every pre-existing tenant) gets an empty string here, so rule 0
+# reads exactly as before — zero behavior change unless a business opts in.
+_AGGREGATOR_SCOPE_NOTE = """ AGGREGATOR EXCEPTION for {business_name}: this business is an information hub \
+whose own real content is inherently ABOUT other named organizations/institutions (e.g. specific colleges, \
+universities, companies) — for THIS business, naming an external institution is normal and expected, NOT by \
+itself a sign of off-topic drift. Before classifying anything off_topic, check "Retrieved knowledge" below: if \
+it contains real, relevant on-file information that answers the question — even one naming an external \
+institution — answer it normally instead, with whichever intent actually fits ("general_question", \
+"service_question", etc.), never off_topic. Still classify off_topic exactly like any other business would for a \
+question genuinely outside the kind of information this business provides (general trivia unrelated to any \
+institution, weather, sports scores, personal/medical/legal advice, "write me a poem", etc.), or when Retrieved \
+knowledge truly has nothing relevant to it."""
+
+
 def _build_system_prompt(business: Business | None) -> str:
     name = business.name if business else "this business"
     description = f", {business.description}" if business and business.description else ""
     tone = (business.tone if business and business.tone else "warm, concise, and professional")
+    aggregator_scope_note = (
+        _AGGREGATOR_SCOPE_NOTE.format(business_name=name)
+        if business and business.content_scope == ContentScope.AGGREGATOR
+        else ""
+    )
     return _SYSTEM_PROMPT_TEMPLATE.format(
         business_name=name,
         business_description=description,
         tone=tone,
         intent_list=", ".join(i.value for i in ConversationIntent),
+        aggregator_scope_note=aggregator_scope_note,
     )
 
 

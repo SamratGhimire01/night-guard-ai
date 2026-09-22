@@ -16728,3 +16728,46 @@ The remaining NPR 1188.00 is due at the clinic. I'll confirm everything once the
 ### Open items
 * **Screenshot of the Analytics channel chart (and the Training Room card) is not captured.** The Chrome tab reached `/login` with saved credentials pre-filled; I don't authenticate, so it needs you to sign in. Best account: Samaj Dental (real data above). Then I can capture `/dashboard/analytics` and compare it with the SQL numbers.
 * No commit — awaiting explicit confirmation (standing rule #6).
+
+---
+
+## Phase 54 (2026-09-22) — real fix for Phase 53's Gap 2: `off_topic` false-positive on aggregator tenants. Not committed — awaiting review.
+
+### The real fix
+Gap 2's root cause was rule 0 (SCOPE) in `intent.py`'s LLM system prompt — the literal text that tells the model "other companies" is a sign of off-topic drift — written assuming every tenant is a single local business. A new tenant-level setting, `Business.content_scope` (`ContentScope`: `single_business` | `aggregator`, migration `e6f7a8b9c0d1`, every existing business defaults to `single_business`), controls whether that assumption holds:
+
+* **`single_business`** (default, every pre-existing business, including Samaj Dental Clinic): rule 0's wording is **byte-for-byte identical** to before — `_build_system_prompt` appends an empty string, so nothing about the real prompt sent to the LLM changes.
+* **`aggregator`**: `_build_system_prompt` (`intent.py`) appends one new paragraph to rule 0 — `_AGGREGATOR_SCOPE_NOTE` — telling the model that for THIS business, naming an external institution is normal and expected, not itself a sign of off-topic drift; to check "Retrieved knowledge" (already computed before classification, per the existing `knowledge_service.search_chunks` → `classify_and_respond` order in `orchestrator.py`) before deciding off_topic; and to still classify off_topic for a question genuinely outside the kind of information the business provides, or when Retrieved knowledge truly has nothing relevant. This narrows the false-positive rather than disabling off_topic detection — the orchestrator's deterministic override (`_off_topic_response`, unchanged) still fires whenever the LLM does return `off_topic`, for any tenant.
+
+SikshyaNepal's real business row (`615f61bc-b319-4694-9128-bb7cb7f7af62`) is now set to `content_scope="aggregator"` (a real DB write via `docker exec`, not a code-level special case — confirmed present before this fix: all 27 pre-existing businesses, including SikshyaNepal and Samaj Dental Clinic, defaulted to `single_business` immediately after the migration ran).
+
+Dashboard: `PATCH /business/me` accepts `content_scope` (validated not-null like `language_mode`, same pattern); Settings page has a new "Content Scope" tab (radio: "Single business" / "Aggregator / information hub") next to the existing Language tab, so any future aggregator-style tenant can self-serve this without a manual DB change.
+
+### Real before/after (real Azure LLM, real SikshyaNepal content, backend force-recreated first)
+| Question | Before (Phase 53, documented) | After (Phase 54, live) |
+|---|---|---|
+| "What's the latest notice from Kathmandu University?" | `off_topic`, declined | `general_question` — answered in full from the real Sep 19 KU School of Engineering admission notice |
+| "Do you have information about the TU MBBS first year exam date?" | `off_topic`, declined | `general_question` — answered in full from the real TU IOM MBBS exam-date notice |
+
+Genuinely off-topic control, same aggregator tenant, same live session: "What's today's weather like in Kathmandu?" → **still `off_topic`**, declined with the standard deterministic decline sentence — proves this narrows the false-positive rather than disabling off_topic detection for aggregator tenants.
+
+Regression control, Samaj Dental Clinic (`single_business`, untouched): the exact Phase 24 real test case — "Random question — how was America discovered?" — still returns `intent: "off_topic"` with a decline response **byte-for-byte identical** to the one documented at Phase 24 (`I'm just here to help with things related to Samaj Dental Clinic — appointments, services, hours, and the like. Is there something about that I can help with?`).
+
+### Tests added (`backend/tests/integration/test_conversation.py`, Phase 54 section)
+* `test_content_scope_defaults_to_single_business_and_is_settable_via_the_business_api` — default, round-trip PATCH, invalid value (422), explicit null (422), tenant isolation.
+* `test_system_prompt_carries_aggregator_exception_only_for_aggregator_businesses` — inspects the literal system-prompt string sent to the (stubbed) LLM: absent for `single_business`, present for `aggregator`.
+* `test_off_topic_still_declines_for_a_genuinely_unrelated_question_on_an_aggregator_business` — stubbed LLM still returns `off_topic` for a truly unrelated question on an `aggregator` tenant; deterministic decline still fires, still zero `HumanHandoff` rows.
+* `test_aggregator_business_answers_normally_when_llm_recognizes_real_content` — stubbed LLM returns `general_question` for an institution-naming question on an `aggregator` tenant; the orchestrator lets that answer through untouched.
+* (Incidentally caught and fixed while adding these: an unrelated pre-existing test, `test_successful_resend_still_consumes_the_cap_after_a_refunded_failure`, had its final assertion silently orphaned by my own first edit pass — a straightforward Read-range mistake on my part, not a pre-existing bug — caught immediately by running the new tests and fixed before the full suite ran.)
+
+### Verification
+* Full backend suite: **851 passed, 10 skipped, 0 failed** (`docker exec night_guard_ai-backend-1 python3 -m pytest tests/ --ignore=tests/eval`).
+* Frontend: `tsc -b` clean.
+* Migration `e6f7a8b9c0d1` applied to the real dev DB (`b3c4d5e6f7a8` → `e6f7a8b9c0d1`); confirmed all 27 pre-existing businesses landed on `single_business` before SikshyaNepal was explicitly switched to `aggregator`.
+* Backend force-recreated (per CLAUDE.md) before every live HTTP check above; `GET /widget/{id}/config` confirmed the new container was serving before the real conversation turns were sent.
+* Secrets grep on every changed file: clean.
+
+### Not done in this phase
+Gap 1 (zero-services tenants still getting booking-flavored greeting/intent) — untouched, exactly as scoped by the user's request. Still open in Phase 53's writeup above.
+
+**Not committed** — per standing rule #6, awaiting the user's explicit go-ahead.

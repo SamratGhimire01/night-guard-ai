@@ -4,7 +4,7 @@ from zoneinfo import available_timezones
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from app.db.models.business import BusinessPlan
+from app.db.models.business import BusinessPlan, ContentScope
 from app.schemas.common import safe_str
 
 # description is a Text column (unbounded in the DB) — a DoS/sanity ceiling,
@@ -61,6 +61,8 @@ class BusinessRead(BaseModel):
     # enabled): not plan-gated, see Business.reminder_enabled's own comment.
     reminder_enabled: bool
     reminder_minutes_before: int
+    # Phase 54 — writable via BusinessUpdate below (a plain owner/admin setting, not plan-gated).
+    content_scope: ContentScope
 
 
 class BusinessUpdate(BaseModel):
@@ -88,6 +90,7 @@ class BusinessUpdate(BaseModel):
     logo_url: safe_str(500) | None = None
     reminder_enabled: bool | None = None
     reminder_minutes_before: int | None = None
+    content_scope: ContentScope | None = None
 
     @field_validator("brand_color")
     @classmethod
@@ -131,6 +134,13 @@ class BusinessUpdate(BaseModel):
     def bool_toggle_not_null(cls, value: bool | None) -> bool:
         if value is None:
             raise ValueError("This field cannot be cleared to null — pass true or false.")
+        return value
+
+    @field_validator("content_scope")
+    @classmethod
+    def content_scope_not_null(cls, value: ContentScope | None) -> ContentScope:
+        if value is None:
+            raise ValueError("This field cannot be cleared to null — pass \"single_business\" or \"aggregator\".")
         return value
 
     @field_validator("reminder_minutes_before")

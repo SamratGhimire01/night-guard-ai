@@ -3,6 +3,7 @@ import {
   Button,
   ColorInput,
   NumberInput,
+  Radio,
   Select,
   Skeleton,
   Stack,
@@ -18,7 +19,7 @@ import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch, ApiError } from '../../api/client'
-import type { BusinessReferenceData, BusinessRead, BusinessUpdate } from '../../api/types'
+import type { BusinessReferenceData, BusinessRead, BusinessUpdate, ContentScope } from '../../api/types'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
@@ -88,6 +89,10 @@ export default function SettingsPage() {
     },
   })
 
+  const contentScopeForm = useForm<{ content_scope: ContentScope }>({
+    initialValues: { content_scope: 'single_business' },
+  })
+
   useEffect(() => {
     if (!business) return
     profileForm.setValues({
@@ -105,6 +110,7 @@ export default function SettingsPage() {
       reminder_enabled: business.reminder_enabled,
       reminder_minutes_before: business.reminder_minutes_before,
     })
+    contentScopeForm.setValues({ content_scope: business.content_scope })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [business])
 
@@ -156,6 +162,19 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleContentScopeSubmit(values: { content_scope: ContentScope }) {
+    try {
+      const updated = await apiFetch<BusinessRead>('/business/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ content_scope: values.content_scope }),
+      })
+      setBusiness(updated)
+      notifications.show({ message: 'Content scope updated.', color: 'green' })
+    } catch (err) {
+      notifications.show({ message: err instanceof ApiError ? err.message : 'Save failed.', color: 'red' })
+    }
+  }
+
   if (!business || !refData) {
     return (
       <Stack gap="md">
@@ -191,6 +210,7 @@ export default function SettingsPage() {
           <Tabs.Tab value="profile">Business Profile</Tabs.Tab>
           <Tabs.Tab value="widget">Website Widget</Tabs.Tab>
           <Tabs.Tab value="reminders">Reminders</Tabs.Tab>
+          <Tabs.Tab value="content_scope">Content Scope</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="profile" pt="md">
@@ -292,6 +312,38 @@ export default function SettingsPage() {
                   error={reminderForm.errors.reminder_minutes_before}
                 />
               )}
+              {saveButton('Save changes')}
+            </Stack>
+          </form>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="content_scope" pt="md">
+          <Text c="dimmed" size="sm" mb="sm">
+            Whether your chat assistant treats a question naming another company or institution as automatically
+            out of scope. Most businesses should leave this on "Single business".
+          </Text>
+          <form onSubmit={contentScopeForm.onSubmit(handleContentScopeSubmit)}>
+            <Stack gap="sm">
+              <Radio.Group
+                label="Content scope"
+                value={contentScopeForm.values.content_scope}
+                onChange={(v) => contentScopeForm.setFieldValue('content_scope', v as ContentScope)}
+              >
+                <Stack gap="xs" mt="xs">
+                  <Radio
+                    value="single_business"
+                    disabled={!canWrite}
+                    label="Single business"
+                    description="A normal local business. A question naming another company is treated as off-topic and declined."
+                  />
+                  <Radio
+                    value="aggregator"
+                    disabled={!canWrite}
+                    label="Aggregator / information hub"
+                    description="Your own content is genuinely about other named organizations or institutions (e.g. an education info hub covering specific colleges and universities). Naming one is not treated as off-topic by itself — real, on-file answers about them are given normally, and only genuinely unrelated questions are declined."
+                  />
+                </Stack>
+              </Radio.Group>
               {saveButton('Save changes')}
             </Stack>
           </form>

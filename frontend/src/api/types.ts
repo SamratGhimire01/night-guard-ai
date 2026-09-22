@@ -23,6 +23,8 @@ export interface TokenResponse {
   expires_in: number
 }
 
+export type ContentScope = 'single_business' | 'aggregator'
+
 export interface BusinessRead {
   id: string
   name: string
@@ -44,6 +46,7 @@ export interface BusinessRead {
   payment_providers: ('esewa' | 'khalti')[]
   reminder_enabled: boolean
   reminder_minutes_before: number
+  content_scope: ContentScope
 }
 
 export interface PaymentSettingsUpdate {
@@ -79,6 +82,7 @@ export interface BusinessUpdate {
   logo_url?: string | null
   reminder_enabled?: boolean
   reminder_minutes_before?: number
+  content_scope?: ContentScope
 }
 
 export interface PlanRead {

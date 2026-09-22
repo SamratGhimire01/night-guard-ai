@@ -31,6 +31,22 @@ class BusinessPlan(str, enum.Enum):
     PREMIUM = "premium"
 
 
+class ContentScope(str, enum.Enum):
+    """Phase 54: whether naming another named organization/institution in a customer
+    question is itself a sign of real scope drift. SINGLE_BUSINESS (the default,
+    every existing tenant) is today's behavior — a single local business (a dental
+    clinic, a salon) where that really is out of scope, so intent.py's off_topic
+    rule fires on it. AGGREGATOR is for an info-hub tenant whose own real content
+    is inherently ABOUT other named institutions (a college/exam/notice aggregator
+    naming Kathmandu University, Tribhuvan University, etc.) — see intent.py's
+    system prompt for exactly how this relaxes the off_topic rule. See
+    PHASE_STATUS.md Phase 53/54 for the real SikshyaNepal false-positive this
+    fixes."""
+
+    SINGLE_BUSINESS = "single_business"
+    AGGREGATOR = "aggregator"
+
+
 class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     """A tenant. Every other tenant-owned table hangs off this via business_id."""
 
@@ -113,6 +129,14 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # field: a harmless default value sitting unused while reminder_enabled
     # is false needs no cross-field validation at all.
     reminder_minutes_before: Mapped[int] = mapped_column(nullable=False, default=60, server_default="60")
+    # Phase 54: per-business content scope (see ContentScope). Every existing business defaults to
+    # SINGLE_BUSINESS on migration — zero behavior change unless explicitly set to AGGREGATOR.
+    content_scope: Mapped[ContentScope] = mapped_column(
+        Enum(ContentScope, name="business_content_scope"),
+        nullable=False,
+        default=ContentScope.SINGLE_BUSINESS,
+        server_default="SINGLE_BUSINESS",
+    )
 
 
 class BusinessUser(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):
