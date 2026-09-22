@@ -1,7 +1,7 @@
 """customer chooses eSewa or Khalti; payment-success chat notification
 
 Revision ID: e5f6a7b8c9d1
-Revises: c3d4e5f6a7b9
+Revises: d4e5f6a7b8c0
 Create Date: 2026-09-21 10:00:00.000000
 
 """
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'e5f6a7b8c9d1'
-down_revision = 'c3d4e5f6a7b9'
+down_revision = 'd4e5f6a7b8c0'
 branch_labels = None
 depends_on = None
 
