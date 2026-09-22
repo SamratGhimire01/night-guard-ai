@@ -4635,6 +4635,79 @@ def test_resolve_service_by_name_refuses_when_two_services_share_a_base_name():
     assert _resolve_service_by_name(services, "Cleaning (Kids)").name == "Cleaning (Kids)"  # exact still wins
 
 
+# ---------------------------------------------------------------- resend: failed send is refunded + retry guard ----
+
+
+class _FailingEmailProvider:
+    def __init__(self):
+        self.calls = 0
+
+    def send(self, **kwargs):
+        from app.services.notifications.base import NotificationDeliveryError
+
+        self.calls += 1
+        raise NotificationDeliveryError("550 5.4.5 Daily user sending limit exceeded", transient=False)
+
+
+def _resend_email(business_id, customer_id, appointment_id):
+    from app.services.conversation.appointment_tools import ResendConfirmationTool
+
+    with SessionLocal() as db:
+        return ResendConfirmationTool().run(
+            db, business_id=business_id, customer_id=customer_id, appointment_id=appointment_id,
+            channel="email", conversation_channel="widget",
+        )
+
+
+def _resend_count(appointment_id) -> int:
+    with SessionLocal() as db:
+        return db.get(Appointment, appointment_id).confirmation_resend_count
+
+
+def test_failed_resend_is_refunded_but_a_burst_of_failed_retries_is_throttled(two_businesses, monkeypatch):
+    from app.services.notifications import dispatch_service
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a, email=_unique_email("refund"))
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+    failing = _FailingEmailProvider()
+    monkeypatch.setitem(dispatch_service._PROVIDERS, "email", failing)
+
+    for _ in range(5):  # more failures than the real cap of 3 — none may consume it
+        result = _resend_email(business_id_a, customer_id, appointment_id)
+        assert result["channels"]["email"]["status"] == "failed" and not result["success"]
+        assert not result["rate_limited"] and not result.get("throttled")
+        assert _resend_count(appointment_id) == 0, "a failed send must not consume the customer's real cap"
+
+    burst = _resend_email(business_id_a, customer_id, appointment_id)  # 6th failed retry inside the window
+    assert burst["throttled"] and burst["channels"] == {}
+    assert failing.calls == 5, "a throttled retry must not even attempt a send"
+    assert _resend_count(appointment_id) == 0
+
+    # the orchestrator's reply + handoff for a throttled result
+    from app.services.conversation.orchestrator import _format_resend_result, _resend_needs_front_desk
+
+    assert "front desk" in _format_resend_result(burst, language="en")
+    assert _resend_needs_front_desk(burst)
+
+
+def test_successful_resend_still_consumes_the_cap_after_a_refunded_failure(two_businesses, monkeypatch):
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a, email=_unique_email("refund-ok"))
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+    from app.services.notifications import dispatch_service
+
+    monkeypatch.setitem(dispatch_service._PROVIDERS, "email", _FailingEmailProvider())
+    assert _resend_email(business_id_a, customer_id, appointment_id)["success"] is False
+    assert _resend_count(appointment_id) == 0
+
+    _capture_email(monkeypatch)
+    assert _resend_email(business_id_a, customer_id, appointment_id)["success"] is True
+    assert _resend_count(appointment_id) == 1
+
+
 # --- Phase 54: per-business content scope (single_business vs aggregator) -----------------------------------------
 # Real gap found dogfooding SikshyaNepal (PHASE_STATUS.md Phase 53/54): the off_topic rule 0 in intent.py's system
 # prompt was written assuming every tenant is a single local business, where naming another company really is out

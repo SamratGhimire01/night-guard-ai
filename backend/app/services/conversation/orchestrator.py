@@ -774,6 +774,8 @@ def _format_resend_result(result: dict, *, language: str | None) -> str:
     happened). Each delivery type reports honestly and independently: an email problem never hides a working QR link."""
     if result["rate_limited"]:
         return render("resend_rate_limited", language)
+    if result.get("throttled"):
+        return render("resend_send_failed", language)
     if result["message"]:
         return render("resend_fail", language, message=result["message"].rstrip(".").lower())
 
@@ -798,6 +800,8 @@ def _resend_needs_front_desk(result: dict) -> str | None:
     both PROMISE "let me connect you with our front desk"; that promise must be backed by a real handoff row."""
     if result["rate_limited"]:
         return "Customer hit the confirmation/QR resend limit (3) for an appointment and was told to contact the front desk."
+    if result.get("throttled"):
+        return "Repeated confirmation/QR sends for an appointment failed; the customer was told to contact the front desk."
     if result["message"]:
         return None
     statuses = [c["status"] for c in result["channels"].values()]

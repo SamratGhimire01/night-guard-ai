@@ -6,6 +6,7 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, NotFoundError, UnprocessableEntityError
+from app.core.rate_limit import RateLimiter
 from app.db.models.appointment import Appointment, AppointmentStatus
 from app.db.models.business import Business
 from app.db.models.customer import Customer
@@ -22,6 +23,11 @@ logger = logging.getLogger(__name__)
 # follow-up limit — enforced by a single atomic UPDATE (see
 # ResendConfirmationTool.run), never a check-then-act race.
 _MAX_RESEND_ATTEMPTS = 3
+# Failed sends are refunded (below) so an outage can't burn a customer's real 3; this separate guard bounds the retries
+# a refund would otherwise make free. ponytail: in-memory, per process (rate_limit.py's documented limitation), Redis if scaled.
+_MAX_FAILED_RESENDS = 5
+_FAILED_RESEND_WINDOW_SECONDS = 300
+_failed_resend_limiter = RateLimiter(max_attempts=_MAX_FAILED_RESENDS, window_seconds=_FAILED_RESEND_WINDOW_SECONDS)
 
 # Conversation channels where the QR link can simply be answered in the chat itself.
 _CHAT_CHANNELS = frozenset({"whatsapp", "messenger", "instagram", "website"})  # "website" = the embedded widget (widget_service)
@@ -146,7 +152,9 @@ class ResendConfirmationTool(ConversationTool):
     slot per REQUEST, however many delivery types it covers, same "the guarantee lives in one SQL statement's WHERE
     clause, not application logic a race could slip past" discipline as reminder_sent_at/checked_in_at
     (app/db/models/appointment.py) — claimed BEFORE any real send is attempted, so retrying a slow request can never
-    double-charge the cap.
+    double-charge the cap. If the send then FAILS on every
+    channel (nothing delivered), the slot is refunded; a separate in-memory guard (5 failed sends / 5 min per
+    appointment) stops that refund becoming unlimited retries.
     """
 
     name = "resend_confirmation"
@@ -177,6 +185,10 @@ class ResendConfirmationTool(ConversationTool):
                 "channels": {},
             }
 
+        if _failed_resend_limiter.is_blocked(str(appointment_id)):
+            logger.info("resend_confirmation throttled after repeated failed sends: appointment_id=%s", appointment_id)
+            return {"success": False, "rate_limited": False, "throttled": True, "message": None, "channels": {}}
+
         claimed = (
             db.execute(
                 update(Appointment)
@@ -202,6 +214,18 @@ class ResendConfirmationTool(ConversationTool):
         if "chat" in channels:
             results["chat"] = self._chat_link(appointment)
 
+        success = any(r["status"] in ("sent", "simulated") for r in results.values())
+        if not success and any(r["status"] == "failed" for r in results.values()):
+            # A real send was attempted and nothing was delivered: give the customer their slot back (atomic, floor 0).
+            db.execute(
+                update(Appointment)
+                .where(Appointment.id == appointment_id, Appointment.confirmation_resend_count > 0)
+                .values(confirmation_resend_count=Appointment.confirmation_resend_count - 1)
+            )
+            db.commit()
+            db.refresh(appointment)
+            _failed_resend_limiter.record_attempt(str(appointment_id))
+
         logger.info(
             "resend_confirmation tool executed: appointment_id=%s attempt=%d channels=%s",
             appointment_id,
@@ -209,7 +233,7 @@ class ResendConfirmationTool(ConversationTool):
             {k: v["status"] for k, v in results.items()},
         )
         return {
-            "success": any(r["status"] in ("sent", "simulated") for r in results.values()),
+            "success": success,
             "rate_limited": False,
             "message": None,
             "channels": results,
