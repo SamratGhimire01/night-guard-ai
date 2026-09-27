@@ -35,6 +35,7 @@ from app.db.models.conversation import Conversation, Message, MessageSenderType
 from app.db.models.customer import Customer
 from app.db.models.integration import Integration
 from app.main import app
+from app.services.conversation.response_templates import render
 
 client = TestClient(app)
 
@@ -236,7 +237,7 @@ def test_incoming_message_flows_through_the_real_shared_orchestrator(business_wi
         # Zero knowledge documents on this business, so this correctly
         # triggers Phase 19's real handoff logic — proof this is the SAME
         # real orchestrator pipeline WhatsApp/widget use, not a copy.
-        assert "I've also let our team know, so a real person will follow up with you." in agent_msg.content
+        assert render("handoff_addendum", "en") in agent_msg.content
 
 
 def test_message_echo_of_our_own_send_is_ignored_not_processed(business_with_messenger):

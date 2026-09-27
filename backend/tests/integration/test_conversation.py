@@ -1516,7 +1516,7 @@ def test_provider_failure_degrades_gracefully_never_a_raw_500(two_businesses, mo
     body = resp.json()
     assert body["intent"] == "unknown"
     assert "trouble connecting" in body["response"].lower()
-    assert "let our team know" in body["response"].lower()
+    assert render("handoff_addendum", "en").lower() in body["response"].lower()
 
     with SessionLocal() as db:
         from app.db.models.conversation import Message
@@ -4675,7 +4675,7 @@ def test_fourth_resend_request_is_honest_and_creates_a_real_front_desk_handoff(t
 
     body = _say(token_a, conversation_id, "resend it again please")
     assert "already received this several times" in body and "front desk" in body, body
-    assert "a real person will follow up" in body, "the 'front desk' promise must be backed by a real handoff"
+    assert render("handoff_addendum", "en") in body, "the 'front desk' promise must be backed by a real handoff"
     assert len(fake.recipients) == 3, "the 4th request must not send anything"
     with SessionLocal() as db:
         assert db.get(Appointment, appointment_id).confirmation_resend_count == 3

@@ -44,7 +44,7 @@ _STUB_RESPONSE = "Thanks for calling!"
 # -- never the raw stub text -- plus the real Phase 19 handoff addendum, same
 # real behavior documented in test_widget.py, not a voice-specific quirk.
 _EXPECTED_RESPONSE = (
-    render("unconfirmed_fact_fallback", "en") + " I've also let our team know, so a real person will follow up with you."
+    render("unconfirmed_fact_fallback", "en") + " " + render("handoff_addendum", "en")
 )
 
 _FAKE_AUDIO = b"fake webm bytes, never actually decoded -- Deepgram is stubbed"

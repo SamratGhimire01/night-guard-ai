@@ -96,7 +96,7 @@ def test_first_contact_creates_real_session_customer_and_conversation(business):
     # Phase 19's real honest handoff sentence -- proof the widget path reuses
     # the FULL real orchestrator, not a simplified copy of it.
     assert body["response"] == render("unconfirmed_fact_fallback", "en") + (
-        " I've also let our team know, so a real person will follow up with you."
+        " " + render("handoff_addendum", "en")
     )
     assert body["intent"] == "general_question"
 

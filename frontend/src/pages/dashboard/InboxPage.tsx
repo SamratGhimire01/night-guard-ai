@@ -11,11 +11,12 @@ import ConversationList from './inbox/ConversationList'
 import ThreadPane from './inbox/ThreadPane'
 import { usePolling } from './inbox/usePolling'
 
-type Tab = 'needs_reply' | 'handoffs' | 'all'
+type Tab = 'needs_reply' | 'handoffs' | 'leads' | 'all'
 
 const EMPTY_HINT: Record<Tab, string> = {
   needs_reply: 'Nobody is waiting for a person right now. Conversations the AI escalates, or that you take over, show up here when the customer writes.',
   handoffs: 'No conversation has an open handoff.',
+  leads: "No high-intent leads right now. The AI scores conversations in the background as customers show real buying signals (price, availability, wanting to book) — check back shortly.",
   all: 'When customers message you on WhatsApp, Messenger, Instagram or your website, the conversations appear here.',
 }
 
@@ -68,6 +69,7 @@ export default function InboxPage() {
               data={[
                 { value: 'needs_reply', label: 'Needs reply' },
                 { value: 'handoffs', label: 'Handoffs' },
+                { value: 'leads', label: 'Leads' },
                 { value: 'all', label: 'All' },
               ]}
             />

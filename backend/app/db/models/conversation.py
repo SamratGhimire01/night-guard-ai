@@ -156,6 +156,16 @@ class Conversation(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMi
     # Phase 52: when staff last opened this conversation in the inbox (shared across staff, not per user). A naive UTC timestamp,
     # deliberately the same kind as messages.created_at so "unread" is a plain column comparison in SQL.
     staff_last_read_at: Mapped[datetime | None] = mapped_column(DateTime())
+    # Automatic buying-intent triage for the inbox's "Leads" tab (app/services/lead_service.py), scored in the
+    # background by the scheduler, never on the customer-facing message path. "high"/"medium"/"low", or NULL before
+    # the conversation has enough customer messages to judge. lead_summary is a few staff-facing sentences (what they
+    # want, specifics mentioned, what they're waiting on) -- distinct from `summary` above, which is a terser
+    # LLM-memory aid for the AI's own context window, not written for a human reader. lead_scored_at is a naive UTC
+    # timestamp, same discipline as staff_last_read_at, so staleness (a new customer message since the last score) is
+    # a plain column comparison against messages.created_at.
+    lead_signal: Mapped[str | None] = mapped_column(String(20))
+    lead_summary: Mapped[str | None] = mapped_column(Text)
+    lead_scored_at: Mapped[datetime | None] = mapped_column(DateTime())
 
 
 class Message(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):

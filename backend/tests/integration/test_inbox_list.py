@@ -110,9 +110,9 @@ def test_unread_until_opened_and_again_after_a_new_customer_message(world):
 
 def test_summary_counts_and_tenant_isolation(world):
     resp = client.get("/api/v1/inbox/summary", headers=_auth(world["staff_token"]))
-    assert resp.status_code == 200 and resp.json() == {"needs_reply": 2, "handoffs": 2}
+    assert resp.status_code == 200 and resp.json() == {"needs_reply": 2, "handoffs": 2, "leads": 0}
     other = client.get("/api/v1/inbox/summary", headers=_auth(world["other_token"]))
-    assert other.json() == {"needs_reply": 0, "handoffs": 0}
+    assert other.json() == {"needs_reply": 0, "handoffs": 0, "leads": 0}
     assert _list(world["other_token"]) == []  # another business sees none of these conversations
     assert client.post(f"/api/v1/inbox/conversations/{world['handoff']}/read", headers=_auth(world["other_token"])).status_code == 404
 
@@ -132,6 +132,38 @@ def test_a_conversation_with_no_messages_is_not_listed(biz):
         db.add(Conversation(business_id=biz["business_id"], customer_id=c.id, channel="website", status="open"))
         db.commit()
     assert _list(biz["staff_token"]) == []
+
+
+def test_leads_tab_summary_count_and_detail_fields(biz):
+    """app/services/lead_service.py scores conversations in the background; this only
+    covers the read side -- that a "high" lead_signal shows up in tab=leads and the
+    summary badge, a non-high one doesn't, and the detail view surfaces the summary
+    plus the customer's contact info."""
+    high_id = _conv(biz["business_id"], "Lena Lead", "website", [(S.CUSTOMER, "how much for the 2-week package, I want to book", 5)])
+    low_id = _conv(biz["business_id"], "Cara Curious", "website", [(S.CUSTOMER, "what are your hours", 5)])
+    with SessionLocal() as db:
+        conv = db.get(Conversation, high_id)
+        conv.lead_signal = "high"
+        conv.lead_summary = "Wants to book the 2-week package; asked about price."
+        customer = db.get(Customer, conv.customer_id)
+        customer.phone = "+9779800000000"
+        customer.email = "lena@example.com"
+        db.commit()
+
+    leads = _list(biz["staff_token"], tab="leads")
+    assert [r["customer_name"] for r in leads] == ["Lena Lead"]
+    assert leads[0]["lead_signal"] == "high"
+    all_rows = {r["customer_name"]: r for r in _list(biz["staff_token"])}
+    assert all_rows["Cara Curious"]["lead_signal"] is None
+
+    summary = client.get("/api/v1/inbox/summary", headers=_auth(biz["staff_token"])).json()
+    assert summary["leads"] == 1
+
+    detail = client.get(f"/api/v1/inbox/conversations/{high_id}", headers=_auth(biz["staff_token"])).json()
+    assert detail["lead_signal"] == "high"
+    assert detail["lead_summary"] == "Wants to book the 2-week package; asked about price."
+    assert detail["customer_phone"] == "+9779800000000"
+    assert detail["customer_email"] == "lena@example.com"
 
 
 def test_thread_latest_returns_the_newest_window_oldest_first_and_timestamps_are_utc_tagged(biz):

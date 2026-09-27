@@ -53,6 +53,7 @@ function Row({ item, selected, onSelect }: { item: InboxListItem; selected: bool
             {item.last_message_preview}
           </Text>
           <Group gap={6} mt={2}>
+            {item.lead_signal === 'high' && <StatusBadge status="high" label="Hot lead" size="xs" />}
             {item.needs_reply && <StatusBadge status="waiting" label="Needs reply" size="xs" />}
             {item.open_handoff && <StatusBadge status="open" label="Handoff" size="xs" />}
             {item.takeover_active ? (

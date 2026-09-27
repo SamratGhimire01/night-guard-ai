@@ -31,6 +31,14 @@ _USER_AGENT = "NightGuardAI-KnowledgeIngest/1.0 (+https://nightguard.ai/bot)"
 # itself, regardless of which vertical/tenant the page belongs to.
 _BOILERPLATE_TAGS = ("script", "style", "nav", "header", "footer", "aside", "noscript", "form", "iframe", "svg")
 _MAX_CRAWL_PAGES = 8
+# A JS-rendered page (React/Next/etc.) serves a near-empty shell over plain HTTP --
+# the real content only exists after client-side JS runs, which this fetcher never
+# does. What's left after stripping boilerplate is then just nav/empty-state copy
+# ("0 notices found"), not an article -- a real bug seen live on a JS-rendered site,
+# where ingestion "succeeded" but left the AI nothing real to answer from. This floor
+# only rejects that near-empty shell case; genuine short pages (a one-paragraph
+# contact page) still clear it easily.
+_MIN_REAL_CONTENT_WORDS = 40
 
 
 class URLFetchError(UnprocessableEntityError):
@@ -97,13 +105,25 @@ def extract_title_and_text(html: str) -> tuple[str, str]:
     return title, text
 
 
+def _too_thin(text: str) -> bool:
+    return len(text.split()) < _MIN_REAL_CONTENT_WORDS
+
+
 def fetch_and_extract(url: str) -> tuple[str, str]:
     """Fetches `url` and returns (title, clean_text). Raises URLFetchError on any
-    real problem (unreachable, non-public, not HTML, nothing left after stripping)."""
+    real problem (unreachable, non-public, not HTML, nothing left after stripping,
+    or only a JS-rendered shell's worth of text left after stripping)."""
     html = _fetch_raw_html(url)
     title, text = extract_title_and_text(html)
     if not text.strip():
         raise URLFetchError("No extractable text was found on that page after removing boilerplate.")
+    if _too_thin(text):
+        raise URLFetchError(
+            f"Only {len(text.split())} words of real text were found on that page after removing site "
+            "chrome -- it likely loads its real content dynamically via JavaScript, which this fetcher "
+            "can't run. Add the content manually instead, or try a URL whose content is in the page's "
+            "initial HTML."
+        )
     return title, text
 
 
@@ -146,7 +166,7 @@ def crawl_site(seed_url: str, *, max_pages: int = _MAX_CRAWL_PAGES) -> list[tupl
     seed_html = _fetch_raw_html(seed_url)
     seed_title, seed_text = extract_title_and_text(seed_html)
     pages: list[tuple[str, str, str]] = []
-    if seed_text.strip():
+    if seed_text.strip() and not _too_thin(seed_text):
         pages.append((seed_url, seed_title, seed_text))
 
     for link in _same_domain_links(seed_url, seed_html):

@@ -31,11 +31,15 @@ class InboxConversation(BaseModel):
     channel: str
     customer_id: uuid.UUID
     customer_name: str
+    customer_phone: str | None = None
+    customer_email: str | None = None
     takeover: TakeoverState
     takeover_by_email: str | None = None  # who owns it (only while the takeover is active), for "Sita is handling this"
     reply: ReplyWindow
     open_handoff: InboxHandoff | None = None
     last_customer_message_at: datetime | None = None
+    lead_signal: str | None = None  # "high" | "medium" | "low" | None -- see app/services/lead_service.py
+    lead_summary: str | None = None
 
 
 class InboxMessage(BaseModel):
@@ -68,8 +72,10 @@ class InboxListItem(BaseModel):
     open_handoff: bool
     takeover_active: bool
     takeover_by_email: str | None = None
+    lead_signal: str | None = None  # "high" | "medium" | "low" | None -- see app/services/lead_service.py
 
 
 class InboxSummary(BaseModel):
     needs_reply: int
     handoffs: int
+    leads: int

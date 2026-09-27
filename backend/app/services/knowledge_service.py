@@ -30,12 +30,13 @@ def create_document(
     status: KnowledgeDocumentStatus = KnowledgeDocumentStatus.DRAFT,
     approved_by: uuid.UUID | None = None,
 ) -> KnowledgeDocument:
-    """`status`/`approved_by` default to the original Phase 5 behavior (always
-    draft, never approved) — every pre-Phase-20 caller (manual entry, upload)
-    is unaffected. Phase 20's training-room correction is the first caller to
-    pass status=APPROVED directly (see training_service.py for why), which
-    also triggers real chunking/embedding immediately, same as going through
-    the existing PATCH .../knowledge/{id} {"status":"approved"} approval path."""
+    """`status` defaults to DRAFT only for a caller that deliberately wants a review
+    step before content goes live (none currently do — manual entry, upload, and URL
+    ingestion all pass status=APPROVED explicitly, same as training_service.py's
+    correction path, since only owner/admin can call any of them and a second approval
+    click added no real review). Passing APPROVED here triggers real chunking/embedding
+    immediately, same as going through the PATCH .../knowledge/{id} {"status":"approved"}
+    path still available for reviving an archived/edited-to-draft document."""
     document = KnowledgeDocument(
         business_id=business_id,
         title=title,

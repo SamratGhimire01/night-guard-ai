@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ActionIcon, Alert, Badge, Button, Group, Paper, Skeleton, Stack, Text, Textarea, Tooltip } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { IconArrowLeft, IconHeadset, IconLock, IconRobot, IconSend, IconUserCheck } from '@tabler/icons-react'
+import { IconArrowLeft, IconFlame, IconHeadset, IconLock, IconMail, IconPhone, IconRobot, IconSend, IconUserCheck } from '@tabler/icons-react'
 import { apiFetch, ApiError } from '../../../api/client'
 import type { InboxConversation, InboxMessage } from '../../../api/types'
 import EmptyState from '../../../components/EmptyState'
+import StatusBadge from '../../../components/StatusBadge'
 import MessageBubble from './MessageBubble'
 import { channelInfo, clockTime, dayLabel } from './format'
 import { usePolling } from './usePolling'
@@ -274,6 +275,40 @@ export default function ThreadPane({ conversationId, onBack, onChanged }: Props)
           </>
         )}
       </div>
+
+      {/* automatic buying-intent triage, scored in the background (app/services/lead_service.py) */}
+      {detail?.lead_summary && (
+        <Alert
+          color={detail.lead_signal === 'high' ? 'green' : 'gray'}
+          radius={0}
+          icon={<IconFlame size={16} />}
+          py={8}
+          title="Potential customer"
+        >
+          <Stack gap={6}>
+            <Group gap={6}>
+              {detail.lead_signal && <StatusBadge status={detail.lead_signal === 'high' ? 'high' : 'gray'} label={`${detail.lead_signal} intent`} size="xs" />}
+            </Group>
+            <Text size="sm">{detail.lead_summary}</Text>
+            {(detail.customer_phone || detail.customer_email) && (
+              <Group gap="md">
+                {detail.customer_phone && (
+                  <Group gap={4}>
+                    <IconPhone size={13} />
+                    <Text size="xs" c="dimmed">{detail.customer_phone}</Text>
+                  </Group>
+                )}
+                {detail.customer_email && (
+                  <Group gap={4}>
+                    <IconMail size={13} />
+                    <Text size="xs" c="dimmed">{detail.customer_email}</Text>
+                  </Group>
+                )}
+              </Group>
+            )}
+          </Stack>
+        </Alert>
+      )}
 
       {/* composer */}
       <div style={{ borderTop: '1px solid var(--mantine-color-default-border)', padding: 12 }}>

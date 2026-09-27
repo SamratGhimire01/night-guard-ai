@@ -428,11 +428,15 @@ export interface InboxListItem {
   open_handoff: boolean
   takeover_active: boolean
   takeover_by_email: string | null
+  lead_signal: LeadSignal
 }
+
+export type LeadSignal = 'high' | 'medium' | 'low' | null
 
 export interface InboxSummary {
   needs_reply: number
   handoffs: number
+  leads: number
 }
 
 export interface TakeoverState {
@@ -446,11 +450,15 @@ export interface InboxConversation {
   channel: string
   customer_id: string
   customer_name: string
+  customer_phone: string | null
+  customer_email: string | null
   takeover: TakeoverState
   takeover_by_email: string | null
   reply: { can_reply: boolean; reason: string | null; window_closes_at: string | null }
   open_handoff: { id: string; reason: string } | null
   last_customer_message_at: string | null
+  lead_signal: LeadSignal
+  lead_summary: string | null
 }
 
 export interface InboxMessage {

@@ -23,6 +23,7 @@ from app.db.models.business import Business, BusinessUser, BusinessUserRole
 from app.db.models.conversation import Conversation
 from app.db.models.handoff import HumanHandoff
 from app.main import app
+from app.services.conversation.response_templates import render
 from app.schemas.conversation import ConversationIntent
 from app.services import handoff_service
 
@@ -367,7 +368,7 @@ def test_real_orchestrator_no_knowledge_match_creates_handoff_and_appends_honest
     # anymore; that's the guarantee this test now checks.
     assert honest_llm_text not in body["response"]
     assert "don't want to guess" in body["response"]
-    assert "real person will follow up" in body["response"]
+    assert render("handoff_addendum", "en") in body["response"]
 
     handoffs = _open_handoffs(conversation_id)
     assert len(handoffs) == 1

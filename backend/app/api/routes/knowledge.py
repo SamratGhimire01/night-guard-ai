@@ -57,6 +57,8 @@ def create_knowledge_document(
         title=payload.title,
         content=payload.content,
         source="manual",
+        status=KnowledgeDocumentStatus.APPROVED,
+        approved_by=current_user.id,
     )
     return KnowledgeDocumentRead.model_validate(document)
 
@@ -152,6 +154,8 @@ async def upload_knowledge_document(
         title=file.filename or "Untitled",
         content=content,
         source="upload",
+        status=KnowledgeDocumentStatus.APPROVED,
+        approved_by=current_user.id,
     )
     return KnowledgeDocumentRead.model_validate(document)
 
@@ -164,8 +168,9 @@ async def ingest_knowledge_url(
 ) -> list[KnowledgeDocumentRead]:
     """Part 2B (Chatbase parity): fetch a real page, strip boilerplate, and feed the
     clean text into the same create_document() pipeline as upload/manual entry -- lands
-    as draft, never auto-approved. The fetch/parse/embed chain is blocking network +
-    CPU work: off the event loop, same discipline as PDF upload and the webhook
+    approved immediately (owner/admin is already the only role that can call this, so a
+    separate approval click added nothing). The fetch/parse/embed chain is blocking
+    network + CPU work: off the event loop, same discipline as PDF upload and the webhook
     handlers (see webhooks.py)."""
     if payload.crawl:
         pages = await asyncio.to_thread(url_ingestion.crawl_site, payload.url, max_pages=payload.max_pages)
@@ -181,6 +186,8 @@ async def ingest_knowledge_url(
             title=title,
             content=text,
             source="url",
+            status=KnowledgeDocumentStatus.APPROVED,
+            approved_by=current_user.id,
         )
         for _url, title, text in pages
     ]

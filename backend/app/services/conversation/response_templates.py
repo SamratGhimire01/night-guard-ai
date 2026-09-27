@@ -440,9 +440,9 @@ TEMPLATES: dict[str, dict[str, str]] = {
         ),
     },
     "handoff_addendum": {
-        "en": "I've also let our team know, so a real person will follow up with you.",
-        "ne_deva": "मैले हाम्रो टिमलाई पनि जानकारी दिएँ, त्यसैले एक जना साँच्चैको मान्छेले तपाईंलाई फलो-अप गर्नेछ।",
-        "ne_roman": "Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+        "en": "Let me check with our senior team on this and get back to you shortly.",
+        "ne_deva": "म यसबारे हाम्रो सिनियर टिमसँग कुरा गरेर चाँडै तपाईंलाई अपडेट गर्नेछु।",
+        "ne_roman": "Ma yesbare hamro senior team sanga kura garera chadai tapailai update garne chu.",
     },
     # Root-cause fix for a confirmed missed_escalation bug (a stated 9/10 toothache with
     # overnight swelling got a plain contact-info request, no urgency at all) -- see

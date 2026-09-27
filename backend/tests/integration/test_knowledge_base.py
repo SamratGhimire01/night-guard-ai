@@ -1,8 +1,15 @@
 """Phase 5 — knowledge base ingestion endpoints.
 
-Covers the manual-entry CRUD + status lifecycle (draft -> approved -> archived),
-file upload (.txt and a real .pdf fixture), invalid-upload rejection, cross-tenant
-isolation, and RBAC (owner/admin write including approve/archive, any role read).
+Covers the manual-entry CRUD + status lifecycle (approved on creation -> archived ->
+re-approved), file upload (.txt and a real .pdf fixture), invalid-upload rejection,
+cross-tenant isolation, and RBAC (owner/admin write including archive, any role read).
+
+Every ingestion path (manual entry, upload, URL) lands APPROVED immediately, not
+DRAFT: only owner/admin can call any of them, so a separate approval click reviewed
+nothing a second person hadn't already seen, and it left real ingested content
+silently unusable by the AI until someone remembered to click it (a real reported
+bug). `status="archived"` (still reachable via PATCH) is what now stands in for
+"don't use this one," not "not yet reviewed."
 """
 
 import uuid
@@ -107,7 +114,9 @@ def test_manual_entry_full_lifecycle(two_businesses):
     )
     assert create.status_code == 201, create.text
     doc = create.json()
-    assert doc["status"] == "draft"
+    assert doc["status"] == "approved"  # live immediately, no separate approval click
+    assert doc["approved_by"] is not None
+    assert doc["approved_at"] is not None
     assert doc["source"] == "manual"
     assert doc["version"] == 1
     doc_id = doc["id"]
@@ -122,17 +131,9 @@ def test_manual_entry_full_lifecycle(two_businesses):
     )
     assert edit.status_code == 200, edit.text
     assert edit.json()["version"] == 2  # content edit bumps the version counter
+    assert edit.json()["status"] == "approved"  # editing an approved doc doesn't demote it
     reread = client.get(f"/api/v1/knowledge/{doc_id}", headers=_auth_header(token_a)).json()
     assert reread["content"] == "Cancel 48h ahead, no fee."
-
-    approve = client.patch(
-        f"/api/v1/knowledge/{doc_id}", json={"status": "approved"}, headers=_auth_header(token_a)
-    )
-    assert approve.status_code == 200, approve.text
-    approved = approve.json()
-    assert approved["status"] == "approved"
-    assert approved["approved_by"] is not None
-    assert approved["approved_at"] is not None
 
     filtered = client.get("/api/v1/knowledge?status=approved", headers=_auth_header(token_a)).json()
     assert any(d["id"] == doc_id for d in filtered)
@@ -145,6 +146,13 @@ def test_manual_entry_full_lifecycle(two_businesses):
     assert archive.status_code == 200, archive.text
     assert archive.json()["status"] == "archived"
     assert archive.json()["approved_by"] is not None  # retained as history
+
+    # archiving isn't final -- re-approving brings it straight back
+    reapprove = client.patch(
+        f"/api/v1/knowledge/{doc_id}", json={"status": "approved"}, headers=_auth_header(token_a)
+    )
+    assert reapprove.status_code == 200, reapprove.text
+    assert reapprove.json()["status"] == "approved"
 
     delete = client.delete(f"/api/v1/knowledge/{doc_id}", headers=_auth_header(token_a))
     assert delete.status_code == 204
@@ -165,7 +173,7 @@ def test_upload_txt_extracts_content(two_businesses):
     assert resp.status_code == 201, resp.text
     doc = resp.json()
     assert doc["source"] == "upload"
-    assert doc["status"] == "draft"
+    assert doc["status"] == "approved"  # live immediately, same as manual entry
     assert doc["content"] == text
 
 
@@ -236,7 +244,7 @@ def test_cross_tenant_knowledge_documents_are_isolated(two_businesses):
     still_there = client.get(f"/api/v1/knowledge/{doc['id']}", headers=_auth_header(token_b))
     assert still_there.status_code == 200
     assert still_there.json()["content"] == "confidential"
-    assert still_there.json()["status"] == "draft"
+    assert still_there.json()["status"] == "approved"
 
 
 def test_rbac_staff_can_read_but_not_approve_archive_or_delete(staff_token, two_businesses):
@@ -315,12 +323,13 @@ def test_filter_for_llm_drops_noise_keeps_real_matches():
 
 
 # --- Phase 58 Part 2B: website-URL ingestion (Chatbase parity) ------------------------------------------------------
-# Feeds a fetched page's clean text into the SAME create_document() pipeline as manual entry/upload -- draft by
-# default, same chunking/embedding/approval lifecycle -- so these tests mock only the network fetch (url_ingestion.
-# fetch_and_extract / crawl_site), never knowledge_service itself, to prove the wiring is the real pipeline.
+# Feeds a fetched page's clean text into the SAME create_document() pipeline as manual entry/upload -- approved
+# immediately (real bug fix: a fetched page used to land as an invisible, unusable draft), same chunking/embedding --
+# so these tests mock only the network fetch (url_ingestion.fetch_and_extract / crawl_site), never knowledge_service
+# itself, to prove the wiring is the real pipeline.
 
 
-def test_ingest_url_creates_a_draft_document_from_the_fetched_page(two_businesses, monkeypatch):
+def test_ingest_url_creates_an_approved_document_from_the_fetched_page(two_businesses, monkeypatch):
     from app.services import url_ingestion
 
     monkeypatch.setattr(
@@ -337,13 +346,13 @@ def test_ingest_url_creates_a_draft_document_from_the_fetched_page(two_businesse
     assert docs[0]["title"] == "Acme FAQ"
     assert docs[0]["content"] == "We are open 9am-5pm.\nWalk-ins welcome."
     assert docs[0]["source"] == "url"
-    assert docs[0]["status"] == "draft", "new content must never auto-approve"
+    assert docs[0]["status"] == "approved", "fetched content must be usable by the AI immediately, not stuck as an invisible draft"
 
     listed = client.get("/api/v1/knowledge", headers=_auth_header(two_businesses["token_a"])).json()
     assert len(listed) == 1 and listed[0]["id"] == docs[0]["id"]
 
 
-def test_ingest_url_with_crawl_creates_one_draft_document_per_page(two_businesses, monkeypatch):
+def test_ingest_url_with_crawl_creates_one_approved_document_per_page(two_businesses, monkeypatch):
     from app.services import url_ingestion
 
     pages = [
@@ -359,7 +368,7 @@ def test_ingest_url_with_crawl_creates_one_draft_document_per_page(two_businesse
     assert resp.status_code == 201, resp.text
     docs = resp.json()
     assert {d["title"] for d in docs} == {"Acme Home", "Acme Pricing"}
-    assert all(d["status"] == "draft" and d["source"] == "url" for d in docs)
+    assert all(d["status"] == "approved" and d["source"] == "url" for d in docs)
 
 
 def test_ingest_url_surfaces_a_real_fetch_error_and_creates_nothing(two_businesses, monkeypatch):
@@ -436,6 +445,51 @@ def test_extract_title_and_text_falls_back_to_h1_when_no_title_tag():
     title, text = extract_title_and_text("<html><body><h1>Trekking Packages</h1><p>Everest Base Camp, 14 days.</p></body></html>")
     assert title == "Trekking Packages"
     assert "Everest Base Camp, 14 days." in text
+
+
+# Real bug: a JS-rendered page (React/Next/etc.) serves a near-empty shell over plain
+# HTTP -- ingestion "succeeded" and created a document, but its content was just
+# nav/empty-state copy ("0 notices found"), leaving the AI nothing real to answer
+# from when asked about it later. fetch_and_extract/crawl_site must now refuse that
+# case loudly instead of silently saving it as if it were real content.
+
+
+def test_fetch_and_extract_rejects_a_js_rendered_shell_page(monkeypatch):
+    from app.services import url_ingestion
+
+    monkeypatch.setattr(
+        url_ingestion, "_fetch_raw_html", lambda url: "<html><body><div id='root'>0 notices found</div></body></html>"
+    )
+    with pytest.raises(url_ingestion.URLFetchError, match="loads its real content dynamically"):
+        url_ingestion.fetch_and_extract("https://example.com/notices")
+
+
+def test_crawl_site_skips_a_thin_js_rendered_seed_page(monkeypatch):
+    from app.services import url_ingestion
+
+    monkeypatch.setattr(url_ingestion, "_robots_allows", lambda base, path: True)
+    monkeypatch.setattr(
+        url_ingestion, "_fetch_raw_html", lambda url: "<html><body>0 notices found</body></html>"
+    )
+    with pytest.raises(url_ingestion.URLFetchError, match="No extractable page content"):
+        url_ingestion.crawl_site("https://example.com/")
+
+
+def test_fetch_and_extract_keeps_a_genuinely_short_real_page(monkeypatch):
+    """The thin-content floor must not punish a real page that's just short."""
+    from app.services import url_ingestion
+
+    monkeypatch.setattr(
+        url_ingestion,
+        "_fetch_raw_html",
+        lambda url: (
+            "<html><body><main>"
+            + " ".join(f"word{i}" for i in range(45))
+            + "</main></body></html>"
+        ),
+    )
+    _title, text = url_ingestion.fetch_and_extract("https://example.com/short")
+    assert len(text.split()) == 45
 
 
 @pytest.mark.parametrize(

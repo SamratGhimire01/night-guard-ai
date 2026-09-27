@@ -59,7 +59,7 @@ export default function KnowledgePage() {
         body: JSON.stringify(values),
       })
       setDocuments((prev) => [created, ...prev])
-      notifications.show({ message: `"${created.title}" created as a draft.`, color: 'green' })
+      notifications.show({ message: `"${created.title}" added — live now.`, color: 'green' })
       createForm.reset()
       setCreateOpen(false)
     } catch (err) {
@@ -84,7 +84,7 @@ export default function KnowledgePage() {
         body: formData,
       })
       setDocuments((prev) => [created, ...prev])
-      notifications.show({ message: `"${created.title}" uploaded as a draft.`, color: 'green' })
+      notifications.show({ message: `"${created.title}" uploaded — live now.`, color: 'green' })
     } catch (err) {
       notifications.show({ message: err instanceof ApiError ? err.message : 'Upload failed.', color: 'red' })
     } finally {
@@ -103,8 +103,8 @@ export default function KnowledgePage() {
       notifications.show({
         message:
           created.length === 1
-            ? `"${created[0].title}" fetched and added as a draft.`
-            : `${created.length} pages fetched and added as drafts.`,
+            ? `"${created[0].title}" fetched and added — live now.`
+            : `${created.length} pages fetched and added — live now.`,
         color: 'green',
       })
       ingestForm.reset()
@@ -173,7 +173,7 @@ export default function KnowledgePage() {
     <Stack gap="md">
       <PageHeader
         title="Knowledge Base"
-        description="What your AI assistant knows. Only approved documents are used to answer customers."
+        description="What your AI assistant knows. New documents go live immediately — archive one to stop it from being used."
         actions={
           canWrite && (
             <>
@@ -285,7 +285,7 @@ export default function KnowledgePage() {
           <Stack gap="sm">
             <TextInput label="Title" withAsterisk {...createForm.getInputProps('title')} />
             <Textarea label="Content" withAsterisk autosize minRows={6} {...createForm.getInputProps('content')} />
-            <Button type="submit">Create as draft</Button>
+            <Button type="submit">Create</Button>
           </Stack>
         </form>
       </Modal>
@@ -294,8 +294,8 @@ export default function KnowledgePage() {
         <form onSubmit={ingestForm.onSubmit(handleIngestUrl)}>
           <Stack gap="sm">
             <Text c="dimmed" size="sm">
-              Fetches the page, strips navigation/footer clutter, and adds the real content as a draft document —
-              same review step as a manual entry or file upload.
+              Fetches the page, strips navigation/footer clutter, and adds the real content — live immediately, same
+              as a manual entry or file upload.
             </Text>
             <TextInput
               label="Page URL"
@@ -318,7 +318,7 @@ export default function KnowledgePage() {
               />
             )}
             <Button type="submit" loading={ingesting}>
-              Fetch and add as draft
+              Fetch and add
             </Button>
           </Stack>
         </form>

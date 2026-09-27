@@ -219,6 +219,7 @@ def _list_stmt(business_id: uuid.UUID):
     )
     takeover = func.coalesce(Conversation.human_takeover_until > func.clock_timestamp(), False)
     needs_reply = and_(last.c.sender_type == MessageSenderType.CUSTOMER, or_(handoff, takeover))
+    is_lead = Conversation.lead_signal == "high"
     unread = and_(
         last_cust.c.at.is_not(None),
         or_(Conversation.staff_last_read_at.is_(None), last_cust.c.at > Conversation.staff_last_read_at),
@@ -237,6 +238,7 @@ def _list_stmt(business_id: uuid.UUID):
             handoff.label("open_handoff"),
             takeover.label("takeover_active"),
             BusinessUser.email.label("takeover_by_email"),
+            Conversation.lead_signal,
         )
         .join(Customer, Customer.id == Conversation.customer_id)
         .join(last, last.c.conversation_id == Conversation.id)
@@ -244,18 +246,20 @@ def _list_stmt(business_id: uuid.UUID):
         .outerjoin(BusinessUser, BusinessUser.id == Conversation.human_takeover_by)
         .where(Conversation.business_id == business_id)
     )
-    return stmt, needs_reply, handoff
+    return stmt, needs_reply, handoff, is_lead
 
 
 def list_conversations(
     db: Session, *, business_id: uuid.UUID, tab: str = "all", channel: str | None = None, q: str | None = None,
     limit: int = 50, offset: int = 0,
 ) -> list:
-    stmt, needs_reply, handoff = _list_stmt(business_id)
+    stmt, needs_reply, handoff, is_lead = _list_stmt(business_id)
     if tab == "needs_reply":
         stmt = stmt.where(needs_reply)
     elif tab == "handoffs":
         stmt = stmt.where(handoff)
+    elif tab == "leads":
+        stmt = stmt.where(is_lead)
     if channel:
         stmt = stmt.where(Conversation.channel == channel)
     if q:
@@ -263,13 +267,14 @@ def list_conversations(
     return list(db.execute(stmt.order_by(stmt.selected_columns.last_at.desc()).limit(limit).offset(offset)).all())
 
 
-def summary(db: Session, *, business_id: uuid.UUID) -> tuple[int, int]:
-    """(conversations waiting for a person, conversations with an open handoff) — the nav badge."""
-    stmt, needs_reply, handoff = _list_stmt(business_id)
+def summary(db: Session, *, business_id: uuid.UUID) -> tuple[int, int, int]:
+    """(conversations waiting for a person, conversations with an open handoff, high-intent leads) — the nav badges."""
+    stmt, needs_reply, handoff, is_lead = _list_stmt(business_id)
     base = stmt.subquery("rows")
     waiting = db.execute(select(func.count()).select_from(base).where(base.c.needs_reply)).scalar() or 0
     handoffs = db.execute(select(func.count()).select_from(base).where(base.c.open_handoff)).scalar() or 0
-    return int(waiting), int(handoffs)
+    leads = db.execute(select(func.count()).select_from(base).where(base.c.lead_signal == "high")).scalar() or 0
+    return int(waiting), int(handoffs), int(leads)
 
 
 def mark_read(db: Session, conversation: Conversation) -> None:

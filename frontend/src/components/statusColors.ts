@@ -27,6 +27,8 @@ const STATUS_COLOR: Record<string, string> = {
   waiting: 'orange',
   simulated: 'yellow',
   suppressed: 'gray',
+  // inbox: automatic buying-intent triage (app/services/lead_service.py)
+  high: 'green',
 }
 
 export function statusColor(status: string): string {

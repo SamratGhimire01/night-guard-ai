@@ -3,9 +3,14 @@ import logging
 
 from app.core.config import settings
 from app.db.database import SessionLocal
-from app.services import no_show_service, reminder_service
+from app.services import lead_service, no_show_service, reminder_service
 
 logger = logging.getLogger(__name__)
+
+
+def _score_leads_sync() -> int:
+    with SessionLocal() as db:
+        return lead_service.score_stale_conversations(db)
 
 
 async def _tick() -> None:
@@ -31,6 +36,19 @@ async def _tick() -> None:
                 logger.info("no-show scheduler tick: flagged %d appointment(s) NO_SHOW", flagged)
     except Exception:
         logger.exception("no-show scheduler tick failed")
+    # its own try/except and fresh session, same discipline as the two jobs above -- but ALSO off the event loop
+    # (asyncio.to_thread), unlike them: real bug hit live-testing this exact change, this job's per-conversation LLM
+    # call is a genuine multi-second blocking network call (not a quick DB query like reminders/no-shows), and this
+    # coroutine runs on the SAME event loop that serves every live HTTP request (run_forever is a plain asyncio
+    # background task, not a threadpooled `def` route handler) -- inline, a backlog of 20 conversations froze the
+    # whole server for the length of 20 sequential LLM calls, exactly the "blocking work off the event loop"
+    # discipline app/api/routes/knowledge.py's PDF/embedding calls already follow, just missed here.
+    try:
+        scored = await asyncio.to_thread(_score_leads_sync)
+        if scored:
+            logger.info("lead scheduler tick: scored %d conversation(s)", scored)
+    except Exception:
+        logger.exception("lead scheduler tick failed")
 
 
 async def run_forever() -> None:

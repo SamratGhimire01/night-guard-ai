@@ -115,11 +115,15 @@ def get_inbox_conversation(
         channel=conversation.channel,
         customer_id=conversation.customer_id,
         customer_name=customer.name if customer else "Unknown customer",
+        customer_phone=customer.phone if customer else None,
+        customer_email=customer.email if customer else None,
         takeover=takeover,
         takeover_by_email=owner.email if takeover.active and owner else None,
         reply=ReplyWindow(can_reply=state.can_reply, reason=state.reason, window_closes_at=state.window_closes_at),
         open_handoff=InboxHandoff(id=handoff.id, reason=handoff.reason) if handoff else None,
         last_customer_message_at=inbox_service.last_customer_message_at(db, conversation.id),
+        lead_signal=conversation.lead_signal,
+        lead_summary=conversation.lead_summary,
     )
 
 
@@ -159,7 +163,7 @@ def reply_to_conversation(
 
 @router.get("/inbox/conversations", response_model=list[InboxListItem])
 def list_inbox_conversations(
-    tab: Literal["all", "needs_reply", "handoffs"] = Query(default="all"),
+    tab: Literal["all", "needs_reply", "handoffs", "leads"] = Query(default="all"),
     channel: Literal["whatsapp", "messenger", "instagram", "website"] | None = Query(default=None),
     q: str | None = Query(default=None, max_length=100, description="customer name contains"),
     limit: int = Query(default=50, ge=1, le=200),
@@ -169,7 +173,8 @@ def list_inbox_conversations(
 ) -> list[InboxListItem]:
     """The inbox home: every conversation across every channel, newest activity first. `needs_reply` = a human is responsible
     (open handoff or a staff member owns it) and the customer spoke last; `unread` = the customer's latest message is newer
-    than the last time staff opened it."""
+    than the last time staff opened it; `tab=leads` = automatic buying-intent triage (lead_signal="high", scored in the
+    background -- see app/services/lead_service.py), not a customer-vs-staff turn signal like the other two tabs."""
     rows = inbox_service.list_conversations(
         db, business_id=current_user.business_id, tab=tab, channel=channel, q=q, limit=limit, offset=offset
     )
@@ -187,6 +192,7 @@ def list_inbox_conversations(
             open_handoff=bool(r.open_handoff),
             takeover_active=bool(r.takeover_active),
             takeover_by_email=r.takeover_by_email if r.takeover_active else None,
+            lead_signal=r.lead_signal,
         )
         for r in rows
     ]
@@ -196,9 +202,10 @@ def list_inbox_conversations(
 def inbox_summary(
     current_user: BusinessUser = Depends(require_role(_INBOX_ROLES)), db: Session = Depends(get_db)
 ) -> InboxSummary:
-    """Counts for the sidebar badge: conversations waiting for a person, and conversations with an open handoff."""
-    waiting, handoffs = inbox_service.summary(db, business_id=current_user.business_id)
-    return InboxSummary(needs_reply=waiting, handoffs=handoffs)
+    """Counts for the sidebar badges: conversations waiting for a person, conversations with an open handoff, and
+    high-intent leads."""
+    waiting, handoffs, leads = inbox_service.summary(db, business_id=current_user.business_id)
+    return InboxSummary(needs_reply=waiting, handoffs=handoffs, leads=leads)
 
 
 @router.post("/inbox/conversations/{conversation_id}/read", status_code=204)
