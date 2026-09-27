@@ -300,6 +300,41 @@ def test_booking_tool_creates_real_appointment_and_response_reflects_it(two_busi
     assert real_appointment.scheduled_at.hour == 14
 
 
+def test_booking_confirmation_omits_the_checkin_qr_line_when_backend_url_is_refused(two_businesses, monkeypatch):
+    """Dev-tunnel/production-URL safety net (see app.core.public_url): the booking
+    itself must still succeed even when the check-in QR link can't be safely built --
+    and the reply must never literally contain the word "None" where the link would
+    have gone (a real risk of naively formatting a refused/None URL into the template)."""
+    from app.core.config import settings
+
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "backend_base_url", "https://unfiltrated-sharla-futile.ngrok-free.dev")
+    _stub_providers(monkeypatch, _booking_reply("Cleaning", target_date.isoformat(), "14:00"))
+
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Can I get a cleaning next Monday at 2pm?"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert "None" not in body["response"]
+    assert "/qr/" not in body["response"]
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        appointments = list(db.query(Appointment).filter(Appointment.business_id == business_id_a).all())
+    assert len(appointments) == 1, "the booking itself must still succeed"
+
+
 def test_booking_tool_failure_is_never_reported_as_success(two_businesses, monkeypatch):
     """Hallucination-proof test: force a real tool failure (the slot is already
     taken) and confirm the customer-facing response honestly reflects that —
@@ -1023,6 +1058,34 @@ def test_resend_whatsapp_channel_now_answers_with_a_qr_link_and_never_calls_the_
     chat = result["channels"]["chat"]
     assert chat["status"] == "sent" and "/qr/" in chat["url"]
     assert qr_link_service.verify_token(chat["url"].rsplit("/qr/", 1)[1]) == appointment_id
+
+
+def test_resend_chat_link_refused_in_production_with_a_dev_tunnel_url_reports_failed_not_a_dead_link(
+    two_businesses, monkeypatch
+):
+    """Dev-tunnel/production-URL safety net (see app.core.public_url): a resend must
+    never hand the customer a link built from a refused backend_base_url -- the chat
+    channel reports "failed" (the same real status _resend_needs_front_desk already
+    watches for) rather than "sent" with a link nobody can actually reach."""
+    from app.core.config import settings
+    from app.services.conversation.appointment_tools import ResendConfirmationTool
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a, phone="9800000001")
+    appointment_id = _book_appointment(business_id_a, customer_id, service_id)
+
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "backend_base_url", "https://unfiltrated-sharla-futile.ngrok-free.dev")
+
+    with SessionLocal() as db:
+        result = ResendConfirmationTool().run(
+            db, business_id=business_id_a, customer_id=customer_id, appointment_id=appointment_id,
+            channel="whatsapp", conversation_channel="widget",
+        )
+    chat = result["channels"]["chat"]
+    assert chat["status"] == "failed"
+    assert chat["url"] is None
 
 
 def test_resend_confirmation_resolve_channels():

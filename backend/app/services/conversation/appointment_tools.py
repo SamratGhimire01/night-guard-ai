@@ -279,10 +279,15 @@ class ResendConfirmationTool(ConversationTool):
 
     @staticmethod
     def _chat_link(appointment: Appointment) -> dict:
+        url = qr_link_service.build_url(appointment.id, appointment.scheduled_at)
+        # "failed" (not a made-up status) so this is treated identically to an email
+        # send failure everywhere a resend result's channel statuses are inspected
+        # (orchestrator._resend_needs_front_desk) -- see qr_link_service.build_url's
+        # docstring for why this can be None (refused, never a dead link sent).
         return {
             "attempted": True,
-            "status": "sent",
-            "url": qr_link_service.build_url(appointment.id, appointment.scheduled_at),
+            "status": "sent" if url else "failed",
+            "url": url,
         }
 
 

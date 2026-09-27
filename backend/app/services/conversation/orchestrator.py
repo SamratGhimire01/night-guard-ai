@@ -471,7 +471,11 @@ def _confirmation_extras(confirmation: dict | None, customer_name: str | None, l
         lines.append(render("booking_for", language, customer=customer_name))
     if confirmation["place"]:
         lines.append(render("booking_where", language, place=confirmation["place"]))
-    lines.append(render("booking_checkin_qr", language, url=confirmation["checkin_qr_url"]))
+    # None when backend_base_url was refused (see qr_link_service.build_url) -- the
+    # booking itself already succeeded, so this omits the QR line rather than ever
+    # formatting a None into customer-facing text.
+    if confirmation["checkin_qr_url"]:
+        lines.append(render("booking_checkin_qr", language, url=confirmation["checkin_qr_url"]))
     if confirmation["email_to"]:
         lines.append(render("booking_email_note", language, email=confirmation["email_to"]))
     return "\n" + "\n".join(lines)
@@ -514,6 +518,13 @@ def _format_booking_result(
         if payment["payment_url"] is None:
             # the business offers both gateways and none is chosen yet: ask (see _payment_choice_turn)
             return render("booking_reserved_choose", language, **fields) + extras
+        # payment["qr_url"] (payment_service.qr_page_url) can never be the refused-URL
+        # None here specifically: it reads the exact same backend_base_url/environment
+        # as payment["payment_url"] (payment_service.build_pay_qr... via the gateway's
+        # own initiate_payment), which already succeeded moments earlier in this same
+        # request -- those settings don't change mid-process, so if one was safe the
+        # other is too. See qr_link_service.build_url's docstring for the case that IS
+        # reachable (the check-in QR above, an independent call with no such guarantee).
         return render("booking_reserved_pay", language, link=payment["payment_url"], qr=payment["qr_url"], **fields) + extras
 
     message = result["message"].rstrip(".").lower()
@@ -867,8 +878,11 @@ def _format_resend_result(result: dict, *, language: str | None) -> str:
         else:
             parts.append(render("resend_send_failed", language))
     chat = channels.get("chat")
-    if chat is not None and chat["status"] == "sent":
-        parts.append(render("resend_qr_link", language, url=chat["url"]))
+    if chat is not None:
+        if chat["status"] == "sent":
+            parts.append(render("resend_qr_link", language, url=chat["url"]))
+        else:
+            parts.append(render("resend_send_failed", language))
     return "\n".join(parts) if parts else render("resend_send_failed", language)
 
 
@@ -1393,13 +1407,16 @@ def _payment_choice_turn(
     if payment.status.value != "pending" or not payment.payment_url:
         response_text = render("payment_link_failed", language, provider=label)
     else:
-        response_text = "{}\n{}".format(
-            render(
-                "payment_link_chosen", language, provider=label, currency=payment.currency,
-                amount=str(payment.amount), link=payment.payment_url,
-            ),
-            render("payment_qr_line", language, qr=payment_service.qr_page_url(payment)),
+        response_text = render(
+            "payment_link_chosen", language, provider=label, currency=payment.currency,
+            amount=str(payment.amount), link=payment.payment_url,
         )
+        # None when backend_base_url was refused (see payment_service.qr_page_url) --
+        # the real payment link above already works, so this omits the QR line rather
+        # than ever formatting a None into customer-facing text.
+        qr = payment_service.qr_page_url(payment)
+        if qr:
+            response_text = f"{response_text}\n{render('payment_qr_line', language, qr=qr)}"
         booking_tool.queue_payment_request_email(db, appointment=appointment)
     customer_message = Message(
         conversation_id=conversation.id,

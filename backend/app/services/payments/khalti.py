@@ -6,6 +6,7 @@ import uuid
 from decimal import Decimal
 
 from app.core.config import settings
+from app.core.public_url import UnsafePublicURLError, public_backend_base_url
 from app.services.payments.base import PaymentGatewayError, PaymentInitiation, PaymentProvider, PaymentVerification
 
 logger = logging.getLogger(__name__)
@@ -68,11 +69,18 @@ class KhaltiPaymentProvider(PaymentProvider):
             raise PaymentGatewayError(
                 f"Amount {amount} is below Khalti's real minimum of NPR {_MIN_AMOUNT_PAISA / 100:.2f}."
             )
+        # Checked before the real network call below: a dev/tunnel return_url would have
+        # Khalti try to redirect the customer's browser back to a dead address the
+        # moment their payment completes.
+        try:
+            base_url = public_backend_base_url()
+        except UnsafePublicURLError as exc:
+            raise PaymentGatewayError("backend base URL is not a real public domain") from exc
         response = _post_json(
             "/api/v2/epayment/initiate/",
             {
-                "return_url": f"{settings.backend_base_url}/api/v1/payments/khalti/callback",
-                "website_url": settings.backend_base_url,
+                "return_url": f"{base_url}/api/v1/payments/khalti/callback",
+                "website_url": base_url,
                 "amount": amount_paisa,
                 "purchase_order_id": str(payment_id),
                 "purchase_order_name": product_name,

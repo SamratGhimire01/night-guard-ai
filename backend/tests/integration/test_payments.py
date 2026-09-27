@@ -367,6 +367,37 @@ def test_gateway_initiation_failure_never_blocks_or_corrupts_the_booking(premium
         assert payment.status == PaymentStatus.FAILED
 
 
+def test_dev_tunnel_backend_url_in_production_fails_the_payment_not_the_booking(premium_npr_ready, monkeypatch):
+    """End-to-end proof that app.core.public_url's guard is really wired into the real
+    EsewaPaymentProvider (no fake_provider stub here) and degrades through the exact
+    same, already-tested path as any other real gateway failure above -- never a raw
+    dead link handed to the customer, never a lost/corrupted booking either."""
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "backend_base_url", "https://unfiltrated-sharla-futile.ngrok-free.dev")
+    token_a = premium_npr_ready["token_a"]
+    resp = client.post(
+        "/api/v1/appointments",
+        json={
+            "customer_id": str(premium_npr_ready["customer_id"]),
+            "service_id": str(premium_npr_ready["deposit_service_id"]),
+            "scheduled_at": _next_weekday_datetime(12),
+        },
+        headers=_auth_header(token_a),
+    )
+    assert resp.status_code == 201, resp.text
+    appointment_id = resp.json()["id"]
+
+    with SessionLocal() as db:
+        appt = db.get(Appointment, uuid.UUID(appointment_id))
+        assert appt.status.value == "confirmed"
+        payment = db.query(Payment).filter(Payment.appointment_id == appt.id).first()
+        assert payment is not None
+        assert payment.status == PaymentStatus.FAILED
+        assert not payment.payment_url
+
+
 def test_verify_and_update_never_touches_appointment_either_way(premium_npr_ready, fake_provider):
     token_a = premium_npr_ready["token_a"]
     resp = client.post(

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.exceptions import NotFoundError, UnprocessableEntityError
+from app.core.public_url import UnsafePublicURLError, public_backend_base_url
 from app.db.models.appointment import Appointment
 from app.db.models.business import Business
 from app.db.models.customer import Customer
@@ -60,10 +61,15 @@ def deposit_amount(service: Service) -> Decimal:
     return (service.price * fraction).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def qr_page_url(payment: Payment) -> str:
+def qr_page_url(payment: Payment) -> str | None:
     """The small public page showing this payment link as a scannable QR (api/routes/qr_view.py) — what chat gets
-    alongside the plain link."""
-    return f"{settings.backend_base_url.rstrip('/')}/pay-qr/{payment.id}"
+    alongside the plain link. None when backend_base_url is refused (see public_backend_base_url) — callers must
+    treat None as "omit the QR line," never format it directly into customer text."""
+    try:
+        base_url = public_backend_base_url()
+    except UnsafePublicURLError:
+        return None
+    return f"{base_url.rstrip('/')}/pay-qr/{payment.id}"
 
 
 def _deposit_due(business: Business | None, service: Service | None) -> bool:

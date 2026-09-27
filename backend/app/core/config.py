@@ -167,7 +167,14 @@ class Settings(BaseSettings):
     # This backend's own public base URL — where eSewa/Khalti redirect the
     # customer's browser back to after payment, and where a real payment link
     # sent to a customer points. Unlike dashboard_base_url (the SPA), this is
-    # never used for an authenticated dashboard redirect.
+    # never used for an authenticated dashboard redirect. Set per-deployment
+    # (dev/.env: localhost or a dev tunnel; production: a real, stable public
+    # domain — no code branching needed, just a different .env per environment).
+    # Every customer-facing link reads this ONLY through
+    # app.core.public_url.public_backend_base_url(), which refuses a localhost/
+    # 127.0.0.1/dev-tunnel value when `environment` is "production" instead of
+    # silently handing a dead link to a real customer — see that module's
+    # docstring for the incident this fixes.
     backend_base_url: str = "http://localhost:8010"
 
     # Phase 45: how often the in-process reminder scheduler (app/services/
@@ -175,6 +182,11 @@ class Settings(BaseSettings):
     # a short value only for a real, timed live-verification run (never left
     # short in committed config).
     reminder_poll_interval_seconds: int = 60
+
+    # Phase 52: how long the AI stays silent in a conversation after a staff member last replied/claimed it (sliding: each
+    # staff reply restarts it). 2 hours in production; override to a few seconds only for a real, timed live-verification
+    # run (never left short in committed config), the same technique as reminder_poll_interval_seconds above.
+    human_takeover_seconds: int = 7200
 
     # Phase 48: how far back the no-show scan looks (see no_show_service.flag_no_shows). Rides the same scheduler loop.
     # Capped at 72 on purpose (settings validation fails at startup above that): it is what makes "old pre-feature

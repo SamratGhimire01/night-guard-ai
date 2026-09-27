@@ -18,6 +18,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from app.core.config import settings
+from app.core.public_url import UnsafePublicURLError, public_backend_base_url
 
 _LINK_GRACE_AFTER_APPOINTMENT = timedelta(hours=24)
 _MIN_LINK_LIFETIME_SECONDS = 3600
@@ -54,8 +55,16 @@ def verify_token(token: str, *, now: float | None = None) -> uuid.UUID | None:
         return None
 
 
-def build_url(appointment_id: uuid.UUID, scheduled_at: datetime) -> str:
-    return f"{settings.backend_base_url.rstrip('/')}/qr/{make_token(appointment_id, scheduled_at)}"
+def build_url(appointment_id: uuid.UUID, scheduled_at: datetime) -> str | None:
+    """None when the configured backend_base_url is refused (see public_backend_base_url)
+    -- a check-in QR is a convenience on top of an already-successful booking, so this
+    degrades to "no QR this time" rather than failing the booking itself; callers must
+    treat None as "omit the QR line," never format it directly into customer text."""
+    try:
+        base_url = public_backend_base_url()
+    except UnsafePublicURLError:
+        return None
+    return f"{base_url.rstrip('/')}/qr/{make_token(appointment_id, scheduled_at)}"
 
 
 def mask_email(email: str) -> str:

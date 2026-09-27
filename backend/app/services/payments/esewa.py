@@ -10,6 +10,7 @@ import uuid
 from decimal import Decimal
 
 from app.core.config import settings
+from app.core.public_url import UnsafePublicURLError, public_backend_base_url
 from app.services.payments.base import PaymentGatewayError, PaymentInitiation, PaymentProvider, PaymentVerification
 
 logger = logging.getLogger(__name__)
@@ -84,8 +85,16 @@ class EsewaPaymentProvider(PaymentProvider):
     name = "esewa"
 
     def initiate_payment(self, *, payment_id: uuid.UUID, amount: Decimal, product_name: str) -> PaymentInitiation:
+        # The ONLY guard needed on this gateway's use of backend_base_url: everything
+        # else it builds (signed_form_fields' success_url/failure_url) is only ever
+        # reached by a customer who already opened THIS payment_url, so if that check
+        # passed here, backend_base_url was already proven safe by the time those run.
+        try:
+            base_url = public_backend_base_url()
+        except UnsafePublicURLError as exc:
+            raise PaymentGatewayError("backend base URL is not a real public domain") from exc
         return PaymentInitiation(
-            payment_url=f"{settings.backend_base_url}/api/v1/payments/esewa/redirect/{payment_id}",
+            payment_url=f"{base_url}/api/v1/payments/esewa/redirect/{payment_id}",
             gateway_reference=None,
         )
 
