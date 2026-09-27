@@ -1,7 +1,8 @@
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Boolean, Enum, ForeignKey, ForeignKeyConstraint, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, ForeignKeyConstraint, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -35,6 +36,13 @@ class Conversation(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMi
             ["booking_draft_service_id", "business_id"],
             ["services.id", "services.business_id"],
             name="fk_conversations_booking_draft_service_same_tenant",
+        ),
+        # Same tenant-scoped-FK discipline, for the "what service did the ASSISTANT
+        # just recommend" pointer below.
+        ForeignKeyConstraint(
+            ["booking_draft_offered_service_id", "business_id"],
+            ["services.id", "services.business_id"],
+            name="fk_conversations_booking_draft_offered_service_same_tenant",
         ),
     )
 
@@ -117,11 +125,37 @@ class Conversation(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMi
     # left to survive long enough for a much-later, unrelated bare digit to
     # be misread as a stale slot selection.
     booking_draft_proposed_slots: Mapped[str | None] = mapped_column(Text)
+    # Real bug found live (Samaj Dental Clinic transcript): a customer asked what a
+    # "doctor consultation" was called, the ASSISTANT itself named a specific real
+    # service ("Dental Consultation") while answering, the customer then replied with
+    # a plain affirmative ("hunxa garau garau" -- yes, do it) that names no service of
+    # its own, and the draft stayed service-less -- the agent re-asked "which service?"
+    # as if it had never proposed one. `booking_draft_service_id` above is deliberately
+    # written ONLY from a real customer-stated slot (see its own docstring on why that
+    # separation matters for switch-detection); this is that same discipline applied in
+    # reverse -- a distinct field for "Python's own record of what WE suggested", never
+    # itself a customer-stated fact. Set every turn from classification.proposed_service
+    # (see intent.py rule 14b), fully overwritten (never accumulated) each turn -- a
+    # one-shot hint exactly like booking_draft_proposed_slots above, consumed only as a
+    # fallback when the customer's very next message doesn't name its own service (see
+    # orchestrator._merge_booking_draft's offered-service fallback).
+    booking_draft_offered_service_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     # Payment-gateway choice: set right after a booking whose deposit could go through either eSewa or Khalti (the
     # business offers both), to the appointment still waiting on the customer's answer. Consumed by the next message
     # that clearly names one gateway (orchestrator._resolve_payment_choice_turn) — cleared then, or if the appointment
     # is no longer a confirmed one with no payment yet. Plain UUID, no FK, same shape as booking_draft_service_id.
     payment_choice_appointment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    # Phase 52: human takeover. While now() < human_takeover_until a staff member owns this conversation and the AI stays
+    # silent (the orchestrator stores the customer's message but drafts/sends nothing — see takeover_service). NULL or a
+    # past time = the AI is in charge. Set/extended by every staff reply (sliding window), cleared by an explicit hand-back
+    # or by resolving the handoff. human_takeover_by is display-only ("Sita is handling this"), hence no tenant-composite FK.
+    human_takeover_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    human_takeover_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("business_users.id", ondelete="SET NULL")
+    )
+    # Phase 52: when staff last opened this conversation in the inbox (shared across staff, not per user). A naive UTC timestamp,
+    # deliberately the same kind as messages.created_at so "unread" is a plain column comparison in SQL.
+    staff_last_read_at: Mapped[datetime | None] = mapped_column(DateTime())
 
 
 class Message(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
@@ -133,6 +167,9 @@ class Message(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
         # below. Named explicitly so downgrade() can drop it by name (the same
         # unnamed-constraint-breaks-downgrade bug Phase 3/18's migrations hit).
         UniqueConstraint("external_message_id", name="uq_messages_external_message_id"),
+        UniqueConstraint("conversation_id", "client_msg_id", name="uq_messages_conversation_client_msg_id"),
+        # The thread/last-message queries every inbox read does (conversation_id alone was the only index).
+        Index("ix_messages_conversation_id_created_at", "conversation_id", "created_at"),
     )
 
     conversation_id: Mapped[uuid.UUID] = mapped_column(
@@ -161,3 +198,17 @@ class Message(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
     # ids) — same discipline as Phase 10/18/19's constraints, not just an
     # application-level check a retry/duplicate webhook could bypass.
     external_message_id: Mapped[str | None] = mapped_column(String(255))
+    # Phase 52 (inbox). Who sent a STAFF message (display + audit; NULL for every other sender). SET NULL on user delete so the
+    # message history survives. No tenant-composite FK: `messages` has no business_id (tenant is inherited via the
+    # conversation), so the service validates the user belongs to the conversation's business.
+    sent_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("business_users.id", ondelete="SET NULL")
+    )
+    # What actually happened when this message was pushed to the customer's channel: "sent" | "simulated" (no real token
+    # configured) | "failed" | "suppressed" (a human took over before it went out) | "pending" (a staff reply being sent). NULL = no delivery info (every message
+    # before this phase, customer messages, and website-widget AI replies, whose delivery is the HTTP response itself).
+    delivery_status: Mapped[str | None] = mapped_column(String(20))
+    # The adapter's own status string ("sent wamid=…", "failed: HTTP 400", …) — never a raw provider response body.
+    delivery_detail: Mapped[str | None] = mapped_column(String(255))
+    # Client-generated idempotency key for a staff reply, so a double-click/retry can't send the same reply twice.
+    client_msg_id: Mapped[str | None] = mapped_column(String(64))

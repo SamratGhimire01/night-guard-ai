@@ -29,10 +29,12 @@ from app.db.models.business import Business, BusinessHours
 from app.db.models.conversation import Conversation
 from app.db.models.customer import Customer
 from app.db.models.notification import NotificationStatus
+from app.db.models.service import Service
 from app.main import app
 from app.schemas.conversation import ConversationIntent
 from app.services import booking_service, service_service
 from app.services.conversation.intent import _format_hours, _parse_response
+from app.services.conversation.response_templates import render
 from app.services.conversation.tools import TOOL_REGISTRY, find_tool
 
 client = TestClient(app)
@@ -385,7 +387,7 @@ def test_booking_tool_failure_is_never_reported_as_success(two_businesses, monke
     # The LLM's own text falsely claimed success — the real response must not.
     lowered = body["response"].lower()
     assert "you're all set" not in lowered
-    assert "isn't available" in lowered or "not available" in lowered
+    assert body["response"].startswith(render("requested_time_unavailable", "en"))
 
     with SessionLocal() as db:
         from app.db.models.appointment import Appointment
@@ -2863,6 +2865,71 @@ def test_merge_booking_draft_unit_offered_slot_pick_vs_customer_stated_change():
     assert len(_merge_booking_draft(c, [], {"date": monday.isoformat(), "time": None})) == 1
 
 
+def test_fill_missing_booking_service_unit_offered_service_fallback():
+    """Direct unit coverage of orchestrator._fill_missing_booking_service (no DB, no LLM).
+
+    Real bug found live (Samaj Dental Clinic transcript): the ASSISTANT itself proposed
+    "Dental Consultation" answering a customer's question, the customer replied with a plain
+    affirmative ("hunxa garau garau" -- yes, do it) naming no service of its own, and the draft
+    stayed service-less -- the agent re-asked "which service?" as if it had never proposed one."""
+    from app.services.conversation.orchestrator import _fill_missing_booking_service
+
+    consultation = Service(id=uuid.uuid4(), name="Dental Consultation", price=500, duration_minutes=20)
+    cleaning = Service(id=uuid.uuid4(), name="Teeth Cleaning", price=1500, duration_minutes=30)
+    services = [consultation, cleaning]
+    empty_request = {"service": None, "date": None, "time": None, "wants_availability": False}
+
+    # The customer's own message names no service, but the conversation's PREVIOUS turn offered
+    # one -> filled from the offer, exactly the fix for the confirmed bug.
+    filled = _fill_missing_booking_service(services, empty_request, "hunxa garau garau", consultation.id)
+    assert filled["service"] == "Dental Consultation"
+
+    # A service the customer DID literally name in this message always wins over the offer.
+    filled = _fill_missing_booking_service(services, empty_request, "book me a teeth cleaning", consultation.id)
+    assert filled["service"] == "Teeth Cleaning"
+
+    # No offer pending and nothing named in this message -> left untouched.
+    filled = _fill_missing_booking_service(services, empty_request, "hunxa garau garau", None)
+    assert filled["service"] is None
+
+    # An offered_service_id that no longer resolves to a real, currently-configured service
+    # (e.g. deleted since it was offered) is silently ignored, never a crash.
+    filled = _fill_missing_booking_service(services, empty_request, "hunxa garau garau", uuid.uuid4())
+    assert filled["service"] is None
+
+
+def test_resolve_contact_update_unit_email_fallback():
+    """Direct unit coverage of orchestrator._resolve_contact_update's deterministic email
+    fallback (no DB, no LLM).
+
+    Real bug found live (Samaj Dental Clinic transcript): "mero email samratghimire01@gmail.com
+    ho yes ma malai conformation ko mail send gardenu na" -- a real email embedded mid-sentence
+    in a longer Romanized-Nepali/English message. The LLM's own rule-14 extraction (intent.py)
+    missed it entirely (contact_info_update stayed null), and the agent claimed "I don't have
+    your email on record" in the SAME turn the customer had just given it."""
+    from app.services.conversation.orchestrator import _resolve_contact_update
+
+    customer = Customer(email=None, phone=None, name="Website Visitor")
+
+    # The LLM extracted nothing, but the raw message has a real embedded email -> the
+    # deterministic fallback catches it.
+    changed = _resolve_contact_update(
+        customer, None, "mero email samratghimire01@gmail.com ho yes ma malai conformation ko mail send gardenu na"
+    )
+    assert changed == {"email": "samratghimire01@gmail.com"}
+
+    # The LLM's own extraction, when present, is never overridden by the fallback.
+    changed = _resolve_contact_update(customer, {"email": "explicit@example.com"}, "my email is fallback@example.com")
+    assert changed == {"email": "explicit@example.com"}
+
+    # No email anywhere (LLM null, message has none) -> no-op.
+    assert _resolve_contact_update(customer, None, "just saying hi") == {}
+
+    # A value already on file, even if restated, is not reported as a change.
+    on_file_customer = Customer(email="same@example.com", phone=None, name="Jamie")
+    assert _resolve_contact_update(on_file_customer, None, "my email is same@example.com") == {}
+
+
 def test_service_named_on_a_non_booking_intent_turn_is_not_lost(two_businesses, monkeypatch):
     """Real bug found live (PHASE_STATUS.md, "§2.C confirmation ignored"): a
     customer naming a service while the message was classified as
@@ -2930,6 +2997,72 @@ def test_service_named_on_a_non_booking_intent_turn_is_not_lost(two_businesses, 
         appointments = db.query(Appointment).filter(Appointment.business_id == business_id_a).all()
         assert len(appointments) == 1, "must book using the service named on the earlier non-booking-intent turn"
         assert appointments[0].service_id == service_id
+
+
+def test_bare_affirmative_completes_booking_for_a_service_the_assistant_itself_proposed(two_businesses, monkeypatch):
+    """Smoke check reproducing the real Samaj Dental Clinic transcript end to end against the real
+    orchestrator: the customer asks what a "doctor consultation" is called, the ASSISTANT names one
+    specific real service while answering (not yet a booking request), and the customer's next
+    message is a plain affirmative naming no service of its own. Before this fix, the draft stayed
+    service-less and the agent re-asked "which service?" as if nothing had ever been proposed."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)  # "Cleaning" per _setup_booking_business
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    # Turn 1: a real service_question -- the assistant answers by naming ONE specific real
+    # service, reported via `proposed_service` (intent.py rule 14b), not as a booking_request.
+    _stub_providers(
+        monkeypatch,
+        json.dumps(
+            {
+                "intent": "service_question",
+                "response": "That would normally be our Cleaning service. Want me to book it?",
+                "proposed_service": "Cleaning",
+            }
+        ),
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "what's it called when I just want to talk to someone?"},
+    )
+    assert resp.status_code == 201, resp.text
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.booking_draft_offered_service_id == service_id
+        assert conversation.booking_draft_service_id is None, "not yet accepted -- just offered"
+
+    # Turn 2: a plain affirmative, exactly like the real transcript ("awh hunxa garau garau") --
+    # the LLM extracts a bare confirmation with no service of its own, same as intent.py rule 9
+    # documents for "yes".
+    _stub_providers(
+        monkeypatch,
+        json.dumps(
+            {
+                "intent": "booking",
+                "response": "Sure thing.",
+                "booking_request": {"service": None, "date": None, "time": None, "wants_availability": False},
+            }
+        ),
+    )
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "awh hunxa garau garau"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert "which service" not in resp.json()["response"].lower(), (
+        "must not re-ask which service -- the customer just accepted the one the assistant proposed"
+    )
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation.booking_draft_service_id == service_id, (
+            "the offered service must be adopted into the real draft once the customer says yes to it"
+        )
 
 
 def test_booking_draft_survives_contact_gate_then_books_once_contact_given(two_businesses, monkeypatch):
@@ -3301,8 +3434,7 @@ def test_booking_failure_preserves_service_and_same_day_alternative_preserves_da
         json={"content": "Can I get a cleaning next Monday at 2pm?"},
     )
     assert resp.status_code == 201, resp.text
-    lowered = resp.json()["response"].lower()
-    assert "isn't available" in lowered or "not available" in lowered
+    assert resp.json()["response"].startswith(render("requested_time_unavailable", "en"))
 
     with SessionLocal() as db:
         conversation = db.get(Conversation, conversation_id)
@@ -3354,8 +3486,7 @@ def test_booking_failure_on_a_fully_closed_day_clears_date_too(two_businesses, m
         json={"content": "Can I get a cleaning this Sunday at 2pm?"},
     )
     assert resp.status_code == 201, resp.text
-    lowered = resp.json()["response"].lower()
-    assert "isn't available" in lowered or "not available" in lowered
+    assert resp.json()["response"].startswith(render("requested_time_unavailable", "en"))
 
     with SessionLocal() as db:
         conversation = db.get(Conversation, conversation_id)
@@ -4419,6 +4550,28 @@ def test_a_separate_contact_update_request_still_works_as_its_own_action(two_bus
     _stub_providers(monkeypatch, _resend_llm_reply(appointment_id, channel="email"))
     _say(token_a, conversation_id, "resend my confirmation email")
     assert fake.recipients[-1] == new
+
+
+def test_embedded_email_saved_even_when_the_llms_own_extraction_misses_it(two_businesses, monkeypatch):
+    """Smoke check reproducing the real Samaj Dental Clinic transcript end to end against the real
+    orchestrator: "mero email samratghimire01@gmail.com ho yes ma malai conformation ko mail send
+    gardenu na" -- a real email embedded mid-sentence in a longer Romanized-Nepali/English message.
+    Stubs the LLM call to reproduce the confirmed failure mode exactly (contact_info_update comes
+    back null, as it genuinely did live) so this test exercises orchestrator._resolve_contact_
+    update's deterministic fallback, not the LLM's own (unreliable) judgment."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    customer_id = _create_customer(token_a)  # no email on file yet
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    email = _unique_email("samrat")
+
+    _stub_providers(monkeypatch, json.dumps({"intent": "follow_up", "response": "Dhanyabad!", "contact_info_update": None}))
+    _say(token_a, conversation_id, f"mero email {email} ho yes ma malai conformation ko mail send gardenu na")
+
+    with SessionLocal() as db:
+        assert db.get(Customer, customer_id).email == email, (
+            "a real embedded email must be saved even when the LLM's own extraction misses it"
+        )
 
 
 def test_resend_tool_refuses_any_caller_supplied_destination(two_businesses):

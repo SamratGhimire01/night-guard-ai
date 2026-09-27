@@ -166,6 +166,36 @@ def _service_named_in(services: list[Service], text: str) -> Service | None:
     return hits[0] if len(hits) == 1 else None
 
 
+def _fill_missing_booking_service(
+    services: list[Service], booking_request: dict, content: str, offered_service_id: uuid.UUID | None
+) -> dict:
+    """Backstop for a booking-intent turn whose `booking_request["service"]` came back
+    empty/unresolvable. Two independent fallbacks, tried in order:
+
+    1. A service the customer literally named in THIS message (`_service_named_in`) --
+       by far the more common case (a botched/partial LLM extraction of a name the
+       customer did state).
+    2. Failing that, the service THIS conversation's own PREVIOUS turn offered/
+       recommended (`offered_service_id` -- see Conversation.booking_draft_offered_
+       service_id's docstring). Real bug found live (Samaj Dental Clinic transcript):
+       the ASSISTANT itself proposed "Dental Consultation" answering a customer's
+       question, the customer replied with a plain affirmative ("hunxa garau garau")
+       naming no service of its own, and the draft stayed service-less -- re-asking
+       "which service" as if nothing had ever been proposed. Exactly the same
+       "customer said yes to what I offered" case `_offered_slot_pick` already
+       resolves for date/time, just for the service slot.
+
+    Leaves `booking_request` untouched if neither fallback resolves a real service."""
+    named_service = _service_named_in(services, content)
+    if named_service is not None:
+        return {**booking_request, "service": named_service.name}
+    if offered_service_id is not None:
+        offered_service = next((s for s in services if s.id == offered_service_id), None)
+        if offered_service is not None:
+            return {**booking_request, "service": offered_service.name}
+    return booking_request
+
+
 # Weekday names a customer may type -> Monday=0. Latin words match exactly; Devanagari tokens by prefix (case suffixes: "शनिबारमा").
 _WEEKDAY_WORDS = {
     "monday": 0, "tuesday": 1, "tues": 1, "wednesday": 2, "thursday": 3, "thurs": 3, "thur": 3, "friday": 4, "saturday": 5,
@@ -556,6 +586,7 @@ def _propose_available_slots(
     tz: ZoneInfo,
     language: str | None,
     previous_reply: str | None = None,
+    requested_time_unavailable: bool = False,
 ) -> str:
     """Phase 33 — the ONLY place a "here's what's open" sentence is composed,
     same discipline as every other _format_*_result function: real,
@@ -596,8 +627,10 @@ def _propose_available_slots(
     except NotFoundError:
         slots = []
 
+    unavailable_prefix = f"{render('requested_time_unavailable', language)} " if requested_time_unavailable else ""
+
     if not slots:
-        return render("availability_none_no_alts", language, service=service.name)
+        return unavailable_prefix + render("availability_none_no_alts", language, service=service.name)
 
     # Phase 33b — real live testing found picking a shown option purely by time
     # ("10:30am works") unreliably re-stated the date back (an LLM judgment
@@ -643,6 +676,7 @@ def _propose_available_slots(
         )
     else:
         reply = render("availability_options", language, service=service.name, options=options)
+    reply = unavailable_prefix + reply
     # Live bug (2026-09-20): "Monday morning instead, does that work?" / "can you book that for me?" carry no specific
     # time, so the extraction keeps wants_availability=true and the identical list came back turn after turn. The same
     # words twice never move the customer forward: when the reply would repeat the previous one verbatim, say so and
@@ -926,18 +960,46 @@ def _emergency_response(business: Business | None, language: str | None) -> str:
     return render("emergency_handoff", language, phone=phone)
 
 
-def _resolve_contact_update(customer: Customer | None, contact_info_update: dict | None) -> dict:
+# Real bug found live (Samaj Dental Clinic transcript): "mero email samratghimire01@gmail.com
+# ho yes ma malai conformation ko mail send gardenu na" -- the email is embedded mid-sentence in
+# a longer Romanized-Nepali/English message, and the LLM's own rule-14 extraction (intent.py)
+# missed it, so the agent claimed "I don't have your email on record" in the SAME turn the
+# customer gave it. An email address is mechanically, deterministically checkable -- never worth
+# leaving entirely to an LLM judgment call when regex can answer for certain, same discipline as
+# orchestrator._DEVANAGARI_RE below. Used only as a FALLBACK when the LLM's own extraction came
+# back empty, never overriding a real extracted value.
+_EMAIL_FALLBACK_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+
+
+def _fallback_extract_email(message: str) -> str | None:
+    match = _EMAIL_FALLBACK_RE.search(message)
+    return match.group(0) if match else None
+
+
+def _resolve_contact_update(
+    customer: Customer | None, contact_info_update: dict | None, raw_message: str = ""
+) -> dict:
     """Re-diffs the LLM's candidate `contact_info_update` against the REAL
     current Customer row — never trusts the LLM's own claim about what's
     already on file (rule 14 in intent.py only asks it to try). A field is
     only included if the customer's Customer row genuinely doesn't already
     have that exact value. This is what makes UpdateContactInfoTool.run()
     only ever write real, actually-new information, and lets the caller
-    detect "nothing to do" (empty dict) without invoking the tool at all."""
-    if not contact_info_update or customer is None:
+    detect "nothing to do" (empty dict) without invoking the tool at all.
+
+    `raw_message` backstops a missed email with `_fallback_extract_email` (see its own
+    comment) -- only when the LLM didn't already report one itself; a bogus regex match
+    (an email-shaped false positive) is still caught by UpdateContactInfoTool's real
+    `CustomerUpdate(EmailStr)` validation before anything is ever written."""
+    if customer is None:
         return {}
+    candidate = dict(contact_info_update or {})
+    if not candidate.get("email"):
+        fallback_email = _fallback_extract_email(raw_message)
+        if fallback_email:
+            candidate["email"] = fallback_email
     changed = {}
-    for field, value in contact_info_update.items():
+    for field, value in candidate.items():
         if value and value != getattr(customer, field, None):
             changed[field] = value
     return changed
@@ -1777,6 +1839,10 @@ def _handle_turn(
                 db, business_id=business_id, query_vector=query_vector, top_k=KNOWLEDGE_TOP_K
             )
         )
+        # Computed once here and reused both by the grounding guard below and by
+        # the handoff decision further down -- knowledge_results is never
+        # reassigned in between, so one value serves both.
+        best_similarity = max((similarity for _, _, similarity in knowledge_results), default=None)
         _t5 = time.perf_counter()
         classification = classify_and_respond(
             business=business,
@@ -1787,6 +1853,11 @@ def _handle_turn(
             locked_language=_expected_response_language(conversation, content, force_language),
             hours=hours,
         )
+        # Saved now, before the grounding guard below (or anything else) can
+        # replace classification.response -- the stuck-loop check further down
+        # must see what the model itself kept drafting, not whatever
+        # deterministic text this turn ends up sending the customer.
+        _llm_drafted_response = classification.response
         _t6 = time.perf_counter()
         logger.info(
             "conversation turn stage timing",
@@ -1871,6 +1942,56 @@ def _handle_turn(
                 fact_check_front_desk_reason = (
                     "Drafted reply repeated an unconfirmed price/policy/hours/contact claim twice in a row."
                 )
+
+        # Free-text grounding guard: fact_validator above only catches specific
+        # regex-detectable fabrications (price/phone/hours patterns); this
+        # closes the gap for a GENERAL_QUESTION/SERVICE_QUESTION/
+        # PRICING_QUESTION/LOCATION answer when retrieval found NOTHING above
+        # knowledge_service.LLM_RELEVANCE_FLOOR (best_similarity is None here
+        # means knowledge_results, already filtered by that real, evidenced
+        # floor, came back empty) -- true "below-threshold retrieval", never a
+        # model guess. Deliberately does NOT reuse handoff_service's own
+        # (separate, looser) 0.5 similarity cutoff for this: live-tested, that
+        # threshold sits inside the range real, correct top-1 matches score at
+        # (e.g. a genuinely correct "Parking & Location" match scored 0.372,
+        # below 0.5) -- fine as a tolerant side-channel signal for "maybe also
+        # flag staff", but reusing it to REPLACE the customer-facing answer
+        # produced real false positives on already-correct replies. A
+        # retrieved-but-irrelevant chunk (similarity > 0 but not the right
+        # passage) is a real, harder gap this does NOT close -- live-tested,
+        # the model already declines those honestly on its own (see
+        # PHASE_STATUS.md); only the fully-empty-retrieval case gets a hard,
+        # non-negotiable code backstop instead of trusting that self-honesty.
+        # Never applied to BUSINESS_HOURS, whose reply further down is always
+        # the deterministic real-hours override, never the LLM's own
+        # knowledge-derived text -- its retrieval similarity is meaningless
+        # (hours live in a separate table, not the knowledge base).
+        if (
+            fact_check_front_desk_reason is None
+            and classification.intent in (
+                ConversationIntent.GENERAL_QUESTION,
+                ConversationIntent.SERVICE_QUESTION,
+                ConversationIntent.PRICING_QUESTION,
+                ConversationIntent.LOCATION,
+            )
+            and best_similarity is None
+            and classification.needs_human_handoff is not False
+        ):
+            logger.warning(
+                "drafted reply for a %s had no grounded knowledge match, using honest fallback: "
+                "conversation_id=%s best_similarity=%s",
+                classification.intent.value, conversation_id, best_similarity,
+            )
+            fallback_language = force_language or conversation.detected_language or classification.message_language
+            classification = classification._replace(
+                response=render("unconfirmed_fact_fallback", fallback_language),
+                needs_human_handoff=True,
+            )
+            found = f"{best_similarity:.2f}" if best_similarity is not None else "no knowledge base results"
+            fact_check_front_desk_reason = (
+                f"No sufficiently relevant knowledge found for a {classification.intent.value} "
+                f"(best similarity: {found})."
+            )
 
         # Tone/language phase: post-generation check -- does the drafted reply (the
         # original draft, or the fact-grounding retry above) actually match the
@@ -1986,7 +2107,7 @@ def _handle_turn(
     # is the same identity-mapped object `UpdateContactInfoTool.run()` mutates
     # in-session, so `has_contact` below sees the fresh value with no refetch.
     customer_row = db.get(Customer, conversation.customer_id)
-    contact_changes = _resolve_contact_update(customer_row, classification.contact_info_update)
+    contact_changes = _resolve_contact_update(customer_row, classification.contact_info_update, content)
     # Phase 14 SECURITY: a resend only ever goes to the contact details ALREADY on file. A different email/phone typed
     # into the same message as a resend request must not be saved (and so cannot become the destination): on a resend
     # turn the contact update is dropped and the customer is told to make it a separate request.
@@ -2053,9 +2174,9 @@ def _handle_turn(
     ):
         # the model left the service out, or wrote a name that is not exactly a real one ("Teeth Cleaning" for "Teeth Cleaning
         # (Scaling & Polishing)"): either way the draft would stay service-less, so use the service the customer literally named
-        named_service = _service_named_in(services, content)
-        if named_service is not None:
-            booking_request = {**booking_request, "service": named_service.name}
+        booking_request = _fill_missing_booking_service(
+            services, booking_request, content, conversation.booking_draft_offered_service_id
+        )
     reschedule_request = classification.reschedule_request
     if business is not None:
         today_local = datetime.now(ZoneInfo(business.timezone)).date()
@@ -2069,6 +2190,18 @@ def _handle_turn(
         conversation, services, booking_request,
         offered_slots=offered_last_turn, tz=ZoneInfo(business.timezone) if business is not None else None,
     )
+
+    # Record whatever service THIS turn's response just recommended (rule 14b), so the
+    # offered-service fallback above can resolve a plain "yes" on the customer's very next
+    # message even though they never name a service themselves. Fully overwritten every
+    # turn -- a one-shot hint, same discipline as booking_draft_proposed_slots -- so a stale
+    # recommendation from several turns ago can never resurface once the conversation has
+    # moved on. Must run AFTER the offered-service fallback above, which needs the value
+    # THIS turn started with (last turn's recommendation), not this turn's new one.
+    newly_offered_service = (
+        _resolve_service_by_name(services, classification.proposed_service) if classification.proposed_service else None
+    )
+    conversation.booking_draft_offered_service_id = newly_offered_service.id if newly_offered_service else None
 
     # The LLM never mutates data itself: only tool.run() would, and only the
     # orchestrator calls it. Phase 10 registered BOOKING; Phase 11 registers
@@ -2175,6 +2308,11 @@ def _handle_turn(
             response_text = _propose_available_slots(
                 db, business_id=business_id, service=service, conversation=conversation,
                 tz=ZoneInfo(business.timezone), language=language, previous_reply=_last_agent_reply(db, conversation_id),
+                # The customer named this exact time -- it just failed the real
+                # availability check above, so the reply must say so rather than
+                # silently pivot straight to alternatives (real gap found in
+                # test_conversation.py's booking-failure suite).
+                requested_time_unavailable=True,
             )
             # Same partial-clear judgment as _clear_booking_draft_after_attempt's failure
             # path: the requested time is definitely invalid, and the date only survives if
@@ -2410,10 +2548,13 @@ def _handle_turn(
     # classification reliably catches (it missed both, live). Both checks are
     # deterministic and independent of `intent`, same discipline as
     # is_explicit_language_switch/is_provider_failure elsewhere in this function.
-    # Checked against `content` (the emergency wording) / the drafted response_text (the
-    # loop) BEFORE the emergency override below replaces it.
+    # Checked against `content` (the emergency wording) / the model's own original
+    # draft `_llm_drafted_response` (the loop) -- NOT `response_text`, which the
+    # grounding guard above may already have replaced with a fixed, non-question
+    # fallback for this turn; the loop signal is about what the model keeps
+    # drafting, independent of what this turn ultimately sends the customer.
     is_medical_emergency = _is_medical_emergency(content)
-    is_stuck_in_a_loop = _is_stuck_in_a_loop(db, conversation_id, response_text)
+    is_stuck_in_a_loop = _is_stuck_in_a_loop(db, conversation_id, _llm_drafted_response)
     if is_medical_emergency:
         response_text = _emergency_response(business, language)
     escalation_front_desk_reason = None
@@ -2457,7 +2598,6 @@ def _handle_turn(
     # `_handoff_reason` returns None for it regardless of intent or
     # similarity, the same hard, non-prompt-dependent guard OFF_TOPIC already
     # gets by simply not being in the triggering intent sets.
-    best_similarity = max((similarity for _, _, similarity in knowledge_results), default=None)
     handoff = handoff_service.maybe_create_handoff(
         db,
         business_id=business_id,
@@ -2466,7 +2606,14 @@ def _handle_turn(
         best_similarity=best_similarity,
         llm_confirmed_answered=(True if classification.needs_human_handoff is False else None),
         is_language_switch_request=is_explicit_language_switch,
-        front_desk_reason=resend_front_desk_reason or fact_check_front_desk_reason or escalation_front_desk_reason,
+        # escalation_front_desk_reason (stated emergency / stuck loop) must outrank
+        # fact_check_front_desk_reason (generic zero-knowledge-match backstop): an
+        # emergency message very often ALSO fails to match any knowledge article, and
+        # staff triage must see "possible medical/dental emergency," never a generic
+        # "no knowledge found" reason, for the same case this system already root-caused
+        # and fixed once (see the missed_escalation comment above) -- reversed here would
+        # silently reintroduce it.
+        front_desk_reason=resend_front_desk_reason or escalation_front_desk_reason or fact_check_front_desk_reason,
     )
     if handoff is not None:
         response_text = f"{response_text} {render('handoff_addendum', language)}"

@@ -449,6 +449,14 @@ whole object null. Per rule 13: do NOT say in `response` that you've saved/updat
 anything will be resent because of it — just acknowledge naturally and keep helping; the real \
 update (and any real notification resend it enables) happens separately, deterministically, \
 after this call.
+14b. If `response` this turn names or recommends exactly ONE specific entry from Available \
+services as the answer to something the customer asked or described — even though this message \
+isn't itself a booking request and the customer hasn't said a service name themselves — report \
+its exact name in `proposed_service`, so a plain "yes"/"that one" on the customer's very next \
+message can be resolved to it without asking which service all over again. Leave it null \
+whenever `response` doesn't single out one specific real service this way (a plain answer to an \
+unrelated question, a list of several services, or a turn where the customer already named their \
+own service — `booking_request.service` already covers that case, don't duplicate it here).
 15. Also report `needs_human_handoff`: true only if you were NOT able to fully and correctly \
 answer the customer's question using EVERYTHING you were given above — including the Available \
 services list, not just Retrieved knowledge — and a real team member genuinely needs to follow \
@@ -549,6 +557,14 @@ Assistant: {{"intent": "follow_up", "response": "Thanks, Jordan! Got it.", \
 "contact_info_update": {{"name": "Jordan", "email": "jordan@example.com", "phone": null}}, \
 "needs_human_handoff": false}}
 
+Example — the customer asks what a kind of visit is called; the answer names ONE specific real \
+service, reported in `proposed_service` so a later bare "yes" resolves to it without re-asking:
+Available services: Dental Consultation (NPR 500, 20 min), Teeth Cleaning (NPR 1500, 30 min).
+Customer: "docter sanga kura garne appointment bhaneko k ho"
+Assistant: {{"intent": "service_question", "response": "Doctor sanga kura garne appointment \
+bhaneko normally Dental Consultation ho — NPR 500 huncha. Booking garna man cha hajur?", \
+"proposed_service": "Dental Consultation", "needs_human_handoff": false}}
+
 Example — resend request, one active appointment, explicit channel, nothing claimed as done yet:
 Customer's active/upcoming appointments:
 - id=c4d5...: Teeth Cleaning on 2026-09-18T09:30:00+00:00 (confirmed)
@@ -566,6 +582,7 @@ commentary before or after it:
 "reschedule_request": null or {{"appointment_id": "<id>", "date": "<YYYY-MM-DD>", "time": "<HH:MM>"}}, \
 "resend_request": null or {{"appointment_id": "<id>", "channel": "whatsapp" or "email" or "both" or null}}, \
 "contact_info_update": null or {{"name": "<or null>", "email": "<or null>", "phone": "<or null>"}}, \
+"proposed_service": "<exact name of the one service `response` recommends this turn, or null>", \
 "needs_human_handoff": true or false, \
 "message_language": "<one of en, ne_deva, ne_roman, mixed, unclear>", \
 "language_switch_request": null or "<one of en, ne_deva, ne_roman, mixed>"}}"""
@@ -787,6 +804,15 @@ class ClassificationResult(NamedTuple):
     # "LLM observes, Python decides" discipline as message_language, just a
     # different, rarer signal.
     language_switch_request: str | None
+    # Rule 14b: the exact name of the ONE real service `response` recommended/named
+    # this turn (or None) -- orchestrator._merge_booking_draft's offered-service
+    # fallback is what actually turns "customer said yes to it next turn" into a
+    # filled booking_draft_service_id; this field is only ever this turn's honest
+    # report of what got suggested. Trailing default keeps every older/stubbed
+    # ClassificationResult(...) call (this codebase has none left, but any future
+    # fixture that predates this field) parsing to None, same discipline as
+    # needs_human_handoff's own None default above.
+    proposed_service: str | None = None
 
 
 # Phase 33b — real live testing found the LLM intermittently (not
@@ -921,6 +947,11 @@ def _parse_contact_info_update(data: dict) -> dict | None:
     return result or None
 
 
+def _parse_proposed_service(data: dict) -> str | None:
+    value = data.get("proposed_service")
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
 def _parse_needs_human_handoff(data: dict) -> bool | None:
     value = data.get("needs_human_handoff")
     return value if isinstance(value, bool) else None
@@ -964,6 +995,7 @@ def _parse_response(raw: str, customer_message: str = "") -> ClassificationResul
             _parse_needs_human_handoff(data),
             _parse_message_language(data),
             _parse_language_switch_request(data),
+            _parse_proposed_service(data),
         )
     except (json.JSONDecodeError, ValueError, AttributeError) as exc:
         logger.warning("could not parse structured LLM response as JSON, falling back to raw text: %s", exc)
