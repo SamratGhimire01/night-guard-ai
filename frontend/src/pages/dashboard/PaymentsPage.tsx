@@ -30,6 +30,17 @@ export default function PaymentsPage() {
   const [payments, setPayments] = useState<PaymentRead[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Real bug: `business` from the layout's outlet context is still null on this page's first render
+  // (DashboardLayout's own /business/me fetch hasn't resolved yet), so the useState initializers above
+  // always captured `false`/`[]` and never updated once the real business loaded a moment later --
+  // the toggle looked reset after every refresh even though the save had persisted correctly.
+  useEffect(() => {
+    if (business) {
+      setEnabled(business.payment_collection_enabled)
+      setProviders(business.payment_providers)
+    }
+  }, [business])
+
   useEffect(() => {
     apiFetch<PaymentRead[]>('/payments')
       .then(setPayments)
