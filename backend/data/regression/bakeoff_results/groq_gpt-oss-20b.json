@@ -1,0 +1,185 @@
+{
+  "summary": {
+    "candidate": "groq/openai/gpt-oss-20b",
+    "n_cases": 15,
+    "n_pass": 10,
+    "pass_rate": 0.667,
+    "n_llm_calls": 0,
+    "total_prompt_tokens": 0,
+    "total_completion_tokens": 0,
+    "avg_llm_latency_s": null,
+    "total_wall_s": 17.4,
+    "price_per_m_input": 0.075,
+    "price_per_m_output": 0.3,
+    "estimated_total_cost_usd": 0.0,
+    "estimated_cost_per_conversation_usd": 0.0
+  },
+  "cases": [
+    {
+      "id": "syn-syn-oos-3",
+      "source": "synthetic",
+      "wall_s": 0.81,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-ambiguous-1",
+      "source": "synthetic",
+      "wall_s": 0.75,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-gibberish-1",
+      "source": "synthetic",
+      "wall_s": 0.75,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-hard-2",
+      "source": "synthetic",
+      "wall_s": 3.56,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'teeth cleaning', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-easy-3",
+      "source": "synthetic",
+      "wall_s": 0.81,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'root canal', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-easy-2",
+      "source": "synthetic",
+      "wall_s": 0.89,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'dental consultation', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-ambiguous-2",
+      "source": "synthetic",
+      "wall_s": 0.86,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-repeat-flood-1",
+      "source": "synthetic",
+      "wall_s": 3.3,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-info-services-1",
+      "source": "synthetic",
+      "wall_s": 0.88,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-prompt-leak-1",
+      "source": "synthetic",
+      "wall_s": 0.86,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-dental-not-offered-1",
+      "source": "synthetic",
+      "wall_s": 0.84,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-gibberish-2",
+      "source": "synthetic",
+      "wall_s": 0.82,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-empty-1",
+      "source": "synthetic",
+      "wall_s": 0.4,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-info-hours-weekend-nepal",
+      "source": "synthetic",
+      "wall_s": 0.64,
+      "pass": false,
+      "failures": [
+        "final reply contains none of the expected phrases: ['sunday', 'aitabar', '\u0906\u0907\u0924\u092c\u093e\u0930']"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-mixedlang-1",
+      "source": "synthetic",
+      "wall_s": 0.79,
+      "pass": false,
+      "failures": [
+        "no reply mentions the expected price 1500.0 for Teeth Cleaning"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1012 @@
+{
+  "summary": {
+    "candidate": "azure/gpt-5-mini",
+    "n_cases": 90,
+    "n_pass": 89,
+    "pass_rate": 0.989,
+    "n_llm_calls": 190,
+    "total_prompt_tokens": 1815085,
+    "total_completion_tokens": 73280,
+    "avg_llm_latency_s": 4.83,
+    "total_wall_s": 1133.6,
+    "price_per_m_input": 0.25,
+    "price_per_m_output": 2.0,
+    "estimated_total_cost_usd": 0.6003,
+    "estimated_cost_per_conversation_usd": 0.00667
+  },
+  "cases": [
+    {
+      "id": "syn-syn-adv-empty-1",
+      "source": "synthetic",
+      "wall_s": 0.59,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-gibberish-1",
+      "source": "synthetic",
+      "wall_s": 3.71,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I couldn't understand that \u2014 could you please rephrase? I can help with appointments, services, hours, or location."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-gibberish-2",
+      "source": "synthetic",
+      "wall_s": 5.17,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I didn't understand that\u2014could you please rephrase or tell me how I can help with Kathmandu Smile Dental (appointments, services, hours, or policies)?"
+      ]
+    },
+    {
+      "id": "syn-syn-adv-injection-1",
+      "source": "synthetic",
+      "wall_s": 4.34,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-injection-2",
+      "source": "synthetic",
+      "wall_s": 6.06,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I don't have any record or authority here to apply a 100% discount. Our pricing list is: Consultation $60, Cleaning $110, Root Canal $900, Whitening $250. Would you like me to connect you with our team to discuss discounts or billing? I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-prompt-leak-1",
+      "source": "synthetic",
+      "wall_s": 4.07,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I'm just here to help with things related to [regression] Willow Creek Family Dentistry (synthetic) 1be93305 \u2014 appointments, services, hours, and the like. Is there something about that I can help with?"
+      ]
+    },
+    {
+      "id": "syn-syn-adv-repeat-flood-1",
+      "source": "synthetic",
+      "wall_s": 21.58,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I want to make sure I get this right \u2014 could you tell me exactly which service, and the date and time you'd like?",
+        "Sorry, I want to make sure I get this right \u2014 could you tell me exactly which service, and the date and time you'd like?",
+        "Sorry, I want to make sure I get this right \u2014 could you tell me exactly which service, and the date and time you'd like? I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I want to make sure I get this right \u2014 could you tell me exactly which service, and the date and time you'd like? I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-ambiguous-1",
+      "source": "synthetic",
+      "wall_s": 5.1,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I want to make sure I get this right \u2014 could you tell me exactly which service, and the date and time you'd like?"
+      ]
+    },
+    {
+      "id": "syn-syn-ambiguous-2",
+      "source": "synthetic",
+      "wall_s": 4.07,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sure \u2014 what would you like me to check for you?"
+      ]
+    },
+    {
+      "id": "syn-syn-ambiguous-3",
+      "source": "synthetic",
+      "wall_s": 4.17,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Pakka \u2014 ke sodhna man cha hajur?"
+      ]
+    },
+    {
+      "id": "syn-syn-angry-1",
+      "source": "synthetic",
+      "wall_s": 4.89,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I'm really sorry \u2014 that shouldn't have happened. I want to get this escalated for you. Can you please confirm the best phone number to reach you and whether you'd like a callback from our clinical team right away? I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-angry-2",
+      "source": "synthetic",
+      "wall_s": 8.67,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Hajur, yo sunera dukha lagyo \u2014 dherai dukheko bhayo bhane turunta heraunu ramro huncha. Ke tapaiko phone number dinu huncha, ani ke tapaile ahile nai clinic aauna saknuhunchha, va hami le phone call garera contact garun? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha."
+      ]
+    },
+    {
+      "id": "syn-syn-angry-3",
+      "source": "synthetic",
+      "wall_s": 5.62,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "That shouldn't be happening \u2014 I'm sorry you're dealing with this. I don't have billing access here, but I can escalate to our team right away; can you tell me the transaction date and the last 4 digits of the card used so we can investigate and get you a refund? I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-easy-1",
+      "source": "synthetic",
+      "wall_s": 10.7,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "You're all set, Jane Doe! I've booked Teeth Cleaning for Monday, September 28 at 10:00 AM (30 min). Your booking ID is 6R7ZSF8.\nBooked for: Jane Doe\nWhere: [regression] Willow Creek Family Dentistry (synthetic) e6957fe6\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/b198e1b8ea0346aba630c89bcd1558f6.1790690400.ozo9Ua3DQSzhkksrbyluSQ\nA copy of these details, with your check-in QR, is also in your email (j***@example.com). I've updated your contact info on file."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-easy-2",
+      "source": "synthetic",
+      "wall_s": 5.03,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sabai milyo, Sita! Maile Monday, September 28 at 11:00 AM (20 minute) ko lagi Dental Consultation book gari diye. Tapaiko booking ID 25MUFCJ ho.\nTapaiko naam ma: Sita\nKahan: [regression] Kathmandu Smile Dental (synthetic) 922728ee\nTapaiko check-in QR (aauda front desk ma dekhaunuhos): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/8b1947adb1dd4f9c872662d0d7f6c1d0.1790658900.JJ2CLo3DT04dGxThO-ftOQ Maile tapaiko contact information update gare."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-easy-3",
+      "source": "synthetic",
+      "wall_s": 10.96,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "You're all set, John Smith! I've booked Root Canal for Thursday, October 1 at 2:00 PM (60 min). Your booking ID is 85HZ23T.\nBooked for: John Smith\nWhere: [regression] Willow Creek Family Dentistry (synthetic) c3ce3112\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/5b69044838304d5a9747a513e3598761.1790964000.sa39SpPyBEdt1m_NFhCWjQ\nA copy of these details, with your check-in QR, is also in your email (j***@example.com). I've updated your contact info on file."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-hard-1",
+      "source": "synthetic",
+      "wall_s": 31.46,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I want to make sure I get this right \u2014 could you tell me exactly which service, and the date and time you'd like?",
+        "Sorry, I want to make sure I get this right \u2014 could you tell me exactly which service, and the date and time you'd like?",
+        "Here's what's open for Dental Consultation: Sunday, September 27 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Which works for you?",
+        "Here's what's open for Dental Consultation: Friday, October 2 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Which works for you?",
+        "You're all set, Alex Rivera! I've booked Dental Consultation for Friday, October 2 at 3:00 PM (20 min). Your booking ID is 7W2F7CU.\nBooked for: Alex Rivera\nWhere: [regression] Willow Creek Family Dentistry (synthetic) 053557a6\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/f189fe2a35ab4acf85b18cec130dd1a4.1791054000.XI5n-DfgZpoQh_qtdhG1yw\nA copy of these details, with your check-in QR, is also in your email (a***@example.com). I've updated your contact info on file."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-hard-2",
+      "source": "synthetic",
+      "wall_s": 26.19,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Maaf garnuhos, maile thik sanga bujhna chahanchu \u2014 kun service, ra kun miti ra samaya chahanu huncha bhanera batauna sakinu huncha?",
+        "Teeth Cleaning ko lagi yi samaya haru khali chan: Sunday, September 27 at 1:15 PM, 1:30 PM, 1:45 PM, 2:00 PM, 2:15 PM. Kun milcha?",
+        "Huncha, tyo din milcha. Ajhai khali samaya haru: Sunday, September 27 at 1:15 PM, 1:30 PM, 1:45 PM, 2:00 PM, 2:15 PM. Kun samaya chahinchha bhanuhos (samaya ya \"pahilo\") ra ma book gari dinchu.",
+        "Sabai milyo, Ramesh! Maile Monday, September 28 at 3:00 PM (30 minute) ko lagi Teeth Cleaning book gari diye. Tapaiko booking ID UDJ7ATU ho.\nTapaiko naam ma: Ramesh\nKahan: [regression] Kathmandu Smile Dental (synthetic) 2b855e12\nTapaiko check-in QR (aauda front desk ma dekhaunuhos): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/b5462bbbda7944e5b357435851abdc21.1790673300.IqTIL1hGlO2YYpHO6h7g7g Maile tapaiko contact information update gare."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-hard-3",
+      "source": "synthetic",
+      "wall_s": 20.51,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I want to make sure I get this right \u2014 could you tell me exactly which service, and the date and time you'd like?",
+        "Here's what's open for Teeth Cleaning: Sunday, September 27 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Which works for you?",
+        "You're all set, Pat Lee! I've booked Teeth Cleaning for Monday, September 28 at 9:00 AM (30 min). Your booking ID is B4UC72N.\nBooked for: Pat Lee\nWhere: [regression] Willow Creek Family Dentistry (synthetic) 09278763\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/fc8b37bb97464ed885e2c60758707197.1790686800.AAsXNBhWaHTvB6e_8bqn0A\nA copy of these details, with your check-in QR, is also in your email (p***@example.com). I've updated your contact info on file."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-on-closed-day",
+      "source": "synthetic",
+      "wall_s": 6.56,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "There's nothing open for Teeth Cleaning on Sunday, September 27 \u2014 the next real opening is Monday, September 28 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Would any of those work?"
+      ]
+    },
+    {
+      "id": "syn-syn-cancel-1",
+      "source": "synthetic",
+      "wall_s": 19.31,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "You're all set, Casey Nguyen! I've booked Teeth Cleaning for Monday, September 28 at 11:00 AM (30 min). Your booking ID is X482DGQ.\nBooked for: Casey Nguyen\nWhere: [regression] Willow Creek Family Dentistry (synthetic) 7d6baa9d\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/7aec77c5d3254b8a942e906602731a9b.1790694000.miPA3RYuFPgwFg4Y0oBgcA\nA copy of these details, with your check-in QR, is also in your email (c***@example.com). I've updated your contact info on file.",
+        "Done, Casey Nguyen \u2014 your appointment on Monday, September 28 at 11:00 AM has been cancelled."
+      ]
+    },
+    {
+      "id": "syn-syn-cancel-2",
+      "source": "synthetic",
+      "wall_s": 12.22,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sabai milyo, Anita! Maile Sunday, September 27 at 2:00 PM (20 minute) ko lagi Dental Consultation book gari diye. Tapaiko booking ID KP9QQRQ ho.\nTapaiko naam ma: Anita\nKahan: [regression] Kathmandu Smile Dental (synthetic) 07ec4c40\nTapaiko check-in QR (aauda front desk ma dekhaunuhos): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/dd4a097b986f412196c8e35cbc8a23bf.1790583300.lMd-xKYuivK4DphV4Q0OsA Maile tapaiko contact information update gare.",
+        "Bhaihalyo, Anita \u2014 tapaiko Sunday, September 27 at 2:00 PM ko appointment cancel gariyo."
+      ]
+    },
+    {
+      "id": "syn-syn-changes-mind-1",
+      "source": "synthetic",
+      "wall_s": 18.17,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Got it \u2014 Root Canal, Monday, September 28 at 2:00 PM. I just need your name and a phone number or email to lock that in.",
+        "Got it \u2014 Dental Consultation, Monday, September 28 at 2:00 PM. I just need your name and a phone number or email to lock that in. Switching to Dental Consultation instead of Root Canal.",
+        "You're all set, Morgan Blake! I've booked Dental Consultation for Monday, September 28 at 2:00 PM (20 min). Your booking ID is CAK3395.\nBooked for: Morgan Blake\nWhere: [regression] Willow Creek Family Dentistry (synthetic) 90e7d46d\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/a3f4b94658084effad059c3738a4a48e.1790704800._-KE5FN5NsawreP8vx6WDA\nA copy of these details, with your check-in QR, is also in your email (m***@example.com). I've updated your contact info on file."
+      ]
+    },
+    {
+      "id": "syn-syn-changes-mind-2",
+      "source": "synthetic",
+      "wall_s": 19.51,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Teeth Cleaning ko lagi yi samaya haru khali chan: Monday, September 28 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Kun milcha?",
+        "Tapaile bholi ko appointment cleaning bata Tooth Extraction ma switch garna hunuhunchha, ni extraction ko lagi pahile dentist le herera confirm garnu parcha. Ma team sanga connect garera dentist ko advice lina sakchu \u2014 tapaile switch garnu huncha ki pahile consultation chahanu huncha? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+        "Sabai milyo, Suresh! Maile Monday, September 28 at 1:00 PM (30 minute) ko lagi Tooth Extraction book gari diye. Tapaiko booking ID NWYG24M ho.\nTapaiko naam ma: Suresh\nKahan: [regression] Kathmandu Smile Dental (synthetic) ac12f6ea\nTapaiko check-in QR (aauda front desk ma dekhaunuhos): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/0db5e6bad66e4732989eeea3477dcc52.1790666100.59OH9XuKiEPYZvAxySjj1g Maile tapaiko contact information update gare. Teeth Cleaning ko sattama Tooth Extraction."
+      ]
+    },
+    {
+      "id": "syn-syn-dental-emergency-1",
+      "source": "synthetic",
+      "wall_s": 6.78,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "This sounds like it needs urgent attention \u2014 please call us or visit us right away rather than waiting on chat. I've also flagged this conversation for our team. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-dental-emergency-2",
+      "source": "synthetic",
+      "wall_s": 7.45,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Yo ta turuntai dhyan dinu parne jasto dekhincha \u2014 kripaya chat ma nabasi hamilai phone garnuhos ya sidhai aaunuhos. Maile yo kurakani hamro team lai pani janakari diyeko chu. Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha."
+      ]
+    },
+    {
+      "id": "syn-syn-dental-insurance-1",
+      "source": "synthetic",
+      "wall_s": 4.86,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "We don't have that on file \u2014 I can connect you with our team to confirm whether we accept Delta Dental. Would you like me to have them check now? I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-dental-not-offered-1",
+      "source": "synthetic",
+      "wall_s": 6.02,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Got it \u2014 could you tell me which service and what time?"
+      ]
+    },
+    {
+      "id": "syn-syn-dental-not-offered-2",
+      "source": "synthetic",
+      "wall_s": 5.85,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Yo barema hami sanga kunai thap janakari file ma chaina \u2014 ma team sanga confirm garera tapai lai thaha garaidinchu. Kun contact method thik huncha, phone ho ki email? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha."
+      ]
+    },
+    {
+      "id": "syn-syn-info-hours-1",
+      "source": "synthetic",
+      "wall_s": 5.33,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Hamro khulne samaya: Sombar-Aitabar: 9:00 AM - 8:00 PM."
+      ]
+    },
+    {
+      "id": "syn-syn-info-hours-2",
+      "source": "synthetic",
+      "wall_s": 4.19,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Our hours are: Monday-Saturday: 9:00 AM - 5:00 PM. Sunday: Closed."
+      ]
+    },
+    {
+      "id": "syn-syn-info-hours-weekend-nepal",
+      "source": "synthetic",
+      "wall_s": 6.66,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Hamro khulne samaya: Sombar-Sukrabar: 9:00 AM - 6:00 PM. Sanibar: Bandha. Aitabar: 10:00 AM - 6:00 PM."
+      ]
+    },
+    {
+      "id": "syn-syn-info-pricing-1",
+      "source": "synthetic",
+      "wall_s": 5.18,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Teeth Cleaning is USD 110.00 and takes about 30 minutes. Would you like me to check availability for you?"
+      ]
+    },
+    {
+      "id": "syn-syn-info-pricing-2",
+      "source": "synthetic",
+      "wall_s": 4.3,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Root Canal Treatment ko price NPR 8000 ho, ra karib 60 minutes lagcha, hajur."
+      ]
+    },
+    {
+      "id": "syn-syn-info-services-1",
+      "source": "synthetic",
+      "wall_s": 4.78,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "We offer:\n- Dental Consultation \u2014 $60 (20 min)\n- Teeth Cleaning \u2014 $110 (30 min)\n- Root Canal \u2014 $900 (60 min)\n- Teeth Whitening \u2014 $250 (45 min)\n\nWould you like details on any of these or to book an appointment?"
+      ]
+    },
+    {
+      "id": "syn-syn-mixedlang-1",
+      "source": "synthetic",
+      "wall_s": 5.4,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Teeth Cleaning ko price NPR 1500 ho, ra kareeb 30 minute lagcha. Ma bholi (2026-09-28) ko available time haru herchu."
+      ]
+    },
+    {
+      "id": "syn-syn-mixedlang-2",
+      "source": "synthetic",
+      "wall_s": 6.41,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sabai milyo, Bikash! Maile Monday, September 28 at 10:00 AM (60 minute) ko lagi Root Canal Treatment book gari diye. Tapaiko booking ID 7KU8CDX ho.\nTapaiko naam ma: Bikash\nKahan: [regression] Kathmandu Smile Dental (synthetic) 8ce5e5f4\nTapaiko check-in QR (aauda front desk ma dekhaunuhos): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/2a108c3521be458e8810cdca8c1bf9e3.1790655300.Dlkf4krqErPLhC0HN23fRQ Maile tapaiko contact information update gare."
+      ]
+    },
+    {
+      "id": "syn-syn-mixedlang-3",
+      "source": "synthetic",
+      "wall_s": 5.61,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, hamro records ma insurance-ko list bhayeko chaina \u2014 kun insurance company ho bhanera pathaunuhos ki ma team-sanga confirm garera jawaf dinchu? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha."
+      ]
+    },
+    {
+      "id": "syn-syn-oos-1",
+      "source": "synthetic",
+      "wall_s": 6.52,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I'm just here to help with things related to [regression] Willow Creek Family Dentistry (synthetic) a4ce493e \u2014 appointments, services, hours, and the like. Is there something about that I can help with?"
+      ]
+    },
+    {
+      "id": "syn-syn-oos-2",
+      "source": "synthetic",
+      "wall_s": 3.98,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I'm just here to help with things related to [regression] Willow Creek Family Dentistry (synthetic) 2d102c8c \u2014 appointments, services, hours, and the like. Is there something about that I can help with?"
+      ]
+    },
+    {
+      "id": "syn-syn-oos-3",
+      "source": "synthetic",
+      "wall_s": 6.02,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Ma yaha [regression] Kathmandu Smile Dental (synthetic) 99060cff sanga related kura haru ma matra madat garna chu \u2014 jasto appointment, service haru, time, aadi. Tyo sambandhi kehi sodhnu huncha?"
+      ]
+    },
+    {
+      "id": "syn-syn-reschedule-1",
+      "source": "synthetic",
+      "wall_s": 21.91,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "You're all set, Jamie Fox! I've booked Teeth Cleaning for Monday, September 28 at 10:00 AM (30 min). Your booking ID is U8Q76V4.\nBooked for: Jamie Fox\nWhere: [regression] Willow Creek Family Dentistry (synthetic) 7882d76d\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/368fc963bf3447a7a5df4299f89fbdcc.1790690400.B3bu8morYQm1jePLP1JjzQ\nA copy of these details, with your check-in QR, is also in your email (j***@example.com). I've updated your contact info on file.",
+        "All set, Jamie Fox \u2014 your appointment has been moved to Friday, October 2 at 1:00 PM."
+      ]
+    },
+    {
+      "id": "syn-syn-reschedule-2",
+      "source": "synthetic",
+      "wall_s": 14.01,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sabai milyo, Gita! Maile Monday, September 28 at 10:00 AM (20 minute) ko lagi Dental Consultation book gari diye. Tapaiko booking ID 7KY3V6A ho.\nTapaiko naam ma: Gita\nKahan: [regression] Kathmandu Smile Dental (synthetic) 719a04b2\nTapaiko check-in QR (aauda front desk ma dekhaunuhos): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/3e81335e6a644b4aa3d681f2eb835962.1790655300.NBdwlDkKF8LWMBaXBGROXw Maile tapaiko contact information update gare.",
+        "Bhaihalyo, Gita \u2014 tapaiko appointment Monday, September 28 at 4:00 PM ma sariyo."
+      ]
+    },
+    {
+      "id": "real-44c3a45f-0690-419e-8729-85e0d049a01b",
+      "source": "real",
+      "wall_s": 4.68,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Hi! How can I help you today?"
+      ]
+    },
+    {
+      "id": "real-5d72cbeb-908e-49c6-9688-0e71eb59e2f9",
+      "source": "real",
+      "wall_s": 34.66,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I'm just here to help with things related to [regression] Riverside Dental 26d97193 \u2014 appointments, services, hours, and the like. Is there something about that I can help with?",
+        "I'm just here to help with things related to [regression] Riverside Dental 26d97193 \u2014 appointments, services, hours, and the like. Is there something about that I can help with?",
+        "I'm just here to help with things related to [regression] Riverside Dental 26d97193 \u2014 appointments, services, hours, and the like. Is there something about that I can help with? I've also let our team know, so a real person will follow up with you.",
+        "I'm just here to help with things related to [regression] Riverside Dental 26d97193 \u2014 appointments, services, hours, and the like. Is there something about that I can help with? I've also let our team know, so a real person will follow up with you.",
+        "I don\u2019t have our insurance info on file \u2014 would you like me to connect you with our team so they can confirm which plans we accept? I've also let our team know, so a real person will follow up with you.",
+        "We don't have parking details on file \u2014 would you like me to connect you with our team so they can confirm? I've also let our team know, so a real person will follow up with you.",
+        "I'm the digital receptionist for Riverside Dental \u2014 here to help with appointments, services, hours, and the like. How can I help you today?",
+        "You're welcome!"
+      ]
+    },
+    {
+      "id": "real-1ad85833-7e44-44fa-b4f7-b420b91e054b",
+      "source": "real",
+      "wall_s": 215.37,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Hi! How can I help you today?",
+        "Maaf garnuhos, maile thik sanga bujhna chahanchu \u2014 kun service, ra kun miti ra samaya chahanu huncha bhanera batauna sakinu huncha?",
+        "Sakchha, QR pathauna madat garna sakchhu \u2014 tara hajurko kun upcoming appointment ko QR ho bhanera thaha bhayena. Ke tapaile appointment ko date, service, or kun samaya bhanyaunuhunchha?",
+        "Payment bhanera ke bujhnu bhayo hajur? Service ko price sodhnu bhayo, payment method (cash/card/online) ko bare ho, or kun appointment ko payment confirm garne ho? Kripaya ekchin bhanyaunuhola.",
+        "Thik cha \u2014 eSewa QR pathauna sakchhau. Yo kun appointment ko payment ho bhanera bataunuhola (date ra service), wa kun service ko amount chaiyo bhanera btaunuhos hajur?",
+        "Thik cha \u2014 kun exact service ko lagi eSewa QR chahanu huncha? (e.g., Teeth Cleaning, Teeth Whitening, Tooth Filling)",
+        "Teeth Cleaning (Scaling & Polishing) ko price NPR 1500 ho, ra karib 30 minute lagcha. eSewa QR yo amount ko lagi banauna sakincha \u2014 pathauna khohnuhunchha bhane kun channel ma pathaun (WhatsApp wa email)?",
+        "Dhanyabad, Samrat! Thik cha \u2014 maile tapaiko naam, phone, ra email paye. eSewa QR kahan pathaun? WhatsApp (9823045928) ki email (samratghimire01@gmail.com)? Maile tapaiko contact information update gare.",
+        "Thik cha \u2014 yo 2 wota ko lagi dui jana le Teeth Cleaning nai garne ho bhane confirm garidinu hos, ani arko ko naam k ho?",
+        "eSewa app ma huncha \u2014 eSewa QR scan garera payment garnu huncha. QR kahan pathaun? WhatsApp (9823045928) ho ki email (samratghimire01@gmail.com)?",
+        "eSewa app ho \u2014 eSewa QR scan gari payment garnu huncha. Tapai QR WhatsApp (9823045928) ma pathaun ki email (samratghimire01@gmail.com) ma?",
+        "WhatsApp samma pathaun bhane ma WhatsApp 9823045928 ma pathaun? Teeth Cleaning ko price pratyek jana NPR 1500 ho. Confirm garnuhos, ani arko byaktiko naam dinuhos.",
+        "Hello! K garna madat garna sakchu? (QR, appointment, or arko kehi?)",
+        "Bujhe \u2014 kripaya malai kun miti ra kun samaya batauna sakinu huncha?",
+        "Hamro available services haru yeta nai chan: Teeth Cleaning (NPR 1500, 30 min); Root Canal (NPR 8000, 60 min); Tooth Extraction (NPR 1500, 20 min); Braces Consultation (NPR 800, 30 min); Full Braces (NPR 60000, 60 min); Teeth Whitening (NPR 6000, 45 min); Dental Implant (per tooth NPR 45000, 90 min); Tooth Filling (NPR 1200, 30 min); Dental Consultation (NPR 500, 25 min).\n\nClinic hours: Mon\u2013Fri 9:00\u201318:00, Sun 10:00\u201318:00, Sat closed. Kun service ko lagi QR/pathaunu parcha ra kun date/time hernu cha hajur?",
+        "Teeth Cleaning hamro service ho \u2014 listed as \"Teeth Cleaning (Scaling & Polishing)\" (NPR 1500, ~30 min). Procedure ko detailed breakdown yaha record ma chaina; hajur detailed step-by-step bujhna chahanu hunchha bhane ma team/dentist sanga connect garaidin? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+        "Teeth Cleaning (Scaling & Polishing) ko lagi yi samaya haru khali chan: Monday, September 28 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Kun milcha?",
+        "Sabai milyo, Samrat Ghimire! Maile Friday, October 2 at 9:00 AM (30 minute) ko lagi Teeth Cleaning (Scaling & Polishing) book gari diye. Tapaiko booking ID QPQPG8T ho.\nTapaiko naam ma: Samrat Ghimire\nKahan: [regression] Samaj Dental Clinic 4768d9b9\nTapaiko check-in QR (aauda front desk ma dekhaunuhos): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/2a009423c95e44a59677253f9680b6f3.1790997300.5-cyApDdOd9p0nvayMkPmQ\nYi details ra tapaiko check-in QR ko copy tapaiko email (s***@gmail.com) ma pani pathaiyeko cha. Monday, September 28 ko sattama Friday, October 2.",
+        "Friday, October 2 at 9:00 AM ma Teeth Cleaning (Scaling & Polishing) (booking ID QPQPG8T), Samrat Ghimire \u2014 confirmed.",
+        "Friday, October 2 at 9:00 AM ma Teeth Cleaning (Scaling & Polishing) (booking ID QPQPG8T), Samrat Ghimire \u2014 confirmed.",
+        "Maile bujhina hajur \u2014 \u201cMc radi\u201d bhaneko ke ho? Kripaya ali clear gari sodhnuhos, ma sahajai bujhne kosis garchu.",
+        "Hajur, dukhaile paresan hunu bhayo \u2014 ma medical salah din sakdina, tara dental check-up ko lagi chito appointment arrange garna sakchhu. Xoro ko umar k ho ra ke tapaile ajai (urgent) ko slot herauna chahanu huncha?",
+        "Hajur, \u201cPayal\u201d bhanera ke sodhnu bhako ho \u2014 staff Payal ho ki aru ke? Kripaya ali clear garnuhos.",
+        "Hajur, bujhna ali mushkil bhayo \u2014 \"Anal last\" bhanera ke bujhnu bhayo? Ke yo tapaiko xoro ko dukhai sanga sambandhit ho? Xoro ko umar k ho ra dukhai kati gahana cha? Yadi dherai dukhcha bhane ma chito appointment heraune try garchu.",
+        "Namaste! Kasari madat garna sakchu hajur?",
+        "Teeth Cleaning (Scaling & Polishing) ko lagi yi samaya haru khali chan: Sunday, September 27 at 1:30 PM, 1:45 PM, 2:00 PM, 2:15 PM, 2:30 PM. Kun milcha?",
+        "Teeth Cleaning (Scaling & Polishing) ko price NPR 1500 ho ra karib 30 minute lagcha. 11:15 ko slot chahanu bhaye bhane ma availability herera bhanna sakchhu.",
+        "Booking ID bhaneko tapaiko appointment ko reference ho \u2014 hamro team le yo ID bata tapaiko booking khojncha. Yo ID (QPQPG8T) check-in, reschedule, cancellation, wa kunai prashna bhaye sodhna ko lagi upyog garincha."
+      ]
+    },
+    {
+      "id": "real-2b11a236-89c7-4ce2-b42d-7d649926c78f",
+      "source": "real",
+      "wall_s": 5.7,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Here are our services with prices and typical durations:\n- Teeth Cleaning (Scaling & Polishing) \u2014 NPR 1,500 (30 min)\n- Root Canal Treatment \u2014 NPR 8,000 (60 min)\n- Tooth Extraction \u2014 NPR 1,500 (20 min)\n- Braces Consultation \u2014 NPR 800 (30 min)\n- Full Braces Treatment \u2014 NPR 60,000 (60 min)\n- Teeth Whitening \u2014 NPR 6,000 (45 min)\n- Dental Implant (per tooth) \u2014 NPR 45,000 (90 min)\n- Tooth Filling \u2014 NPR 1,200 (30 min)\n- Dental Consultation \u2014 NPR 500 (25 min)"
+      ]
+    },
+    {
+      "id": "real-965d3dfc-d194-4d9e-bc4c-c32d050cbb79",
+      "source": "real",
+      "wall_s": 4.1,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I'm just here to help with things related to [regression] Standing Test Biz Free 056eafb1 \u2014 appointments, services, hours, and the like. Is there something about that I can help with?"
+      ]
+    },
+    {
+      "id": "real-7d76f8e0-a6cd-470d-8403-d1b0ac55293c",
+      "source": "real",
+      "wall_s": 4.58,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I'm just here to help with things related to [regression] Rate Limit Fix Co ab0b91aa \u2014 appointments, services, hours, and the like. Is there something about that I can help with?"
+      ]
+    },
+    {
+      "id": "real-3611e5db-d60a-4130-8728-e9ac2f517fbd",
+      "source": "real",
+      "wall_s": 4.62,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I'm just here to help with things related to [regression] Rate Limit Fix Co aab524ca \u2014 appointments, services, hours, and the like. Is there something about that I can help with?"
+      ]
+    },
+    {
+      "id": "real-4be84614-02c9-49cd-8429-508c68dad05a",
+      "source": "real",
+      "wall_s": 30.15,
+      "pass": false,
+      "failures": [
+        "final reply contains disallowed text: 'am lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.'"
+      ],
+      "replies": [
+        "Namaste hajur \u2014 kun appointment ko barema sodhnu bhayo? Booking garne ho, reschedule, ki cancel? Ke tapaile date/time ya kun service cha bhanera bujhaunu huncha?",
+        "Bujhe \u2014 kripaya malai kun service ra kun samaya batauna sakinu huncha?",
+        "Hamisanga ahile khulne samayako jankari darta chaina \u2014 ma tapailai hamro team sanga jodxu. Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+        "Afno lagi cleaning ko price hamro record ma available chaina \u2014 ma tapailai hamro team sanga connect garera thik price confirm garna sakchhu. Connect garna mancha? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+        "Hajur, walk-in ko barema hamro record ma kunai nirdharit policy chhaina \u2014 ke ma tapailai hamro team sanga jodnu? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha."
+      ]
+    },
+    {
+      "id": "real-0b9d0ac9-302c-49c1-a2d3-52dc11cc3c56",
+      "source": "real",
+      "wall_s": 3.84,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I didn't catch that \u2014 could you clarify what you mean by \"flood message 39\"?"
+      ]
+    },
+    {
+      "id": "real-57a71956-c82e-4d10-ae3b-f0da03c45d11",
+      "source": "real",
+      "wall_s": 5.83,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Got it \u2014 Teeth Cleaning, Friday, October 2 at 10:00 AM. I just need your name and a phone number or email to lock that in."
+      ]
+    },
+    {
+      "id": "real-73aa27f0-30bc-4845-8cfb-0651a01323de",
+      "source": "real",
+      "wall_s": 8.14,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Maaf garnuhos, maile thik sanga bujhna chahanchu \u2014 kun service, ra kun miti ra samaya chahanu huncha bhanera batauna sakinu huncha?"
+      ]
+    },
+    {
+      "id": "real-7019d666-b5dd-427c-9fef-7d07772b2b11",
+      "source": "real",
+      "wall_s": 15.56,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "You're all set, Raj! I've booked Teeth Cleaning for Monday, September 28 at 2:00 PM (30 min). Your booking ID is QHVQ8P4.\nBooked for: Raj\nWhere: [regression] Test Chat Biz 1cface98\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/cced2b8507f04f95b987b75400ba08aa.1790704800.o5Gwgll-34L6aW_omVDy9w\nA copy of these details, with your check-in QR, is also in your email (r***@test.com). I've updated your contact info on file.",
+        "Just to confirm \u2014 do you mean 2:00 PM for your appointment?"
+      ]
+    },
+    {
+      "id": "real-289f1c28-f4c3-4772-89f8-140738a02060",
+      "source": "real",
+      "wall_s": 5.2,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I\u2019m not sure what you mean by \u201cflood message 27.\u201d Could you clarify how I can help with appointments, services, hours, or something else for [regression] Rate Limit Fix Co 7ae34a7d?"
+      ]
+    },
+    {
+      "id": "real-821eb136-74e9-48bf-8134-682240e1d9a9",
+      "source": "real",
+      "wall_s": 8.39,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "There's nothing open for Teeth Cleaning (Scaling & Polishing) on Saturday, October 3 \u2014 the next real opening is Sunday, October 4 at 10:00 AM, 10:15 AM, 10:30 AM, 10:45 AM, 11:00 AM. Would any of those work? I've updated your contact info on file."
+      ]
+    },
+    {
+      "id": "real-c1629db8-a5eb-45f8-b3df-6f93c2b5c664",
+      "source": "real",
+      "wall_s": 3.86,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I don't have our hours on file yet \u2014 let me connect you with our team for that. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-c92553cb-1e7e-43a9-9850-fead42198900",
+      "source": "real",
+      "wall_s": 5.19,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Got it \u2014 Teeth Cleaning, Thursday, October 1 at 10:00 AM. I just need your name and a phone number or email to lock that in."
+      ]
+    },
+    {
+      "id": "real-62bba50f-bb82-4d96-9a40-d1e336a9c6d6",
+      "source": "real",
+      "wall_s": 4.74,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I don't have our location or accepted payment methods in the info I was given. Would you like me to connect you with our team so they can confirm address and which payments we accept? I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-3bcebf98-c43b-4edd-8845-b06da5ab909a",
+      "source": "real",
+      "wall_s": 94.87,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Here's what's open for Teeth Cleaning (Scaling & Polishing): Sunday, September 27 at 1:30 PM, 1:45 PM, 2:00 PM, 2:15 PM, 2:30 PM. Which works for you?",
+        "Thanks, Samrat \u2014 noted your contact details. Would you like me to book one of the Teeth Cleaning slots we listed for today? I've updated your contact info on file.",
+        "You're all set, Samrat! I've booked Teeth Cleaning (Scaling & Polishing) for Sunday, September 27 at 1:30 PM (30 min). Your booking ID is V39FYT4.\nBooked for: Samrat\nWhere: [regression] Samaj Dental Clinic 5c546af3\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/9468b7bd3453437bacd3d3d3e7fe6788.1790581500.HIedkcxadfeYQtSZpuqYyQ\nA copy of these details, with your check-in QR, is also in your email (s***@gmail.com).",
+        "Here's what's open for Teeth Cleaning (Scaling & Polishing): Sunday, September 27 at 2:00 PM, 2:15 PM, 2:30 PM, 2:45 PM, 3:00 PM. Which works for you?",
+        "You're all set, Samrat! I've booked Teeth Cleaning (Scaling & Polishing) for Sunday, September 27 at 2:00 PM (30 min). Your booking ID is XUDFXZ9.\nBooked for: Samrat\nWhere: [regression] Samaj Dental Clinic 5c546af3\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/acb0d4b2fbda41578ebd37b084e98d8f.1790583300.TgTGVE7bF9AHDpuXVkef9A\nA copy of these details, with your check-in QR, is also in your email (s***@gmail.com).",
+        "Here's what's open for Teeth Cleaning (Scaling & Polishing): Sunday, September 27 at 2:30 PM, 2:45 PM, 3:00 PM, 3:15 PM, 3:30 PM. Which works for you?",
+        "Yes, that day works. Those are the times still open: Sunday, September 27 at 2:30 PM, 2:45 PM, 3:00 PM, 3:15 PM, 3:30 PM. Just tell me which one you'd like (say the time, or \"the first one\") and I'll book it.",
+        "I don't see any openings for Teeth Cleaning (Scaling & Polishing) in the next little while \u2014 would you like me to connect you with our team instead? Switching to Monday, September 7 instead of Sunday, September 27.",
+        "You have two upcoming appointments \u2014 Teeth Cleaning on Sept 27 at 1:30 PM and Teeth Cleaning on Sept 27 at 2:00 PM. Just to confirm, do you want both of these cancelled?",
+        "Done, Samrat \u2014 your appointment on Sunday, September 27 at 1:30 PM has been cancelled.",
+        "Done, Samrat \u2014 your appointment on Sunday, September 27 at 2:00 PM has been cancelled.",
+        "Here's what's open for Teeth Cleaning (Scaling & Polishing): Sunday, September 27 at 1:30 PM, 1:45 PM, 2:00 PM, 2:15 PM, 2:30 PM. Which works for you?"
+      ]
+    },
+    {
+      "id": "real-5441ec25-f706-42c8-ab3c-6c47025035dd",
+      "source": "real",
+      "wall_s": 5.3,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Got it \u2014 Teeth Cleaning, Thursday, October 1 at 10:00 AM. I just need your name and a phone number or email to lock that in."
+      ]
+    },
+    {
+      "id": "real-88dafd5d-1e26-411a-9028-f931f44cb1f7",
+      "source": "real",
+      "wall_s": 5.35,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Our hours on Friday are 9:00 AM\u20132:00 PM. I don't have the cancellation policy on file \u2014 would you like me to connect you with the team so they can confirm it? I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-8593c657-3b29-4091-87f3-a97ddbf914f3",
+      "source": "real",
+      "wall_s": 5.81,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Namaste hajur \u2014 Teeth Cleaning (Scaling & Polishing) ko price NPR 1500 ho ra samaya karib 30 minute lagcha. Yo treatment ma tartar removal (scaling) ra polishing samet huncha. Book garna man cha?"
+      ]
+    },
+    {
+      "id": "real-33e7efdc-031e-4105-96dd-03ab23aea5eb",
+      "source": "real",
+      "wall_s": 4.63,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Hi! How can I help you today?"
+      ]
+    },
+    {
+      "id": "real-10d1fd3f-f7cf-4e77-8bc7-60680446fd85",
+      "source": "real",
+      "wall_s": 4.88,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Got it \u2014 Cleaning, Monday, September 28 at 2:00 PM. I just need your name and a phone number or email to lock that in."
+      ]
+    },
+    {
+      "id": "real-c6484929-eed6-4bf9-b34a-63d19f9ac597",
+      "source": "real",
+      "wall_s": 4.45,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I didn't understand \"flood message 57.\" Could you clarify what you need \u2014 an appointment, a question about our services/hours/location, or something else related to Rate Limit Fix Co?"
+      ]
+    },
+    {
+      "id": "real-a8401a66-6a98-4b70-8f2a-3681e42183cd",
+      "source": "real",
+      "wall_s": 10.12,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Basic Cleaning ko lagi yi samaya haru khali chan: Monday, September 28 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Kun milcha?",
+        "Bujhe \u2014 Basic Cleaning, Monday, September 28 at 9:00 AM. Lock garna malai tapaiko naam ra phone number wa email chahincha."
+      ]
+    },
+    {
+      "id": "real-bd00b4f1-7979-4858-843f-637c5bd4a789",
+      "source": "real",
+      "wall_s": 4.68,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I'm just here to help with things related to [regression] Rate Limit Fix Co 0a9a44fa \u2014 appointments, services, hours, and the like. Is there something about that I can help with?"
+      ]
+    },
+    {
+      "id": "real-7db7affc-5bfb-4165-886d-a3d1a088347d",
+      "source": "real",
+      "wall_s": 4.24,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I didn't catch that \u2014 could you tell me what you mean by \u201cregression burst 10\u201d? I can help with appointments, services, hours, or pricing for our Basic Cleaning and Whitening."
+      ]
+    },
+    {
+      "id": "real-a11196f9-543c-412c-89cd-15cc1f999f13",
+      "source": "real",
+      "wall_s": 4.82,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Here are our services and prices:\n- Teeth Cleaning \u2014 USD 1500.00 (30 min)\n- Tooth Filling \u2014 USD 2500.00 (45 min)\n- Root Canal \u2014 USD 9000.00 (90 min)\n- Teeth Whitening \u2014 USD 6000.00 (45 min)\n- Dental Consultation \u2014 USD 500.00 (20 min)\n- Braces Checkup \u2014 USD 1200.00 (30 min)"
+      ]
+    },
+    {
+      "id": "real-28260e5c-879b-4134-9daa-61ce78272158",
+      "source": "real",
+      "wall_s": 6.85,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I'm not sure what you mean by \u201cflood message 14\u201d \u2014 could you clarify? I'm here to help with appointments, services, hours, or related issues."
+      ]
+    },
+    {
+      "id": "real-0d2f950c-888a-4d8a-a4f0-4b495534b8a6",
+      "source": "real",
+      "wall_s": 4.43,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Got it \u2014 Teeth Cleaning, Thursday, October 1 at 10:00 AM. I just need your name and a phone number or email to lock that in."
+      ]
+    },
+    {
+      "id": "real-2c479702-99de-41c0-9ea7-784c7b5f0e89",
+      "source": "real",
+      "wall_s": 5.23,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I'm just here to help with things related to [regression] Rate Limit Fix Co c755b02c \u2014 appointments, services, hours, and the like. Is there something about that I can help with?"
+      ]
+    },
+    {
+      "id": "real-dd2be040-d234-49fe-ad35-6ec7cb37cd28",
+      "source": "real",
+      "wall_s": 8.79,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Whitening takes about 45 minutes.",
+        "You're welcome!"
+      ]
+    },
+    {
+      "id": "real-b9672c2e-4621-4b55-9d96-ef8d5696ee32",
+      "source": "real",
+      "wall_s": 9.03,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Yes \u2014 we offer Basic Cleaning (USD 75.00, about 30 minutes). Would you like to book one?",
+        "You're welcome!"
+      ]
+    },
+    {
+      "id": "real-65b0abbd-0d58-4dc7-92d4-753cf20099aa",
+      "source": "real",
+      "wall_s": 26.47,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Hi! I'm good, thank you \u2014 how can I help you today with Samaj Dental Clinic (appointments, services, hours, or anything else)?",
+        "Sorry, I want to make sure I get this right \u2014 could you tell me exactly which service, and the date and time you'd like?",
+        "Thanks, Nabina \u2014 got your email. Anything else I can help with for your appointment? I've updated your contact info on file.",
+        "Here's what's open for Teeth Cleaning (Scaling & Polishing): Sunday, September 27 at 1:30 PM, 1:45 PM, 2:00 PM, 2:15 PM, 2:30 PM. Which works for you?",
+        "I don't see any openings for Teeth Cleaning (Scaling & Polishing) in the next little while \u2014 would you like me to connect you with our team instead?"
+      ]
+    },
+    {
+      "id": "real-90279226-aebf-4689-a6c0-9c48c79d1a32",
+      "source": "real",
+      "wall_s": 35.71,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Namaste hajur \u2014 appointment ko barema ke sodhnuhunchha? Naya booking garna ho, already booked appointment ko status herna, reschedule garnu, ki cancel garnu?",
+        "Teeth Cleaning ko price USD 90.00 ho, ra karib 30 minute lagcha, hajur.",
+        "Bujhe \u2014 Teeth Cleaning, Monday, September 28 at 10:00 AM. Lock garna malai tapaiko naam ra phone number wa email chahincha.",
+        "Of course \u2014 switching to English now. How can I help you with the appointment?",
+        "We offer:\n- Dental Consultation \u2014 USD 50 (20 min)\n- Teeth Cleaning \u2014 USD 90 (30 min)\n- Root Canal \u2014 USD 450 (60 min)\n- Braces Consultation \u2014 USD 75 (30 min)\n\nWould you like to book one of these?",
+        "Got it \u2014 Teeth Cleaning, Monday, September 28 at 10:00 AM. I just need your name and a phone number or email to lock that in."
+      ]
+    },
+    {
+      "id": "real-8d7818e5-a238-43e4-89ff-c032e7d30e12",
+      "source": "real",
+      "wall_s": 7.04,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "There's nothing open for Teeth Cleaning on Sunday, September 27 \u2014 the next real opening is Monday, September 28 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Would any of those work?"
+      ]
+    },
+    {
+      "id": "real-fefce36b-e72c-43de-a493-98500a8f788d",
+      "source": "real",
+      "wall_s": 5.36,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Got it \u2014 Teeth Cleaning, Friday, October 2 at 10:00 AM. I just need your name and a phone number or email to lock that in."
+      ]
+    },
+    {
+      "id": "real-5717fa61-a268-444d-8c28-db2c91373688",
+      "source": "real",
+      "wall_s": 6.05,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I'm just here to help with things related to [regression] Rate Limit Fix Co 2658caa4 \u2014 appointments, services, hours, and the like. Is there something about that I can help with?"
+      ]
+    },
+    {
+      "id": "real-086dca06-452c-4350-9380-0515d3ed356c",
+      "source": "real",
+      "wall_s": 7.59,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Got it \u2014 Teeth Cleaning, Thursday, October 1 at 10:00 AM. I just need your name and a phone number or email to lock that in."
+      ]
+    },
+    {
+      "id": "real-f941521e-9a45-49fa-bd94-6bbd5ad50454",
+      "source": "real",
+      "wall_s": 26.17,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Namaste hajur \u2014 Cleaning ko price USD 90.00 ho, ra karib 30 minutes lagcha.",
+        "Sure \u2014 switching to English now. How can I help you today?",
+        "Our hours are: Monday-Saturday: 9:00 AM - 5:00 PM. Sunday: Closed.",
+        "Our hours are: Monday-Saturday: 9:00 AM - 5:00 PM. Sunday: Closed."
+      ]
+    },
+    {
+      "id": "real-9d790794-0620-4826-ad92-b9bfc754521f",
+      "source": "real",
+      "wall_s": 6.42,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "I don't have that information on file \u2014 would you like me to connect you with our team so they can confirm the TU MBBS first-year exam date? I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-15f52b68-bce2-4dde-b957-a48a62b6f861",
+      "source": "real",
+      "wall_s": 7.81,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Basic Cleaning is USD 75 and takes about 30 minutes.",
+        "You're welcome!"
+      ]
+    },
+    {
+      "id": "real-e985d7f6-8185-44dd-b450-407df0ace3a3",
+      "source": "real",
+      "wall_s": 6.07,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Hajur, hamro sabai services talaka hun:\n- Teeth Cleaning \u2014 USD 1500.00 (30 min)\n- Tooth Filling \u2014 USD 2500.00 (45 min)\n- Root Canal \u2014 USD 9000.00 (90 min)\n- Teeth Whitening \u2014 USD 6000.00 (45 min)\n- Dental Consultation \u2014 USD 500.00 (20 min)\n- Braces Checkup \u2014 USD 1200.00 (30 min)\nKun service ko lagi appointment chahanu huncha?"
+      ]
+    },
+    {
+      "id": "real-1a956796-1c74-44f1-9c54-d419b7cffcc3",
+      "source": "real",
+      "wall_s": 4.64,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I didn't catch that \u2014 could you clarify what you mean by \"regression burst 10\"?"
+      ]
+    },
+    {
+      "id": "real-d54535e4-cc09-4cd9-bfb4-30dd3c91f221",
+      "source": "real",
+      "wall_s": 7.75,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Maaf garnuhos, maile thik sanga bujhna chahanchu \u2014 kun service, ra kun miti ra samaya chahanu huncha bhanera batauna sakinu huncha?"
+      ]
+    },
+    {
+      "id": "real-96f1ec8e-f2f9-4d8c-872e-787d7c047de5",
+      "source": "real",
+      "wall_s": 25.92,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Cleaning ko price USD 90.00 ho, ra kareeb 30 minute lagcha.",
+        "Sure \u2014 switching to English now. How can I help you today?",
+        "Our hours are: Monday-Saturday: 9:00 AM - 5:00 PM. Sunday: Closed.",
+        "Our hours are: Monday-Saturday: 9:00 AM - 5:00 PM. Sunday: Closed."
+      ]
+    },
+    {
+      "id": "real-ab5af821-73f8-4c7c-a346-31d0ff8e4d7c",
+      "source": "real",
+      "wall_s": 20.06,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Here's what's open for Teeth Cleaning (Scaling & Polishing): Sunday, September 27 at 1:30 PM, 1:45 PM, 2:00 PM, 2:15 PM, 2:30 PM. Which works for you? I've updated your contact info on file.",
+        "Here's what's open for Teeth Cleaning (Scaling & Polishing): Sunday, September 27 at 1:30 PM, 1:45 PM, 2:00 PM, 2:15 PM, 2:30 PM. Which works for you?",
+        "Yes, that day works. Those are the times still open: Sunday, September 27 at 1:30 PM, 1:45 PM, 2:00 PM, 2:15 PM, 2:30 PM. Just tell me which one you'd like (say the time, or \"the first one\") and I'll book it."
+      ]
+    }
+  ]
+}

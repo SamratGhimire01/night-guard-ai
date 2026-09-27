@@ -1,0 +1,76 @@
+{
+  "summary": {
+    "candidate": "xai/grok-4",
+    "n_cases": 5,
+    "n_pass": 3,
+    "pass_rate": 0.6,
+    "n_llm_calls": 0,
+    "total_prompt_tokens": 0,
+    "total_completion_tokens": 0,
+    "avg_llm_latency_s": null,
+    "total_wall_s": 9.3,
+    "price_per_m_input": null,
+    "price_per_m_output": null,
+    "estimated_total_cost_usd": null,
+    "estimated_cost_per_conversation_usd": null
+  },
+  "cases": [
+    {
+      "id": "syn-syn-oos-3",
+      "source": "synthetic",
+      "wall_s": 1.41,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-ambiguous-1",
+      "source": "synthetic",
+      "wall_s": 1.13,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-gibberish-1",
+      "source": "synthetic",
+      "wall_s": 1.13,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-hard-2",
+      "source": "synthetic",
+      "wall_s": 4.38,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'teeth cleaning', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-easy-3",
+      "source": "synthetic",
+      "wall_s": 1.0,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'root canal', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    }
+  ]
+}

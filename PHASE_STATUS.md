@@ -16523,6 +16523,101 @@ New `tests/integration/test_weekday_resolution.py` (25): `_named_weekday` (Engli
 
 ---
 
+## Phase 19 (2026-09-20 series) — QR links reachable off-network, Google Calendar diagnosis, per-business Gmail, WhatsApp typing indicator, channel status. Not committed.
+
+### 1. QR links unreachable outside the local network — FIXED (stopgap) — **NEEDS A REAL DOMAIN**
+* Cause confirmed: `BACKEND_BASE_URL=http://localhost:8010` in `backend/.env` (gitignored) -> every QR/payment-return link pointed at the customer's own localhost.
+* Tunnel confirmed from ngrok's local API (`localhost:4040`) and the process list: `ngrok http --url=unfiltrated-sharla-futile.ngrok-free.dev 8010` (a reserved static ngrok domain, so the URL survives ngrok restarts; `/api/v1/health` = 200 through it). Set `BACKEND_BASE_URL=https://unfiltrated-sharla-futile.ngrok-free.dev`. Also fixes the eSewa/Khalti return URLs, which use the same setting.
+* **Live evidence (after force-recreate):** a real QR link is now `https://unfiltrated-sharla-futile.ngrok-free.dev/qr/<token>`; fetching it through the public tunnel = HTTP 200 "Your check-in QR" page with the QR image.
+* **BEFORE ANY REAL CUSTOMER RELIES ON A QR LINK this must become a real, stable, always-on domain.** This depends on (a) the laptop being on with ngrok running, (b) an ngrok free-plan domain. **Real finding:** a plain mobile-browser request (no `ngrok-skip-browser-warning` header) gets **ngrok's interstitial "You are about to visit…" page**, not the QR — a customer must tap "Visit Site" first. That cannot be removed in code on the free plan (a link tap can't set a header). A paid ngrok plan or real hosting with a real domain removes it. Also: the setting is only in the gitignored `.env`; `.env.example` still says localhost (correct as a default).
+
+### 2. Google Calendar not showing bookings — INVESTIGATED, **NOT FIXED (awaiting decision)**
+* **Root cause (real evidence): Google rejects the stored refresh token.** A direct call to Google's token endpoint with each stored refresh token returns `400 invalid_grant: "Token has been expired or revoked."` — for **both** Premium tenants with a calendar integration (Samaj Dental Clinic, Standing Test Biz Premium). Both connect to the same account (samratghimire01@gmail.com); not a wrong-account problem.
+* DB timeline: Samaj's stored access token expired `2026-09-13T15:01Z` and was never refreshed since. Last calendar event created: booking of 2026-09-13 12:44 UTC (`synced`, event id stored). **Every Samaj booking since 2026-09-13 18:01 UTC (14 rows, latest 2026-09-20 11:25) has `calendar_sync_status=failed`, no event id.** Re-running the real `sync_appointment_created` on the latest one reproduces it: `GoogleCalendarError: token endpoint failed with HTTP 400` (logged, swallowed by design; the booking itself was never affected).
+* What I can't tell from Google's answer: *expired* vs *revoked*. Failure began ~3 h after the first refresh was needed, i.e. well inside 7 days, so it looks revoked (user removed the app at myaccount.google.com/permissions, a password change, or a second grant), not the 7-day limit of an OAuth app left in **Testing** mode — **but check the Google Cloud consent screen: if the app is in "Testing", every reconnect will die after 7 days regardless.** That check needs the Google Cloud console.
+* **Compounding UX bug (not yet changed):** `GET /integrations/google-calendar/status` reports `connected: true` from the row's mere existence, so the dashboard shows a healthy "Connected" over a dead token — which is why this went unnoticed for 7 days. Proposed fix: on `invalid_grant`, mark the integration needing reconnect and show that in the dashboard; plus a re-sync of the 14 failed bookings after reconnect. Reconnecting itself needs an interactive Google login (only the account owner can do it).
+* ~~No code changed for this item.~~ **Superseded by 2b below.**
+
+### 2b. Honest "needs reconnect" status — DONE (approved by the user; old failed bookings deliberately NOT re-synced)
+* `google_calendar_service.get_status` no longer trusts that a row exists. For a saved integration it does a **real check**: refresh the access token if due, then one lightweight `GET calendars/primary`. New `GoogleAuthRejectedError` (subclass of `GoogleCalendarError`) is raised **only** for a definitive Google rejection: token endpoint `400 invalid_grant` (only the body's `error` code is read) or a `401` on the API. Result fields: `connected`, `calendar_name`, **`needs_reconnect`** (Google rejected the token), **`verified`** (False = Google unreachable / 5xx / other error -> unknown, never reported as broken or healthy). Route/response schema/`types.ts` updated; `disconnect` returns the defaults.
+* Dashboard (`GoogleCalendarPage.tsx`): red **"Needs reconnect"** badge + explanation + **"Reconnect Google Calendar"** button (plus Disconnect); green "Connected" only when verified; yellow "Connected (unverified)" when Google couldn't be reached. Reconnect uses the existing `/connect` flow (`prompt=consent`, config fully replaced), so no disconnect is needed first.
+* **Real proof, with what the evidence does and does not show:**
+  * **Samaj's original broken row can no longer be shown** — the user pressed Disconnect on it at 14:01 UTC (ngrok log: `POST …/google-calendar/disconnect`, then two `GET …/connect`) using the old UI, *before* the new check was live, so the row I diagnosed was deleted. I did not recreate or fake it.
+  * **The same real dead token, still stored on "Standing Test Biz Premium"** (same Google account, `invalid_grant` confirmed in step 2), on the recreated server (StartedAt 14:02:21Z): `{"connected":true,"calendar_name":"samratghimire01@gmail.com","needs_reconnect":true,"verified":true}` — a real Google rejection, not a mock.
+  * **After the user's real reconnect** (Google callback `302` in the backend log): Samaj -> `{"connected":true,"calendar_name":"samratghimire01@gmail.com","needs_reconnect":false,"verified":true}` at 14:21Z, computed by a live Google call with the new token (row: enabled, has refresh token, access-token expiry 15:02Z). The flip broken -> Connected is also covered by a test that drives the real `/callback` route.
+  * **Not done:** the new badge was **not** seen rendered in a browser by me (dashboard login is the user's step); the status values above come from the same `get_status` the route returns. **Not done:** a real booking on Samaj to confirm a calendar event is created after the reconnect — offered, not run (it would write a real appointment and a real Google event).
+* Tests: +8 (`test_google_calendar.py`: refresh token rejected, fresh-but-rejected access token, healthy, Google unreachable = unverified not broken, broken->reconnect->connected through the real callback, `invalid_grant` vs other 400 vs 500 mapping); 3 existing exact-payload assertions updated for the two new fields. **Full suite: 622 passed, 10 skipped, 0 failed** (614 + 8), run against the recreated server. `tsc` clean.
+* Still open: the Google Cloud consent-screen "Testing" (7-day refresh-token expiry) check — needs the Google Cloud console. If it is in Testing, Samaj's new token expires ~2026-09-27 and this status will show "Needs reconnect" again. Note: the backend's uvicorn access log records the OAuth `code` query string on the callback (single-use, already exchanged; noted in case logs are shared).
+
+### 3. Per-business Gmail credentials (Channels page) — DONE
+* New integration `type="email"`, config `{gmail_address, app_password}`; `app_password` is write-only (stripped from every `IntegrationRead`), Google's display spaces are removed on save, address must contain `@`. `EmailNotificationProvider.send(..., credentials=(addr, pw))`; `integration_service.email_credentials()` returns the business's own login or `None`. All four send paths pass it: notifications/dispatch, follow-ups, daily report, monthly report.
+* **Fallback decision (please confirm):** a business with **no** saved email login still sends from the platform `GMAIL_ADDRESS` (so existing tenants such as Samaj keep working today). A business that **has** saved one never falls back — a broken login fails visibly instead of silently sending from another sender. The platform account can be removed once every tenant has its own.
+* "Test connection" = real SMTP handshake (connect, STARTTLS, LOGIN — no mail sent). Fixed messages per failure class; never echoes the server's AUTH text or the password. Dashboard: new "Email (Gmail)" card with an inline **"Create an app password"** link to `https://myaccount.google.com/apppasswords`, password field `autoComplete="new-password"`.
+* **Live evidence (recreated server, real HTTP, throwaway "Phase 16 Test Clinic" tenant; row deleted afterwards):** save -> `{"config":{"gmail_address":…}}` (no password); test with the real working account -> `ok:true "Connected — Gmail accepted the login…"`; save a wrong app password + test -> `ok:false "Gmail rejected this address/app password. Use a 16-character app password…"`; list -> no password; malformed address -> 422.
+* **Not verified:** the new card was **not** viewed in a real browser (the dashboard tab was on a login screen and logging in is the user's step). `tsc` clean, `vite build` succeeds. No real customer email was sent using a per-business login (covered by a test that asserts the SMTP login and `From` header).
+
+### 4. WhatsApp "typing…" indicator — implemented; **needs one real-phone confirmation**
+* Mechanism from Meta's current docs (developers.facebook.com/docs/whatsapp/cloud-api/typing-indicators), not assumed: `POST /{phone_number_id}/messages` with `{"messaging_product":"whatsapp","status":"read","message_id":"<inbound wamid>","typing_indicator":{"type":"text"}}`. It also marks the message read (blue ticks); Meta dismisses it when we reply, or after 25 s; Meta says to show it only if you will respond.
+* `WhatsAppChannelAdapter.send_typing_indicator` (5 s timeout, never raises, skipped with no token) is called in `process_webhook_payload` after the duplicate check and before the LLM turn, so it fires once per new message and never for a redelivery. Synchronous, so it adds one Graph round-trip (≲ a few hundred ms, unmeasured) before the reply work starts.
+* Evidence: 3 tests (exact request body, failure paths, once-per-message/no-duplicate). A real Graph call with a made-up message id returned `131009 Parameter value is not valid` — consistent with the shape being accepted and only the id being bad, but **not proof the bubble appears**. I did not fire it at a real customer's phone. **To confirm: send a WhatsApp message to the business number and watch for "typing…"; a failure is logged as `WhatsApp typing indicator failed: HTTP <code>`.**
+
+### 5. Channel status
+* **Instagram:** no change and no new information. Credentials valid (`test-connection` = Connected). Our side is fine: the webhook GET handshake with `INSTAGRAM_VERIFY_TOKEN` returns the challenge on both localhost and the public tunnel. ngrok has recorded **zero** Instagram POSTs since the tunnel started; the last Instagram message in the DB is 2026-09-12. So the remaining mismatch is in the Meta app dashboard's webhook config (which I can't see), still unresolved.
+* **Messenger:** **not verified end-to-end.** I did **not** send a real test message — that needs a real Messenger user messaging the Page (or an outbound send to a real person's account, which I didn't do without asking). What is verified: token valid (`pages_messaging` check passes), handshake OK via tunnel, page id 1261279723741477 saved. Last real Messenger conversation: 2026-09-12; no Messenger POST reached ngrok since it started. So "replies working" is **unconfirmed** — message the Page from a test account and I'll watch ngrok/logs.
+
+### 6. Tests / ops
+* **Full suite (recreated server StartedAt 13:53:38Z; run before the recreate, same code): 614 passed, 10 skipped, 0 failed** (604 + 10 new: 7 email, 3 typing). One earlier `-x` run stopped on `test_test_connection_makes_a_real_graph_api_call…` — a real unmocked Meta call that hit a transient network error ("could not reach Graph API"); passes on rerun, unrelated. Existing fake email providers in 8 test files gained `credentials=None` in their `send` signature. `ruff`: only 2 pre-existing F541s in `tests/security/test_phase29_pagination.py`.
+* **Secrets grep:** no live value from `backend/.env` appears in any changed/new file; `.env` is gitignored.
+* **Commit state:** NOT committed (awaiting review). The working tree also holds the paused Phase 16 language work; the shared files (`PHASE_STATUS.md`, `frontend/src/api/types.ts`) will need a hunk split.
+
+---
+
+## Phase 20 (2026-09-20 series) — resend_confirmation failing for Samaj Dental: root cause, test-suite mail leak, service-name resolver. Not committed.
+
+### 1. Root cause of the three failed resends — Gmail's daily sending limit on the shared platform account (NOT Feature 1)
+* **Real error under the generic message** (backend log, business f0ca2a54-…, appointment c4e44e12-…, all three attempts 14:43:28 / 14:44:14 / 14:45:07 UTC, each 3 SMTP tries): `SMTPDataError: transient SMTP failure ((550, b'5.4.5 Daily user sending limit exceeded. For more information on Gmail sending limits go to … support.google.com/a/answer/166852 …'))` -> `resend_confirmation tool executed: … channels={'email': 'failed'}` -> the customer-facing "Something went wrong sending that just now". The same error hit every email that Samaj sent from 14:40 on (booking confirmation and reschedule notice for the same customer: 5 FAILED notification rows in the 14:00 hour).
+* **Feature 1 ruled out with evidence:** (a) `integrations` has **zero** `type='email'` rows in the whole DB, so Samaj correctly used the platform fallback (`GMAIL_ADDRESS`, `skillsathi.info@gmail.com`); (b) the running container started 14:02:21Z with the Feature-1 code loaded (`credentials` present in `email_provider.py`) — the failures are 38+ minutes after it, so it is not the stale-container gap either. The failure is Google refusing the *account*, not our code.
+* **Confirmed still live at 14:58Z** by a real resend attempt through the real `ResendConfirmationTool` on that appointment: identical 550 5.4.5, 3 tries, `failed`.
+* **Why the account ran out (measured, partly inferred):** the test suite was sending REAL mail through this same production Gmail. A counting fake-SMTP plugin over one full run: **57 real `send_message` calls per run** (33 `test_conversation`, 19 `test_checkin`, 2 `test_weekday_resolution`, 1 each `test_followups`/`test_notifications`/`test_sms_notifications`), to `@example.com` customers — that is also why full runs took ~18 min (real SMTP round trips). Today I ran the full suite three times (plus targeted runs), and earlier phases did the same on 09-19 — Gmail's window is rolling 24 h. I can't read Google's actual limit or count, so **"the test suite exhausted it" is the best-supported explanation, not proven**; real customer mail and reports also draw on it, and the 11:00-hour FAILED row (before my runs) has no stored error, so I can't say whether it was the same limit.
+* **Side effect found (design question, NOT changed):** `resend_confirmation` claims the per-appointment cap (3) *before* sending, so three failures caused by an outage locked the customer out of any further resend though nothing was delivered. I reset that one appointment's `confirmation_resend_count` to 0 (twice: once before my live probe, once after it) — a data repair to the user's own test booking. Proposal for the user to decide: refund the claim when no channel succeeded (trade-off: lets a failing send be retried without limit, so it would need its own small cap).
+
+### 2. Fix applied, and what is NOT fixed
+* **Applied:** `tests/conftest.py` — an autouse fixture replaces `smtplib.SMTP` with a no-network fake for every test (a test that installs its own fake still overrides it). Guard test `tests/unit/test_no_real_smtp.py`. Effect measured: full suite **~18 min -> 6:50** and **0 real emails per run**.
+* **NOT fixed / NOT proven — no real email has arrived for Samaj yet.** The shared account is still over its limit, so a real resend cannot succeed right now, and I did not fake one. Two ways out, needing the user: (1) **wait** for Google's window to reset (unknown length; Gmail states 24 h), or (2) **give Samaj its own Gmail** — Dashboard -> Channels -> "Email (Gmail)" -> Gmail address + app password (Feature 1, write-only; only the account owner can create the app password at myaccount.google.com/apppasswords). That is the structural fix: quotas are per account, so one tenant/tests can no longer starve another. After either, the check is: run the real `ResendConfirmationTool` on appointment c4e44e12 (channel email) -> expect `sent` (SMTP 250), then confirm arrival in the customer's inbox (`yoyobhattrai8@gmail.com`) — I can verify the SMTP acceptance, the inbox needs a human (or a logged-in Gmail).
+* Not changed on purpose: the 550 5.4.5 error is still classed transient (an existing test documents that decision), so it still retries 3x (~9 s) before failing.
+
+### 3. "i wnat to clean my teeth" not recognised — small fix made; the exact miss was NOT reproduced
+* Real transcript (Samaj, 14:38–14:39): "i wnat to book an appointment" and then "i wnat to clean my teeth" both got the generic "which service, date and time" (`booking_clarify`) — rendered only when the persisted draft has **no** service, date or time, i.e. the service was not captured on that turn.
+* Against Samaj's real 9 services with the real classifier (with and without the prior turns as context, `locked_language` None/en): the phrase mapped to "Teeth Cleaning (Scaling & Polishing)" **48/48** — so the specific miss is not reproducible, likely a rare model output. **But a real, measured mechanism exists:** in 120 samples the model returned a non-exact service string twice — `"Teeth Whitening (NPR 6000.00, 45 min)"`, `"Tooth Extraction (NPR 1500.00, 20 min)"` (it copied the services list's price suffix) — and `_resolve_service_by_name` was exact-only, so the draft stayed service-less and produced exactly that generic question. This is my most probable explanation for the 14:39 turn, not a proven one.
+* **Fix:** `_resolve_service_by_name` still tries the exact full name first, then a unique match after removing every `(...)` group on both sides (so "Teeth Cleaning", "Teeth Cleaning (NPR 1500.00, 30 min)" and "Dental Implant" resolve); never a guess — ambiguous (two services differing only in the parenthetical) or unrelated names ("Cleaning", "Teeth") still resolve to nothing. 10 new tests. Live (recreated server, StartedAt 15:05:54Z): on the throwaway business "Standing Test Biz Premium", "i wnat to book an appointment" -> clarify (correct), then "i wnat to clean my teeth" -> "Here's what's open for Basic Cleaning: Monday, September 21 at 9:00 AM…". Nothing was sent to the real Samaj business for this.
+
+### 4. Tests / ops
+* **Full suite: 632 passed, 10 skipped, 0 failed** (622 + 10 resolver tests; the guard test, added after that run started, passes separately -> 633). Backend force-recreated for live checks (StartedAt 2026-09-20T15:05:54Z; resolver code confirmed loaded). `ruff`: only the same 2 pre-existing F541s in `tests/security/test_phase29_pagination.py`.
+* **Secrets grep:** no live credential in any changed/new file. One flagged match is a false positive: the dev DB password is the 8-char placeholder `changeme`, which already appears 9 times in the committed `PHASE_STATUS.md` and 0 times in this phase's changes.
+* **Commit state:** NOT committed (awaiting review); same hunk-split caveat as Phase 19 (shared `PHASE_STATUS.md`, `orchestrator.py`, `test_conversation.py` also carry the paused Phase 16 work).
+
+---
+
+## Phase 21 (2026-09-20 series) — resend_confirmation: a failed send no longer consumes the customer's cap; separate failed-retry guard. Not committed.
+
+Follows the design question left open in Phase 20 §1 (three outage failures locked a customer out of resends though nothing was delivered).
+
+* **Refund:** `ResendConfirmationTool.run` (`app/services/conversation/appointment_tools.py`) still claims the slot atomically BEFORE sending, but if no channel delivered and at least one reported `failed`, it hands the slot back with `UPDATE ... SET confirmation_resend_count = confirmation_resend_count - 1 WHERE id = :id AND confirmation_resend_count > 0` (atomic, floored at 0). `no_recipient` is not a send and still consumes the cap (unchanged); partial success (e.g. chat link sent, email failed) keeps the claim.
+* **Retry guard:** the existing in-memory `RateLimiter` (`app/core/rate_limit.py`), keyed by appointment id, 5 failed sends / 300 s. When blocked the tool returns `throttled: True` without claiming or sending; the orchestrator replies with the existing `resend_send_failed` text and opens a front-desk handoff (`_format_resend_result`, `_resend_needs_front_desk`). **Limitation (documented, same as every limiter here):** per-process memory, resets on restart, not shared across replicas.
+* **Tests (2 new, end of `test_conversation.py`):** 5 failed sends leave the real count at 0 and the 6th is throttled with no send attempted (provider call count stays 5); a successful send after a refunded failure consumes exactly 1. Ran: 249 passed across `test_conversation`, `test_whatsapp`, `test_messenger`, `test_instagram`, `test_contact_update`, `tests/unit`; `ruff` clean on the touched paths. The full suite was NOT re-run this phase.
+* **Live proof (backend force-recreated, StartedAt 2026-09-20T16:40:52Z; real `ResendConfirmationTool`, real Gmail SMTP, appointment c4e44e12):** with a deliberately wrong app password patched into that one throwaway process, real Gmail rejected 5 sends (`SMTPAuthenticationError`) -> each `failed`, real `confirmation_resend_count` stayed 0 after every one; attempts 6 and 7 -> `throttled`, 0.0 s, no send attempted, count 0.
+* **Side effect to know about:** my first probe ran before I noticed Gmail's daily limit had cleared, so it sent **3 real confirmation emails** to that booking's customer address (`yoyobhattrai8@gmail.com`) and consumed its 3 resends; I reset `confirmation_resend_count` to 0 afterwards. It also shows the shared account is sending again (consistent with, not proof of, the Phase 20 test-suite-leak explanation).
+* **Commit state:** NOT committed (awaiting confirmation). `PHASE_STATUS.md`, `orchestrator.py` and `test_conversation.py` also carry other uncommitted phases' hunks (same hunk-split caveat as Phases 19/20).
+
+---
+
+## Phase 16 (2026-09-20 series) — IN PROGRESS, PAUSED (language anchoring fix + per-business language mode). Not committed.
+
+* **Lab (conversation-lab L8, untracked):** confirmed the L7 anchoring bug with numbers: baseline `prod` mislabels **72/100** turns whose language contradicts the lock (plain English inside a Roman-Nepali lock) and **never** completes a Roman->English switch (0/17); a one-sentence change to the per-turn lock line ("this lock decides ONLY `response`; report `message_language` from the customer's own words") gives **0/68 mislabels and 19/19 switches completing on exactly the 3rd differing message**, hold-the-lock scenarios kept. **It also exposed a second flaw:** once the model reports honestly, neutral English tokens ("Friday", "3pm", "yes") count as an English streak and flipped the lock (neutral-turn flips 4/223 -> 13/221). A neutral-token guard (no Devanagari, <=2 Latin words, <2 Nepali-word hits => no signal) is being validated (`prod_fixBN` arm); **that run was paused/killed for the latency work and is resumable** (same commands skip finished rows). **Production `intent.py` is untouched.** Live BEFORE captured: 0/2 sessions moved to English, streak stuck at 0.
+* **Part 2 (language mode) built, uncommitted:** `Business.language_mode` (`automatic`|`ask`, migration `d4e5f6a7b8c0` applied and downgrade-round-tripped), `Conversation.language_prompted`, ask/answer logic in the orchestrator (deterministic, no LLM), parser, dashboard Settings -> Language tab, 12 backend tests, live API check against the real LLM passed. **Still to do:** the dashboard toggle test in a real browser (needs the throwaway account `phase16-owner@example.com` logged in — the browser tab is currently logged into the real Samaj Dental account, which I did not touch), lab validation of the neutral-token guard, the production port of the anchoring fix + live before/after, a full-suite run for that, and its own PHASE_STATUS section.
+
+---
+
 ## Phase L1 — conversation-lab sandbox (separate track)
 
 New top-level `conversation-lab/` (DSPy sandbox, judge, test UI). Full report, real judge scores and isolation
@@ -16533,6 +16628,7 @@ browser; zero changes to backend/ or frontend/. No optimization run yet. Nothing
 Later lab phases (L2-L5: generalization, held-out sets, judge criteria, first MIPROv2 run, decline-fidelity check) are in `conversation-lab/LAB_STATUS.md`; the one change that reached the backend is **Phase 12 (2026-09-19 series)** above.
 
 ---
+
 ---
 
 ## Phase 47 (2026-09-21 series) — customer picks eSewa or Khalti, payment QR, proactive "payment received" chat message, real sandbox proof for both gateways. Not committed.
@@ -16731,6 +16827,149 @@ The remaining NPR 1188.00 is due at the clinic. I'll confirm everything once the
 
 ---
 
+## Phase 52 (2026-09-21 series) — unified inbox + human takeover: INVESTIGATION + PROPOSAL ONLY. No code changed. Not committed.
+
+Full findings and plan: **`docs/unified-inbox-proposal.md`**. Headlines:
+* Model is already channel-agnostic (`conversations`/`messages`, `MessageSenderType.STAFF` exists, never written). `proactive.send_to_conversation` is the existing send-into-conversation seam for WhatsApp/Messenger/Instagram; the website widget only receives via polling, and its poll filters `AGENT` and only runs after a payment link.
+* **The AI does not stop when a handoff is open** (orchestrator never reads handoff state) — takeover (`conversations.human_takeover_until`, guard at the top of `handle_incoming_message` + re-check after the LLM call) is the load-bearing safety piece.
+* **24h messaging window is handled nowhere** — staff replies to older conversations will fail on WhatsApp/Messenger/Instagram (Meta rules marked *verify*).
+* No push infra exists; recommend polling (3s thread / 10s list). Found: the three Meta webhook handlers are `async def` running blocking LLM turns, stalling the event loop (from code reading, not benchmarked) — prerequisite fix.
+* Only OWNER logins exist (no code creates admin/staff users). Proposed RBAC: view + reply = owner/admin/staff, author stored + audited.
+* Awaiting your decisions on Q1–Q6 (doc §8) before any implementation. No commit — standing rule #6.
+
+---
+
+## Phase 52 — BUILD, stages 1 + 2 (webhook event-loop fix; human takeover). STOPPED FOR REVIEW before send API / UI / prompt change. Not committed.
+
+Decisions confirmed by you: 2h sliding takeover + hand-back + resolve-releases; all four channels; real placeholders for non-text inbound; closed-window = "can't reply" only; view+reply for owner/admin/staff (staff-invite flow deferred); AI prompt change + real eval approved. Build order per `docs/unified-inbox-proposal.md`.
+
+### Correction to my own proposal
+§3/§9 claimed the "I've also let our team know" addendum is appended to EVERY reply while a handoff is open. **Wrong.** `_handoff_reason` returns `None` for a non-qualifying turn before the "already open?" check, so only turns that themselves qualify get it — but on those it repeats each time (`handoff is not None` can't tell "created now" from "already open"). Doc corrected.
+
+### Stage 1 — webhook handlers blocked the whole server (FIXED, ships first)
+* **Root cause:** `receive_{whatsapp,messenger,instagram}_webhook` are `async def` and called the blocking `process_webhook_payload` (embed + LLM + urllib send) directly → the single event loop froze for the whole turn. Same defect in `POST /knowledge/upload` (PDF parse + embeddings). `voice.py` already used `asyncio.to_thread`; the four sites now do too (`webhooks.py`, `knowledge.py`).
+* **Before (pre-fix server, real Azure LLM turn, `tests/eval/live_webhook_blocking.py`):** webhook 5.83 s; **one** `/health` probe completed in **5,531 ms** (the loop was frozen for the entire turn).
+* **After (force-recreated, StartedAt 14:24:39Z):** webhook 6.41 s; **56** `/health` probes during the turn, median **10 ms**, max **22 ms**, 0 over 1 s.
+* **Regression test `test_event_loop_not_blocked.py` (4):** each handler run with a deliberately blocking body; asserts the loop is not stalled. **Verified to discriminate:** on the pre-fix code all 4 FAIL (loop stalled 1.2–1.3 s), on the fix all 4 pass. (My first version could not detect the bug — it timed only the probe, after the stall — caught by running it against the reverted code, then fixed.)
+
+### Stage 2 — human takeover (BUILT)
+* **Schema (migration `f1a2b3c4d5e6`, applied):** `conversations.human_takeover_until timestamptz`, `human_takeover_by uuid → business_users(id) ON DELETE SET NULL`. Setting `HUMAN_TAKEOVER_SECONDS` (default 7200) in `core/config.py`.
+* **`services/takeover_service.py`:** `is_active` (reads the COLUMN from the DB via `clock_timestamp()`, not the ORM object — the ORM row is stale after a multi-second LLM call, and `now()` is the transaction start), `is_active_for_contact` (read-only, for the WhatsApp typing indicator), `start_or_extend` (sliding), `release`.
+* **Orchestrator — two checkpoints:** (1) top of `handle_incoming_message`, before every branch (covers premium-test, language question, payment choice, bare-digit pick, provider failure, main flow) and skips the LLM cost; (2) right after `classify_and_respond` returns, BEFORE any side effect (contact update, booking, handoff row), so a discarded draft never leaves a real appointment behind. Either returns `{"response": None, "agent_message_id": None, "takeover": True, ...}` after storing the CUSTOMER message (checkpoint 2 keeps the classified intent). **Accepted, documented gap:** the milliseconds between checkpoint 2 and the final commit are not locked (an advisory lock would close it if ever needed).
+* **Callers updated for `response is None`:** the 3 Meta webhooks (status `human_takeover`, nothing sent; WhatsApp also skips the "typing…" indicator), widget route + voice route + testing route + their schemas (`response`/`intent` now optional), `widget.js` (renders nothing for a null reply). Webhook log line gains `webhook_human_takeover`.
+* **Endpoints (owner/admin/staff, tenant-scoped, 404 cross-tenant):** `POST /api/v1/inbox/conversations/{id}/takeover`, `.../release`. `PATCH /handoffs/{id}` (resolve) now also releases. `docs/frontend-api-contract.md` updated.
+* **Tests `test_human_takeover.py` (19):** the adversarial mid-LLM-call case (a stub ChatProvider commits the takeover from a separate session INSIDE the call: draft discarded, no AGENT message, customer message + classified intent kept, no HumanHandoff row, contact update NOT applied) + a control proving the same turn without the takeover does reply and apply those side effects; already-active (LLM never called); release; expired; sliding + configured length; default = 7200; resolve-releases; roles owner/staff/admin; 401; cross-tenant 404; all three webhook channels (sends nothing during takeover, no typing indicator, resumes after release) and the adversarial case end-to-end through each real webhook handler (nothing sent); widget `null` reply. **Mutation-tested:** disabling checkpoint 2 fails exactly the 4 mid-call tests; disabling checkpoint 1 fails the 6 simple ones — each guard is load-bearing.
+* **Test-pollution bug in my own fixture, fixed:** patching adapter *instances* with `monkeypatch` leaves a stale instance attribute that shadowed a later test's class-level patch (made `test_whatsapp` BSUID test fail in the full run and send real, failing Meta calls). Fixture now patches the classes.
+
+### Live proof (backend force-recreated; real uvicorn, real Azure LLM, throwaway tenant + fake WhatsApp number, tenant deleted after; `tests/eval/live_takeover.py`)
+* **Adversarial (mid-LLM):** message 2 starts a real 6.7 s turn; at +2.5 s a staff claim over the real HTTP API → `active=True until=…16:49:06Z`. Result: customer message stored (`intent=service_question`, i.e. the LLM had finished), **no agent message for it**. Server log for that turn: `human takeover active -- AI suppressed … classified_intent=service_question`, `webhook_human_takeover: 1`, **no `WhatsApp send` line** (the typing indicator preceded the claim). After `/release`, message 3 got a normal AI answer.
+* **2-hour expiry (short-interval-then-revert):** temporary compose override `HUMAN_TAKEOVER_SECONDS=20` (no repo/.env edit; server showed `human_takeover_seconds = 20`): claim (window 20.0 s) → customer writes → webhook returned in **0.02 s, no LLM call**, message stored → 21.5 s of nothing → customer writes → **AI answered by itself (6.1 s LLM turn)**. Reverted: force-recreated with no override, `human_takeover_seconds = 7200` confirmed (StartedAt 14:50:43Z).
+
+### Verification
+* Full stubbed-LLM suite (excludes `test_multilingual_real_llm` and `tests/eval`, per the Azure-credit concern): **767 passed, 1 skipped**. `test_human_takeover.py` re-run after the final `clock_timestamp` tweak: 19 passed.
+
+### Not done yet (per your staging)
+Send-into-conversation API + 24h windows + delivery status + non-text placeholders (stage 3), inbox UI (stage 4), `staff:` prompt line + conversation-quality eval (stage 5), `staff_last_read_at`/list/thread endpoints, widget poll change (STAFF filter + poll while open). Until stage 3 nothing can start a takeover except the two new endpoints (no UI calls them), so production behaviour is unchanged.
+
+### Commit hygiene (for when you approve)
+Working tree still holds the paused Phase 16/payment-choice hunks in `orchestrator.py`, `conversation.py` (model), `schemas/business.py`, etc. My orchestrator/model/schema edits are interleaved with them → needs a hunk-split, like Phase 51. New untracked files of this phase: `takeover_service.py`, `schemas/inbox.py`, `api/routes/inbox.py`, migration `f1a2b3c4d5e6`, `test_event_loop_not_blocked.py`, `test_human_takeover.py`, `tests/eval/live_webhook_blocking.py`, `tests/eval/live_takeover.py`. No commit — standing rule #6.
+
+---
+
+## Phase 52 — BUILD, pre-stage-3 changes + STAGE 3 (send/receive mechanism). STOPPED FOR REVIEW before the inbox UI (stage 4) and the prompt change (stage 5). Not committed.
+
+### Change 1 — `POST /conversations/{id}/messages` is owner/admin only
+`require_role(["owner","admin"])` (was any role). Contract doc updated; the dashboard never called it. **Live (real server):** staff-role token → **HTTP 403** `You do not have permission…`, zero messages stored; owner → 201. Tests `test_conversation_endpoint_roles.py` (3): staff 403 + no LLM call + nothing planted; owner and admin 201; unauthenticated 401.
+
+### Change 2 — the last takeover race is closed (per-conversation `ReplyLock`)
+* **What was still open:** a staff claim committing AFTER the AI's second checkpoint but before its reply was SENT — and the send happens in the webhook layer AFTER the orchestrator returns, so the window was really "checkpoint → channel send", not just "checkpoint → commit". A lock that stopped at the final commit would have left the same double-reply.
+* **Mechanism (`takeover_service.ReplyLock`):** Postgres SESSION-level advisory lock (`pg_advisory_lock(hashtextextended(conversation_id))`) on a DEDICATED connection (session-level because the turn commits several times — a transaction lock would drop; dedicated because the turn's Session returns its connection to the pool on every commit). Protocol: **AI:** acquire → `is_active()` → (active? discard : persist + DELIVER) → release. **Staff:** acquire → set takeover → commit → release. Whoever gets the lock first wins cleanly: staff first → the AI's check under the lock sees it and discards; AI first → its reply is fully delivered before the claim can commit (sequential, never simultaneous).
+* **Wiring:** `handle_incoming_message` is now a thin wrapper around `_handle_turn`; it takes a `deliver` callback (the 3 webhook handlers pass their adapter's send) and performs delivery INSIDE the lock, then records the outcome on the AGENT message. Three checkpoints: 0 (cheap, unlocked, skips the LLM/summarization cost), 1 (after context assembly, UNDER the lock: guards the early non-LLM replies — premium test, language question, payment choice, bare-digit pick), released before the multi-second embed/LLM call, 2 (after the LLM call, UNDER the lock, after `db.commit()` so no row lock is held while waiting) — plus the provider-failure path. If a reply path ever reached delivery without the lock the wrapper takes it and re-checks (delivery_status `suppressed`) rather than sending blind. A staff claim waits ≤30 s (`CLAIM_LOCK_TIMEOUT_SECONDS`) then gets a retryable 409. Widget/voice/testing callers pass no `deliver` (their delivery is the HTTP response) — a claim landing in the ms between that return and the browser rendering it can't be prevented and is harmless (sequential).
+* **Checked and NOT a bug (I suspected it):** the AI session holding a row lock on the conversation across the LLM call (which would make a mid-LLM claim queue behind it). `SessionLocal` is `autoflush=False`, so no UPDATE is flushed before the call; test `test_staff_claim_mid_llm_is_never_blocked…` guards it (with a dirty `booking_draft_proposed_slots` row) and passes. The `db.commit()` before checkpoint 2 makes it robust anyway.
+* **Adversarial tests `test_takeover_race.py` (7), deterministic — the race is FORCED into the exact window, not timing luck:** (a) forward gap: the claim is fired from INSIDE a slow channel send (after the last check) → it must commit only after the send ended, events ordered `send_start, send_end, claim_committed`, exactly one AI reply, next customer message silent; (b) reverse gap: a claim is "in progress" (holds the lock, not yet committed) when the AI reaches its final check → AI waits, sees it, discards, nothing sent, customer message kept; (c) the same forward race end-to-end through the real WhatsApp webhook + a real HTTP `/takeover` claim; (d) lock serializes / per-conversation / staff wait times out with a retryable 409; (e) the lock is released and no connection leaks when a turn raises; (f) the no-row-lock check above. **Mutation-tested:** lock `acquire` a no-op → 4 fail (forward, reverse, webhook, timeout); staff claim not taking the lock → the 2 forward-race tests fail.
+* **LIVE adversarial proof (real uvicorn process on :8001, same code/DB/real Azure LLM; ONLY difference: the outbound WhatsApp call takes +5 s, like a slow Meta; `tests/eval/live_race_server.py` + `live_takeover_race.py`; throwaway tenant, fake number, tenant deleted):** message 2's AI reply persisted at 18.07 s and its send began; a real HTTP staff claim was fired at that instant; **the claim was answered 5.4 s later (23.46 s) — exactly when the send finished**; exactly two agent messages existed; message 3 returned in 0.02 s with no LLM call and no send. Helper server stopped afterwards.
+* Also re-ran the stage-2 live mid-LLM proof on the final code (claim at +2.5 s → draft discarded, log `AI suppressed … classified_intent=pricing_question`; hand-back → AI answers).
+
+### Stage 3 — send into a conversation, all four channels
+* **Schema (migration `a2b3c4d5e6f7`, applied):** `messages.sent_by_user_id` (FK → business_users, SET NULL), `delivery_status` (sent|simulated|failed|suppressed|pending), `delivery_detail`, `client_msg_id` + `UNIQUE(conversation_id, client_msg_id)`, index `(conversation_id, created_at)`.
+* **Send path:** `proactive.push_to_channel` extracted from `send_to_conversation` (payment messages keep working; they now record delivery too). `inbox_service.send_staff_reply`: validate → idempotency → `reply_state` (window/connection) → claim + store the STAFF message under the ReplyLock (stored BEFORE sending, so a failed send is visible and retryable) → push through the SAME per-channel adapters the AI uses → store `delivery_status/detail` → `AuditLog(action="inbox_reply")`.
+* **Endpoints (owner/admin/staff; 404 cross-tenant, 401 unauth):** `GET /inbox/conversations/{id}` (header + takeover + reply window + open handoff), `GET …/messages?after=` (thread, one query for all channels, with delivery status + author), `POST …/reply`. `docs/frontend-api-contract.md` updated.
+* **24-hour window:** WhatsApp/Messenger/Instagram: can reply only if the customer's LAST message is < 24 h old AND the channel is connected; otherwise `reply.can_reply=false` with a plain reason, and `POST /reply` → 409 with nothing stored, nothing sent, the AI NOT silenced. Website: no window. Other channels (sms/test): can't reply. Boundary tested at 23h59 (open) / 24h01 (closed); a new customer message re-opens it. Per-channel length caps (WhatsApp 4096 chars, Messenger 2000, Instagram 1000 BYTES, website 4000). **Meta's exact rules/limits are still "verify"** — this phase only BLOCKS; a send Meta rejects anyway is recorded as `failed`.
+* **AI-reply-send-failure fix (folded in as you approved):** every AI reply on WhatsApp/Messenger/Instagram now records `delivery_status/detail` on its AGENT message (via the `deliver` callback), instead of only logging. Live it captured Meta's real rejections.
+* **Website widget receives staff messages:** `get_agent_messages_after` now returns STAFF + AGENT; the POST responses carry `customer_message_id` (the polling cursor when no AI reply exists); `widget.js` polls whenever its panel is open and the tab visible (10 s; 5 s for 30 min after a payment link), stops when hidden/closed.
+* **Non-text placeholders:** WhatsApp image/voice note/audio/video/document/sticker/location/contact (+ generic line for other types) and Messenger/Instagram attachments (image, audio→voice note, video, file→document, share, fallback…) are stored as real CUSTOMER messages (`[Customer sent an image]` …); reactions/system notices are not recorded; idempotent on the message id; the AI is NOT invoked (as before the customer gets no automatic reply — now staff can SEE it, and it opens the 24h window). Two old tests that asserted "silently dropped" were updated to the new contract. **Known v1 limit:** a message with text AND an attachment keeps the text only.
+
+### Tests (new): `test_inbox_send.py` (57)
+Real request capture at `urllib.request.urlopen` (the real adapter builds the real URL/auth/body; only the wire is faked): a staff reply on WhatsApp (`/{phone_number_id}/messages`, Bearer token, `to`), Messenger (`/me/messages?access_token`, `recipient.id`), Instagram (`/{ig_account_id}/messages`) → `sent`, authored, audited, AI silent afterwards on each; website via the real widget poll (incl. the customer-message-id cursor and cross-tenant token); failed (`failed: HTTP 400`, no raw provider body) and simulated; closed window per channel (409, nothing sent/stored/claimed); boundary; reopen; website no-window; sms/disconnected; idempotency; per-channel length limits incl. Devanagari bytes on Instagram; blank; roles/401/404; thread + cursor; AI-reply delivery `sent`→`failed` per channel; system messages record delivery; status mapping; 9 WhatsApp non-text types, ignored reactions/system, redelivery idempotency + window reopening, placeholder during takeover, Messenger/Instagram attachments ×6 types, text+attachment.
+
+### Verification
+* **Full stubbed-LLM suite: 834 passed, 1 skipped** (excludes `test_multilingual_real_llm` and `tests/eval`; the Azure-credit concern). Backend force-recreated before live checks (StartedAt 15:26:39Z, alembic head `a2b3c4d5e6f7`).
+* **Live, real server (`tests/eval/live_inbox_send.py`):** (1) staff 403 / owner 201; (2) three old (30 h) conversations → `can_reply=false` with `"Can't reply: the 24-hour {WhatsApp|Messenger|Instagram} reply window closed (the customer's last message was 30 hours ago)."`, reply → 409, 0 staff messages stored, takeover not claimed; (3) a staff reply on each channel really called Meta's Graph API with THROWAWAY tokens/fake recipients → recorded truthfully as `failed: HTTP 401` (WhatsApp) / `failed: HTTP 400` (Messenger, Instagram), staff message stored + authored, takeover active; (4) website: reply `sent / recorded for widget poll`, widget poll returned it, visitor's next message → `response: null`.
+* **Real browser (Chrome, real `/widget.js` on `/widget-demo`, real Azure LLM, throwaway tenant, deleted):** AI answered; a staff reply from the inbox API appeared in the open widget **864 ms** after the tab became visible; visitor replied during takeover → exactly one bubble (their own), no AI reply, typing indicator not stuck, turn 1.3 s (no LLM); a second staff reply arrived on the periodic poll in 1.9 s. **Caveat:** the automation tab was in the background (`document.hidden=true`) — the widget correctly did NOT poll then (observed); to test I overrode `document.hidden` and fired `visibilitychange`, i.e. simulated the tab being shown.
+
+### NOT proven yet — needs your decision
+**A real staff reply delivered to a real person's phone/account, per channel.** Everything above used throwaway credentials or a captured wire. Real credentials exist only on Samaj Dental (a live business), so I did not send. Read-only look at real conversations inside the 24 h window: WhatsApp only — "Samrat Ghimire" ×2 (last customer message 1 h 37 m and 12 h 47 m ago), "Aadarsha Ghimire" (5 h), "Rabin bhattarai" (23 h 9 m — about to close); **no Messenger or Instagram conversation is in-window**. To finish that criterion I need your OK on a recipient (e.g. your own WhatsApp "Samrat Ghimire") and, for Messenger/Instagram, you sending a message from your own test account first (to open the window) and telling me when.
+
+### Also worth knowing (design notes, not bugs)
+* A staff reply whose send FAILS still claims the conversation (AI silent up to 2 h): the message is visible + retryable, and a channel that can't send for staff can't send for the AI either. Easy to change to "release on failed" if you'd rather.
+* The Instagram "changes[]" test-envelope shape is handled for text only, not placeholders (real traffic uses `messaging[]`).
+
+### Files (this stage, all uncommitted; hunk-split still needed in `orchestrator.py`, `conversation.py`, `schemas/business.py`… where the paused Phase 16/payment-choice hunks live)
+New: `services/inbox_service.py`, `services/channels/delivery.py`, migration `a2b3c4d5e6f7`, `test_inbox_send.py`, `test_takeover_race.py`, `test_conversation_endpoint_roles.py`, `tests/eval/live_race_server.py`, `live_takeover_race.py`, `live_inbox_send.py`. Changed: `takeover_service.py` (ReplyLock), `orchestrator.py`, `proactive.py`, `inbox.py`, `schemas/inbox.py`, the 3 webhook handlers + 4 adapters, `base.py`, `meta_messaging_webhook.py`, `widget_service.py`, `widget.js`, widget/voice routes + schemas, `conversations.py`, `db/models/conversation.py`, 2 updated tests. No commit — standing rule #6.
+
+### Phase 52 — real-recipient proof, WhatsApp (2026-09-21 ~15:49 UTC) — decisions confirmed
+* **Confirmed by you:** a failed staff-reply send KEEPS the 2h AI silence (unchanged; not to be altered).
+* **Real WhatsApp send:** conversation `3db7b0b2…` (Samaj Dental, customer "Samrat Ghimire", phone identity + a BSUID alias; the customer's last message was 2 s earlier, so the 24 h window was open; `reply_state.can_reply=True`). Sent through the real `inbox_service.send_staff_reply` as the clinic's owner user (called at the service layer inside the container — no token minted, no credentials handled), text prefixed `[Night Guard AI TEST]`. **Result: `delivery_status=sent`, Meta returned `wamid.HBgNOTc3OTgy…` (accepted by the real WhatsApp Cloud API).** The takeover it created was released immediately afterwards so the AI chat was not left silent for 2 h. "Delivered to the phone" itself is the user's to confirm — Meta's delivered/read status webhooks are not stored by this system (they are skipped, as before).
+* **Still open for the acceptance criterion:** Messenger and Instagram real sends (waiting for the user to open both windows from test accounts), and the user's confirmation that the WhatsApp message arrived. Stage 4 (UI) and 5 (prompt) NOT started, per instruction.
+
+### Phase 52 — real Instagram test found a LIVE BUG: inbound DMs were silently dropped (fixed; unrelated to the inbox code)
+* **Report:** after the user DM'd the clinic's Instagram (@samratghimire01, the connected business account) the AI never replied.
+* **Root cause (from the server log):** `instagram webhook: no business registered for ig_account_id=17841427159216908`. Instagram gives an account TWO ids: `id` (`27943813045319546`, what the clinic's integration stores — what people paste as "Instagram Account ID") and the professional `user_id` (`17841427159216908`), which Meta puts in every webhook's `entry[].id`. The resolver matched only the typed one, so every inbound Instagram DM to the clinic was dropped with only a WARNING (Meta got 200, never retries). Messenger/WhatsApp were unaffected. Impact: ANY real customer DM on the clinic's Instagram since the integration was saved with that id. The earlier 9-day-old Instagram conversation predates this.
+* **Fix:** `instagram_webhook._resolve_integration` matches `ig_account_id` OR `ig_user_id`; `graph_api.fetch_instagram_user_id` (best-effort, token's own host, never logs the token) + `integration_service.upsert_integration` stores `ig_user_id` automatically whenever Instagram credentials are saved, so a dashboard re-save cannot wipe the alias; `proactive.push_to_channel` now sends with `ig_user_id` (the same id the webhook reply path uses). **Clinic data change (disclosed):** added `ig_user_id=17841427159216908` to the clinic's Instagram integration config — value fetched from Meta with the saved token, equal to the id in the dropped webhook. Backend force-recreated (StartedAt 16:04:18Z).
+* **Tests `test_instagram_account_ids.py` (4):** the exact bug (DM to the professional id dropped without the alias, handled with it, unrelated ids still dropped); save stores the looked-up id and never echoes the token; a failed lookup never blocks saving; the lookup uses the token's own host and survives failures. Related suites: 34 passed.
+* **Lost, unrecoverable:** the user's first Instagram test message (16:00:58 UTC) — must be re-sent.
+
+---
+
+## Phase 52 — STAGE 4 (inbox UI) built + backend for it. Visual check PENDING the user's sign-in. Stage 5 (prompt) NOT started. Not committed.
+
+### Backend added for the UI (migration `b3c4d5e6f7a8`: `conversations.staff_last_read_at`)
+`GET /inbox/conversations` (tabs needs_reply|handoffs|all, channel, name search, pagination; one SQL with the last message / last customer message / open-handoff computed per row — no N+1), `GET /inbox/summary` (sidebar badge), `POST /inbox/conversations/{id}/read`, `messages?latest=true` (the NEWEST window — a 189-message thread needs it), `takeover_by_email` on the header, and every inbox timestamp UTC-tagged (`messages.created_at` is naive UTC and a browser would have read it as local time). **Definition to review:** `needs_reply` = a human is responsible (open handoff or staff-owned) AND the customer spoke last; a conversation the AI answered is never "needs reply". Tests `test_inbox_list.py` (9): the six-state world (AI-answered / handoff+customer-last / owned+customer-last / owned+staff-last / handoff+AI-answered / expired takeover), tabs/channel/search/ordering/pagination, last-message + failed-delivery flag, truncation, unread→read→unread, summary + tenant isolation, auth/422, empty conversations, latest-window + UTC.
+
+### Frontend (Mantine, the existing PageHeader/StatusBadge/EmptyState components; no new dependency)
+* `pages/dashboard/InboxPage.tsx` (+ `inbox/ConversationList`, `ThreadPane`, `MessageBubble`, `format`, `usePolling`), routes `/dashboard/inbox` and `/dashboard/inbox/:conversationId`, sidebar item "Inbox" with an orange badge of conversations waiting for a person (polled every 30 s), and an "Open in inbox" action on the Human Handoffs page.
+* **List:** tabs Needs reply / Handoffs / All, channel filter, name search (debounced), channel icon per row, unread dot + bold, "Needs reply" / "Handoff" / "<name> handling" / "AI" / "Not delivered" badges (new status colours added to `statusColors.ts`), relative time; skeleton + empty states. Polls every 10 s (and immediately on any filter change).
+* **Thread:** customer / AI / staff bubbles (staff = filled, with author; AI labelled; non-text placeholders in italics), day separators, per-message delivery line (Sent ✓ / Sending… / **Not delivered — reason + Retry** / Simulated / Not sent), banner "AI is handling this" vs "<name> is handling this — hands back automatically at HH:MM", escalation banner with **Mark resolved** (which hands back to the AI), **Take over / Hand back to AI** buttons, composer (Enter sends, Shift+Enter newline, fresh idempotency key per submit, optimistic "Sending…" bubble). When a reply can't reach the customer the composer is replaced by "You can't reply here right now" + the server's reason (the 24 h window). Polls the newest 200 messages every 3 s, the header every 5 s, only while the tab is visible; follows new messages only if the reader is at the bottom; marks the conversation read on open and on each new customer message. Mobile (< md): one pane at a time with a back button.
+* `tsc -b` clean, `vite build` OK, oxlint: 0 errors, the two warnings my new files produced were fixed (a ref written during render; a redundant reset effect) — the remaining warnings are the pre-existing ones. A bug caught before running it: the polling hook did not restart when a filter changed (a tab switch would have waited up to 10 s) — fixed with a `resetKey`.
+
+### Verification
+* Backend full stubbed-LLM suite: **847 passed, 1 skipped**. Backend force-recreated (StartedAt 16:12:15Z, alembic head `b3c4d5e6f7a8`); the vite dev server on :5173 hot-loads the new files.
+* **NOT verified visually.** I opened `http://localhost:5173/dashboard/inbox` in the browser; it redirected to the login form (saved credentials for a different account pre-filled) and I do not authenticate. The Chrome extension then disconnected, so no screenshots exist. The UI is verified only by the type checker, the build, the linter, and the API tests it calls — NOT by looking at it.
+
+---
+
+## Phase 53 (2026-09-22) — two real product gaps found dogfooding a second, non-booking tenant (SikshyaNepal, an informational Q&A business). NOT fixed — found while creating a new tenant for a separate project via Night Guard's own real signup/knowledge-ingestion flow; explicitly out of scope to touch this codebase during that work. Documented here per instruction so they aren't lost.
+
+### Gap 1 — the greeting and the booking intent engage with booking even when a tenant has ZERO services
+A brand-new tenant with no services and no hours configured (a pure Q&A/informational business) still gets the generic greeting template listing "booking, rescheduling, cancelling, or checking appointments" as things the AI can help with, and a message like "Can I book an appointment for tomorrow at 3pm?" is classified as `ConversationIntent.BOOKING` and gets a real "Got it — could you tell me which service?" reply, walking a full step into the booking flow before it discovers (one turn later, when a service name is given) that no services exist and falls back to a handoff. **The end state is safe** — verified live: 0 `appointments` rows, 1 real `human_handoffs` row, no data corruption — but the UX is wrong for a whole class of tenant this platform can now serve (Phase 52's unified inbox explicitly extended it beyond bookable businesses).
+* **Root cause (from reading the code, not yet fixed):** the greeting template (`response_templates.py`) and the LLM's intent-classification prompt (`intent.py`) are both written assuming every tenant is a bookable-services business; neither checks `service_service.list_services(...)` being empty before deciding what to offer or how to classify "book an appointment."
+* **Suggested direction (not built):** when a business has zero services, either suppress the booking-flavored language from the greeting template and skip the BOOKING intent branch entirely (treat "book an appointment" as `service_question`/`off_topic` → honest "we don't offer bookable appointments here"), or make this conditional on a real `business.accepts_bookings`-style flag distinct from just "services list is empty today."
+
+### Gap 2 — `off_topic` wrongly fires on real, answerable questions that name an external institution — **FIXED, see Phase 54**
+For an aggregator/info-hub tenant (SikshyaNepal: college/exam/notice/scholarship information *about* universities and colleges that are not the business itself), a real, on-file question is often misclassified `off_topic` and declined with the generic "I'm just here to help with things related to [Business]... appointments, services, hours" line — **even when the real knowledge chunk is right there and highly similar.**
+* **Live proof (real Azure LLM, real ingested content, 4 near-identical questions in one session):**
+  - "Is there any notice about TU BBS exam form fill up?" → `general_question`, answered correctly and in full from the real notice.
+  - "Any exam notices I should know about?" → `general_question`, answered correctly, listing 5 real on-file items.
+  - "What's the latest notice from Kathmandu University?" → **`off_topic`**, declined — despite a real, on-file KU notice existing.
+  - "Do you have information about the TU MBBS first year exam date?" → **`off_topic`**, declined — despite the real notice existing (confirmed: `POST /knowledge/search` on that exact query independently returns it at 0.64 cosine similarity, so retrieval itself is fine; the LLM's classification step never gets there).
+* **Root cause (from reading `intent.py`, not yet fixed):** rule 24 (`OFF_TOPIC` — "anything clearly unrelated to this business... other companies... never answered, never treated as a knowledge gap") is written for a single local business (a dental clinic, a salon) where a question naming another company really is out of scope. For an aggregator tenant, the content is *inherently about* other named institutions (Kathmandu University, Tribhuvan University, specific colleges) — that rule fires on the institution name itself, roughly half the time in this sample, regardless of whether the business's own knowledge base has a direct, on-file answer.
+* **Suggested direction (not built):** `off_topic` classification should not override a genuine knowledge-base hit — e.g. only apply the off_topic short-circuit when the knowledge search for that turn also comes back empty/low-similarity (mirroring how `_INFO_INTENTS`' relevance-threshold check already works), rather than a category the LLM can select before knowledge is even consulted for that intent.
+
+### Context (for anyone picking this up)
+Both found live, real Azure LLM, no code changed in this repository — a second Night Guard tenant ("SikshyaNepal", business_id `615f61bc-b319-4694-9128-bb7cb7f7af62`) was created through the real `/auth/register` endpoint and populated with 86 real knowledge documents (colleges, universities, notices, news, scholarships, results) from a separate project's Supabase database, entirely through the existing `POST /knowledge` → `PATCH {status: approved}` path — no schema, endpoint, or business logic touched. Both gaps are pre-existing behavior this exposed, not something the new tenant caused.
+
+---
+
 ## Phase 54 (2026-09-22) — real fix for Phase 53's Gap 2: `off_topic` false-positive on aggregator tenants. Not committed — awaiting review.
 
 ### The real fix
@@ -16774,75 +17013,93 @@ Gap 1 (zero-services tenants still getting booking-flavored greeting/intent) —
 
 ---
 
-## Phase 16 completion (2026-09-22) — the paused language-anchoring fix + per-business language mode, finally finished and committed. Picked back up after Phases 47-54 had landed in between.
+## Phase 56 (2026-09-27) — Close out the "other"-category regression backlog: quick pass, unit tests only
 
-Phase 16 (2026-09-20 series, above) built the per-business `language_mode` feature and validated the anchoring-bug fix in
-`conversation-lab`, but explicitly left two things undone: the production port of the anchoring fix, and a full close-out. This
-entry finishes both, re-verified against everything that landed since (Phases 47-54, including today's own Phase 54
-`content_scope` work, which touches the same `intent.py` file).
+**Date:** 2026-09-27
 
-### Step 1 — re-orientation: re-confirmed, not re-guessed
-* **"Ask upfront" mode:** re-run live, fresh, on the real Samaj Dental Clinic tenant (toggled to `ask` via a direct DB write,
-  reverted to `automatic` immediately after each run — never left in a test state) — full 7-message conversation (greeting
-  question -> "Nepali" answer -> 4 real business questions answered in Romanized Nepali -> explicit "Can we switch to English
-  please?" -> next answer in English) worked exactly as before. Confirmed unaffected by Phase 54's `content_scope` prompt
-  change (that touches rule 0/off_topic only; `_build_user_prompt`'s lock-line injection, which ask mode's locked turns also go
-  through, is untouched by it).
-* **Anchoring fix status:** confirmed still NOT ported — `_build_user_prompt`'s lock line in production `intent.py` was still
-  byte-for-byte the pre-fix wording (`"...regardless of minor drift in the customer's current message."`, nothing after).
+**Required:** fix the remaining ~20 `"other"`-category findings from `backend/data/regression/failure_log_batches/*.json` (named examples: currency-symbol inconsistency, duplicated FAQ blocks). New standing testing rule from this point on: no more 500+ case live regression runs between phases — fast unit tests plus a small ~10-20 case live smoke check only; the full suite runs once, at the very end of all work.
 
-### Step 2 — ported the lab-validated `prod_fixB` fix, nothing more
-`prod_fixB` (`conversation-lab/lab/lang_anchor.py`) is the ablation that isolates JUST the per-turn lock-line wording — no
-system-prompt/JSON-key reordering (that's `prod_fixA`/`prod_fix`, not ported; not needed). The neutral-token guard variant
-(`prod_fixBN`) is explicitly **not** ported either — its own lab validation run was paused/killed for the latency work and
-never finished (see the original Phase 16 entry above), so there is no real validated result to port; porting an unvalidated
-guard would be a bigger, unreviewed change than what this ticket asked for. This is a real, documented limitation carried
-forward from Phase 25/Phase 16, not a new one.
+**Investigation first** (a fork traced each of the 20 `"other"` findings plus the one literal "duplicated FAQ blocks" `tone` finding against the current codebase, not just the read-through's original diagnosis):
 
-`_build_user_prompt` (`intent.py`) now appends one sentence to the lock line:
-> This lock decides ONLY the language of `response`: report `message_language` from the customer's own words alone (plain
-> English is "en" even here).
+- **Already fixed by prior work, verified against current code, no action needed:**
+  - Currency-symbol inconsistency (finding #1, Samaj Dental Clinic $/Rs. mixing) — `fact_validator.check_price_and_deposit` (committed `f18d167`) flags any price symbol outside the tenant's configured currency on every turn; structurally closed.
+  - SikshyaNepal aggregator off-topic misclassification (#18–20) — `intent.py`'s `aggregator_scope_note` + the real tenant row's `content_scope=aggregator` (Phase 54/commit `5e6286e`) already fixed this live.
+  - Ignored language-switch request (#10) — `orchestrator._expected_response_language` prioritizing `language_switch_request` over the sticky lock (commit `eccb683`, this session's git history) already fixed this.
+- **Not actually bugs:**
+  - "Duplicated FAQ block" (the `tone` finding, conversation `f98ba2d8`, turn 98) — the raw transcript shows the *customer's own script* repeats the identical 10-question block verbatim at indices 78-96 and 98-116; the agent answering an identical question identically twice is correct, not a repetition bug. Root cause (if ever worth fixing) is the regression-data generator, not `orchestrator.py`/`intent.py`. No code change.
+  - Generic "trouble connecting" fallback (#14) — reached only via a genuine caught provider exception (`orchestrator._handle_provider_failure`); working as designed, not a misfire.
+- **Fixed this phase:** "no services configured" hallucination (#11, Test Chat Biz) — the model told a customer no services exist while 4 real services were handed to it that same turn. Added `fact_validator.check_no_services_claim` (English "no services... configured" + the Romanized-Nepali negation shape actually seen in the evidence, "...configured bhayeko chaina") and wired it into `check_response_facts` alongside the existing price/hours/phone/id checks — same regenerate-once-then-honest-fallback guard in `orchestrator.py` now covers this claim too, with zero new call sites. Self-check assertions added to `fact_validator.py`'s existing `_demo()` (this file's established test convention; no separate pytest file existed for it before, consistent with what was already there).
+- **Deliberately NOT fixed this phase — flagged, not guessed past:** off-topic false-negatives on non-aggregator tenants (#9, #16); silent auto-book / ignored "list every slot" requests (#2, #3); post-confirmation stalls where the agent re-asks instead of dispatching the booking (#5–#8); long-conversation context/slot loss (#12, #13, #17); a packed multi-question message answered as if it only asked one thing (#15). All five reduce to single-shot LLM instruction-following variance with no existing deterministic hook to extend cheaply (bucket 9's post-confirmation-stall family is the one exception with a clear extension path — generalizing `orchestrator._resolve_bare_digit_slot_pick` to also match confirmation phrasing against the last-offered slot list — but that's real orchestrator wiring, not a unit-testable one-function addition, so it's out of scope for a "quick pass, unit tests only" phase).
 
-Verified byte-for-byte equal to lab's `LOCK_LINE_NEW` constant via direct comparison (`_build_user_prompt` output vs.
-`ast.literal_eval`'d `LOCK_LINE_NEW` from `lang_anchor.py`) — the production port is not just "similar," it is the exact
-validated string.
+**Verification:**
+```
+$ docker exec night_guard_ai-backend-1 python -m app.services.conversation.fact_validator
+fact_validator self-check: all assertions passed
+$ docker exec night_guard_ai-backend-1 python -m pytest tests/unit -q
+21 passed
+$ docker exec -e RUN_LIVE_REGRESSION=1 night_guard_ai-backend-1 python -m pytest tests/eval/test_regression_suite.py -q \
+    -k "9e146278 or syn-info-services-1 or syn-booking-easy-1 or syn-cancel-1 or syn-mixedlang-1 or syn-oos-1 or \
+        syn-dental-emergency-1 or syn-angry-1 or syn-info-pricing-1 or syn-info-hours-1 or syn-booking-hard-1 or \
+        syn-reschedule-1 or syn-changes-mind-1 or syn-ambiguous-1 or syn-adv-injection-1 or syn-booking-on-closed-day"
+16 passed in 130.62s
+```
+The 16-case smoke set intentionally includes conversation `9e146278` (the exact confirmed "no services configured" bug) plus one representative synthetic case per major category (booking/cancel/reschedule/pricing/hours/escalation/mixed-language/adversarial/angry/ambiguous) — this is the new rule's "~10-20 case smoke check," not the full 621-case suite (deferred to the very end of all work, per this phase's new standing rule).
 
-**Real live proof, backend force-recreated first, throwaway business (default automatic mode), fresh conversation each time:**
-* **BEFORE the fix** (`Anchor Test Biz`, business id `b6832ac8-16c4-409c-8e32-611ad9848b45`): locked to Romanized Nepali via 2
-  genuine Nepali messages, then 3 genuine English business questions in a row ("What time do you open tomorrow?", "How much
-  does a cleaning cost?", "Do you accept walk-in customers?") — every reply still came back in Romanized Nepali. DB check:
-  `detected_language=ne_roman`, `language_switch_streak=1` (not 3) — the anchoring bug reproduced live, right now, on current
-  code, exactly as Phase 16/L8 originally found.
-* **AFTER the fix** (fresh business id `932c5a66-db23-4d93-990d-94c6cca40397`): same setup (2 Nepali messages to lock, then the
-  same 3 genuine English questions) — the 3rd message's own reply still renders in the OLD locked language by design
-  (`_resolve_locked_language` never flips mid-turn), but a 4th message ("Is parking available nearby?") immediately after came
-  back **fully in English**: *"I don't have parking info on file for Anchor Test Biz Final — would you like me to connect you
-  with our team so they can confirm nearby options?..."* DB confirms the lock flipped exactly on schedule:
-  `detected_language=en`, `language_switch_streak=0` after the 3rd differing message.
+**Result:** 1 new real fix (services-hallucination check), 3 findings confirmed already resolved by code already in the tree, 2 findings confirmed not to be real bugs, 5 findings explicitly deferred with root-cause reasoning rather than silently dropped or force-fixed with an unverifiable prompt tweak.
 
-### Step 3 — full re-verification at the current, larger baseline
-* Full backend regression suite (`docker exec night_guard_ai-backend-1 python3 -m pytest tests/ --ignore=tests/eval`):
-  **851 passed, 10 skipped, 0 failed** (0:09:39) — the current, larger baseline (up from Phase 54's own 851/10/0 run; same
-  numbers because this phase adds no new test — the 4 tests it depends on were already counted since Phase 16's original
-  session).
-* Frontend: `tsc -b` clean (no frontend files touched this phase).
-* Both language modes re-verified live, together, after the fix, on real conversations: ask mode's 8-turn conversation on
-  Samaj Dental Clinic (above, reverted to automatic afterward) and automatic mode's anchoring-fix conversation (above, the
-  throwaway businesses). No regression in either.
-* Backend force-recreated before every live check in this phase (per CLAUDE.md), even though only `intent.py` changed.
+**Not committed** — per standing rule #6, awaiting the user's explicit go-ahead.
 
-### Step 4 — commit
-This phase's real content spans 9 files (`business.py`/`conversation.py` models, `schemas/business.py`, `orchestrator.py`,
-`response_templates.py`, `intent.py`, `test_conversation.py`, `types.ts`, `SettingsPage.tsx`) plus the untracked migration
-`d4e5f6a7b8c0`. Every one of those except `intent.py` and the migration file was still interleaved, line-by-line, with other
-paused phases sitting in the same working tree (`orchestrator.py` especially: Phase 19's service-name resolver fix, Phase
-20/21's resend-throttle guard, and — most structurally — Phase 52's human-takeover rewrite, which split
-`handle_incoming_message` into a thin wrapper + `_handle_turn` and threaded a `ReplyLock` through the exact code paths Phase
-16's ask-mode check sits inside). **Not cleanly standalone** — confirmed, not assumed, by re-diffing every touched file against
-git HEAD before writing a single line of this section. Same byte-for-byte reconstruction technique as Phase 54: each file's
-committed version was built as `HEAD content + only this phase's precise insertions` (verified by diff against both HEAD and
-the working tree before staging), leaving Phase 19/20/21/52's real content untouched and still pending in the working tree,
-exactly as it was.
+---
 
-`git diff --stat` and `git log --oneline` confirmed before and after committing (pasted in the session, not narrated after the
-fact) — same discipline as Phase 54.
+## Phase 57 (2026-09-27) — Model bake-off: real Azure/Groq/xAI comparison against the regression harness
+
+**Date:** 2026-09-27
+
+**Required:** adapt the regression harness to run against a swappable model config (not hardcoded to `gpt-5-mini`), test whatever's actually reachable on this Azure resource plus any other configured provider, run ~50-100 cases per real candidate across booking/cancellation/pricing/escalation/mixed-language, and report pass-rate/cost-per-conversation with an honest recommendation — measurement only, no production swap.
+
+**What "swappable" turned out to mean:** the provider seam already existed (Phase 39's `USING_LLM` factory in `app/llm/__init__.py` — Azure/Groq/xAI, one branch point, unchanged since). What was missing was a way to actually RUN the regression dataset against whichever provider that env var picks and get real pass-rate/token/cost numbers out the other end. New file **`backend/tests/eval/model_bakeoff.py`**: imports and reuses (does not reimplement) `test_regression_suite.py`'s real provisioning/teardown and its exact check functions — a case passing here is the same guarantee as the pytest suite, not a parallel implementation that could drift. Swaps candidates purely via env vars (`docker exec -e USING_LLM=... -e GROQ_CHAT_MODEL=... night_guard_ai-backend-1 python tests/eval/model_bakeoff.py --n-cases N --price-input X --price-output Y`), samples all 43 synthetic cases (deliberately authored to cover booking/cancel/reschedule/pricing/hours/escalation/mixed-language/adversarial) plus a fixed-seed random sample of real conversations up to `--n-cases`, and instruments real token usage/latency/cost by wrapping each provider's own raw POST function (no production code touched) — cost is chat-only by design (embeddings always run on Azure regardless of candidate, so they're a constant offset across every candidate and would only add noise to a comparison, not signal).
+
+**Real Azure resource — what's actually deployed:** no management-plane/listing API is reachable with the inference `api-key` this app already has (`GET {endpoint}/models` → real `404`, confirmed directly); the Foundry unified-inference shape (`azure_openai.py`'s own docstring) has no self-service catalog endpoint. The only Azure deployment this app is configured against is `gpt-5-mini` (`AZURE_OPENAI_DEPLOYMENT`). **If there are other deployments on `Samrat-G01`, I don't know their names and can't enumerate them from here — tell me and I'll add them to a follow-up bake-off run.** Not treated as a blocker: proceeded with every provider this app is actually wired for (Azure/gpt-5-mini, Groq's real catalog, xAI).
+
+**Candidate 1 — Azure `gpt-5-mini` (current production default), real 90-case run, seed 42:**
+```
+{
+  "candidate": "azure/gpt-5-mini", "n_cases": 90, "n_pass": 89, "pass_rate": 0.989,
+  "n_llm_calls": 190, "total_prompt_tokens": 1815085, "total_completion_tokens": 73280,
+  "avg_llm_latency_s": 4.83, "total_wall_s": 1133.6,
+  "price_per_m_input": 0.25, "price_per_m_output": 2.00,
+  "estimated_total_cost_usd": 0.6003, "estimated_cost_per_conversation_usd": 0.00667
+}
+```
+Prices ($0.25/M in, $2.00/M out) are real published Azure OpenAI `gpt-5-mini` global on-demand rates (see Sources below), not a guess. The one real failure in 90 cases: `real-4be84614-...` — the already-known, NOT-in-scope-for-Phase-56 repeated-boilerplate-escalation-footer `tone` finding (batch2_ratelimit_misc, findings #23/24/26 from the original read-through) — confirmed still real and still open, correctly not silently papered over by this run.
+
+**Candidate 2 — Groq (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.8-27b`): structurally blocked for this app's real traffic, confirmed with hard evidence, not a guess.** Real catalog pulled live (`GET https://api.groq.com/openai/v1/models`, real account). Real per-turn production request bodies (business context + services + knowledge + conversation state) run **~10,000 tokens** — captured directly from a live case (`syn-booking-easy-3`) and replayed verbatim against Groq's real API. Every one of `gpt-oss-120b`, `gpt-oss-20b`, and `qwen3.8-27b` rejected that exact real body with an immediate, non-retryable **HTTP 413**:
+```
+"Request too large for model `openai/gpt-oss-120b` ... on tokens per minute (TPM): Limit 8000, Requested 10039 ..."
+"Request too large for model `openai/gpt-oss-20b` ... on tokens per minute (TPM): Limit 8000, Requested 9902 ..."
+"Request too large for model `qwen/qwen3.8-27b` ... on input tokens per minute (ITPM): Limit 7000, Requested 10126 ..."
+```
+This is an **account-tier ceiling** (same 7-8K limit on every model on this account, per Groq's own error text pointing at "Dev Tier" billing), not a per-model limit — worse than Phase 39's earlier finding (that one only saw 429s under rapid repeated calls; this is a single real call alone exceeding the entire budget, so no amount of pacing/retrying fixes it). Real 90-case run on `gpt-oss-120b` (seed 42, same case set as Azure above): **181/181 real turns fell back to the app's honest "trouble connecting" template — 0 real Groq answers produced.** `pass_rate` still showed 0.811 (73/90) — flagged explicitly as **misleading if read alone**: it reflects the app's own never-invent-information safety net absorbing total model unavailability, not real answer quality; the 17 real failures are cases whose `expect_appointment`/similar assertions can't be satisfied by a fallback message. A 15-case spot-check on `gpt-oss-20b` reproduced the identical pattern (0 real calls succeeded). `qwen3.8-27b` wasn't run through the full harness a third time — its account-level ceiling was already proven identical via the direct real-body replay above, and repeating a 90-case run against a foregone conclusion would just spend real API calls for no new information.
+
+**Candidate 3 — xAI `grok-4`: still blocked, unchanged from Phase 39 (2026-09-07), reconfirmed live today:**
+```
+403 {"code":"permission-denied","error":"Your team 047bb09e-... has either used all available credits or
+reached its monthly spending limit. To continue making API requests, please purchase more credits..."}
+```
+Same real key, same real team id, same real billing gate, 3 weeks later — nothing to fix in code; needs real credits added to the xAI account before `grok-4`'s actual quality/latency can be evaluated at all. Confirmed via both a direct API call and a 5-case harness run (`xai_grok-4.json`, 0 real calls succeeded, real cost fields left `null` since no real usage was ever billed).
+
+**Recommendation: no urgent change needed.** Azure `gpt-5-mini` is not just the only *tested* option that works — it is the only *available* option that works at all right now: Groq is architecturally blocked by an account-tier TPM ceiling smaller than one real request regardless of which of its 3 models is picked, and xAI is blocked by billing. At ~99% pass rate and ~$0.0067/conversation, there's no real cost or quality pressure motivating a switch even if either alternative became reachable — a switch would need to be evaluated on its own merits once actually testable, not adopted to solve a problem that doesn't currently exist. Two concrete, non-code unblocks would open real comparisons in the future: (1) Groq "Dev Tier" (their own upgrade path, mentioned directly in the 413 error text) to raise the account's TPM ceiling above this app's real per-turn request size; (2) xAI account credits/spending-limit increase. Neither was set up this phase, per instruction.
+
+**Verification / artifacts:**
+```
+$ docker exec night_guard_ai-backend-1 ruff check tests/eval/model_bakeoff.py
+All checks passed!
+```
+Full per-case results (replies, failures, token usage) for every candidate saved to `backend/data/regression/bakeoff_results/{azure_gpt-5-mini,groq_gpt-oss-120b,groq_gpt-oss-20b,xai_grok-4}.json`.
+
+**Not committed** — per standing rule #6, awaiting the user's explicit go-ahead. `backend/data/regression/bakeoff_results/*.json` are real run artifacts, not source — flagging in case you'd rather `.gitignore` them than commit them.
+
+**Sources (Azure/Groq/xAI pricing, real published rates checked live this phase, not from training-data memory):**
+- Azure OpenAI `gpt-5-mini` pricing: [mytokentracker.io/models/azure/gpt-5-mini](https://mytokentracker.io/models/azure/gpt-5-mini)
+- Groq `gpt-oss-120b`/`gpt-oss-20b`/Qwen pricing: [cloudzero.com/blog/groq-pricing](https://www.cloudzero.com/blog/groq-pricing/)
+- xAI Grok pricing (context only, xAI unreachable this phase): [benchlm.ai/xai/api-pricing](https://benchlm.ai/xai/api-pricing)

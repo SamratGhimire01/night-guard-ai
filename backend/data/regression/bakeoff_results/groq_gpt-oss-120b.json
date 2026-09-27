@@ -1,0 +1,1044 @@
+{
+  "summary": {
+    "candidate": "groq/openai/gpt-oss-120b",
+    "n_cases": 90,
+    "n_pass": 73,
+    "pass_rate": 0.811,
+    "n_llm_calls": 5,
+    "total_prompt_tokens": 2498,
+    "total_completion_tokens": 1788,
+    "avg_llm_latency_s": 1.24,
+    "total_wall_s": 160.0,
+    "price_per_m_input": 0.15,
+    "price_per_m_output": 0.6,
+    "estimated_total_cost_usd": 0.0014,
+    "estimated_cost_per_conversation_usd": 2e-05
+  },
+  "cases": [
+    {
+      "id": "syn-syn-adv-empty-1",
+      "source": "synthetic",
+      "wall_s": 0.49,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-gibberish-1",
+      "source": "synthetic",
+      "wall_s": 0.91,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-gibberish-2",
+      "source": "synthetic",
+      "wall_s": 0.87,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-injection-1",
+      "source": "synthetic",
+      "wall_s": 0.79,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-injection-2",
+      "source": "synthetic",
+      "wall_s": 0.81,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-prompt-leak-1",
+      "source": "synthetic",
+      "wall_s": 0.86,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-adv-repeat-flood-1",
+      "source": "synthetic",
+      "wall_s": 3.67,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-ambiguous-1",
+      "source": "synthetic",
+      "wall_s": 0.83,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-ambiguous-2",
+      "source": "synthetic",
+      "wall_s": 0.86,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-ambiguous-3",
+      "source": "synthetic",
+      "wall_s": 0.78,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-angry-1",
+      "source": "synthetic",
+      "wall_s": 0.93,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-angry-2",
+      "source": "synthetic",
+      "wall_s": 0.91,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-angry-3",
+      "source": "synthetic",
+      "wall_s": 0.91,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-easy-1",
+      "source": "synthetic",
+      "wall_s": 0.79,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'teeth cleaning', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-easy-2",
+      "source": "synthetic",
+      "wall_s": 0.83,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'dental consultation', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-easy-3",
+      "source": "synthetic",
+      "wall_s": 0.83,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'root canal', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-hard-1",
+      "source": "synthetic",
+      "wall_s": 4.03,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'dental consultation', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-hard-2",
+      "source": "synthetic",
+      "wall_s": 3.11,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'teeth cleaning', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-hard-3",
+      "source": "synthetic",
+      "wall_s": 2.79,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'teeth cleaning', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-booking-on-closed-day",
+      "source": "synthetic",
+      "wall_s": 0.91,
+      "pass": false,
+      "failures": [
+        "final reply contains none of the expected phrases: ['nothing open', 'no openings', \"don't see any\"]"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-cancel-1",
+      "source": "synthetic",
+      "wall_s": 1.8,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-cancel-2",
+      "source": "synthetic",
+      "wall_s": 1.82,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-changes-mind-1",
+      "source": "synthetic",
+      "wall_s": 2.64,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'dental consultation', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-changes-mind-2",
+      "source": "synthetic",
+      "wall_s": 2.31,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'tooth extraction', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-dental-emergency-1",
+      "source": "synthetic",
+      "wall_s": 0.84,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-dental-emergency-2",
+      "source": "synthetic",
+      "wall_s": 0.88,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-dental-insurance-1",
+      "source": "synthetic",
+      "wall_s": 0.8,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-dental-not-offered-1",
+      "source": "synthetic",
+      "wall_s": 0.82,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-dental-not-offered-2",
+      "source": "synthetic",
+      "wall_s": 0.77,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-info-hours-1",
+      "source": "synthetic",
+      "wall_s": 0.75,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-info-hours-2",
+      "source": "synthetic",
+      "wall_s": 0.9,
+      "pass": false,
+      "failures": [
+        "final reply contains none of the expected phrases: ['closed', 'not open', \"we're not\"]"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-info-hours-weekend-nepal",
+      "source": "synthetic",
+      "wall_s": 0.86,
+      "pass": false,
+      "failures": [
+        "final reply contains none of the expected phrases: ['sunday', 'aitabar', '\u0906\u0907\u0924\u092c\u093e\u0930']"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-info-pricing-1",
+      "source": "synthetic",
+      "wall_s": 0.88,
+      "pass": false,
+      "failures": [
+        "no reply mentions the expected price 110.0 for Teeth Cleaning"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-info-pricing-2",
+      "source": "synthetic",
+      "wall_s": 0.87,
+      "pass": false,
+      "failures": [
+        "no reply mentions the expected price 8000.0 for Root Canal Treatment"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-info-services-1",
+      "source": "synthetic",
+      "wall_s": 0.83,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-mixedlang-1",
+      "source": "synthetic",
+      "wall_s": 0.83,
+      "pass": false,
+      "failures": [
+        "no reply mentions the expected price 1500.0 for Teeth Cleaning"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-mixedlang-2",
+      "source": "synthetic",
+      "wall_s": 0.89,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'root canal treatment', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-mixedlang-3",
+      "source": "synthetic",
+      "wall_s": 0.7,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-oos-1",
+      "source": "synthetic",
+      "wall_s": 0.84,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-oos-2",
+      "source": "synthetic",
+      "wall_s": 0.81,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-oos-3",
+      "source": "synthetic",
+      "wall_s": 0.83,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-reschedule-1",
+      "source": "synthetic",
+      "wall_s": 1.62,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'teeth cleaning', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "syn-syn-reschedule-2",
+      "source": "synthetic",
+      "wall_s": 1.6,
+      "pass": false,
+      "failures": [
+        "expected a booked appointment for 'dental consultation', but none was created"
+      ],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-44c3a45f-0690-419e-8729-85e0d049a01b",
+      "source": "real",
+      "wall_s": 0.74,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-5d72cbeb-908e-49c6-9688-0e71eb59e2f9",
+      "source": "real",
+      "wall_s": 6.36,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-1ad85833-7e44-44fa-b4f7-b420b91e054b",
+      "source": "real",
+      "wall_s": 28.37,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-2b11a236-89c7-4ce2-b42d-7d649926c78f",
+      "source": "real",
+      "wall_s": 0.89,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-965d3dfc-d194-4d9e-bc4c-c32d050cbb79",
+      "source": "real",
+      "wall_s": 0.86,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-7d76f8e0-a6cd-470d-8403-d1b0ac55293c",
+      "source": "real",
+      "wall_s": 0.87,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-3611e5db-d60a-4130-8728-e9ac2f517fbd",
+      "source": "real",
+      "wall_s": 0.74,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-4be84614-02c9-49cd-8429-508c68dad05a",
+      "source": "real",
+      "wall_s": 4.14,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-0b9d0ac9-302c-49c1-a2d3-52dc11cc3c56",
+      "source": "real",
+      "wall_s": 0.85,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-57a71956-c82e-4d10-ae3b-f0da03c45d11",
+      "source": "real",
+      "wall_s": 0.77,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-73aa27f0-30bc-4845-8cfb-0651a01323de",
+      "source": "real",
+      "wall_s": 0.83,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-7019d666-b5dd-427c-9fef-7d07772b2b11",
+      "source": "real",
+      "wall_s": 1.7,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-289f1c28-f4c3-4772-89f8-140738a02060",
+      "source": "real",
+      "wall_s": 0.89,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-821eb136-74e9-48bf-8134-682240e1d9a9",
+      "source": "real",
+      "wall_s": 0.87,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-c1629db8-a5eb-45f8-b3df-6f93c2b5c664",
+      "source": "real",
+      "wall_s": 0.84,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-c92553cb-1e7e-43a9-9850-fead42198900",
+      "source": "real",
+      "wall_s": 0.84,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-62bba50f-bb82-4d96-9a40-d1e336a9c6d6",
+      "source": "real",
+      "wall_s": 0.98,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-3bcebf98-c43b-4edd-8845-b06da5ab909a",
+      "source": "real",
+      "wall_s": 10.92,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-5441ec25-f706-42c8-ab3c-6c47025035dd",
+      "source": "real",
+      "wall_s": 0.76,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-88dafd5d-1e26-411a-9028-f931f44cb1f7",
+      "source": "real",
+      "wall_s": 0.87,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-8593c657-3b29-4091-87f3-a97ddbf914f3",
+      "source": "real",
+      "wall_s": 0.85,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-33e7efdc-031e-4105-96dd-03ab23aea5eb",
+      "source": "real",
+      "wall_s": 0.89,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-10d1fd3f-f7cf-4e77-8bc7-60680446fd85",
+      "source": "real",
+      "wall_s": 0.9,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-c6484929-eed6-4bf9-b34a-63d19f9ac597",
+      "source": "real",
+      "wall_s": 1.0,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-a8401a66-6a98-4b70-8f2a-3681e42183cd",
+      "source": "real",
+      "wall_s": 1.53,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-bd00b4f1-7979-4858-843f-637c5bd4a789",
+      "source": "real",
+      "wall_s": 0.84,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-7db7affc-5bfb-4165-886d-a3d1a088347d",
+      "source": "real",
+      "wall_s": 0.81,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-a11196f9-543c-412c-89cd-15cc1f999f13",
+      "source": "real",
+      "wall_s": 0.8,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-28260e5c-879b-4134-9daa-61ce78272158",
+      "source": "real",
+      "wall_s": 0.8,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-0d2f950c-888a-4d8a-a4f0-4b495534b8a6",
+      "source": "real",
+      "wall_s": 0.78,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-2c479702-99de-41c0-9ea7-784c7b5f0e89",
+      "source": "real",
+      "wall_s": 0.85,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-dd2be040-d234-49fe-ad35-6ec7cb37cd28",
+      "source": "real",
+      "wall_s": 1.9,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-b9672c2e-4621-4b55-9d96-ef8d5696ee32",
+      "source": "real",
+      "wall_s": 1.69,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-65b0abbd-0d58-4dc7-92d4-753cf20099aa",
+      "source": "real",
+      "wall_s": 4.17,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-90279226-aebf-4689-a6c0-9c48c79d1a32",
+      "source": "real",
+      "wall_s": 5.2,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-8d7818e5-a238-43e4-89ff-c032e7d30e12",
+      "source": "real",
+      "wall_s": 0.86,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-fefce36b-e72c-43de-a493-98500a8f788d",
+      "source": "real",
+      "wall_s": 0.83,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-5717fa61-a268-444d-8c28-db2c91373688",
+      "source": "real",
+      "wall_s": 0.71,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-086dca06-452c-4350-9380-0515d3ed356c",
+      "source": "real",
+      "wall_s": 0.76,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-f941521e-9a45-49fa-bd94-6bbd5ad50454",
+      "source": "real",
+      "wall_s": 2.87,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-9d790794-0620-4826-ad92-b9bfc754521f",
+      "source": "real",
+      "wall_s": 0.85,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-15f52b68-bce2-4dde-b957-a48a62b6f861",
+      "source": "real",
+      "wall_s": 2.01,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-e985d7f6-8185-44dd-b450-407df0ace3a3",
+      "source": "real",
+      "wall_s": 0.88,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-1a956796-1c74-44f1-9c54-d419b7cffcc3",
+      "source": "real",
+      "wall_s": 0.88,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-d54535e4-cc09-4cd9-bfb4-30dd3c91f221",
+      "source": "real",
+      "wall_s": 0.79,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-96f1ec8e-f2f9-4d8c-872e-787d7c047de5",
+      "source": "real",
+      "wall_s": 3.55,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    },
+    {
+      "id": "real-ab5af821-73f8-4c7c-a346-31d0ff8e4d7c",
+      "source": "real",
+      "wall_s": 2.74,
+      "pass": true,
+      "failures": [],
+      "replies": [
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you.",
+        "Sorry, I'm having trouble connecting on my end right now. I've also let our team know, so a real person will follow up with you."
+      ]
+    }
+  ]
+}

@@ -42,6 +42,17 @@ _SNAKE_CASE_RE = re.compile(r"\b[a-z]+(?:_[a-z]+){1,}\b")
 # internal field name leaking through.
 _SNAKE_CASE_ALLOW = {"e_sewa", "e_mail"}
 
+# Confirmed regression (Test Chat Biz, batch5_testchat_misc.json): the model told a
+# customer "no services are currently configured" while `services` (handed to it this
+# same turn via _format_services) was non-empty -- a hallucinated absence of real,
+# already-given config, the same "model override" failure mode as the price/hours/phone
+# checks above, just with no existing check for this specific claim shape.
+_NO_SERVICES_RE = re.compile(
+    r"\bno\s+services?\b.{0,40}\bconfigured\b"
+    r"|\bservices?\b.{0,60}\bconfigured\b.{0,20}\b(chaina|xaina)\b",
+    re.I,
+)
+
 _WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 _CLOSED_WORDS = re.compile(r"\b(closed|band|bandha|bandh)\b", re.I)
 _OPEN_WORDS = re.compile(r"\b(open|khula|khuli)\b", re.I)
@@ -181,6 +192,17 @@ def check_grounded_phone_numbers(reply: str, *, known_text: str) -> list[str]:
     return violations
 
 
+def check_no_services_claim(reply: str, *, services: list[dict]) -> list[str]:
+    """`services` non-empty means the model was handed a real, non-empty service list
+    this same turn (_format_services) -- so a reply claiming none are configured is
+    invented, not an honest gap."""
+    if not services:
+        return []
+    if _NO_SERVICES_RE.search(reply):
+        return [f"reply claims no services are configured, but this tenant has {len(services)} configured service(s)"]
+    return []
+
+
 def check_response_facts(
     reply: str,
     *,
@@ -194,6 +216,7 @@ def check_response_facts(
         *check_weekday_hours(reply, hours_by_day=hours_by_day),
         *check_grounded_phone_numbers(reply, known_text=known_text),
         *check_no_internal_ids(reply),
+        *check_no_services_claim(reply, services=services),
     ]
 
 
@@ -254,6 +277,17 @@ def _demo() -> None:
     assert not check_no_internal_ids(
         "Here's your check-in link: http://example.com/qr/21955948be74468fa8da57f825d7a37c.1789962300.s-odXDUUAbJDOTsM3wnpFw"
     )
+
+    # The confirmed Test Chat Biz bug: claiming no services exist while 4 are configured.
+    assert check_no_services_claim(
+        "ahile hamro system ma kunai services configured bhayeko chaina, tesaile ma services ko list din sakdina.",
+        services=services,
+    )
+    assert check_no_services_claim("Sorry, no services are currently configured.", services=services)
+    # A real, honest "no services configured" statement for a tenant with none must NOT trip it.
+    assert not check_no_services_claim("Sorry, no services are currently configured.", services=[])
+    # Any other real reply about the actual configured services must not misfire.
+    assert not check_no_services_claim("We offer Tooth Filling and Root Canal Treatment.", services=services)
 
     print("fact_validator self-check: all assertions passed")
 
