@@ -37,7 +37,12 @@ LANGS = ["en", "ne_deva", "ne_roman"]
 BOOKING_ID = "11bed445-3b1b-4d96-9f1d-985120789685"
 _SERVICE = SimpleNamespace(name="Tooth Filling")
 _TZ = ZoneInfo("Asia/Kathmandu")
-_APPT = {"id": BOOKING_ID, "scheduled_at": datetime(2026, 9, 22, 4, 45, tzinfo=timezone.utc), "duration_minutes": 30}
+_APPT = {
+    "id": BOOKING_ID,
+    "confirmation_code": "7K3QXF9",
+    "scheduled_at": datetime(2026, 9, 22, 4, 45, tzinfo=timezone.utc),
+    "duration_minutes": 30,
+}
 _PAY = {
     "currency": "NPR", "amount": Decimal("12.00"), "remaining": Decimal("1188.00"),
     "payment_url": "https://pay.example/redirect/abc", "qr_url": "https://pay.example/pay-qr/abc",

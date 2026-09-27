@@ -80,18 +80,21 @@ def test_compose_email_produces_three_parts_with_real_appointment_data():
     service = Service(name="Whitening", price=100, duration_minutes=45)
     customer = Customer(name="Jordan Lee")
     appointment = Appointment(
-        id=uuid.uuid4(), scheduled_at=datetime(2026, 9, 7, 14, 0, tzinfo=ZoneInfo("UTC")), duration_minutes=45
+        id=uuid.uuid4(),
+        confirmation_code="7K3QXF9",
+        scheduled_at=datetime(2026, 9, 7, 14, 0, tzinfo=ZoneInfo("UTC")),
+        duration_minutes=45,
     )
 
     subject, body, html, _inline_images = compose_email(
         event_type="booking_confirmed", appointment=appointment, business=business, service=service, customer=customer
     )
     assert "Acme Dental" in subject
-    assert str(appointment.id) in body
+    assert appointment.confirmation_code in body
     assert "Whitening" in body
     # HTML actually contains the same real data as the plain-text part —
     # this is the "no data discrepancy" requirement, checked structurally.
-    assert str(appointment.id) in html
+    assert appointment.confirmation_code in html
     assert "Whitening" in html
     assert "Jordan Lee" in html
     assert "Confirmed" in html
@@ -382,8 +385,8 @@ def test_real_booking_dispatches_a_real_html_email_with_matching_data(business_r
     ).json()
 
     assert captured["to"] == "jordan@example.com"
-    assert appointment["id"] in captured["html_body"]
-    assert appointment["id"] in captured["body"]
+    assert appointment["confirmation_code"] in captured["html_body"]
+    assert appointment["confirmation_code"] in captured["body"]
     assert "Design Test Co" in captured["html_body"]
     assert "Cleaning" in captured["html_body"]
 

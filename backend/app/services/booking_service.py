@@ -26,7 +26,6 @@ _CANCELLABLE_STATUSES = (AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED)
 # needs a finer/coarser one than 15 minutes.
 SLOT_GRANULARITY_MINUTES = 15
 
-
 def _notification_channel(business: Business, customer: Customer) -> str:
     """SMS (Phase 15) is used only as a fallback for a customer with no email
     on file — email stays the unconditional default for every customer who has
@@ -359,6 +358,7 @@ def _cluster_group_people(people: list[dict]) -> list[dict]:
 def _serialize_appointment(appointment: Appointment) -> dict:
     return {
         "id": str(appointment.id),
+        "confirmation_code": appointment.confirmation_code,
         "service_id": str(appointment.service_id),
         "staff_id": str(appointment.staff_id) if appointment.staff_id else None,
         "scheduled_at": appointment.scheduled_at,

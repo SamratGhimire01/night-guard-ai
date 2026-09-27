@@ -41,6 +41,10 @@ class AppointmentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    # Phase 55: the short, customer-facing reference (the ONLY one a customer is ever
+    # shown) -- included here too so staff can look an appointment up by the same code a
+    # customer might quote back to them.
+    confirmation_code: str
     business_id: uuid.UUID
     customer_id: uuid.UUID
     service_id: uuid.UUID

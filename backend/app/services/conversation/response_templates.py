@@ -444,6 +444,16 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "ne_deva": "मैले हाम्रो टिमलाई पनि जानकारी दिएँ, त्यसैले एक जना साँच्चैको मान्छेले तपाईंलाई फलो-अप गर्नेछ।",
         "ne_roman": "Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
     },
+    # Root-cause fix for a confirmed missed_escalation bug (a stated 9/10 toothache with
+    # overnight swelling got a plain contact-info request, no urgency at all) -- see
+    # orchestrator._emergency_response's docstring. `{phone}` is either "" or
+    # " at <business phone>", composed in code (never every language re-authoring the
+    # conditional itself).
+    "emergency_handoff": {
+        "en": "This sounds like it needs urgent attention — please call us{phone} or visit us right away rather than waiting on chat. I've also flagged this conversation for our team.",
+        "ne_deva": "यो त तुरुन्तै ध्यान दिनुपर्ने जस्तो देखिन्छ — कृपया चिया गफमा कुरा नगरी हामीलाई{phone} फोन गर्नुहोस् वा सीधै आउनुहोस्। मैले यो कुराकानी हाम्रो टिमलाई पनि जानकारी दिएको छु।",
+        "ne_roman": "Yo ta turuntai dhyan dinu parne jasto dekhincha — kripaya chat ma nabasi hamilai{phone} phone garnuhos ya sidhai aaunuhos. Maile yo kurakani hamro team lai pani janakari diyeko chu.",
+    },
     # Urgent fix (real 500 found live, PHASE_STATUS.md): the ONLY message ever
     # shown when the LLM/embedding provider call itself failed after its own
     # internal retries (app/llm/azure_openai.py) — no LLM call is available to
@@ -515,6 +525,16 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "ne_deva": "हुन्छ, नेपालीमा कुरा गरौँ। म तपाईंलाई कसरी मद्दत गर्न सक्छु?",
         "ne_roman": "Huncha, Nepali ma kura garaun. Ma tapailai kasari madat garna sakchu?",
     },
+    # The honest fallback for fact_validator.check_response_facts: the LLM's drafted
+    # reply stated a specific price/policy/hours/contact claim not backed by this
+    # tenant's real config, and a regenerate attempt still didn't fix it. Never a
+    # freehand guess at that point -- this fixed, translated sentence plus a real
+    # handoff (see orchestrator._handle_turn) is the only thing sent instead.
+    "unconfirmed_fact_fallback": {
+        "en": "I don't want to guess on that one — let me get a real answer from the team and have them follow up with you.",
+        "ne_deva": "त्यसमा म अड्कल गर्न चाहन्न — म टिमबाट सही जानकारी लिएर तपाईंलाई फलो-अप गराउँछु।",
+        "ne_roman": "Tyo ma guess garna chahanna — ma team bata sahi jankari lera tapailai follow-up garauchu.",
+    },
 }
 
 # Human-readable label for the "this conversation's locked language" line
@@ -577,6 +597,69 @@ def render_contact_gate(known_summary: str | None, language: str | None) -> str:
     if known_summary is None:
         return render("booking_no_contact", language)
     return render("booking_gate_with_progress", language, summary=known_summary)
+
+
+_HOURS_WEEKDAY_NAMES: dict[str, list[str]] = {
+    "en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    "ne_deva": ["सोमबार", "मंगलबार", "बुधबार", "बिहीबार", "शुक्रबार", "शनिबार", "आइतबार"],
+    "ne_roman": ["Sombar", "Mangalbar", "Budhabar", "Bihibar", "Sukrabar", "Sanibar", "Aitabar"],
+}
+_HOURS_CLOSED_LABEL = {"en": "Closed", "ne_deva": "बन्द", "ne_roman": "Bandha"}
+_HOURS_INTRO = {
+    "en": "Our hours are: {days}",
+    "ne_deva": "हाम्रो खुल्ने समय: {days}",
+    "ne_roman": "Hamro khulne samaya: {days}",
+}
+# One of these ends EVERY day-group (see describe_business_hours) -- confirmed regression
+# (full 615-case live regression run): fact_validator.check_weekday_hours splits a reply
+# into clauses on sentence-ending punctuation only (by design -- see its own docstring on
+# why it must NOT split on a bare comma), so a single comma-joined sentence naming several
+# days ("Monday-Friday: 9-6, Saturday: Closed, Sunday: 10-6") is ONE clause to it -- and it
+# then (wrongly) attributes Saturday's "Closed" to every OTHER day named in that same
+# clause too. Ending each day-group with real sentence punctuation makes each one its own
+# clause, so the shared-checker function scopes "closed" to the day it actually describes.
+_HOURS_SENTENCE_END = {"en": ".", "ne_deva": "।", "ne_roman": "."}
+_HOURS_NOT_CONFIGURED = {
+    "en": "I don't have our hours on file yet — let me connect you with our team for that.",
+    "ne_deva": "हामीसँग अहिले खुल्ने समयको जानकारी दर्ता छैन — म तपाईंलाई हाम्रो टिमसँग जोड्छु।",
+    "ne_roman": "Hamisanga ahile khulne samayako jankari darta chaina — ma tapailai hamro team sanga jodxu.",
+}
+
+
+def describe_business_hours(hours: list, language: str | None) -> str:
+    """The ONLY place a customer-facing "what are your hours" answer is composed --
+    deterministic, read straight off the real per-day `BusinessHours` rows, never LLM
+    narration. Root-cause fix for a confirmed, reproduced live bug: handed the correct
+    hours as plain context and left to draft its own sentence, the model stated "Saturday
+    AND Sunday closed" for a tenant configured with Sunday OPEN (only Saturday closed) --
+    its own "weekend = Sat+Sun" world knowledge overriding the real data it was given. Same
+    principle as every other tool-backed intent in this module: a fact this deterministic is
+    read out of the real row data directly, never left for the model to (mis)recall.
+    `hours`: BusinessHours rows (day_of_week 0=Monday..6=Sunday, see business_hours_service).
+    """
+    lang_key = _key(language)
+    if not hours:
+        return _HOURS_NOT_CONFIGURED[lang_key]
+    by_day = {h.day_of_week: h for h in hours}
+    names = _HOURS_WEEKDAY_NAMES[lang_key]
+    closed_label = _HOURS_CLOSED_LABEL[lang_key]
+
+    def slot_for(day_index: int) -> str:
+        h = by_day.get(day_index)
+        if h is None or h.closed or h.open_time is None or h.close_time is None:
+            return closed_label
+        return f"{h.open_time.strftime('%-I:%M %p')} - {h.close_time.strftime('%-I:%M %p')}"
+
+    sentence_end = _HOURS_SENTENCE_END[lang_key]
+    slots = [slot_for(i) for i in range(7)]
+    day_parts = []
+    start = 0
+    for i in range(1, 8):
+        if i == 7 or slots[i] != slots[start]:
+            label = names[start] if i - 1 == start else f"{names[start]}-{names[i - 1]}"
+            day_parts.append(f"{label}: {slots[start]}{sentence_end}")
+            start = i
+    return _HOURS_INTRO[lang_key].format(days=" ".join(day_parts))
 
 
 def render_language_question(business_name: str) -> str:

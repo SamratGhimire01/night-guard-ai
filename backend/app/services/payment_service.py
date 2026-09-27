@@ -266,7 +266,7 @@ def notify_payment_completed(db: Session, payment: Payment) -> None:
             currency=payment.currency,
             amount=str(payment.amount),
             service=service.name,
-            id=str(appointment.id),
+            id=appointment.confirmation_code,
         )
         logger.info(
             "payment completed, notifying conversation_id=%s payment_id=%s: %s",

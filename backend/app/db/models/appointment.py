@@ -1,4 +1,5 @@
 import enum
+import secrets
 import uuid
 from datetime import datetime
 
@@ -20,6 +21,22 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
 from app.db.models.mixins import CreatedAtMixin, TenantMixin, UpdatedAtMixin, UUIDPrimaryKeyMixin
+
+
+# No 0/O, 1/I/L -- unambiguous when read aloud or typed back in.
+_CONFIRMATION_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+_CONFIRMATION_CODE_LENGTH = 7
+
+
+def generate_confirmation_code() -> str:
+    """The ONLY appointment identifier ever shown to a customer -- see
+    Appointment.confirmation_code's docstring for the id_leak bug this replaces. A model-
+    level default (below), not something every INSERT site has to remember to set.
+    # ponytail: no retry-on-collision; 32**7 (~3.5e10) possibilities makes a real
+    # collision astronomically unlikely at this app's scale. Upgrade path: catch the
+    # IntegrityError on flush and retry with a fresh code if that ever changes.
+    """
+    return "".join(secrets.choice(_CONFIRMATION_CODE_ALPHABET) for _ in range(_CONFIRMATION_CODE_LENGTH))
 
 
 class AppointmentStatus(str, enum.Enum):
@@ -97,6 +114,15 @@ class Appointment(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, UpdatedAtMix
     duration_minutes: Mapped[int] = mapped_column(nullable=False)
     status: Mapped[AppointmentStatus] = mapped_column(
         Enum(AppointmentStatus, name="appointment_status"), nullable=False
+    )
+    # Phase 55: the ONLY appointment identifier ever shown to a customer (see
+    # generate_confirmation_code above) -- `id` above is the real internal DB
+    # primary key and must never be read out in a customer-facing reply (root-cause fix,
+    # PHASE_STATUS.md: 21 confirmed id_leak findings were the raw UUID read out as "your
+    # booking ID"). Globally unique (simplest correct scope; nothing here is looked up
+    # per-tenant).
+    confirmation_code: Mapped[str] = mapped_column(
+        String(8), unique=True, nullable=False, default=generate_confirmation_code
     )
     # Phase 12: shared by every Appointment row written from the same
     # group-booking request (e.g. "book me and my wife and daughter"), so

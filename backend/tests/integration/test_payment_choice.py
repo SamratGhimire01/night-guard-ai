@@ -367,7 +367,9 @@ def test_verified_completion_sends_one_confirmation_into_the_original_conversati
     messages = _agent_messages(conv)
     assert len(messages) == before + 1
     assert "Payment received" in messages[-1] and "NPR 9000.00" in messages[-1]
-    assert str(payment.appointment_id) in messages[-1]
+    with SessionLocal() as db:
+        confirmation_code = db.get(Appointment, payment.appointment_id).confirmation_code
+    assert confirmation_code in messages[-1]
 
 
 def test_a_failed_or_unverified_payment_sends_nothing(premium_npr_ready, gateways, chat):

@@ -1,3 +1,4 @@
+import difflib
 import logging
 import re
 import time
@@ -28,13 +29,17 @@ from app.services import (
     knowledge_service,
     payment_service,
     service_service,
+    takeover_service,
 )
+from app.services.channels import delivery
 from app.services.conversation import appointment_tools  # noqa: F401  registers CANCELLATION/RESCHEDULING tools
 from app.services.conversation import booking_tool  # noqa: F401  registers the BOOKING tool
 from app.services.conversation.contact_tool import UpdateContactInfoTool
+from app.services.conversation.fact_validator import check_response_facts
 from app.services.conversation.formatting import format_service_list
 from app.services.conversation.intent import classify_and_respond
 from app.services.conversation.response_templates import (
+    describe_business_hours,
     parse_language_choice,
     render,
     render_contact_gate,
@@ -497,13 +502,13 @@ def _format_booking_result(
                 service=service.name,
                 when=when,
                 duration=str(appointment["duration_minutes"]),
-                id=str(appointment["id"]),
+                id=appointment["confirmation_code"],
             ) + extras
         # Phase 44/47: a real Payment row exists (or the customer still has to pick a gateway) — the slot IS reserved,
         # but not yet paid for, so this reads as "reserved, pending your deposit", never "you're all set" (that
         # wording is kept for the payment-received message). See response_templates.TEMPLATES["booking_reserved_pay"].
         fields = dict(
-            who=who, service=service.name, when=when, id=str(appointment["id"]), currency=payment["currency"],
+            who=who, service=service.name, when=when, id=appointment["confirmation_code"], currency=payment["currency"],
             amount=str(payment["amount"]), remaining=str(payment["remaining"]),
         )
         if payment["payment_url"] is None:
@@ -646,6 +651,78 @@ def _last_agent_reply(db: Session, conversation_id: uuid.UUID) -> str | None:
     ).scalar_one_or_none()
 
 
+# Root-cause fix for a confirmed missed_escalation bug (read-through of
+# backend/data/regression/failure_log_batches/batch5_testchat_misc.json,
+# conversation 7f72b8f1): a customer stuck in a non-progressing booking-confirmation
+# loop (the agent repeating a near-identical reply turn after turn) called the agent
+# "dumb" and still got no escalation. `_STUCK_LOOP_SIMILARITY` is the minimum
+# difflib.SequenceMatcher ratio (case-insensitive) for two replies to count as "the same
+# thing, reworded" -- calibrated against the real transcript's two near-duplicate replies
+# ("Great — to confirm: ... Shall I check availability now?" / "I can help with that. You
+# want a Teeth Cleaning ... shall I check availability now?").
+_STUCK_LOOP_SIMILARITY = 0.5
+
+
+def _is_stuck_in_a_loop(db: Session, conversation_id: uuid.UUID, drafted_reply: str) -> bool:
+    """True when the reply about to be sent is substantially the same as EACH of the last
+    two replies we already sent -- i.e. this would be the 3rd near-identical reply in a
+    row, the deterministic, code-visible signal for "the agent has failed to resolve the
+    same request repeatedly" (no NLP, no new persisted state -- just the real message
+    history, same discipline as _last_agent_reply above).
+
+    Requires the drafted reply to itself be a QUESTION: a real, repeated-but-successful
+    deterministic confirmation (e.g. three separate "your confirmation is on its way"
+    resend replies -- same real fixed template, same real inputs, correctly identical
+    every time) is not a stuck loop, it's the agent doing its job three times in a row.
+    Only "the agent is still asking, still not getting anywhere" repeats."""
+    if "?" not in drafted_reply:
+        return False
+    recent = db.execute(
+        select(Message.content)
+        .where(Message.conversation_id == conversation_id, Message.sender_type == MessageSenderType.AGENT)
+        .order_by(Message.created_at.desc())
+        .limit(2)
+    ).scalars().all()
+    if len(recent) < 2:
+        return False
+    drafted_lower = drafted_reply.lower()
+    return all(
+        difflib.SequenceMatcher(None, drafted_lower, prior.lower()).ratio() >= _STUCK_LOOP_SIMILARITY
+        for prior in recent
+    )
+
+
+# Root-cause fix for a confirmed missed_escalation bug (same read-through, conversation
+# fb325df3): a customer described a 9/10 toothache with overnight swelling and asked to be
+# seen ASAP, and got a plain "I'll need a way to reach you" with no urgency acknowledged at
+# all. Deliberately keyword-based, same discipline as _CLOSED_WORDS/_DEPOSIT_WORDS
+# (fact_validator.py) -- a real clinical triage classifier is a much larger, separate
+# problem than this codebase takes on anywhere else.
+# ponytail: keyword match, no tense/hypothetical detection ("if I ever have an emergency,
+# can I message you?" also matches) -- erring toward over-escalating a described medical
+# emergency is the right side to be wrong on. Deliberately excludes bare "bleeding"/
+# "swelling" (routine procedure-info questions like "how much bleeding is normal after an
+# extraction?" mention them without being an emergency) -- only an explicit urgency word or
+# a stated pain intensity counts. Upgrade path: only if false escalations on hypothetical/
+# past-tense mentions turn out to be a real, measured problem in practice.
+#
+# "asap"/"right now" are split out from the unambiguous words below (real transcript check,
+# 597-case regression dataset: "I don't have money right now" / "I don't have to pay 1%
+# right now" are ordinary payment-timing remarks, not emergencies) -- they only count
+# alongside a real "come see me" request, never bare.
+_EMERGENCY_STRONG_RE = re.compile(
+    r"\b(emergency|severe pain|excruciating|unbearable pain|heavy bleeding|9/10|10/10)\b", re.I
+)
+_EMERGENCY_URGENCY_RE = re.compile(r"\b(asap|a\.s\.a\.p|right now)\b", re.I)
+_EMERGENCY_WANTS_TO_BE_SEEN_RE = re.compile(r"\b(see me|come in|be seen|look at (it|me|this)|visit)\b", re.I)
+
+
+def _is_medical_emergency(text: str) -> bool:
+    if _EMERGENCY_STRONG_RE.search(text):
+        return True
+    return bool(_EMERGENCY_URGENCY_RE.search(text) and _EMERGENCY_WANTS_TO_BE_SEEN_RE.search(text))
+
+
 _BARE_DIGIT_RE = re.compile(r"^[1-9]$")
 
 
@@ -700,7 +777,7 @@ def _format_group_booking_result(
                 service_name=service_name,
                 when=when,
                 duration=str(appointment["duration_minutes"]),
-                id=str(appointment["id"]),
+                id=appointment["confirmation_code"],
             )
         return render("group_line_fail", language, people=people, message=booking["message"].rstrip(".").lower())
 
@@ -747,7 +824,7 @@ def _format_appointment_status_result(
 
     def describe(a: dict) -> str:
         when = _format_local(datetime.fromisoformat(a["scheduled_at"]), tz)
-        return render("status_describe", language, service=a["service"], when=when, id=str(a["id"]))
+        return render("status_describe", language, service=a["service"], when=when, id=a["confirmation_code"])
 
     if not active and not recent_past:
         return render("status_none", language, who=who)
@@ -821,6 +898,18 @@ def _off_topic_response(business: Business | None, language: str | None) -> str:
     ConversationIntent.OFF_TOPIC's docstring)."""
     name = business.name if business else "this business"
     return render("off_topic", language, name=name)
+
+
+def _emergency_response(business: Business | None, language: str | None) -> str:
+    """The ONLY place a described-emergency reply is composed -- deterministic override,
+    never the LLM's own drafted text (see the confirmed bug this fixes: a stated 9/10
+    toothache with overnight swelling got a plain "I'll need a way to reach you" back, no
+    urgency acknowledged at all). Minimum viable version per the read-through: an honest,
+    direct instruction to call/visit the clinic right away -- no real "book an emergency
+    slot" mechanism exists in this codebase to route this into instead. Always paired with
+    a real HumanHandoff (see escalation_front_desk_reason below) so staff see it too."""
+    phone = f" at {business.phone}" if business and business.phone else ""
+    return render("emergency_handoff", language, phone=phone)
 
 
 def _resolve_contact_update(customer: Customer | None, contact_info_update: dict | None) -> dict:
@@ -1274,6 +1363,59 @@ def _payment_choice_turn(
     }
 
 
+def _takeover_turn(
+    db: Session,
+    *,
+    conversation: Conversation,
+    content: str,
+    external_message_id: str | None,
+    intent: ConversationIntent | None = None,
+) -> dict:
+    """Phase 52: a staff member owns this conversation, so the AI stays silent. The customer's message is still stored (the
+    inbox shows it, and it is never silently dropped) but nothing is drafted or sent: `response` is None and `agent_message_id`
+    is None, which every channel caller treats as "send nothing". `intent` is set only when the LLM had already classified
+    the message by the time takeover was noticed (the post-LLM checkpoint), else None."""
+    customer_message = Message(
+        conversation_id=conversation.id,
+        sender_type=MessageSenderType.CUSTOMER,
+        content=content,
+        detected_intent=intent.value if intent is not None else None,
+        external_message_id=external_message_id,
+    )
+    db.add(customer_message)
+    db.commit()
+    db.refresh(customer_message)
+    logger.info(
+        "human takeover active -- AI suppressed: conversation_id=%s classified_intent=%s",
+        conversation.id,
+        intent.value if intent is not None else None,
+    )
+    return {
+        "intent": intent,
+        "response": None,
+        "customer_message_id": customer_message.id,
+        "agent_message_id": None,
+        "takeover": True,
+        "detected_language": conversation.detected_language,
+    }
+
+
+def _deliver_reply(db: Session, result: dict, deliver) -> None:
+    """Push the reply through the channel and record what happened on the AGENT message (delivery_status/detail) — until
+    Phase 52 the send result was only ever logged. Runs while the caller still holds the ReplyLock."""
+    try:
+        detail = deliver(result["response"])
+    except Exception:  # the adapters never raise; a bug in a custom `deliver` must not lose the stored reply
+        logger.exception("deliver callback raised for conversation turn (agent_message_id=%s)", result.get("agent_message_id"))
+        detail = "failed: unexpected error"
+    message = db.get(Message, result["agent_message_id"])
+    if message is not None:
+        message.delivery_status = delivery.status_from_detail(detail)
+        message.delivery_detail = detail[:255]
+        db.commit()
+    result["delivery_detail"] = detail
+
+
 def handle_incoming_message(
     db: Session,
     *,
@@ -1282,6 +1424,55 @@ def handle_incoming_message(
     content: str,
     external_message_id: str | None = None,
     force_language: str | None = None,
+    deliver=None,
+) -> dict | None:
+    """One customer turn, plus (optionally) the delivery of the reply. See `_handle_turn` for the conversation logic.
+
+    `deliver` (Phase 52): a callable `text -> status string` that pushes the reply to the customer's channel (the WhatsApp/
+    Messenger/Instagram webhooks pass their adapter's send). The reply is delivered HERE, inside the per-conversation
+    ReplyLock, rather than by the caller after this returns — that is what guarantees a staff claim can never commit between
+    the AI's final takeover check and the message actually being sent (see takeover_service.ReplyLock). The website widget /
+    voice / testing callers pass nothing: their "delivery" is the HTTP response itself."""
+    reply_lock = takeover_service.ReplyLock(conversation_id)
+    try:
+        result = _handle_turn(
+            db,
+            conversation_id=conversation_id,
+            business_id=business_id,
+            content=content,
+            external_message_id=external_message_id,
+            force_language=force_language,
+            reply_lock=reply_lock,
+        )
+        if result is not None and result.get("response") is not None and deliver is not None:
+            # Every reply path holds the lock here (early branches: acquired at the locked checkpoint; the main flow and the
+            # provider-failure path: at theirs). If one ever doesn't, take it now and re-check rather than send blind.
+            if not reply_lock.held:
+                logger.warning("reply path reached delivery without the reply lock: conversation_id=%s", conversation_id)
+                reply_lock.acquire()
+            if takeover_service.is_active(db, conversation_id=conversation_id):
+                message = db.get(Message, result["agent_message_id"])
+                if message is not None:
+                    message.delivery_status, message.delivery_detail = delivery.SUPPRESSED, "a staff member took over"
+                    db.commit()
+                result["response"] = None
+                result["takeover"] = True
+            else:
+                _deliver_reply(db, result, deliver)
+        return result
+    finally:
+        reply_lock.release()
+
+
+def _handle_turn(
+    db: Session,
+    *,
+    conversation_id: uuid.UUID,
+    business_id: uuid.UUID,
+    content: str,
+    external_message_id: str | None = None,
+    force_language: str | None = None,
+    reply_lock: "takeover_service.ReplyLock",
 ) -> dict | None:
     """The full orchestration flow for one customer message: load context (Phase
     7) -> knowledge search (Phase 6) -> classify intent + draft response + extract
@@ -1314,6 +1505,15 @@ def handle_incoming_message(
     if conversation is None:
         return None
 
+    # Phase 52 takeover checkpoints (three reads of the same column; only the two under the ReplyLock are authoritative):
+    #   0. here, unlocked and cheap: a staff member already owns this conversation -> store the message, stay silent, and skip
+    #      everything below including the summarization LLM call. Placed before EVERY branch.
+    #   1. after context assembly, UNDER the ReplyLock: guards the early, non-LLM replies (premium test, language question,
+    #      payment choice, bare-digit pick). The lock is dropped again before the multi-second LLM call.
+    #   2. after the LLM call, UNDER the ReplyLock: guards the main flow — see below.
+    if takeover_service.is_active(db, conversation_id=conversation_id):
+        return _takeover_turn(db, conversation=conversation, content=content, external_message_id=external_message_id)
+
     # Urgent perf investigation (real 12-14s turns reported live): per-stage
     # wall-clock timing for one turn, logged as one structured line so it's
     # queryable the same way Phase 31's llm_duration_ms already is — never
@@ -1329,6 +1529,10 @@ def handle_incoming_message(
     _t2 = time.perf_counter()
 
     business = db.get(Business, business_id)
+
+    reply_lock.acquire()
+    if takeover_service.is_active(db, conversation_id=conversation_id):
+        return _takeover_turn(db, conversation=conversation, content=content, external_message_id=external_message_id)
 
     if content.strip().lower() == _PREMIUM_TEST_TRIGGER:
         return _handle_premium_test_message(
@@ -1477,6 +1681,11 @@ def handle_incoming_message(
     # a raw 500. `RuntimeError` is raised nowhere else in this codebase, so
     # this can only ever catch a real LLM/embedding provider failure, never
     # mask an unrelated bug in knowledge search or classification itself.
+    # Nothing below until checkpoint 2 may hold the ReplyLock: the embedding + LLM calls take seconds and a staff member must
+    # be able to claim the conversation meanwhile (checkpoint 2 then discards the draft). Also end the transaction so no row
+    # lock on the conversation survives into the LLM call.
+    reply_lock.release()
+    db.commit()
     try:
         _t3 = time.perf_counter()
         query_vector = get_embedding_provider().embed([content])[0]
@@ -1508,12 +1717,79 @@ def handle_incoming_message(
                 "turn_total_pre_dispatch_ms": round((_t6 - _t0) * 1000, 1),
             },
         )
+
+        # Fact grounding guard (read-through of backend/data/regression/failure_log_batches:
+        # 23 unconfigured_fact + 4 invented_policy findings, incl. Samaj Dental Clinic's
+        # recurring fabricated 20% deposit). The LLM is handed real config/knowledge every
+        # turn but sometimes states something else anyway -- this checks the draft against
+        # that SAME context before it ever reaches dispatch/the customer. Runs on every
+        # intent's raw draft (cheap regex; a tool-dispatch intent below may still replace
+        # response_text with its own deterministic, already-safe text -- validating it too
+        # is harmless, never triggers). See fact_validator.check_response_facts.
+        currency = business.currency if business and business.currency else "USD"
+        hours_by_day = {h.day_of_week: h.closed for h in hours} if hours else None
+        service_facts = [
+            {"name": s.name, "price": s.price, "deposit_enabled": s.deposit_enabled, "deposit_percentage": s.deposit_percentage}
+            for s in services
+        ]
+        # Includes the customer's own current message: a phone/email the customer just
+        # volunteered THIS turn (read back correctly in the draft) isn't in `context`
+        # yet (that snapshot predates this turn) -- confirmed false positive without this.
+        known_text_parts = [chunk.content for chunk, _doc, _sim in knowledge_results] + [content]
+        if business is not None:
+            known_text_parts += [business.phone or "", business.address or "", business.email or ""]
+        customer_ctx = context.get("customer") or {}
+        known_text_parts += [str(customer_ctx.get("phone") or ""), str(customer_ctx.get("email") or "")]
+        known_text = "\n".join(known_text_parts)
+        fact_check_front_desk_reason = None
+        violations = check_response_facts(
+            classification.response, currency=currency, services=service_facts,
+            hours_by_day=hours_by_day, known_text=known_text,
+        )
+        if violations:
+            logger.warning(
+                "drafted reply failed fact-grounding check, regenerating once: conversation_id=%s violations=%s",
+                conversation_id, violations,
+            )
+            retry = classify_and_respond(
+                business=business,
+                context=context,
+                knowledge_results=knowledge_results,
+                customer_message=content,
+                services=services,
+                locked_language=force_language or conversation.detected_language,
+                hours=hours,
+                flagged_claims=violations,
+            )
+            retry_violations = check_response_facts(
+                retry.response, currency=currency, services=service_facts,
+                hours_by_day=hours_by_day, known_text=known_text,
+            )
+            if not retry_violations:
+                classification = retry
+            else:
+                logger.warning(
+                    "fact-grounding regenerate still failed, falling back to honest template: "
+                    "conversation_id=%s violations=%s",
+                    conversation_id, retry_violations,
+                )
+                fallback_language = force_language or conversation.detected_language or classification.message_language
+                classification = classification._replace(
+                    response=render("unconfirmed_fact_fallback", fallback_language),
+                    needs_human_handoff=True,
+                )
+                fact_check_front_desk_reason = (
+                    "Drafted reply repeated an unconfirmed price/policy/hours/contact claim twice in a row."
+                )
     except RuntimeError:
         logger.exception(
             "LLM/embedding provider call failed after internal retries; degrading gracefully: "
             "conversation_id=%s",
             conversation_id,
         )
+        reply_lock.acquire()
+        if takeover_service.is_active(db, conversation_id=conversation_id):
+            return _takeover_turn(db, conversation=conversation, content=content, external_message_id=external_message_id)
         return _handle_provider_failure(
             db,
             conversation=conversation,
@@ -1524,6 +1800,19 @@ def handle_incoming_message(
             force_language=force_language,
         )
     intent, response_text = classification.intent, classification.response
+
+    # Phase 52 checkpoint 2: the LLM call above takes seconds, long enough for a staff member to reply and claim the
+    # conversation. Take the ReplyLock, THEN re-read the column from the DB (not the stale ORM object) and, if a human has
+    # taken over meanwhile, throw the AI's draft away. Deliberately BEFORE anything with a side effect (contact update,
+    # booking, handoff row) so an abandoned draft never leaves a real appointment behind with no confirmation. The lock stays
+    # held through the final commit AND the channel send (the caller's `deliver`), so a claim landing after this check waits
+    # until the reply is out instead of racing it (see takeover_service.ReplyLock).
+    db.commit()  # persist the turn's one-shot draft-state clear and drop any row lock BEFORE waiting on the advisory lock
+    reply_lock.acquire()
+    if takeover_service.is_active(db, conversation_id=conversation_id):
+        return _takeover_turn(
+            db, conversation=conversation, content=content, external_message_id=external_message_id, intent=intent
+        )
 
     # Phase 25 urgent fix: real testing showed the agent drifting between
     # English/Devanagari Nepali/Roman Nepali within a single conversation —
@@ -1733,7 +2022,51 @@ def handle_incoming_message(
         # slots`/`render_contact_gate` are unchanged — only WHEN they're
         # reached moved.
         service, scheduled_at = _resolve_booking_draft(conversation, services, business)
-        if service is not None and scheduled_at is not None:
+        # Real bug, found via live-replay regression testing (PHASE_STATUS.md): the
+        # contact-info gate below used to treat any resolved service+scheduled_at as
+        # confirmed-pending-contact and say so ("Got it ... I just need your name and a
+        # phone number") without ever checking the slot was real -- the ONLY place that
+        # actually happened was create_appointment, gated behind has_contact, so a
+        # customer with no contact info on file yet got a confident false "Got it" for a
+        # slot (e.g. a day the tenant is configured closed) that would only turn out to
+        # be invalid once they gave their contact info and the tool actually ran. This is
+        # the same real-time check create_appointment itself uses (get_available_slots,
+        # the single source of truth for "is this business open, and is this slot free" —
+        # never re-implemented here), called BEFORE any confirmation-sounding reply is
+        # generated, so an invalid slot is now caught at the same turn it's named,
+        # regardless of whether contact info is present yet.
+        same_day_slots = (
+            booking_service.get_available_slots(
+                db, business_id=business_id, service_id=service.id, staff_id=None,
+                date_from=scheduled_at.date(), date_to=scheduled_at.date(),
+            )
+            if service is not None and scheduled_at is not None
+            else []
+        )
+        if service is not None and scheduled_at is not None and scheduled_at not in same_day_slots:
+            # _propose_available_slots reads booking_draft_date (via _effective_draft_date) to
+            # know which day the customer actually asked about, so it must run BEFORE that's
+            # cleared below -- clearing first would silently lose "the customer asked about
+            # Sunday" and make the search fall back to today instead of reporting Sunday's
+            # real unavailability with the correct next-opening alternatives.
+            response_text = _propose_available_slots(
+                db, business_id=business_id, service=service, conversation=conversation,
+                tz=ZoneInfo(business.timezone), language=language, previous_reply=_last_agent_reply(db, conversation_id),
+            )
+            # Same partial-clear judgment as _clear_booking_draft_after_attempt's failure
+            # path: the requested time is definitely invalid, and the date only survives if
+            # that SAME day still has other real openings (in which case it's still exactly
+            # what the customer asked about). When the day is fully closed/booked, clear the
+            # date too -- but NEVER booking_draft_search_anchor_date: _propose_available_slots
+            # just wrote a fresh one above (the real day it found alternatives on), and this is
+            # deliberately the only state that must survive so the next turn's bare-time/
+            # bare-digit slot pick resolves against those real alternatives instead of the
+            # customer's already-proven-invalid date (see _effective_draft_date's priority and
+            # _propose_available_slots's own docstring on this exact mechanism).
+            conversation.booking_draft_time = None
+            if not same_day_slots:
+                conversation.booking_draft_date = None
+        elif service is not None and scheduled_at is not None:
             # The real moment of commitment — about to actually write a
             # booking — is the ONLY place contact info is required.
             if not has_contact:
@@ -1911,6 +2244,14 @@ def handle_incoming_message(
         # routed through handoff_service below (OFF_TOPIC is not in
         # _INFO_INTENTS), so this never creates a HumanHandoff.
         response_text = _off_topic_response(business, language)
+    elif intent == ConversationIntent.BUSINESS_HOURS:
+        # Root-cause fix (read-through of backend/data/regression/failure_log_batches:
+        # Samaj Dental Clinic's Sunday-open hours repeatedly misstated as closed) --
+        # deterministic override, never the LLM's own drafted text. See
+        # describe_business_hours' docstring for the confirmed hallucination this
+        # replaces (fact_validator.check_weekday_hours stays on as a safety net for
+        # every OTHER intent that may still mention a day's hours in passing).
+        response_text = describe_business_hours(hours, language)
 
     # Phase 14: the service list is LLM-composed and live testing showed it comes back as one long ";"/","-separated line
     # for some phrasings — put each real service on its own line (deterministic, reads the real service names; leaves
@@ -1938,6 +2279,29 @@ def handle_incoming_message(
     # response_text, same as those two.
     for old, new in draft_switches:
         response_text = f"{response_text} {render('booking_draft_switch', language, old=old, new=new)}"
+
+    # Root-cause fix for two confirmed missed_escalation bugs (read-through of
+    # backend/data/regression/failure_log_batches/batch5_testchat_misc.json) -- a
+    # described medical emergency and a customer stuck in a non-progressing loop both got
+    # no escalation, because neither signal is something the LLM's own intent
+    # classification reliably catches (it missed both, live). Both checks are
+    # deterministic and independent of `intent`, same discipline as
+    # is_explicit_language_switch/is_provider_failure elsewhere in this function.
+    # Checked against `content` (the emergency wording) / the drafted response_text (the
+    # loop) BEFORE the emergency override below replaces it.
+    is_medical_emergency = _is_medical_emergency(content)
+    is_stuck_in_a_loop = _is_stuck_in_a_loop(db, conversation_id, response_text)
+    if is_medical_emergency:
+        response_text = _emergency_response(business, language)
+    escalation_front_desk_reason = None
+    if is_medical_emergency:
+        escalation_front_desk_reason = (
+            "Customer's message describes what sounds like a medical/dental emergency; told to call/visit directly."
+        )
+    elif is_stuck_in_a_loop:
+        escalation_front_desk_reason = (
+            "Customer's request has gone unresolved after several near-identical replies from the agent."
+        )
 
     # Phase 19: real human-handoff producer — Phase 16 flagged that
     # HumanHandoff had zero producers anywhere in this codebase. This checks
@@ -1979,7 +2343,7 @@ def handle_incoming_message(
         best_similarity=best_similarity,
         llm_confirmed_answered=(True if classification.needs_human_handoff is False else None),
         is_language_switch_request=is_explicit_language_switch,
-        front_desk_reason=resend_front_desk_reason,
+        front_desk_reason=resend_front_desk_reason or fact_check_front_desk_reason or escalation_front_desk_reason,
     )
     if handoff is not None:
         response_text = f"{response_text} {render('handoff_addendum', language)}"

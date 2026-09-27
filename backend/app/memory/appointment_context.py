@@ -15,6 +15,7 @@ RECENT_PAST_LIMIT = 3
 def _serialize(appointment: Appointment, service_name: str, staff_name: str | None) -> dict:
     return {
         "id": str(appointment.id),
+        "confirmation_code": appointment.confirmation_code,
         "service": service_name,
         "staff": staff_name,
         "scheduled_at": appointment.scheduled_at.isoformat(),

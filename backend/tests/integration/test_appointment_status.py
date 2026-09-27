@@ -164,6 +164,7 @@ def test_status_reports_one_active_appointment_matching_real_db_row(two_business
             db, business_id=business_id_a, customer_id=customer_id, service_id=service_id, staff_id=None, scheduled_at=when
         )
         appointment_id = appointment.id
+        confirmation_code = appointment.confirmation_code
 
     _stub_providers(monkeypatch, _status_reply())
     resp = client.post(
@@ -173,7 +174,7 @@ def test_status_reports_one_active_appointment_matching_real_db_row(two_business
     )
     assert resp.status_code == 201, resp.text
     response_text = resp.json()["response"]
-    assert str(appointment_id) in response_text
+    assert confirmation_code in response_text
     assert "Cleaning" in response_text
     assert "confirmed" in response_text.lower()
 
@@ -198,7 +199,7 @@ def test_status_lists_all_multiple_active_appointments(two_businesses, monkeypat
         a2 = booking_service.create_appointment(
             db, business_id=business_id_a, customer_id=customer_id, service_id=service_id, staff_id=None, scheduled_at=when2
         )
-        id1, id2 = a1.id, a2.id
+        id1, id2 = a1.confirmation_code, a2.confirmation_code
 
     _stub_providers(monkeypatch, _status_reply())
     resp = client.post(

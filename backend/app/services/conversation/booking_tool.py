@@ -101,6 +101,7 @@ class BookAppointmentTool(ConversationTool):
             "success": True,
             "appointment": {
                 "id": str(appointment.id),
+                "confirmation_code": appointment.confirmation_code,
                 "service_id": str(appointment.service_id),
                 "staff_id": str(appointment.staff_id) if appointment.staff_id else None,
                 "scheduled_at": appointment.scheduled_at,

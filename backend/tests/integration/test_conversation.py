@@ -295,7 +295,7 @@ def test_booking_tool_creates_real_appointment_and_response_reflects_it(two_busi
         )
     assert len(appointments) == 1, "the tool must have made a real DB write"
     real_appointment = appointments[0]
-    assert str(real_appointment.id) in body["response"], "the response must quote the REAL booking ID from the DB"
+    assert real_appointment.confirmation_code in body["response"], "the response must quote the REAL booking ID from the DB"
     assert real_appointment.service_id == service_id
     assert real_appointment.scheduled_at.hour == 14
 
@@ -454,7 +454,7 @@ def test_group_booking_tool_creates_shared_appointment_with_participants(two_bus
             db.query(AppointmentParticipant).filter(AppointmentParticipant.appointment_id == appointment.id).all()
         )
     assert sorted(p.name for p in participants) == ["Jordan", "Spouse"]
-    assert str(appointment.id) in body["response"], "the response must quote the REAL booking ID from the DB"
+    assert appointment.confirmation_code in body["response"], "the response must quote the REAL booking ID from the DB"
 
 
 def test_group_booking_hallucination_proof_partial_failure_is_never_reported_as_full_success(
@@ -2126,7 +2126,7 @@ def test_booking_draft_accumulates_across_turns_and_books_once_complete(two_busi
         assert len(appointments) == 1, "must book on the turn that completes the triple — no extra confirmation turn"
         assert appointments[0].service_id == service_id
         assert appointments[0].scheduled_at.hour == 14
-        assert str(appointments[0].id) in body["response"]
+        assert appointments[0].confirmation_code in body["response"]
 
         conversation = db.get(Conversation, conversation_id)
         assert conversation.booking_draft_service_id is None
@@ -2809,7 +2809,7 @@ def test_booking_draft_survives_contact_gate_then_books_once_contact_given(two_b
         appointments = db.query(Appointment).filter(Appointment.business_id == business_id_a).all()
         assert len(appointments) == 1, "the slots given before contact info must not have been lost"
         assert appointments[0].service_id == service_id
-        assert str(appointments[0].id) in body["response"]
+        assert appointments[0].confirmation_code in body["response"]
 
 
 def test_booking_draft_correction_uses_latest_value_not_stale_one(two_businesses, monkeypatch):
@@ -2953,7 +2953,7 @@ def test_booking_completes_when_contact_info_arrives_on_an_off_intent_turn(two_b
         appointments = db.query(Appointment).filter(Appointment.business_id == business_id_a).all()
         assert len(appointments) == 1, "must book off the pending draft even though this turn wasn't classified as booking"
         assert appointments[0].service_id == service_id
-        assert str(appointments[0].id) in body["response"]
+        assert appointments[0].confirmation_code in body["response"]
 
 
 def test_off_intent_contact_update_does_not_hijack_unrelated_turn_without_a_pending_draft(two_businesses, monkeypatch):
@@ -3157,7 +3157,7 @@ def test_booking_failure_preserves_service_and_same_day_alternative_preserves_da
         booked = [a for a in appointments if a.scheduled_at.hour == 10]
         assert len(booked) == 1, "must book using the SURVIVING service+date plus only the newly given time"
         assert booked[0].service_id == service_id
-        assert str(booked[0].id) in body["response"]
+        assert booked[0].confirmation_code in body["response"]
 
 
 def test_booking_failure_on_a_fully_closed_day_clears_date_too(two_businesses, monkeypatch):
@@ -3387,7 +3387,7 @@ def test_wants_availability_then_picking_a_shown_slot_books_correctly(two_busine
         assert len(appointments) == 1
         assert appointments[0].service_id == service_id
         assert appointments[0].scheduled_at.hour == 9
-        assert str(appointments[0].id) in body["response"]
+        assert appointments[0].confirmation_code in body["response"]
 
 
 def test_wants_availability_never_overrides_an_already_complete_draft(two_businesses, monkeypatch):
@@ -3683,6 +3683,122 @@ def test_handoff_service_still_fires_for_genuinely_unanswered_questions():
     assert "0.28" in reason
 
 
+def test_is_medical_emergency_needs_a_seen_request_alongside_a_bare_urgency_word():
+    """Regression guard for a real false-positive found while building the emergency
+    detector against the full 597-case regression dataset: "asap"/"right now" alone are
+    too generic (payment-timing remarks like "I don't have money right now" use them too)
+    -- they only count paired with an actual "come see me" request. An unambiguous word
+    (9/10, "emergency", ...) always counts alone."""
+    from app.services.conversation.orchestrator import _is_medical_emergency
+
+    assert not _is_medical_emergency("I don't have money right now")
+    assert not _is_medical_emergency("I don't have to pay 1% right now")
+    assert _is_medical_emergency("I chipped my tooth badly and it's bleeding, can someone see me right now?")
+    assert _is_medical_emergency("Mero emergency ho k garne hola")
+    assert _is_medical_emergency("REALLY bad toothache (like a 9/10) -- swelling too. Can someone see me ASAP??")
+
+
+def test_stated_medical_emergency_gets_an_urgent_override_and_a_real_handoff(two_businesses, monkeypatch):
+    """Root-cause fix for a confirmed missed_escalation bug (read-through of
+    backend/data/regression/failure_log_batches/batch5_testchat_misc.json, conversation
+    fb325df3): a stated 9/10 toothache with overnight swelling got a plain "I'll need a
+    way to reach you", no urgency acknowledged, no escalation at all -- because nothing in
+    the LLM's own intent classification reliably catches a described medical emergency."""
+    from app.db.models.handoff import HumanHandoff
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    _stub_providers(
+        monkeypatch, json.dumps({"intent": "general_question", "response": "Sure, I can help you book that."})
+    )
+    body = _say(
+        token_a,
+        conversation_id,
+        "Hi!!! I have a REALLY bad toothache (like a 9/10) since yesterday night — swelling too. "
+        "Can someone see me ASAP?? Also do you guys accept walk-ins or do I need to book first??",
+    )
+    lowered = body.lower()
+    assert "call us" in lowered or "visit us" in lowered
+    assert "sure, i can help you book" not in lowered, "the LLM's own drafted text must never be used for a stated emergency"
+    with SessionLocal() as db:
+        handoffs = db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).all()
+        assert len(handoffs) == 1 and handoffs[0].resolved_at is None
+        assert "emergency" in handoffs[0].reason.lower()
+
+
+def test_stuck_in_a_repeating_confirmation_loop_gets_a_real_handoff(two_businesses, monkeypatch):
+    """Root-cause fix for a confirmed missed_escalation bug (same read-through, conversation
+    7f72b8f1): a customer stuck in a non-progressing booking-confirmation loop -- the agent
+    repeating a near-identical reply turn after turn -- called the agent "dumb" and still
+    got no escalation."""
+    from app.db.models.conversation import Message, MessageSenderType
+    from app.db.models.handoff import HumanHandoff
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    prior_reply = (
+        "Great — to confirm: you'd like a Teeth Cleaning at 11:00 on the next available morning. "
+        "Shall I check availability now?"
+    )
+    with SessionLocal() as db:
+        for _ in range(2):
+            db.add(Message(conversation_id=conversation_id, sender_type=MessageSenderType.AGENT, content=prior_reply))
+        db.commit()
+
+    _stub_providers(
+        monkeypatch,
+        json.dumps(
+            {
+                "intent": "general_question",
+                "response": (
+                    "I can help with that. You want a Teeth Cleaning at 11:00 on the next available morning — "
+                    "shall I check availability now?"
+                ),
+            }
+        ),
+    )
+    _say(token_a, conversation_id, "yes you dumb")
+    with SessionLocal() as db:
+        handoffs = db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).all()
+        assert len(handoffs) == 1 and handoffs[0].resolved_at is None
+        assert "unresolved" in handoffs[0].reason.lower()
+
+
+def test_a_fresh_reply_that_merely_resembles_earlier_ones_does_not_falsely_escalate(two_businesses, monkeypatch):
+    """Companion to the loop test above: two prior replies that happen to share SOME words
+    with a genuinely different new answer must never falsely trip the stuck-loop guard --
+    only real, substantial near-duplication (see _is_stuck_in_a_loop's docstring) does."""
+    from app.db.models.conversation import Message, MessageSenderType
+    from app.db.models.handoff import HumanHandoff
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    customer_id = _create_customer(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+
+    with SessionLocal() as db:
+        for content in ("Sure, what service would you like?", "We offer Teeth Cleaning and Root Canal."):
+            db.add(Message(conversation_id=conversation_id, sender_type=MessageSenderType.AGENT, content=content))
+        db.commit()
+
+    _stub_providers(
+        monkeypatch,
+        json.dumps(
+            {
+                "intent": "general_question",
+                "response": "We're open 9am-6pm, Monday to Friday.",
+                "needs_human_handoff": False,  # isolates the stuck-loop guard from the unrelated low-similarity path
+            }
+        ),
+    )
+    _say(token_a, conversation_id, "what are your hours?")
+    with SessionLocal() as db:
+        assert db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).count() == 0
+
+
 # =====================================================================================================================
 # Phase 14 (2026-09-19 series): formatting fixes + rate-limited resend (email / QR-in-email / QR-link-in-chat)
 # =====================================================================================================================
@@ -3706,7 +3822,7 @@ class _CapturingEmailProvider:
     def __init__(self):
         self.recipients: list[str] = []
 
-    def send(self, *, to, subject, body, html_body=None, attachments=None, inline_images=None):
+    def send(self, *, to, subject, body, html_body=None, attachments=None, inline_images=None, credentials=None):
         self.recipients.append(to)
         return "250 message accepted for delivery"
 
@@ -4340,6 +4456,47 @@ def test_pick_one_template_exists_in_every_language():
 
     for lang in ("en", "ne_deva", "ne_roman"):
         assert "9:00 AM" in render("availability_pick_one", lang, options="9:00 AM, 9:15 AM")
+
+
+def test_describe_business_hours_reads_the_real_row_data_never_a_western_weekend_assumption():
+    """Regression guard for the confirmed Samaj Dental Clinic bug (PHASE_STATUS.md /
+    failure_log_batches/batch4_samaj.json): Sunday configured OPEN, only Saturday closed --
+    this must never come back as "Saturday and Sunday closed"."""
+    from datetime import time as _time
+
+    from app.services.conversation.response_templates import describe_business_hours
+
+    class _Hours:
+        def __init__(self, day_of_week, closed, open_time=None, close_time=None):
+            self.day_of_week = day_of_week
+            self.closed = closed
+            self.open_time = open_time
+            self.close_time = close_time
+
+    weekday = (_time(9, 0), _time(18, 0))
+    hours = [_Hours(i, False, *weekday) for i in range(5)] + [
+        _Hours(5, True),
+        _Hours(6, False, _time(10, 0), _time(18, 0)),
+    ]
+    text = describe_business_hours(hours, "en")
+    assert "Monday-Friday: 9:00 AM - 6:00 PM" in text
+    assert "Saturday: Closed" in text
+    assert "Sunday: 10:00 AM - 6:00 PM" in text
+    assert "Sunday: Closed" not in text
+
+    assert describe_business_hours([], "en") == (
+        "I don't have our hours on file yet — let me connect you with our team for that."
+    )
+
+    # Confirmed regression (full 615-case live regression run): fact_validator.check_weekday_hours
+    # splits on sentence-ending punctuation only, so a single comma-joined sentence naming several
+    # days was ONE clause to it -- and a closed day anywhere in that clause got wrongly attributed
+    # to every OTHER day also named there ("Monday is closed"). Each day-group must end its own
+    # sentence so the shared checker scopes "closed" to the day it actually describes.
+    from app.services.conversation.fact_validator import check_weekday_hours
+
+    hours_by_day = {h.day_of_week: h.closed for h in hours}
+    assert not check_weekday_hours(text, hours_by_day=hours_by_day)
 
 
 # --- Phase 17: deterministic backfill of a service the customer literally named but the LLM left null -----------------

@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from app.db.database import SessionLocal
+from app.db.models.appointment import Appointment
 from app.db.models.conversation import Conversation
 from app.db.models.payment import Payment
 from app.services import payment_service
@@ -39,6 +40,7 @@ _SERVICE = SimpleNamespace(name="Tooth Filling")
 _TZ = ZoneInfo("Asia/Kathmandu")
 _APPT = {
     "id": BOOKING_ID,
+    "confirmation_code": BOOKING_ID,
     "scheduled_at": datetime(2026, 9, 22, 4, 45, tzinfo=timezone.utc),
     "duration_minutes": 30,
 }
@@ -116,14 +118,17 @@ def test_chat_deposit_booking_then_verified_payment_gives_reserved_then_definiti
     first = booked["response"]
     assert "reserved" in first and "all set" not in first.lower()
     assert "https://esewa.fake/redirect/abc" in first and f"/pay-qr/{payment.id}" in first
-    assert str(payment.appointment_id) in first
+    with SessionLocal() as db:
+        assert db.get(Appointment, payment.appointment_id).confirmation_code in first
 
     conv = payment.conversation_id
     with SessionLocal() as db:
         payment_service.verify_and_update(db, db.get(Payment, payment.id))
     final = _agent_messages(conv)[-1]
     assert "Payment received — you're all set" in final and "is now confirmed" in final
-    assert "NPR 9000.00" in final and str(payment.appointment_id) in final
+    with SessionLocal() as db:
+        confirmation_code = db.get(Appointment, payment.appointment_id).confirmation_code
+    assert "NPR 9000.00" in final and confirmation_code in final
 
 
 @pytest.mark.parametrize("lang", LANGS)
@@ -134,7 +139,9 @@ def test_real_payment_received_message_uses_the_conversations_locked_language(la
         db.commit()
         payment_service.verify_and_update(db, db.get(Payment, payment.id))
     final = _agent_messages(payment.conversation_id)[-1]
-    assert CONFIRMED[lang] in final and str(payment.appointment_id) in final
+    with SessionLocal() as db:
+        confirmation_code = db.get(Appointment, payment.appointment_id).confirmation_code
+    assert CONFIRMED[lang] in final and confirmation_code in final
 
 
 def test_chat_no_deposit_booking_is_the_original_all_set_message(premium_npr_ready, gateways, chat):

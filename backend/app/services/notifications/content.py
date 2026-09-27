@@ -80,7 +80,9 @@ def compose_email(
     `None` except for a real booking_confirmed check-in QR."""
     tz = ZoneInfo(business.timezone)
     when = _format_local(appointment.scheduled_at, tz)
-    booking_id = str(appointment.id)
+    # Phase 55: the short customer-facing reference, never the raw internal DB id -- same
+    # fix as orchestrator.py's chat replies (fact_validator.check_no_internal_ids).
+    booking_id = appointment.confirmation_code
 
     if event_type == "booking_confirmed":
         subject = f"Your appointment at {business.name} is confirmed"
@@ -190,7 +192,8 @@ def compose_sms(
     charge per ~160-char segment)."""
     tz = ZoneInfo(business.timezone)
     when = _format_local(appointment.scheduled_at, tz)
-    booking_id = str(appointment.id)[:8]
+    # Phase 55: the short customer-facing reference, never the raw internal DB id.
+    booking_id = appointment.confirmation_code
 
     if event_type == "booking_confirmed":
         verb = "confirmed"
