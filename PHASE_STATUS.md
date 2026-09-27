@@ -17090,6 +17090,8 @@ Same real key, same real team id, same real billing gate, 3 weeks later — noth
 
 **Recommendation: no urgent change needed.** Azure `gpt-5-mini` is not just the only *tested* option that works — it is the only *available* option that works at all right now: Groq is architecturally blocked by an account-tier TPM ceiling smaller than one real request regardless of which of its 3 models is picked, and xAI is blocked by billing. At ~99% pass rate and ~$0.0067/conversation, there's no real cost or quality pressure motivating a switch even if either alternative became reachable — a switch would need to be evaluated on its own merits once actually testable, not adopted to solve a problem that doesn't currently exist. Two concrete, non-code unblocks would open real comparisons in the future: (1) Groq "Dev Tier" (their own upgrade path, mentioned directly in the 413 error text) to raise the account's TPM ceiling above this app's real per-turn request size; (2) xAI account credits/spending-limit increase. Neither was set up this phase, per instruction.
 
+**IMPORTANT — what "no urgent change needed" does and does not mean (added after the user's follow-up caught this ambiguity):** this recommendation is "gpt-5-mini is the only candidate that could actually be tested, and what was tested looks good" — **it is not "gpt-5-mini was compared against real alternatives and won."** Groq and xAI were blocked before a single real quality comparison against gpt-5-mini could happen; their pass-rate/cost numbers above measure the app's own honest-fallback behavior under total model unavailability, not those models' real capability. If a currently-blocked provider becomes reachable later (Groq Dev Tier, xAI credits, or a new Azure deployment — see below), this recommendation should be treated as **superseded, not reconfirmed**, until it's actually re-run against that candidate.
+
 **Verification / artifacts:**
 ```
 $ docker exec night_guard_ai-backend-1 ruff check tests/eval/model_bakeoff.py
@@ -17097,9 +17099,32 @@ All checks passed!
 ```
 Full per-case results (replies, failures, token usage) for every candidate saved to `backend/data/regression/bakeoff_results/{azure_gpt-5-mini,groq_gpt-oss-120b,groq_gpt-oss-20b,xai_grok-4}.json`.
 
-**Not committed** — per standing rule #6, awaiting the user's explicit go-ahead. `backend/data/regression/bakeoff_results/*.json` are real run artifacts, not source — flagging in case you'd rather `.gitignore` them than commit them.
+**Committed** (`c46faf5`), per the user's explicit go-ahead.
+
+---
+
+### Phase 57 continued (same date) — checked for a GPT-6 Luna/Sol deployment on this same Azure resource
+
+**Ask:** the user asked whether GPT-6 Luna or Sol (a same-account Azure OpenAI/Foundry deployment, no new billing setup unlike Groq/xAI) is available and, if so, to add it as a real bake-off candidate.
+
+**Real, confirmed via live web search (this is genuinely past my training-data cutoff, not assumed):** GPT-6 Sol and GPT-6 Luna are real models, publicly announced 2026-09-22 — 5 days before this phase — alongside a top-tier "GPT-6 Astra." Real Microsoft Foundry model-catalog IDs: `gpt-6-luna`, `gpt-6-sol` (also `gpt-6-astra`, and the prior generation `gpt-5.6-luna`). Real published OpenAI API pricing: **Luna $0.10/$0.50 per M input/output tokens** (cheaper than `gpt-5-mini`'s $0.25/$2.00), **Sol $2/$10 per M** (frontier-tier, pricier). Azure's own blog confirms Standard deployment availability for Astra/Sol/Luna across Global + US/EU Data Zone regions as of the same announcement.
+
+**Tested directly against this app's real Azure resource (`Samrat-G01`, same inference `api-key` already in `.env`, zero new accounts/billing):** called the real Foundry inference endpoint with `model="gpt-6-luna"` and `model="gpt-6-sol"`, 4 attempts each, 3s apart — the same retry budget `azure_openai.py` itself uses specifically because this resource has a confirmed ~50% *intermittent* false-404 quirk on genuinely-live deployments (see that file's own docstring). Result: **4/4 `DeploymentNotFound` for both**, not the intermittent pattern — persistent absence, not a flaky check:
+```
+gpt-6-luna: 404 DeploymentNotFound (x4, 3s apart)
+gpt-6-sol:  404 DeploymentNotFound (x4, 3s apart)
+```
+Also tried `gpt-6-astra` and `gpt-5.6-luna` once each (both 404) for completeness, not repeated 4×.
+
+**Honest limits of this check:** I only have this app's inference `api-key`, not Azure management-plane/portal access — I can't list what's actually deployed on `Samrat-G01`, and I can't create a new deployment myself (that's a real provisioning action in the Azure/Foundry portal, not something to do without you). A deployment name is whatever you chose when you created it, so if you've deployed Luna/Sol under a different name than the catalog default, my test above would (wrongly) read as "not deployed" — it only rules out the default catalog names. **Real conclusion: no evidence a `gpt-6-luna`/`gpt-6-sol` deployment exists on this resource under its default name; not 100% certain none exists under a custom name.**
+
+**What I need from you to actually add this as a candidate:** either confirm no such deployment exists yet (and, if you want it tested, deploy it in the Foundry portal — Standard deployment, same region as `gpt-5-mini` — and give me the deployment name), or tell me the exact deployment name if one already exists under something other than `gpt-6-luna`/`gpt-6-sol`. The bake-off harness needs zero code changes either way — `docker exec -e AZURE_OPENAI_DEPLOYMENT=<your deployment name> ... python tests/eval/model_bakeoff.py --n-cases 90 --price-input 0.10 --price-output 0.50` (Luna pricing) or `--price-input 2 --price-output 10` (Sol pricing) is the entire remaining step.
+
+**Not committed** — this addendum only, per standing rule #6; nothing else changed this addition (no code, no new artifacts — the earlier commit `c46faf5` already covers everything actually built this phase).
 
 **Sources (Azure/Groq/xAI pricing, real published rates checked live this phase, not from training-data memory):**
 - Azure OpenAI `gpt-5-mini` pricing: [mytokentracker.io/models/azure/gpt-5-mini](https://mytokentracker.io/models/azure/gpt-5-mini)
 - Groq `gpt-oss-120b`/`gpt-oss-20b`/Qwen pricing: [cloudzero.com/blog/groq-pricing](https://www.cloudzero.com/blog/groq-pricing/)
 - xAI Grok pricing (context only, xAI unreachable this phase): [benchlm.ai/xai/api-pricing](https://benchlm.ai/xai/api-pricing)
+- GPT-6 Sol/Luna announcement + Azure availability: [TechCrunch](https://techcrunch.com/2026/09/22/openai-launches-gpt-6-sol-and-luna/), [Azure Microsoft Blog](https://azure.microsoft.com/en-us/blog/gpt-6-astra-sol-and-luna-for-production-agents-in-microsoft-foundry/), [Microsoft Foundry catalog: gpt-6-luna](https://ai.azure.com/catalog/models/gpt-6-luna), [Microsoft Foundry catalog: gpt-6-sol](https://ai.azure.com/catalog/models/gpt-6-sol)
+- GPT-6 Sol/Luna pricing: [VentureBeat](https://venturebeat.com/technology/openai-releases-gpt-6-sol-and-luna-models-slashing-api-costs-50-or-more)
