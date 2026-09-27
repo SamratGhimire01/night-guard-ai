@@ -13,6 +13,7 @@ import StaffPage from './pages/dashboard/StaffPage'
 import HoursPage from './pages/dashboard/HoursPage'
 import KnowledgePage from './pages/dashboard/KnowledgePage'
 import TrainingRoomPage from './pages/dashboard/TrainingRoomPage'
+import InboxPage from './pages/dashboard/InboxPage'
 import HandoffsPage from './pages/dashboard/HandoffsPage'
 import FollowUpsPage from './pages/dashboard/FollowUpsPage'
 import OverviewPage from './pages/dashboard/OverviewPage'
@@ -49,6 +50,8 @@ export default function App() {
                 <Route path="hours" element={<HoursPage />} />
                 <Route path="knowledge" element={<KnowledgePage />} />
                 <Route path="training" element={<TrainingRoomPage />} />
+                <Route path="inbox" element={<InboxPage />} />
+                <Route path="inbox/:conversationId" element={<InboxPage />} />
                 <Route path="handoffs" element={<HandoffsPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />

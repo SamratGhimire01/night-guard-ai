@@ -1,0 +1,357 @@
+{
+  "conversation_id": "baf1f104-c9aa-43f7-816b-f17d1dcca086",
+  "business_id": "3421eb20-e71f-4eda-b5b7-e2043b2ac065",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "ne_roman",
+  "created_at": "2026-09-04T17:28:43.037560",
+  "customer": {
+    "id": "1cd49095-33e8-45e9-afc5-86b28e09f2c6",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "hello yo dental clinic ho?",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-04T17:28:43.041423"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Ho \u2014 yo dental clinic ho. Hami le Dental Consultation ($50, 20 min), Teeth Cleaning ($90, 30 min), Root Canal ($450, 60 min), ra Braces Consultation ($75, 30 min) dinchhau. Hamro thau 123 Main Street ho, ra tapaile cash or card bata payment garna saknuhunchha. Appointment book garna man cha?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:28:54.343844"
+    },
+    {
+      "sender_type": "customer",
+      "content": "sunnu na mero teeth ali ali dukhay ko 2 din vayo check garau nai parxara ?",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T17:30:08.702306"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Tyo book garnu aghi, confirm garna tapailai contact garne madhyam chahincha \u2014 kripaya tapaiko naam ra phone number wa email dinuhos?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:30:28.601001"
+    },
+    {
+      "sender_type": "customer",
+      "content": "haina k check garau nai parxara ke ali din harnu kamm vayo vane na aauda ne hola ne haina",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-04T17:31:21.173479"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Dental Consultation matra bhaye ~20 minute lagcha; Teeth Cleaning 30 minute; Root Canal 60 minute. Check matra ko lagi usually chito huncha, tesaile ali din ko chhuttai lina paryo bhane ni aauna sajilo hunchha. Kun service chahanu huncha? Kripaya tapaiko naam ra phone number (wa email) dinuhos \u2014 booking ma madat garam? Reschedule/cancel ko lagi kamti 24 ghanta notice cha. Emergency bhaye front desk ma call garnuhos.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:31:42.274281"
+    },
+    {
+      "sender_type": "customer",
+      "content": "ma confuse ma xu k k garne vanera",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-04T17:32:27.406668"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 bujhna garo bhayo bhane bujhchu. Dantko dukha ko lagi pahilo step Dental Consultation ho (20 min, $50) \u2014 doctor le herera ke garnu parne bhanne kura recommend garchan. Yadi dukh\u0101 jasto tez dukha, swelling, jharko, ya rakta aaune jasto cha bhane eso emergency huncha \u2014 front desk ma call garnuhos. Booking garna man cha bhane tapaiko naam ra phone number wa email pathaunuhos, ma madat garna sakchu.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:32:39.617294"
+    },
+    {
+      "sender_type": "customer",
+      "content": "ok serious ho jasto xata ali ali swelling ra bleeding ne vai rako xata malai",
+      "detected_intent": "human_handoff",
+      "created_at": "2026-09-04T17:34:18.791105"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Yesto swelling ra bleeding bhayeko cha bhane yo emergency jasto chha. Kripaya turunta front desk ma phone garnuhos wa najikai emergency room (ER) ma jaanuhos. Chahanu huncha bhane ma team sanga connect garna madat garna sakchhu \u2014 tapaiko naam ra phone number pathaunuhos, wa bhandinu ki front desk ko number chahanu huncha? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:34:18.796515"
+    },
+    {
+      "sender_type": "customer",
+      "content": "ok ok appointment leu nata voli ko xa",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T17:35:20.068301"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Tyo book garnu aghi, confirm garna tapailai contact garne madhyam chahincha \u2014 kripaya tapaiko naam ra phone number wa email dinuhos?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:35:39.381336"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Samrat Ghimire 9823035928 samratghimire01@gmail.com",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-04T17:36:25.227138"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Dhanyabad, Samrat \u2014 tapaiko naam, phone, ra email paaye. Ke ma tapaiko lagi appointment book garna madat garum? Kun service chahanu huncha ra kun date/time milcha? Wa front desk ko number chahanu huncha? Maile tapaiko contact information update gare.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:36:25.235634"
+    },
+    {
+      "sender_type": "customer",
+      "content": "docter saga kura garda thick hola hai first ma tei gardenu na ani first ko kun appointemnt avaiable xa tei book gardenu vaya hunxa",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T17:37:31.539492"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Bujhe \u2014 kripaya malai kun miti ra kun samaya batauna sakinu huncha?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:37:52.488691"
+    },
+    {
+      "sender_type": "customer",
+      "content": "morning ko vaya hunxa 9 -10 baje tera",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T17:38:19.787506"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Bujhe \u2014 kripaya malai kun miti batauna sakinu huncha?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:38:36.991990"
+    },
+    {
+      "sender_type": "customer",
+      "content": "voli",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T17:38:44.681070"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Tyo samaya ahile available chaina, Samrat Ghimire \u2014 requested time is not available (outside business hours, on a closed date, in the past, or already booked). Dental Consultation ko lagi aru kehi available samaya haru: Saturday, September 5 at 9:30 AM, Saturday, September 5 at 10:30 AM, Saturday, September 5 at 10:45 AM, Saturday, September 5 at 11:00 AM, Saturday, September 5 at 11:15 AM. Yi madhye kunai milcha?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:39:05.412880"
+    },
+    {
+      "sender_type": "customer",
+      "content": "first one ko vaya hunxa",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T17:40:05.390170"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Sabai milyo, Samrat Ghimire! Maile Saturday, September 5 at 9:30 AM (20 minute) ko lagi Dental Consultation book gari diye. Tapaiko booking ID 87d9ab8a-6240-4b2b-920a-6edaeaa41497 ho.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:40:05.396441"
+    },
+    {
+      "sender_type": "customer",
+      "content": "sorry sorry mero ta saturday ek thau janu xa sunday ko vaya sunday ko gardenuna plz",
+      "detected_intent": "rescheduling",
+      "created_at": "2026-09-04T17:40:47.870225"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha, Samrat \u2014 bujhe. Tapaiko Saturday ko appointment Sunday (2026-09-06) ma sarna chahanu huncha. Kun samaya milcha? Morning 9:00\u201311:00 ma ho ki kunai specific samaya cha? Bhanuhos, ma agadi badhne request garnu ki?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:41:02.353084"
+    },
+    {
+      "sender_type": "customer",
+      "content": "10 vaya hunxa",
+      "detected_intent": "rescheduling",
+      "created_at": "2026-09-04T17:41:42.822761"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Maile tyo sarna sakina, Samrat Ghimire \u2014 requested time is not available (outside business hours, on a closed date, or in the past).",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:42:02.261304"
+    },
+    {
+      "sender_type": "customer",
+      "content": "teso vaya sunday ko kunai date avaiable xaina.",
+      "detected_intent": "rescheduling",
+      "created_at": "2026-09-04T17:42:42.439270"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 bujhe. Sunday ma kunai slot chaina vanne kura bujhe. Tapai ke garna chahanu huncha? Option haru: 1) ahileko appointment Saturday, September 5, 9:30 AM nai rakhnuhos; 2) arko Saturday ko available samaya haru: Sept 5 \u2014 10:30 AM, 10:45 AM, 11:00 AM, 11:15 AM; kun chaheko ho bhanuhos; va 3) arko kunai din/slot khojna team sanga connect garna chahanu huncha? Ani, yadi swelling ra bleeding bhaye ko emergency ho bhane kripaya front desk ma phone garnuhos.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:43:01.121125"
+    },
+    {
+      "sender_type": "customer",
+      "content": "ok ok teso vaya last one of sep 5 ko book gardenu aabo aau nai paryo haina",
+      "detected_intent": "rescheduling",
+      "created_at": "2026-09-04T17:44:36.186957"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Bhaihalyo, Samrat Ghimire \u2014 tapaiko appointment Saturday, September 5 at 11:15 AM ma sariyo.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:44:36.191133"
+    },
+    {
+      "sender_type": "customer",
+      "content": "ok mero appointd kaile saryo re i forget k",
+      "detected_intent": "appointment_status",
+      "created_at": "2026-09-04T17:45:09.485559"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Tapaiko euta aagami appointment cha, Samrat Ghimire: Saturday, September 5 at 11:15 AM ma Dental Consultation (booking ID 87d9ab8a-6240-4b2b-920a-6edaeaa41497), status: confirmed.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:45:22.083912"
+    },
+    {
+      "sender_type": "customer",
+      "content": "i am very very sorry mero mamu le saturday kena janu vanera sunday ko aarkai hospital ma book gardenu vayaxa so plz cancel gardenu la sorry hai again.",
+      "detected_intent": "cancellation",
+      "created_at": "2026-09-04T17:47:04.641296"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Bhaihalyo, Samrat Ghimire \u2014 tapaiko Saturday, September 5 at 11:15 AM ko appointment cancel gariyo.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:47:04.647315"
+    },
+    {
+      "sender_type": "customer",
+      "content": "thank you hai kura bujdeko ma sorry again and bye next time pakka yei clinick ma aauxu.",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-04T17:48:13.228125"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha, Samrat \u2014 kunai kura hoina. Dhanyabad, ani agadi feri hamro clinic ma aunu bhane ramro lagcha. Kunai emergency bhaye front desk ma phone garnuhos. Ramro din.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:48:22.465575"
+    },
+    {
+      "sender_type": "customer",
+      "content": "i love you....",
+      "detected_intent": "greeting",
+      "created_at": "2026-09-04T17:49:04.447463"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Dhanyabad! Ma yaha Test Chat Biz ko receptionist hu \u2014 appointment, sewa, ghanta, location jasta kura ma matra madat garna sakchhu. Ke ma kunai sahayog garna sakchhu?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:49:12.659964"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [
+    {
+      "id": "87d9ab8a-6240-4b2b-920a-6edaeaa41497",
+      "service_id": "6e918b34-a382-4531-bbb2-b4b0e1182877",
+      "scheduled_at": "2026-09-05T15:15:00+00:00",
+      "status": "cancelled",
+      "created_at": "2026-09-04T17:39:23.546756"
+    }
+  ],
+  "business": {
+    "id": "3421eb20-e71f-4eda-b5b7-e2043b2ac065",
+    "name": "Test Chat Biz",
+    "timezone": "America/New_York",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "6e918b34-a382-4531-bbb2-b4b0e1182877",
+        "name": "Dental Consultation",
+        "description": null,
+        "price": 50.0,
+        "duration_minutes": 20,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "fd08a57f-879c-40ba-84fa-a44a8d7571f3",
+        "name": "Teeth Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "3a58abef-c4e7-4fdf-83ed-d8691fafd295",
+        "name": "Root Canal",
+        "description": null,
+        "price": 450.0,
+        "duration_minutes": 60,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "6b7cd7d1-ed84-4fc6-b6b5-3713809a9f48",
+        "name": "Braces Consultation",
+        "description": null,
+        "price": 75.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [
+      {
+        "id": "ebb82b04-2261-4dd6-88cf-98b0fddcd14a",
+        "title": "General Clinic Info",
+        "content": "Our clinic is located at 123 Main Street. We accept cash and card as payment methods. If you need to cancel or reschedule an appointment, please give us at least 24 hours notice. If you are experiencing a dental emergency, please call the front desk directly rather than using this chat."
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

@@ -65,6 +65,8 @@ class BusinessRead(BaseModel):
     language_mode: LanguageMode
     # Phase 54 — writable via BusinessUpdate below (a plain owner/admin setting, not plan-gated).
     content_scope: ContentScope
+    # Phase 58 — writable via BusinessUpdate below (a plain owner/admin setting, not plan-gated).
+    booking_enabled: bool
 
 
 class BusinessUpdate(BaseModel):
@@ -94,6 +96,7 @@ class BusinessUpdate(BaseModel):
     reminder_minutes_before: int | None = None
     language_mode: LanguageMode | None = None
     content_scope: ContentScope | None = None
+    booking_enabled: bool | None = None
 
     @field_validator("brand_color")
     @classmethod
@@ -132,7 +135,7 @@ class BusinessUpdate(BaseModel):
             raise ValueError("This field is required and cannot be cleared to null.")
         return value
 
-    @field_validator("sms_enabled", "follow_ups_enabled", "reminder_enabled")
+    @field_validator("sms_enabled", "follow_ups_enabled", "reminder_enabled", "booking_enabled")
     @classmethod
     def bool_toggle_not_null(cls, value: bool | None) -> bool:
         if value is None:

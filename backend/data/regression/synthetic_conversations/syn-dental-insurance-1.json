@@ -1,0 +1,105 @@
+{
+  "id": "syn-dental-insurance-1",
+  "category": "dental_insurance",
+  "source": "synthetic",
+  "turns": [
+    "Do you accept Delta Dental insurance?"
+  ],
+  "expect": {
+    "expect_reply_not_contains": [
+      "yes, we accept delta dental",
+      "we are in-network with delta"
+    ]
+  },
+  "business": {
+    "name": "Willow Creek Family Dentistry (synthetic)",
+    "timezone": "America/New_York",
+    "currency": "USD",
+    "languages": [
+      "en"
+    ],
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "name": "Dental Consultation",
+        "description": null,
+        "price": 60.0,
+        "duration_minutes": 20,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "name": "Teeth Cleaning",
+        "description": null,
+        "price": 110.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "name": "Root Canal",
+        "description": null,
+        "price": 900.0,
+        "duration_minutes": 60,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "name": "Teeth Whitening",
+        "description": null,
+        "price": 250.0,
+        "duration_minutes": 45,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      }
+    ]
+  }
+}

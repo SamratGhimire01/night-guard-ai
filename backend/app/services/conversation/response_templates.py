@@ -346,17 +346,17 @@ TEMPLATES: dict[str, dict[str, str]] = {
     "booking_reserved_pay": {
         "en": (
             "Great{who}, I've reserved {service} for {when}. To lock it in, please complete your {currency} {amount} "
-            "deposit here: {link}\nOr scan it with your phone: {qr}\nThe remaining {currency} {remaining} is due at "
-            "the clinic. I'll confirm everything once the deposit is received. (Ref: {id})"
+            "deposit here: {link}\nOr scan it with your phone: {qr}\nThe remaining {currency} {remaining} is due "
+            "in person. I'll confirm everything once the deposit is received. (Ref: {id})"
         ),
         "ne_deva": (
             "ठीक छ{who}, मैले {when} को लागि {service} रिजर्भ गरिदिएँ। यसलाई पक्का गर्न कृपया {currency} {amount} "
             "डिपोजिट यहाँ तिर्नुहोस्: {link}\nवा फोनले स्क्यान गर्नुहोस्: {qr}\nबाँकी {currency} {remaining} "
-            "क्लिनिकमा तिर्नुहोस्। डिपोजिट प्राप्त भएपछि म सबै पुष्टि गर्नेछु। (सन्दर्भ: {id})"
+            "आएर तिर्नुहोस्। डिपोजिट प्राप्त भएपछि म सबै पुष्टि गर्नेछु। (सन्दर्भ: {id})"
         ),
         "ne_roman": (
             "Huncha{who}, maile {when} ko lagi {service} reserve gari diye. Yo pakka garna kripaya {currency} {amount} "
-            "deposit yaha tirnuhos: {link}\nYa phone le scan garnuhos: {qr}\nBaki {currency} {remaining} clinic ma "
+            "deposit yaha tirnuhos: {link}\nYa phone le scan garnuhos: {qr}\nBaki {currency} {remaining} aera "
             "tirnuhos. Deposit prapta bhayepachi ma sabai confirm garchhu. (Ref: {id})"
         ),
     },
@@ -365,17 +365,17 @@ TEMPLATES: dict[str, dict[str, str]] = {
     "booking_reserved_choose": {
         "en": (
             "Great{who}, I've reserved {service} for {when}. To lock it in, a {currency} {amount} deposit is needed "
-            "(the remaining {currency} {remaining} is due at the clinic) — would you like to pay with eSewa or Khalti? "
+            "(the remaining {currency} {remaining} is due in person) — would you like to pay with eSewa or Khalti? "
             "I'll confirm everything once it's received. (Ref: {id})"
         ),
         "ne_deva": (
             "ठीक छ{who}, मैले {when} को लागि {service} रिजर्भ गरिदिएँ। यसलाई पक्का गर्न {currency} {amount} डिपोजिट "
-            "चाहिन्छ (बाँकी {currency} {remaining} क्लिनिकमा तिर्नुहोस्) — eSewa वा Khalti मध्ये कुनबाट तिर्न "
+            "चाहिन्छ (बाँकी {currency} {remaining} आएर तिर्नुहोस्) — eSewa वा Khalti मध्ये कुनबाट तिर्न "
             "चाहनुहुन्छ? प्राप्त भएपछि म सबै पुष्टि गर्नेछु। (सन्दर्भ: {id})"
         ),
         "ne_roman": (
             "Huncha{who}, maile {when} ko lagi {service} reserve gari diye. Yo pakka garna {currency} {amount} deposit "
-            "chahincha (baki {currency} {remaining} clinic ma tirnuhos) — eSewa ki Khalti, kunbata tirna "
+            "chahincha (baki {currency} {remaining} aera tirnuhos) — eSewa ki Khalti, kunbata tirna "
             "chahanuhuncha? Prapta bhayepachi ma sabai confirm garchhu. (Ref: {id})"
         ),
     },
@@ -418,9 +418,9 @@ TEMPLATES: dict[str, dict[str, str]] = {
     },
     # The gateway request could not be created (the booking itself is still confirmed).
     "payment_link_failed": {
-        "en": "Sorry, I couldn't set up the {provider} payment just now. Your appointment is still confirmed — you can pay at the clinic instead.",
-        "ne_deva": "माफ गर्नुहोस्, अहिले {provider} भुक्तानी तयार गर्न सकिएन। तपाईंको अपोइन्टमेन्ट अझै पक्का छ — क्लिनिकमा तिर्न सक्नुहुन्छ।",
-        "ne_roman": "Maaf garnuhos, ahile {provider} payment tayar garna sakiyena. Tapaiko appointment ajhai pakka cha — clinic ma tirna saknuhuncha.",
+        "en": "Sorry, I couldn't set up the {provider} payment just now. Your appointment is still confirmed — you can pay in person instead.",
+        "ne_deva": "माफ गर्नुहोस्, अहिले {provider} भुक्तानी तयार गर्न सकिएन। तपाईंको अपोइन्टमेन्ट अझै पक्का छ — आएर तिर्न सक्नुहुन्छ।",
+        "ne_roman": "Maaf garnuhos, ahile {provider} payment tayar garna sakiyena. Tapaiko appointment ajhai pakka cha — aera tirna saknuhuncha.",
     },
     # Sent by the system, unprompted, once the gateway's own independent lookup says the payment completed — the ONE
     # definitive confirmation of a deposit booking (booking_reserved_* above deliberately never says "confirmed"): the
@@ -495,6 +495,18 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "en": "Here's what's open for {service}: {options}. Which works for you?",
         "ne_deva": "{service} का लागि यी समयहरू खाली छन्: {options}। कुन मिल्छ?",
         "ne_roman": "{service} ko lagi yi samaya haru khali chan: {options}. Kun milcha?",
+    },
+    # Prepended to availability_options/availability_none_with_next_day/
+    # availability_none_no_alts when the customer named a specific time that
+    # turned out to be already taken (the pre-flight same_day_slots check in
+    # orchestrator.py caught it before ever attempting the booking) -- never
+    # silently pivot straight to alternatives without acknowledging the
+    # specific request failed, especially when the LLM's own drafted text may
+    # have implied success.
+    "requested_time_unavailable": {
+        "en": "That time isn't available anymore.",
+        "ne_deva": "त्यो समय अब उपलब्ध छैन।",
+        "ne_roman": "Tyo samaya ahile available chaina.",
     },
     # The customer answered a slot list without naming a time ("does that work?", "book that for me") and the list
     # would have been repeated word for word -- ask for the one missing piece instead.

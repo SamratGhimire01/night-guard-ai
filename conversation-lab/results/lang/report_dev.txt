@@ -1,0 +1,30 @@
+arm       type  runs   turn match   neutral flips    switch latency (0 = immediate)
+pre25     A       12     32/39           0/0                                      -
+pre25     B       21     84/114          4/30              mean 0.2 (n=21, never=3)
+pre25     C       15     63/99          19/78                                     -
+pre25     D        9     68/99           6/39                                     -
+pre25     ALL     57    247/351         29/147   
+
+prod      A       12     33/39           0/0                                      -
+prod      B       21     66/114          0/30             mean 0.3 (n=21, never=12)
+prod      C       15     97/99           2/78                                     -
+prod      D        9     98/99           0/39                                     -
+prod      ALL     57    294/351          2/147   
+
+hybrid    A       12     36/39           0/0                                      -
+hybrid    B       21    113/114          0/30              mean 0.0 (n=21, never=0)
+hybrid    C       15     99/99           0/78                                     -
+hybrid    D        9     98/99           1/39                                     -
+hybrid    ALL     57    346/351          1/147   
+
+hybrid_nt A       12     37/39           0/0                                      -
+hybrid_nt B       21    107/114          6/30              mean 0.0 (n=21, never=0)
+hybrid_nt C       15     64/99          25/78                                     -
+hybrid_nt D        9     86/99          15/39                                     -
+hybrid_nt ALL     57    294/351         46/147   
+
+Run-to-run stability (distinct reply-family sequences across reps of the same scenario; 1 = identical every time):
+  pre25      scenarios with 1 distinct sequence: 4/19   A1:2 A2:2 A4:2 B1:3 B2:3 B4:2 B5:2 B6:2 B7:3 C1:3 C2:3 C4:3 C5:3 D1:3 D3:2
+  prod       scenarios with 1 distinct sequence: 16/19   C1:2 C4:2 D1:2
+  hybrid     scenarios with 1 distinct sequence: 15/19   A1:2 B7:2 C4:2 D3:2
+  hybrid_nt  scenarios with 1 distinct sequence: 11/19   A2:2 B5:3 B7:2 C1:2 C2:2 C5:3 D1:3 D3:2

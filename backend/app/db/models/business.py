@@ -153,6 +153,15 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
         default=ContentScope.SINGLE_BUSINESS,
         server_default="SINGLE_BUSINESS",
     )
+    # Phase 58: booking as a real optional module. Defaults True so every pre-existing
+    # (bookable) business is unchanged after migration. When False, intent.py excludes
+    # every booking-family intent (booking/rescheduling/cancellation/appointment_status/
+    # resend_confirmation) from what the LLM is even offered to classify, AND
+    # orchestrator.py's find_tool() call sites hard-refuse to run the corresponding tool
+    # regardless of what the LLM returns — a real code-level gate, not just a prompt
+    # instruction the model could be talked out of. See PHASE_STATUS.md Phase 53 "Gap 1"
+    # for the pure-Q&A-tenant UX bug this closes.
+    booking_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
 
 class BusinessUser(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):

@@ -1,0 +1,100 @@
+{
+  "conversation_id": "8b7ace56-6fff-4bd3-95a8-75d317e1d171",
+  "business_id": "969b60fc-0124-4086-a6a6-733ef8b8a03c",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-20T11:29:26.169485",
+  "customer": {
+    "id": "42ca780b-8286-48a7-839a-482f8e50fe47",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "book a teeth cleaning on Thursday at 10am",
+      "detected_intent": "booking",
+      "created_at": "2026-09-20T11:29:26.173573"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Got it \u2014 Teeth Cleaning, Thursday, September 24 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:29:30.648801"
+    }
+  ],
+  "booking_draft": {
+    "service_id": "210a08c5-7100-49d3-92bb-6ac93424e57a",
+    "date": "2026-09-24",
+    "time": "10:00"
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "969b60fc-0124-4086-a6a6-733ef8b8a03c",
+    "name": "Phase 16 Test Clinic",
+    "timezone": "Asia/Kathmandu",
+    "currency": "NPR",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "210a08c5-7100-49d3-92bb-6ac93424e57a",
+        "name": "Teeth Cleaning",
+        "description": null,
+        "price": 1500.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

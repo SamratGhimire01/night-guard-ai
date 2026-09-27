@@ -40,6 +40,7 @@ class MessengerChannelAdapter(ChannelAdapter):
         external_customer_ref: str,
         content: str,
         external_message_id: str | None = None,
+        deliver=None,
     ) -> dict | None:
         # external_customer_ref is the real Messenger PSID (page-scoped id) —
         # like WhatsApp's wa_id and unlike the widget's session token, this
@@ -59,6 +60,7 @@ class MessengerChannelAdapter(ChannelAdapter):
             business_id=business_id,
             content=content,
             external_message_id=external_message_id,
+            deliver=deliver,
         )
 
     def send_message(self, *, psid: str, text: str, page_access_token: str) -> str:

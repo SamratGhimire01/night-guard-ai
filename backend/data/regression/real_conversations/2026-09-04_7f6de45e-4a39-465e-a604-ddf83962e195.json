@@ -1,0 +1,177 @@
+{
+  "conversation_id": "7f6de45e-4a39-465e-a604-ddf83962e195",
+  "business_id": "3421eb20-e71f-4eda-b5b7-e2043b2ac065",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-04T15:46:40.295017",
+  "customer": {
+    "id": "93504c60-b1ac-46e1-a266-ff25b5744fac",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "I want to book a teeth cleaning next Monday.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T15:46:40.299379"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Got it \u2014 Teeth Cleaning, Monday, September 7. I just need your name and a phone number or email to lock that in.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:46:49.493493"
+    },
+    {
+      "sender_type": "customer",
+      "content": "By the way, what are your hours?",
+      "detected_intent": "business_hours",
+      "created_at": "2026-09-04T15:47:02.926468"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I don't have our hours listed here. Would you like me to connect you with our team so they can confirm our hours and help finish your Teeth Cleaning booking? I've also let our team know, so a real person will follow up with you.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:47:02.929870"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Do you take insurance?",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-04T15:47:02.948567"
+    },
+    {
+      "sender_type": "agent",
+      "content": "We accept cash and card, but I don't have our insurance details on file \u2014 would you like me to connect you with our team so they can confirm which plans we accept? I've also let our team know, so a real person will follow up with you.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:47:10.531097"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Ok anyway, let's do 11am, I'm Sam Okafor, sam.okafor@example.com",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T15:47:28.255317"
+    },
+    {
+      "sender_type": "agent",
+      "content": "You're all set, Sam Okafor! I've booked Teeth Cleaning for Monday, September 7 at 11:00 AM (30 min). Your booking ID is 22424fb9-df4b-41ac-a50d-002accddacd2. I've updated your contact info on file.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:47:28.261724"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [
+    {
+      "id": "22424fb9-df4b-41ac-a50d-002accddacd2",
+      "service_id": "fd08a57f-879c-40ba-84fa-a44a8d7571f3",
+      "scheduled_at": "2026-09-07T15:00:00+00:00",
+      "status": "confirmed",
+      "created_at": "2026-09-04T15:47:23.589570"
+    }
+  ],
+  "business": {
+    "id": "3421eb20-e71f-4eda-b5b7-e2043b2ac065",
+    "name": "Test Chat Biz",
+    "timezone": "America/New_York",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "6e918b34-a382-4531-bbb2-b4b0e1182877",
+        "name": "Dental Consultation",
+        "description": null,
+        "price": 50.0,
+        "duration_minutes": 20,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "fd08a57f-879c-40ba-84fa-a44a8d7571f3",
+        "name": "Teeth Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "3a58abef-c4e7-4fdf-83ed-d8691fafd295",
+        "name": "Root Canal",
+        "description": null,
+        "price": 450.0,
+        "duration_minutes": 60,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "6b7cd7d1-ed84-4fc6-b6b5-3713809a9f48",
+        "name": "Braces Consultation",
+        "description": null,
+        "price": 75.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [
+      {
+        "id": "ebb82b04-2261-4dd6-88cf-98b0fddcd14a",
+        "title": "General Clinic Info",
+        "content": "Our clinic is located at 123 Main Street. We accept cash and card as payment methods. If you need to cancel or reschedule an appointment, please give us at least 24 hours notice. If you are experiencing a dental emergency, please call the front desk directly rather than using this chat."
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

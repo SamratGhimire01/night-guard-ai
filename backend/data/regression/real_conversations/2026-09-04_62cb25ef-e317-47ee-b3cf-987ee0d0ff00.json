@@ -1,0 +1,184 @@
+{
+  "conversation_id": "62cb25ef-e317-47ee-b3cf-987ee0d0ff00",
+  "business_id": "3027173d-1704-49bc-993f-f11063145335",
+  "channel": "website",
+  "status": "open",
+  "detected_language": null,
+  "created_at": "2026-09-04T12:26:02.958631",
+  "customer": {
+    "id": "d53c7e40-f62d-4291-9ee5-27bb8d326cff",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Random question \u2014 how was America discovered?",
+      "detected_intent": "off_topic",
+      "created_at": "2026-09-04T12:26:03.012080"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I'm just here to help with things related to Riverside Dental \u2014 appointments, services, hours, and the like. Is there something about that I can help with?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:26:08.388642"
+    },
+    {
+      "sender_type": "customer",
+      "content": "What's the weather like today?",
+      "detected_intent": "off_topic",
+      "created_at": "2026-09-04T12:26:08.476197"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I'm just here to help with things related to Riverside Dental \u2014 appointments, services, hours, and the like. Is there something about that I can help with?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:26:13.504843"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Who won the last election?",
+      "detected_intent": "off_topic",
+      "created_at": "2026-09-04T12:26:13.594290"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I'm just here to help with things related to Riverside Dental \u2014 appointments, services, hours, and the like. Is there something about that I can help with?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:26:18.031027"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Write me a poem about autumn.",
+      "detected_intent": "off_topic",
+      "created_at": "2026-09-04T12:26:18.114425"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I'm just here to help with things related to Riverside Dental \u2014 appointments, services, hours, and the like. Is there something about that I can help with?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:26:22.361719"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Do you take insurance?",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-04T12:26:28.688669"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I don't have our insurance information here \u2014 would you like me to connect you with our team to confirm which plans we accept? I've also let our team know, so a real person will follow up with you.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:26:28.692339"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Is there parking available?",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-04T12:26:28.779262"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I don't have our parking information on file \u2014 would you like me to connect you with our team to confirm availability and directions? I've also let our team know, so a real person will follow up with you.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:26:34.881893"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Are you a bot?",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-04T12:26:34.969691"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I'm the virtual receptionist for Riverside Dental \u2014 here to help with appointments, services, hours, and the like. What can I help you with today?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:26:40.998216"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Thank you so much for the help!",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-04T12:26:41.083604"
+    },
+    {
+      "sender_type": "agent",
+      "content": "You're very welcome \u2014 glad I could help! If you need anything else (an appointment, service info, or hours), just say the word.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:26:45.648795"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "3027173d-1704-49bc-993f-f11063145335",
+    "name": "Riverside Dental",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "4a8676d5-b5fa-4a0a-89d7-73265201161d",
+        "name": "Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

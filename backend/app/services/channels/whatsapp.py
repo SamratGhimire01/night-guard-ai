@@ -40,6 +40,8 @@ def _recipient(to: str) -> tuple[dict, str]:
     except ValueError:
         major = 0
     return {"recipient": to}, configured if major >= _BSUID_MIN_API_VERSION else f"v{_BSUID_MIN_API_VERSION}.0"
+# Short on purpose: the typing indicator is cosmetic, never worth stalling a real reply for.
+_TYPING_TIMEOUT_SECONDS = 5
 
 
 class WhatsAppChannelAdapter(ChannelAdapter):
@@ -70,6 +72,7 @@ class WhatsAppChannelAdapter(ChannelAdapter):
         external_customer_ref: str,
         content: str,
         external_message_id: str | None = None,
+        deliver=None,
     ) -> dict | None:
         # external_customer_ref is the real WhatsApp wa_id (a phone number) —
         # unlike the widget's session token, this is not a secret, so it's
@@ -90,7 +93,41 @@ class WhatsAppChannelAdapter(ChannelAdapter):
             business_id=business_id,
             content=content,
             external_message_id=external_message_id,
+            deliver=deliver,
         )
+
+    def send_typing_indicator(self, *, message_id: str, phone_number_id: str, access_token: str = "") -> str:
+        """Shows "typing..." to the customer (and marks their message read) —
+        Meta's documented mechanism (developers.facebook.com/docs/whatsapp/
+        cloud-api/typing-indicators): POST /{phone_number_id}/messages with
+        status="read" + the inbound wamid + typing_indicator={"type":"text"}.
+        Meta dismisses it when we send the reply, or after 25s. Only call it
+        when a reply is actually going to follow. Best-effort like every
+        other send here: never raises, never blocks a reply beyond
+        _TYPING_TIMEOUT_SECONDS, silently skipped with no token."""
+        token = access_token or settings.whatsapp_access_token
+        if not token:
+            return "simulated — no real WhatsApp access token configured"
+        url = _SEND_URL_TEMPLATE.format(api_version=settings.whatsapp_api_version, phone_number_id=phone_number_id)
+        try:
+            response = httpx.post(
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+                json={
+                    "messaging_product": "whatsapp",
+                    "status": "read",
+                    "message_id": message_id,
+                    "typing_indicator": {"type": "text"},
+                },
+                timeout=_TYPING_TIMEOUT_SECONDS,
+            )
+        except httpx.TransportError as exc:
+            logger.warning("WhatsApp typing indicator failed: could not reach Graph API (%s)", type(exc).__name__)
+            return "failed: could not reach Graph API"
+        if response.status_code != 200:
+            logger.warning("WhatsApp typing indicator failed: HTTP %s", response.status_code)
+            return f"failed: HTTP {response.status_code}"
+        return "sent"
 
     def send_message(self, *, to: str, text: str, phone_number_id: str, access_token: str = "") -> str:
         """Real Meta Cloud API send call

@@ -344,3 +344,118 @@ Also learned: the lab's production-prompt arm over-states how often this violati
 * (L1 note; held-out set now exists - see L2.) No DSPy optimization run (per instructions). Needs: add a scope criterion + fresh held-out cases, then a `dspy.MIPROv2`/`BootstrapFewShot`
   run over `lab/receptionist.py` scored by this judge (>=5 samples).
 * Nothing committed. Files added: conversation-lab/ only (+ a pointer line in PHASE_STATUS.md).
+
+## Phase L7 — hybrid per-message language matching vs the production language lock (2026-09-20). Lab only; NO production change; NOT committed.
+
+### Verdict (read this first)
+Honest summary: **the hybrid clearly wins on ONE thing (following a real language change immediately), ties production on stability, and is NOT
+shown better at within-message code-mixing (and is worse on one such message: "ekdum ramro, thanks!", section 3a). It also has costs and untested areas (below). It is not a clear across-the-board win, so I am not
+proposing a production change; I am proposing you review the evidence, and I list two much smaller production fixes I found on the way (untested).**
+Combined dev+held-out, 3 reps per conversation, real Azure gpt-5-mini, reply generation at the deployment's default effort:
+
+| measure (95% Wilson CI) | pre-Phase-25 (original) | **production lock (current)** | **hybrid v3** | hybrid, tiebreak removed (ablation) |
+|---|---|---|---|---|
+| **flip-flop**: neutral turn ("ok", "2", "Friday", "thanks"...) whose reply language differs from the previous reply | 40/223 (18%) [13-24] | **4/223 (2%) [1-5]** | **2/225 (1%) [0-3]** | 60/227 (26%) [21-33] |
+| **real change, NO explicit request** (en->Roman, Roman->Devanagari, Devanagari->en, Roman->en...): reply follows AT the switch turn | 15/18 [61-94] | **0/18 [0-18]** | **18/18 [82-100]** | 18/18 [82-100] |
+| explicit request ("English please", "talk in Nepali") honored at once | 6/9 (script choice, see B5) | 9/9 | 9/9 | 9/9 |
+| replies right on turns with real language signal (A+B+C+D: signal/switch/mix/explicit) | 235/291 (81%) | 229/291 (79%) | **276/286 (97%)** | 284/297 (96%) |
+Held-out alone (frozen before it ran; the honest number): flips prod 2/76, hybrid 1/78; implicit switch prod 0/6, hybrid 6/6; signal-turn match prod 70/90, hybrid 80/85.
+Dev alone is optimistic for the hybrid (I iterated on it): 1/147 flips, 12/12, 196/201.
+
+**Flip-flop risk, stated plainly:** it did NOT resurface on neutral turns at a rate above production's (2/225 vs 4/223; CIs overlap fully) - but it is not zero
+and it is not free:
+1. Without a guard, the model ignores the "keep the conversation's language" instruction on ~3% of short turns (7 of 228 short turns needed the
+   verify-and-retry redraft: 3/144 dev, 4/84 held-out). The 2 flips that remain (see below) both survived that guard.
+2. The tiebreak is what buys the stability. With it removed (same prompt otherwise) neutral turns flip 60/227 = 26% - the original bug at full strength, on the modern
+   prompt too. So the stability is NOT "randomness dressed up as flexibility", and it is NOT the per-message design by itself; it is the tiebreak + retry.
+3. A customer who genuinely alternates languages message to message (B7) gets alternating replies (that is mirroring by design, but to the customer it
+   looks like flipping). Production would stay in one language for that customer. Whether that is better or worse is a product decision, not a metric.
+4. Short messages (<=2 Latin words) can never change the language on their own (P1: "kati parcha?" in an English chat -> English reply, prod and hybrid alike;
+   a 3-word Nepali message right after switches the hybrid immediately, prod stays English).
+5. The 2 counted hybrid flips, inspected: (a) held-out HC1: "Yo" in a Roman-Nepali chat -> "Namaste!" (my labeler calls a bare "Namaste!" English; arguably consistent);
+   (b) dev D3: a Devanagari reply that lists English service names was labelled "mixed" then the next reply "ne_deva". Both are labeler-boundary cases, but I counted them.
+
+**What production's lock actually does wrong (new evidence, independent of the hybrid):**
+* Its sustained-switch path is effectively dead for en<->Roman. Real traced run (B6, `prod`, rep 0): customer types 3 plain-English messages after Roman Nepali; lock state:
+  `streak 1 -> 2 -> (LLM self-reports message_language='ne_roman' for "Can I book for next Tuesday afternoon?") -> streak reset to 0`. The model anchors to the lock it was just
+  told about (Phase 25's documented "known limitation"), so the 3-message streak never completes. Result: 0/18 implicit switches followed, ever, even 2 turns later.
+  Held-out example (HB2, prod): customer asks in full English "What are your office hours during the week?" -> "Hamro office Monday dekhi Friday samma 10:00 AM bata 6:00 PM samma khula huncha."
+* Turn 1 is unprotected: nothing is locked yet, so a Roman-Nepali opener ("Namaste, tapaiko teeth cleaning ko lagi kati parcha?") got a **Devanagari** reply in 2/3 prod runs (and 3 turns
+  in a row for pre25's D1). Prod's 4 "flips" are exactly these turn-1 script errors being corrected at turn 2, not language flip-flop.
+* Where the hybrid gets this right: a deterministic per-message script note (Devanagari present -> reply Devanagari; Latin only -> reply Latin letters unless Devanagari is asked for).
+  This is a few lines of Python, needs no lock, and could be added to production separately.
+
+### 1. What was built (all in conversation-lab/; backend/ and frontend/ untouched)
+* `lab/lang_mech.py` - four arms, one function `step(arm, state, history, customer, biz, lm)`:
+  * `pre25` - the ORIGINAL pre-Phase-25 prompt read from git (`2456440:.../intent.py`, rule 7 = "match the customer", no lock). = reconstruction of the flip-flop.
+  * `prod` - current production: the real `_SYSTEM_PROMPT_TEMPLATE` + the lock line injected into the user prompt + the REAL `_resolve_message_language` /
+    `_resolve_locked_language` and the real word list, streak threshold (3) and Phase 25b explicit-switch path, **extracted from orchestrator.py with `ast` and executed** (nothing re-implemented; asserts in `python -m lab.lang_mech`).
+  * `hybrid` (v3, frozen; copy in `results/lang/lang_mech_FROZEN_v3.py.txt`, sha1 in `frozen_hashes.txt`) - rule 7 rewritten (match THIS message; mix back a mix; follow a clear change at once; explicit requests
+    honored and kept), the 4 lock few-shots replaced by 4 per-message ones, JSON gets `reply_language`. **No lock, no streak.** The only carried state is `strong_language`: the language of the last reply
+    to a *substantive* message or explicit request (never a reply to a short turn, so one bad reply cannot poison it). Three deterministic helpers: (i) `is_short` = no Devanagari and <=2 Latin words;
+    (ii) on short turns the model is told the conversation's language as a directive (only exception: the message explicitly asks to change language) and, if it still answers in another language family,
+    redrafted once (the model reports what it wrote); (iii) on non-short turns a per-message script note. The word list is NOT used.
+  * `hybrid_nt` - ablation: same as hybrid minus (ii) (no tiebreak line, no tiebreak rule sentence, no retry).
+* `lab/lang_scenarios.py` - 19 DEV + 10 HELD-OUT + 3 PROBE scripted conversations (fictional dental/salon/trek businesses, fake names/phones), each turn with an expectation and a kind
+  (signal / neutral / switch / explicit / mix) written BEFORE any run. Real material used: "What app ma vaya hunxa", "K xa", "malai euta tooth dukheko xa", the long real Roman-Nepali message,
+  "hlo", "thanks!" after Roman Nepali, "Can we just switch to English please?", "Can we talk in Nepali from now on?" (PHASE_STATUS.md Phases 25/25b and the 2026-09-19 conversation-quality audit).
+* `scripts/lang_run.py` (runs arms x scenarios x reps, labels every reply with an independent low-effort LLM labeler, 3 votes; Devanagari-bearing replies are labelled by a deterministic rule), `lang_report.py`
+  (tables/transcripts), `lang_judge_check.py`, `lang_judge_run.py`, `lang_judge_report.py`. Outputs in `results/lang/`; human-readable transcripts in **`results/lang/TRANSCRIPTS.md`** (63 conversations).
+* Metric definitions (fixed before results): *match* = reply label in the turn's accepted set; *flip-flop* = on a neutral turn the reply family (en / Roman-or-mixed / Devanagari) differs from the previous reply's;
+  *switch latency* = turns until the reply is right after the first switch/explicit turn.
+
+### 2. Iteration history and overfitting control (disclosed)
+* Hybrid **v1** (soft "keep the previous language if the words don't clearly show one") failed in the first smoke test: a Devanagari chat, customer "thanks" -> "You're welcome!", and that reply then poisoned the carried state ("2" also English).
+* **v2** (directive tiebreak; state updated only by substantive turns) on the dev set: 322/346 matches, 3/145 flips. Failures inspected one by one: Roman-Nepali openers answered in Devanagari (C1, D1), "Can we talk in Nepali?" answered in
+  Devanagari (B5), a Devanagari+English message answered in Latin (A4), 2 tiebreak ignores. My labeler also mislabelled Devanagari replies containing English service names as "mixed" (fixed, applied to ALL arms).
+* **v3** = v2 + per-message script note + verify-and-retry. Dev: 346/351, 1/147. **Frozen** (hashes recorded), then the held-out set (written before any hybrid run) was run once. Held-out came out consistent with dev (table above).
+* One held-out scenario (HB3) was replaced (id HB3b): its "facials / how much?" prompt was rejected by Azure's content filter for EVERY arm (false positive, `violence: high`; a real risk for any business with a "Facial" service).
+  No arm produced data for it, so nothing was tuned; topic changed to haircuts. Other content-filter/rate-limit failures left 1-2 of 30 conversation-runs missing per arm (28/28/28/29 held-out, 57 dev each). Counts are in the tables' `runs` column.
+* The judge's language check (section 4) and the flip/latency/match metrics were fixed before the runs; the metric for "flip" was not changed afterwards.
+
+### 3. Evidence for the four scenario types (numbers = combined turn-level match; transcripts in results/lang/TRANSCRIPTS.md)
+**(a) Within-message code-switching (mirroring)** - A1-A4, HA1-HA2 (real code-mix lines). match: pre25 47/60, prod 48/60, hybrid 52/60. **No clear win** (differences inside noise). Both arms answer
+"hello, malai teeth whitening garna man cha, price kati hola?" in natural Roman Nepali with English nouns ("Teeth Whitening ko price NPR 6000 ho, ra karib 45 minute lagcha"). The consistent miss, in every arm: an English-frame message with a Nepali
+clause ("Hi, I'm interested in Poon Hill, kati din ko hunchha?") gets a mostly-Roman-Nepali reply (hybrid 3/3, prod 3/3, hybrid_nt 3/3; pre25 3/3 Nepali too, 1 of them in Devanagari) rather than an English-frame mix - my expectation for those may be too strict, but the proportion-mirroring is not
+precise anywhere. **A regression against both baselines:** "ekdum ramro, thanks!" (a Nepali phrase + English "thanks", 3 words so not "short") -> hybrid answered in English 2/3 ("Welcome!", "You're welcome! 😊") and mixed 1/3, while prod AND pre25 answered in Roman Nepali 3/3 ("Swaagat cha! 😊"). The per-message design reads the English word and follows it; production's lock/older prompt happened to keep the Nepali. Devanagari+Latin message (A4): hybrid 9/9 Devanagari-with-English-words.
+**(b) Deliberate mid-conversation change** - the clear win. en->Roman (B1), Roman->Devanagari (B2), Devanagari->en (B3), Roman->en without asking (B6, HB2), en->Devanagari (HB1): hybrid follows at the switch turn every time (18/18); prod never does (0/18).
+B1 prod: after "malai bholi bihana 10 baje ko slot chahiyo, milcha?" -> "We're closed on Sundays, so we don't have any slots tomorrow..." (English, and stays English for 3 more turns);
+B1 hybrid: "Bholi Sunday ho ra clinic bandha huncha, tesaile 10 baje mildaina. Ke Monday (2026-09-21) 10:00 baje milcha?" then "Cha - clinic ma on-site parking cha." then "ok" -> "Thik cha." Explicit requests (B4, B5, HB3b, P2): all honored at once by prod and hybrid.
+B5 note: pre25 answered "Can we talk in Nepali from now on?" in Devanagari to a customer typing Latin (counted as a miss; it is a script-choice miss, NOT the false-handoff bug Phase 25b fixed - that bug did not reproduce on gpt-5-mini here: 0 of the 9 pre25 explicit-request replies (B4, B5, HB3b x3 reps) was handoff-like by a regex for team member/connect/human/staff, and all 9 honored the request).
+B7 (alternating customer, stress): hybrid mirrors 14/15; prod holds one language (9/15 by the mirroring standard). See flip-flop point 3.
+**(c) The original ambiguous-short-input flip-flop** - reconstructed with the real pre-25 prompt: 19/78 neutral turns flipped in type C and 6/39 in type D (dev), 8/51 and 3/13 (held-out); every scenario type showed it (e.g. C2 rep 1:
+Devanagari chat, then "Friday" -> "Do you mean Friday, 2026-09-25 for a Teeth Cleaning?..." in English, "3pm" -> Devanagari, "thanks" -> "You're welcome - if you'd like to proceed..." in English, "2" -> Devanagari). Not regressed: hybrid 0/78 (dev C),
+1/57 (held C: the "Yo"->"Namaste!" case), prod 2/78 and 2/51 (turn-1 script errors), hybrid without the tiebreak 25/78 and 11/51. Real openers: "hlo" -> "K xa" -> "malai euta tooth dukheko xa" -> "ok"/"2"/"thanks" stay Roman in prod 18/18 and hybrid 18/18 (pre25 11/18, 4/9 flips).
+**(d) Long conversation, no real language change** - D1 (13 turns Roman), D2 (12 English), D3 (8 Devanagari), HD1, HD2: hybrid dev 98/99, held 30/30, identical reply-family sequence across all 3 reps in D1/D2 and HD1; prod 98/99 and 40/40. The ablation (no tiebreak) breaks it
+(15/39 flips dev, 2/17 held), the original prompt breaks it (6/39, 3/13). So the stability comes from the mechanism, and production has it too. Not shown: any advantage of the hybrid here.
+
+### 4. The judge (unchanged rubric) - what it can and cannot tell us
+* Re-validated on 8 synthetic good/bad pairs for the new situations (`results/lang/judge_check_v1.txt`, x5 default effort): **7/8 pass** on language_match (switch en->Roman, Roman->en, Roman->Devanagari, neutral "ok" after Devanagari, within-message mix vs English,
+  vs over-formal Devanagari, explicit request). **FAIL: neutral "thanks" after Roman Nepali** - it scored the English "You're welcome!" 5.0 and the Roman "Hunxa!" 2.0, because the customer's word literally is English and the rubric has no
+  "very short/neutral turns keep the conversation's language" anchor. So the judge is blind to exactly the flip-flop case. I did NOT change the rubric mid-experiment; instead language_match is only trusted on turns with real signal, and neutral turns use the flip metric.
+* Judge x3 low effort, prod vs hybrid on the same 338 cells (reps 0-1, dev+held): judge total **hybrid 94.2 vs prod 90.7**; paired diff **+3.78 [+0.70, +7.38]** (cluster bootstrap over scenarios); language_match on signal turns **4.94 vs 4.59**, paired **+0.38 [+0.14, +0.66]**;
+  by type (total): A prod 97.4 / hybrid 94.5, B 84.0 / 97.0, C 90.4 / 92.8, D 95.8 / 92.7. Controls (rep 0): pre25 80.8 (older prompt, other criteria not comparable), hybrid_nt 94.4 - i.e. **the judge cannot see the 26% flip rate of hybrid_nt at all**.
+* Side-observation, unresolved: the hybrid scores LOWER than prod in A (-2.9) and D (-3.1) on non-language criteria (mostly `no_reflexive_question`: e.g. bare "ok" -> "Okay - let me know if you'd like to book a time.", prod: "Okay - glad to help.");
+  higher in B and C. Could be judge noise (single-cell noise is ~5) or a side effect of my prompt edit (I replaced the 4 lock examples and rule 7). Not investigated; it must be checked before any production port.
+
+### 5. Limits of this evidence
+* Prompt-only harness (same as earlier lab phases): NOT run - the orchestrator's deterministic templates (which render in the locked language; a production hybrid would render them from the reply language), booking tools, retrieval, conversation summaries. Production's own lock is
+  therefore only partly reproduced (its deterministic sentences are the part of the lock that works by construction).
+* Scripted, non-reactive customers; one model (gpt-5-mini); 3 reps per conversation; 3 fictional businesses; an LLM labeler (with a deterministic Devanagari rule) decides reply languages; the "accepted set" expectations for A2/HA2 (English frame + Nepali clause) and B5 (Roman rather than Devanagari) are my judgment calls.
+* Dev numbers are optimistic (iterated); held-out is 10 conversations / 62 turns / ~28 runs per arm - CIs are wide (see Wilson intervals).
+* The lab's prod arm was run on a business-facts-only prompt; the live system adds summaries and more context. Harness rates are best read as upper bounds on how often a failure occurs live (a caveat already established in L5).
+
+### 6. If you decide to pursue this - not done, not proposed as-is
+Cheaper things to consider first (untested, from the findings above): (1) a per-message deterministic script note in production (fixes the turn-1 Devanagari reply, needs no lock change); (2) stop telling the model the lock when it reports `message_language`
+(or drop the anchored self-report) so the 3-message streak can actually complete. A full hybrid port would also need: reply-language-aware deterministic templates, persisting `strong_language`, the retry guard, the 3 open questions in sections 3-4 (alternating customers, non-language criteria dip, short distinctive messages),
+a production-shaped end-to-end test with the real orchestrator, `pytest`, and (per CLAUDE.md) `docker compose up -d --force-recreate backend` before any live check. Nothing under backend/ was edited.
+
+### 7. Isolation / secrets (real output)
+`git status --short backend frontend` -> empty; `git diff --stat -- backend frontend` -> empty (the earlier `find -newer .venv/pyvenv.cfg` heuristic is now noisy: it lists files changed by the already-committed production phases 13/14 - mtimes 2026-09-19 23:41 and earlier, before this session).
+`git status`: only untracked lab files (+ `.claude/settings.local.json`, modified before this session). Backend read-only use: `orchestrator.py`, `response_templates.py`, `schemas/conversation.py`, `intent.py` (via `ast`), and `git show 2456440:.../intent.py`; nothing imported as a package and nothing executed from backend/ beyond the `ast`-extracted pure functions.
+Secrets: scan of all of conversation-lab (excl .venv) for the API key value and the endpoint host, CASE-INSENSITIVE: the host was found in two failure logs (litellm tracebacks; my first, case-sensitive scan missed it because .env spells it `Samrat-G01`) - scrubbed to `<azure-host>`, re-scan -> NONE. No customer PII (scenario names/phones are fake; real-transcript lines used contain none).
+The backend container was not touched, so the force-recreate rule did not apply. Nothing committed.
+
+### Reproduce
+`python -m lab.lang_mech` (self-checks) - `python scripts/lang_run.py --set dev|held|probe --arms pre25,prod,hybrid,hybrid_nt --reps 3 --out results/lang/x.jsonl` - `python scripts/lang_report.py results/lang/*.jsonl` -
+`python scripts/lang_judge_run.py ... && python scripts/lang_judge_report.py ...`. Azure rate limits bite above ~4 concurrent workers; the runners retry with backoff.

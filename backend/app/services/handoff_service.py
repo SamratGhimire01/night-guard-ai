@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.db.models.conversation import Conversation
 from app.db.models.handoff import HumanHandoff
 from app.schemas.conversation import ConversationIntent
 
@@ -36,6 +37,24 @@ _INFO_INTENTS = frozenset(
 # not independently tuned against a large real corpus, a reasonable starting
 # point.
 KNOWLEDGE_RELEVANCE_THRESHOLD = 0.5
+
+
+def is_ungrounded_info_question(
+    *,
+    intent: ConversationIntent,
+    best_similarity: float | None,
+    llm_confirmed_answered: bool | None,
+) -> bool:
+    """True for a genuine info-question intent with no sufficiently relevant
+    knowledge and no independent confirmation the LLM answered from elsewhere
+    (e.g. the services list) -- the exact predicate `_handoff_reason` already
+    uses to decide whether a low-similarity answer deserves a HumanHandoff.
+    Exposed separately so a caller can also force the RESPONSE itself honest
+    (orchestrator._handle_turn's grounding guard) instead of just silently
+    flagging staff while an ungrounded guess still reaches the customer."""
+    return intent in _INFO_INTENTS and (
+        best_similarity is None or best_similarity < KNOWLEDGE_RELEVANCE_THRESHOLD
+    ) and llm_confirmed_answered is not True
 
 
 def _handoff_reason(
@@ -102,9 +121,9 @@ def _handoff_reason(
         return "Customer message was classified as a complaint."
     if intent == ConversationIntent.HUMAN_HANDOFF:
         return "Customer explicitly asked to speak with a human/staff member."
-    if intent in _INFO_INTENTS and (best_similarity is None or best_similarity < KNOWLEDGE_RELEVANCE_THRESHOLD):
-        if llm_confirmed_answered is True:
-            return None
+    if is_ungrounded_info_question(
+        intent=intent, best_similarity=best_similarity, llm_confirmed_answered=llm_confirmed_answered
+    ):
         found = f"{best_similarity:.2f}" if best_similarity is not None else "no knowledge base results"
         return f"No sufficiently relevant knowledge found for a {intent.value} (best similarity: {found})."
     return None
@@ -209,6 +228,46 @@ def resolve_handoff(db: Session, *, business_id: uuid.UUID, handoff_id: uuid.UUI
         return None
     handoff.status = "resolved"
     handoff.resolved_at = datetime.now(timezone.utc)
+    # Phase 52: resolving the escalation also hands the conversation back to the AI (same commit).
+    conversation = db.execute(
+        select(Conversation).where(Conversation.id == handoff.conversation_id, Conversation.business_id == business_id)
+    ).scalar_one_or_none()
+    if conversation is not None:
+        conversation.human_takeover_until = None
+        conversation.human_takeover_by = None
     db.commit()
     db.refresh(handoff)
     return handoff
+
+
+def _demo() -> None:
+    # A genuine info-question with nothing relevant retrieved -- the exact
+    # "below-threshold retrieval" case the orchestrator's grounding guard
+    # replaces with a fixed honest fallback instead of trusting the LLM.
+    assert is_ungrounded_info_question(
+        intent=ConversationIntent.SERVICE_QUESTION, best_similarity=0.2, llm_confirmed_answered=None
+    )
+    # No knowledge results at all (best_similarity=None) is the same case.
+    assert is_ungrounded_info_question(
+        intent=ConversationIntent.GENERAL_QUESTION, best_similarity=None, llm_confirmed_answered=None
+    )
+    # A genuinely relevant match must not be flagged.
+    assert not is_ungrounded_info_question(
+        intent=ConversationIntent.SERVICE_QUESTION, best_similarity=0.8, llm_confirmed_answered=None
+    )
+    # Phase 23's real fix: a pricing/service question fully answered from the
+    # services list (not the knowledge base) is confirmed answered by the LLM
+    # itself -- low knowledge-chunk similarity must not override that.
+    assert not is_ungrounded_info_question(
+        intent=ConversationIntent.PRICING_QUESTION, best_similarity=0.1, llm_confirmed_answered=True
+    )
+    # BOOKING/CANCELLATION/etc. have their own tool paths -- knowledge
+    # similarity is meaningless for them and must never flag anything.
+    assert not is_ungrounded_info_question(
+        intent=ConversationIntent.BOOKING, best_similarity=None, llm_confirmed_answered=None
+    )
+    print("handoff_service self-check: all assertions passed")
+
+
+if __name__ == "__main__":
+    _demo()

@@ -50,6 +50,7 @@ export interface BusinessRead {
   reminder_minutes_before: number
   language_mode: LanguageMode
   content_scope: ContentScope
+  booking_enabled: boolean
 }
 
 export interface PaymentSettingsUpdate {
@@ -87,6 +88,7 @@ export interface BusinessUpdate {
   reminder_minutes_before?: number
   language_mode?: LanguageMode
   content_scope?: ContentScope
+  booking_enabled?: boolean
 }
 
 export interface PlanRead {
@@ -406,4 +408,58 @@ export interface YearlyReport {
   month_by_month: YearlyReportMonth[]
   most_requested_services: { service_id: string; service_name: string | null; count: number }[]
   year_over_year: YearOverYear
+}
+
+// ---- Inbox (Phase 52) ----
+
+export type InboxSender = 'customer' | 'agent' | 'staff'
+export type DeliveryStatus = 'sent' | 'simulated' | 'failed' | 'suppressed' | 'pending'
+
+export interface InboxListItem {
+  id: string
+  channel: string
+  customer_name: string
+  last_message_preview: string
+  last_message_sender: InboxSender
+  last_message_at: string
+  last_message_delivery_status: DeliveryStatus | null
+  needs_reply: boolean
+  unread: boolean
+  open_handoff: boolean
+  takeover_active: boolean
+  takeover_by_email: string | null
+}
+
+export interface InboxSummary {
+  needs_reply: number
+  handoffs: number
+}
+
+export interface TakeoverState {
+  active: boolean
+  until: string | null
+  taken_over_by: string | null
+}
+
+export interface InboxConversation {
+  id: string
+  channel: string
+  customer_id: string
+  customer_name: string
+  takeover: TakeoverState
+  takeover_by_email: string | null
+  reply: { can_reply: boolean; reason: string | null; window_closes_at: string | null }
+  open_handoff: { id: string; reason: string } | null
+  last_customer_message_at: string | null
+}
+
+export interface InboxMessage {
+  id: string
+  sender_type: InboxSender
+  content: string
+  created_at: string
+  delivery_status: DeliveryStatus | null
+  delivery_detail: string | null
+  sent_by_user_id: string | null
+  sent_by_email: string | null
 }

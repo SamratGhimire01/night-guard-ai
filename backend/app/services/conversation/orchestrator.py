@@ -1737,7 +1737,7 @@ def _handle_turn(
     )
     conversation.booking_draft_proposed_slots = None
     if picked_slot is not None and business is not None:
-        tool = find_tool(ConversationIntent.BOOKING)
+        tool = find_tool(ConversationIntent.BOOKING, business)
         service, _ = _resolve_booking_draft(conversation, services, business)
         if tool is not None and service is not None:
             customer_row = db.get(Customer, conversation.customer_id)
@@ -2207,7 +2207,7 @@ def _handle_turn(
     # orchestrator calls it. Phase 10 registered BOOKING; Phase 11 registers
     # CANCELLATION and RESCHEDULING the same way — this dispatch and the
     # tools.py registry itself didn't need to change at all.
-    tool = find_tool(intent)
+    tool = find_tool(intent, business)
     if (
         intent == ConversationIntent.BOOKING
         and tool is not None
@@ -2406,7 +2406,7 @@ def _handle_turn(
         # out to actually be complete right now (checked below); otherwise
         # this turn's real intent already decided response_text above, and
         # it's left untouched.
-        booking_tool = find_tool(ConversationIntent.BOOKING)
+        booking_tool = find_tool(ConversationIntent.BOOKING, business)
         service, scheduled_at = _resolve_booking_draft(conversation, services, business)
         if booking_tool is not None and service is not None and scheduled_at is not None:
             result = booking_tool.run(

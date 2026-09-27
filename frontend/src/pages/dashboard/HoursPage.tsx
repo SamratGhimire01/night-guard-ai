@@ -1,23 +1,14 @@
 import { useEffect, useState } from 'react'
-import {
-  ActionIcon,
-  Button,
-  Center,
-  Checkbox,
-  Divider,
-  Group,
-  Loader,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Title,
-  Tooltip,
-} from '@mantine/core'
+import { Button, Checkbox, Group, Paper, Stack, Table, TextInput, Title, Tooltip } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { IconCalendarOff, IconDeviceFloppy } from '@tabler/icons-react'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch, ApiError } from '../../api/client'
 import type { BusinessHourDay, BusinessHoursResponse, HolidayException } from '../../api/types'
+import { EmptyRow } from '../../components/EmptyState'
+import PageHeader from '../../components/PageHeader'
+import RowActions from '../../components/RowActions'
+import TableSkeleton from '../../components/TableSkeleton'
 
 const DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -118,158 +109,147 @@ export default function HoursPage() {
   return (
     <Stack gap="xl">
       <div>
-        <Group justify="space-between" mb="sm">
-          <Title order={2}>Business Hours</Title>
-          {canWrite ? (
-            <Button onClick={handleSave} loading={saving} disabled={loading}>
-              Save weekly hours
-            </Button>
-          ) : (
-            <Tooltip label="Owners and admins only">
-              <Button disabled>Save weekly hours</Button>
-            </Tooltip>
-          )}
-        </Group>
+        <PageHeader
+          title="Business Hours"
+          description="When customers can book. Set the weekly schedule, then add exceptions for holidays."
+          actions={
+            canWrite ? (
+              <Button
+                leftSection={<IconDeviceFloppy size={16} stroke={1.75} />}
+                onClick={handleSave}
+                loading={saving}
+                disabled={loading}
+              >
+                Save weekly hours
+              </Button>
+            ) : (
+              <Tooltip label="Owners and admins only">
+                <Button disabled leftSection={<IconDeviceFloppy size={16} stroke={1.75} />}>
+                  Save weekly hours
+                </Button>
+              </Tooltip>
+            )
+          }
+        />
 
-        <Table.ScrollContainer minWidth={500}>
-          <Table verticalSpacing="sm">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Day</Table.Th>
-                <Table.Th>Closed</Table.Th>
-                <Table.Th>Open</Table.Th>
-                <Table.Th>Close</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {days.map((day, index) => (
-                <Table.Tr key={day.day_of_week}>
-                  <Table.Td>{DAY_LABELS[day.day_of_week]}</Table.Td>
-                  <Table.Td>
-                    <Checkbox
-                      checked={day.closed}
-                      disabled={!canWrite}
-                      onChange={(e) => updateDay(index, { closed: e.currentTarget.checked })}
-                    />
-                  </Table.Td>
-                  <Table.Td>
-                    <input
-                      type="time"
-                      value={day.open_time ?? '09:00'}
-                      disabled={day.closed || !canWrite}
-                      onChange={(e) => updateDay(index, { open_time: e.target.value })}
-                    />
-                  </Table.Td>
-                  <Table.Td>
-                    <input
-                      type="time"
-                      value={day.close_time ?? '17:00'}
-                      disabled={day.closed || !canWrite}
-                      onChange={(e) => updateDay(index, { close_time: e.target.value })}
-                    />
-                  </Table.Td>
+        <Paper p={0} mt="md" style={{ overflow: 'hidden' }}>
+          <Table.ScrollContainer minWidth={420}>
+            <Table>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Day</Table.Th>
+                  <Table.Th>Closed</Table.Th>
+                  <Table.Th>Open</Table.Th>
+                  <Table.Th>Close</Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+              </Table.Thead>
+              <Table.Tbody>
+                {days.map((day, index) => (
+                  <Table.Tr key={day.day_of_week}>
+                    <Table.Td fw={500}>{DAY_LABELS[day.day_of_week]}</Table.Td>
+                    <Table.Td>
+                      <Checkbox
+                        checked={day.closed}
+                        disabled={!canWrite}
+                        aria-label={`${DAY_LABELS[day.day_of_week]} closed`}
+                        onChange={(e) => updateDay(index, { closed: e.currentTarget.checked })}
+                      />
+                    </Table.Td>
+                    <Table.Td>
+                      <TextInput
+                        type="time"
+                        w={120}
+                        aria-label={`${DAY_LABELS[day.day_of_week]} opening time`}
+                        value={day.open_time ?? '09:00'}
+                        disabled={day.closed || !canWrite}
+                        onChange={(e) => updateDay(index, { open_time: e.target.value })}
+                      />
+                    </Table.Td>
+                    <Table.Td>
+                      <TextInput
+                        type="time"
+                        w={120}
+                        aria-label={`${DAY_LABELS[day.day_of_week]} closing time`}
+                        value={day.close_time ?? '17:00'}
+                        disabled={day.closed || !canWrite}
+                        onChange={(e) => updateDay(index, { close_time: e.target.value })}
+                      />
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
+        </Paper>
       </div>
-
-      <Divider />
 
       <div>
         <Title order={3} mb="sm">
           Holiday / exception dates
         </Title>
 
-        <Table.ScrollContainer minWidth={400} mb="md">
-          <Table verticalSpacing="sm">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Date</Table.Th>
-                <Table.Th>Closed</Table.Th>
-                <Table.Th>Hours</Table.Th>
-                <Table.Th />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {loading && (
+        <Paper p={0} mb="md" style={{ overflow: 'hidden' }}>
+          <Table.ScrollContainer minWidth={400}>
+            <Table>
+              <Table.Thead>
                 <Table.Tr>
-                  <Table.Td colSpan={4}>
-                    <Center py="sm">
-                      <Loader size="sm" />
-                    </Center>
-                  </Table.Td>
+                  <Table.Th>Date</Table.Th>
+                  <Table.Th>Closed</Table.Th>
+                  <Table.Th>Hours</Table.Th>
+                  <Table.Th />
                 </Table.Tr>
-              )}
-              {!loading && exceptions.length === 0 && (
-                <Table.Tr>
-                  <Table.Td colSpan={4}>
-                    <Text c="dimmed" ta="center" py="sm">
-                      No exception dates.
-                    </Text>
-                  </Table.Td>
-                </Table.Tr>
-              )}
-              {exceptions.map((exception) => (
-                <Table.Tr key={exception.id}>
-                  <Table.Td>{exception.date}</Table.Td>
-                  <Table.Td>{exception.closed ? 'Yes' : 'No'}</Table.Td>
-                  <Table.Td>
-                    {exception.closed ? '—' : `${exception.open_time} – ${exception.close_time}`}
-                  </Table.Td>
-                  <Table.Td>
-                    {canWrite && (
-                      <ActionIcon
-                        variant="subtle"
-                        color="red"
-                        onClick={() => handleDeleteException(exception)}
-                        aria-label="Remove"
-                      >
-                        🗑️
-                      </ActionIcon>
-                    )}
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+              </Table.Thead>
+              <Table.Tbody>
+                {loading && <TableSkeleton cols={4} rows={2} />}
+                {!loading && exceptions.length === 0 && (
+                  <EmptyRow
+                    colSpan={4}
+                    icon={<IconCalendarOff size={22} stroke={1.75} />}
+                    title="No exception dates"
+                    hint="Add a date below to close early, open late, or close for a holiday."
+                  />
+                )}
+                {exceptions.map((exception) => (
+                  <Table.Tr key={exception.id}>
+                    <Table.Td>{exception.date}</Table.Td>
+                    <Table.Td>{exception.closed ? 'Yes' : 'No'}</Table.Td>
+                    <Table.Td>
+                      {exception.closed ? '—' : `${exception.open_time} – ${exception.close_time}`}
+                    </Table.Td>
+                    <Table.Td>
+                      {canWrite && <RowActions canWrite onDelete={() => handleDeleteException(exception)} />}
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
+        </Paper>
 
         {canWrite && (
-          <Group align="flex-end">
-            <TextInput
-              label="Date"
-              type="date"
-              value={newDate}
-              onChange={(e) => setNewDate(e.currentTarget.value)}
-            />
-            <Checkbox
-              label="Closed all day"
-              checked={newClosed}
-              onChange={(e) => setNewClosed(e.currentTarget.checked)}
-              mb={8}
-            />
-            {!newClosed && (
-              <>
-                <div>
-                  <Text size="xs" fw={600} mb={4}>
-                    Open
-                  </Text>
-                  <input type="time" value={newOpen} onChange={(e) => setNewOpen(e.target.value)} />
-                </div>
-                <div>
-                  <Text size="xs" fw={600} mb={4}>
-                    Close
-                  </Text>
-                  <input type="time" value={newClose} onChange={(e) => setNewClose(e.target.value)} />
-                </div>
-              </>
-            )}
-            <Button onClick={handleAddException} disabled={!newDate}>
-              Add exception
-            </Button>
-          </Group>
+          <Paper p="md">
+            <Title order={4} mb="sm">
+              Add an exception
+            </Title>
+            <Group align="flex-end" wrap="wrap">
+              <TextInput label="Date" type="date" value={newDate} onChange={(e) => setNewDate(e.currentTarget.value)} />
+              <Checkbox
+                label="Closed all day"
+                checked={newClosed}
+                onChange={(e) => setNewClosed(e.currentTarget.checked)}
+                mb={8}
+              />
+              {!newClosed && (
+                <>
+                  <TextInput label="Open" type="time" w={120} value={newOpen} onChange={(e) => setNewOpen(e.target.value)} />
+                  <TextInput label="Close" type="time" w={120} value={newClose} onChange={(e) => setNewClose(e.target.value)} />
+                </>
+              )}
+              <Button onClick={handleAddException} disabled={!newDate}>
+                Add exception
+              </Button>
+            </Group>
+          </Paper>
         )}
       </div>
     </Stack>

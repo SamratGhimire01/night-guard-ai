@@ -1,0 +1,874 @@
+[
+  {
+    "conversation_id": "10d1fd3f-f7cf-4e77-8bc7-60680446fd85",
+    "business_name": "Conv A",
+    "channel": "sms",
+    "verdict": "pass",
+    "findings": [],
+    "notes": null
+  },
+  {
+    "conversation_id": "01032ec2-4e57-49a4-83f3-f8f0be18b4a2",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "011ffd18-7b49-4782-8624-38df9e12aaaf",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "03ac818b-2bcd-45f4-b7cc-65cb1762cd25",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "07aa2ec2-edc5-45ee-9110-41d61cb24209",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "0a319e60-5081-47b4-af17-8dd199b08ab0",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "0b6fec4b-fd00-4957-90fe-6a3261c91602",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "0b9d0ac9-302c-49c1-a2d3-52dc11cc3c56",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "0e703780-076d-49c1-9051-c4bb24e39b3f",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "2168ff33-90a1-4ac1-b857-491a4f5d95b1",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "262c7c95-ec3f-4ebd-b915-8731c8da0452",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "28260e5c-879b-4134-9daa-61ce78272158",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "289f1c28-f4c3-4772-89f8-140738a02060",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "28cf6864-d62a-4eba-b320-e085c2fd5eb4",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "29cb9509-eb18-4506-8297-a27c076223bb",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "2b3b9e74-58a9-4723-8685-457ca8182ace",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "2c479702-99de-41c0-9ea7-784c7b5f0e89",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "2d4f9095-592d-45c2-b359-a7fdf7a14cf4",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "2d4f9992-ba27-40ee-a858-4ea44e9f6506",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "2fab83d1-f8d9-4114-8b82-a3c9e3986f65",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "339d0d20-54c6-496f-b211-b9a8b1300e32",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "3611e5db-d60a-4130-8728-e9ac2f517fbd",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "3b77f941-827f-453a-be98-80fb9fa57440",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "3ba540ab-92d1-45fe-adf2-0bdd69008ed8",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "3eb4be90-4940-4b4c-ac63-69668ca4ae64",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "3ec81707-40f5-4df5-af37-662c4b35f5cc",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "3ef59ff2-f154-451c-b95f-79dd056c3a36",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "3f6e04bb-ff4a-4a4a-af9d-725e70622c09",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "3f7ce20e-fb07-4f72-b374-454518fb2f7c",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "45d3791b-d9ce-4b8c-8419-e917838da559",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "4760c744-f777-449b-9067-d897c69b6a80",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Empty conversation (no messages) within the Rate Limit Fix Co load-test batch; nothing to evaluate."
+  },
+  {
+    "conversation_id": "479e459f-c7d5-4d3c-901f-8b0ded5a766b",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "4928c572-857f-4e0b-94cd-a57e01c9c6ed",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "4b4fab3e-3677-4bca-8310-d3de48663bbe",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "4bbf485d-4958-4420-b5da-d6fa18afb427",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "4c63b675-96cf-4684-b56c-626e56dd9cad",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "50fa6038-7148-48d4-b79b-3370731de753",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "5169a224-5c47-4585-b19e-c5143f144e64",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "5498d9fc-0c34-4352-81fe-4b5b40df9a50",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "54decd8b-55fb-4a77-809e-2232a29fac65",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "55801bc2-c530-420a-8ae0-451c05f17678",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "5717fa61-a268-444d-8c28-db2c91373688",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "577a9e09-a17d-48a3-b989-b0373ed85035",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "58229d51-173a-47db-861d-7e874b079ef9",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "58797925-b8f9-4cdb-9d23-20f3178466ff",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "5a9a375c-0a82-4b8c-8f2d-4c9c92e33f94",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "5ac34165-5e67-4a36-adc4-2235bafc7876",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "600ac9c4-e9d4-406d-8179-773c95eed197",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "641a67dc-0824-4b6e-b64f-0e924874c5d8",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "690c8145-d70e-4766-9fb4-fabd0e79b15c",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "6b76acba-1f28-4dcb-b3c9-1852626425ef",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "6b8c1265-215b-4064-83ad-6f17a11b1ad8",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "6e178668-6772-4ddf-aec4-15b96ca2dc74",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "754825c3-7897-4f8a-a77c-f1448800e232",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "78f9c2c8-760f-47de-b273-270d08623de4",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "79a5d996-e60b-414e-9ca0-108d2f11b870",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "7d76f8e0-a6cd-470d-8403-d1b0ac55293c",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "7f45a76f-5aa4-4f67-8659-3f67150ceaf4",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "8a5b69b4-02bf-45b3-b601-89381723db24",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "90220c76-d7e4-4344-80db-68542a9da374",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "956c5590-91b6-4cb3-a450-e1bb88132e41",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "9725c995-69ee-4607-b727-85b7308fba54",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "9fe7d2a1-9b1e-41f0-a126-0563a392c204",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "aab03d5b-b2ea-42a1-82b1-3490ba3f93f8",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "ac4d7d1c-2650-415c-9963-8227455d332c",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "b238fb42-16b5-4055-8a36-ac4af595bf95",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "b3f9e265-0896-4c19-bd0d-dff4eecd4a20",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "b40e9cce-2c28-4887-81ca-fb1ee591d938",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "bd00b4f1-7979-4858-843f-637c5bd4a789",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "bee96d62-5a95-4b34-9aed-e665ce04d031",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "bf58ff14-40f7-4cd7-9a6d-103e080e21dc",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "c303b56b-352d-4fc1-9617-5374e98ac989",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "c6484929-eed6-4bf9-b34a-63d19f9ac597",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "c84a2488-60e5-4f95-ab49-c40305328663",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "c8da41ae-509c-4f3d-947b-123611857d36",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "c978997c-f592-47eb-8c53-08b4a2ae68ab",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "cb43ce91-2143-40dd-9fce-6de36d971f7a",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "ce3268ff-71d5-4bd1-b5f9-90ae4fac3648",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "ced01d9a-9b32-4f0e-8eae-11a2749f0949",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "d4bcbc64-f7b4-4ebe-8e26-ce2c9c15a851",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "d5ab1813-045b-4a10-a0e0-ddf5dc13842a",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "d6e4de81-a615-46ad-b6d7-049a27621ece",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "d8bcfa84-9d2d-46f3-9e44-1d9a10973d4b",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "dfab47b0-2a9e-4929-b072-c9e4b8963b91",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "dfea0eb4-8b82-443c-8633-0e930097d386",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "ec5c8ac3-9b60-460a-b08b-a53d18001a6c",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "edd3ef89-5195-47e8-9f0a-449d8d5e6a37",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "ede3c287-7d75-4385-84be-8c5b527bd423",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "ee76cead-2f33-40cc-912c-d3c4bebbfeb4",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "ef4fc38b-da7f-42dd-9a29-1384c7f53241",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "f2330fff-2011-4e3d-b9a9-da98f0df0499",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "f479f61a-e4f4-4fff-9d8c-6ea9c4f3031c",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "fb613eb3-b8ec-4d2b-a109-4c48d8880e21",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "fd1c3376-777f-4a98-ba11-25d83a48781c",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "fd93112c-4748-4833-bda1-8cceee32e580",
+    "business_name": "Rate Limit Fix Co",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Synthetic rate-limit/load-test tenant: customer turns are auto-generated 'flood message N' spam, not natural conversation. Business has no services/hours configured. Agent correctly declined to invent any service/hours/pricing info, asked reasonable clarifying questions, and offered human escalation on repeated unclear input without fabricating facts or leaking internal identifiers."
+  },
+  {
+    "conversation_id": "32c5c08a-1ad8-40f5-a74d-eba5ae2f1ebc",
+    "business_name": "Voice Test Biz",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "tone",
+        "summary": "Agent opens a website-channel chat reply with a phone-call greeting ('Thanks for calling!'), mismatched to the actual channel, and does not answer the customer's actual question (hours) since none are configured.",
+        "evidence": "Thanks for calling! I've also let our team know, so a real person will follow up",
+        "turn_index": 1
+      }
+    ],
+    "notes": "Business has no services/hours configured, so declining to state hours and escalating is correct; the flagged issue is the channel-mismatched canned greeting."
+  },
+  {
+    "conversation_id": "58d5f5b9-6517-4ba7-81ec-beddc3476cb7",
+    "business_name": "BRN",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Empty conversation - no messages were logged, nothing for the agent to respond to."
+  },
+  {
+    "conversation_id": "c1629db8-a5eb-45f8-b3df-6f93c2b5c664",
+    "business_name": "Voice Test Biz",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "tone",
+        "summary": "Agent opens a website-channel chat reply with a phone-call greeting ('Thanks for calling!'), mismatched to the actual channel, and does not answer the customer's actual question (hours) since none are configured.",
+        "evidence": "Thanks for calling! I've also let our team know, so a real person will follow up",
+        "turn_index": 1
+      }
+    ],
+    "notes": "Business has no services/hours configured, so declining to state hours and escalating is correct; the flagged issue is the channel-mismatched canned greeting."
+  },
+  {
+    "conversation_id": "eda0682b-b87e-44ea-9cec-d08a9ccf29ea",
+    "business_name": "BRN",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": "Empty conversation - no messages were logged, nothing for the agent to respond to."
+  },
+  {
+    "conversation_id": "fab5927b-9de1-4790-816b-9c48121369c5",
+    "business_name": "Voice Test Biz",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "tone",
+        "summary": "Agent opens a website-channel chat reply with a phone-call greeting ('Thanks for calling!'), mismatched to the actual channel, and does not answer the customer's actual question (hours) since none are configured.",
+        "evidence": "Thanks for calling! मैले हाम्रो टिमलाई पनि जानकारी दिएँ, त्यसैले एक जना साँच्चैक",
+        "turn_index": 1
+      }
+    ],
+    "notes": "Business has no services/hours configured, so declining to state hours and escalating is correct; the flagged issue is the channel-mismatched canned greeting."
+  },
+  {
+    "conversation_id": "4be84614-02c9-49cd-8429-508c68dad05a",
+    "business_name": "Anchor Test Biz",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "tone",
+        "summary": "Agent repeats a near-identical boilerplate 'I've notified our team, a real person will follow up' phrase on 4 separate turns instead of varying its response or actually escalating once and stopping.",
+        "evidence": "am lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+        "turn_index": 9
+      }
+    ],
+    "notes": "Business has no services/hours configured (this is a language-anchoring test tenant); agent correctly avoided inventing facts (price, hours, walk-in policy) each time, but the repeated verbatim escalation boilerplate across nearly every turn reads as robotic/looping."
+  },
+  {
+    "conversation_id": "86866c98-3760-449f-b2fa-94082a60089e",
+    "business_name": "Anchor Test Biz After",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "tone",
+        "summary": "Agent repeats a near-identical boilerplate 'I've notified our team, a real person will follow up' phrase on 4 separate turns instead of varying its response or actually escalating once and stopping.",
+        "evidence": "am lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+        "turn_index": 9
+      },
+      {
+        "category": "tone",
+        "summary": "Agent asks for phone/email contact info on multiple separate turns without the customer ever answering, and without changing approach or escalating differently.",
+        "evidence": "ann sakchhau; tapai phone ma hunuhunchha ki email ma? Maile hamro team lai pani ",
+        "turn_index": 9
+      }
+    ],
+    "notes": "Business has no services/hours configured (this is a language-anchoring test tenant); agent correctly avoided inventing facts (price, hours, walk-in policy) each time, but the repeated verbatim escalation boilerplate across nearly every turn reads as robotic/looping."
+  },
+  {
+    "conversation_id": "e33b0691-82b6-4024-a6b6-169b07cc3010",
+    "business_name": "Anchor Test Biz Final",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "tone",
+        "summary": "Agent repeats a near-identical boilerplate 'I've notified our team, a real person will follow up' phrase on 3 separate turns instead of varying its response or actually escalating once and stopping.",
+        "evidence": "am lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+        "turn_index": 9
+      }
+    ],
+    "notes": "Business has no services/hours configured (this is a language-anchoring test tenant); agent correctly avoided inventing facts (price, hours, walk-in policy) each time, but the repeated verbatim escalation boilerplate across nearly every turn reads as robotic/looping."
+  }
+]

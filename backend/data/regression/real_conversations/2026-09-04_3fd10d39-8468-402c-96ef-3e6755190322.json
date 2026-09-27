@@ -1,0 +1,157 @@
+{
+  "conversation_id": "3fd10d39-8468-402c-96ef-3e6755190322",
+  "business_id": "3421eb20-e71f-4eda-b5b7-e2043b2ac065",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-04T17:01:34.597668",
+  "customer": {
+    "id": "9fd06d44-3465-4095-9eed-d8b99d27eb14",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Namaste, teeth cleaning ko price kati ho?",
+      "detected_intent": "pricing_question",
+      "created_at": "2026-09-04T17:01:34.601789"
+    },
+    {
+      "sender_type": "agent",
+      "content": "\u0928\u092e\u0938\u094d\u0924\u0947 \u2014 Teeth Cleaning \u0915\u094b \u092e\u0942\u0932\u094d\u092f $90.00 \u091b \u0930 \u0915\u0930\u093f\u092c 30 \u092e\u093f\u0928\u0947\u091f \u0932\u093e\u0917\u094d\u091b\u0964 \u0905\u092a\u094b\u0907\u0928\u094d\u091f\u092e\u0947\u0928\u094d\u091f \u0932\u093f\u0928 \u091a\u093e\u0939\u0928\u0941\u0939\u0941\u0928\u094d\u091b \u092d\u0928\u0947 \u092c\u0924\u093e\u0909\u0928\u0941\u0939\u094b\u0938\u094d\u0964",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:01:41.211261"
+    },
+    {
+      "sender_type": "customer",
+      "content": "hmm actually english sounds easier for me",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-04T17:02:09.484957"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Sure \u2014 switching to English. Teeth Cleaning is $90 and takes about 30 minutes. Would you like to schedule an appointment or ask anything else about the service?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:02:18.236303"
+    },
+    {
+      "sender_type": "customer",
+      "content": "can you also just use simple english going forward",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-04T17:02:59.264145"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Got it \u2014 I\u2019ll use simple, plain English from now on. Would you like to schedule the Teeth Cleaning ($90, about 30 minutes), or is there something else I can help with?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T17:03:07.429959"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "3421eb20-e71f-4eda-b5b7-e2043b2ac065",
+    "name": "Test Chat Biz",
+    "timezone": "America/New_York",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "6e918b34-a382-4531-bbb2-b4b0e1182877",
+        "name": "Dental Consultation",
+        "description": null,
+        "price": 50.0,
+        "duration_minutes": 20,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "fd08a57f-879c-40ba-84fa-a44a8d7571f3",
+        "name": "Teeth Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "3a58abef-c4e7-4fdf-83ed-d8691fafd295",
+        "name": "Root Canal",
+        "description": null,
+        "price": 450.0,
+        "duration_minutes": 60,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "6b7cd7d1-ed84-4fc6-b6b5-3713809a9f48",
+        "name": "Braces Consultation",
+        "description": null,
+        "price": 75.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [
+      {
+        "id": "ebb82b04-2261-4dd6-88cf-98b0fddcd14a",
+        "title": "General Clinic Info",
+        "content": "Our clinic is located at 123 Main Street. We accept cash and card as payment methods. If you need to cancel or reschedule an appointment, please give us at least 24 hours notice. If you are experiencing a dental emergency, please call the front desk directly rather than using this chat."
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

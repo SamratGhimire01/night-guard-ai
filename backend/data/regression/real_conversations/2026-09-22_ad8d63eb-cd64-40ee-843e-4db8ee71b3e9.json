@@ -1,0 +1,478 @@
+{
+  "conversation_id": "ad8d63eb-cd64-40ee-843e-4db8ee71b3e9",
+  "business_id": "615f61bc-b319-4694-9128-bb7cb7f7af62",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-22T07:14:36.081276",
+  "customer": {
+    "id": "0ac6007c-a50a-4aa1-88e1-ddd7872a2f0c",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Hi, what can you help me with?",
+      "detected_intent": "greeting",
+      "created_at": "2026-09-22T07:14:41.218336"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Hi! I can help with things related to SikshyaNepal \u2014 our services, pricing, hours, location, policies, and booking, rescheduling, cancelling, or checking appointments. What would you like help with?",
+      "detected_intent": null,
+      "created_at": "2026-09-22T07:14:41.225575"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "615f61bc-b319-4694-9128-bb7cb7f7af62",
+    "name": "SikshyaNepal",
+    "timezone": "Asia/Kathmandu",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "aggregator",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [],
+    "knowledge_documents": [
+      {
+        "id": "7442b149-d211-42ae-a772-dd0493b684d3",
+        "title": "About SikshyaNepal",
+        "content": "SikshyaNepal is a student-first education guide for Nepal: college and school directories, admissions and deadlines, results, notices, scholarships and education news, with source links where available. IMPORTANT: SikshyaNepal is not the official source. Fees, deadlines, eligibility and seats change and must always be confirmed with the institution's own official notice before a student applies or pays. When asked for financial, deadline or eligibility figures, treat SikshyaNepal's own records as the latest information on file, but always tell the student to confirm with the institution directly before paying or committing."
+      },
+      {
+        "id": "7e7b4160-8d03-47f4-a604-304af06816a3",
+        "title": "College: Ace Institute of Management",
+        "content": "Ace Institute of Management (New Baneshwor, Kathmandu)\nOverview: Long-running specialist management institution; historically known for MBA/Executive MBA and practice-oriented management education.\n\nGood fit for: Best for management-focused students who value business-school identity and professional learning culture.\n\nStudy and career context: Strong management alumni ecosystem; surface verified employer/internship data only when sourced.\nAffiliation: Pokhara University.\nAddress: New Baneshwor, Kathmandu. Website: https://ace.edu.np/.\nPrograms offered: BBA and graduate management programs; verify exact 2026 portfolio on ace.edu.np before ingest.\nFacilities: Management learning environment, alumni network, professional activities.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "a2e33c68-408a-4add-ac3a-aa4cf60cfdd2",
+        "title": "College: Amrit Science Campus (ASCOL)",
+        "content": "Amrit Science Campus (ASCOL) (Thamel, Kathmandu)\nOverview: Historic science-focused public campus with strong reputation in science, CSIT and technical peer culture.\n\nGood fit for: Great for science/CSIT students wanting public tuition, central location and academically strong peer environment.\n\nStudy and career context: Strong alumni in science, technology, government and research; self-driven internships are important.\nAffiliation: Tribhuvan University, Institute of Science and Technology.\nAddress: Thamel, Kathmandu. Website: https://ac.tu.edu.np/.\nPrograms offered: BSc General Science; BSc CSIT; BIT; MIT; MSc Physics; MSc Chemistry; MSc Botany; MSc Zoology and other science programs.\nFacilities: Science labs, computer department, research resources, large science faculty structure.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "809923e1-58c8-4ce4-b536-4d8bd874e6f8",
+        "title": "College: Kantipur City College (KCC)",
+        "content": "Kantipur City College (KCC) (Putalisadak, Kathmandu)\nOverview: Very broad tech/engineering/management/media portfolio in central Kathmandu; project-based learning and research emphasized.\n\nGood fit for: Good for students wanting multiple tech/management options in Putalisadak and comparing emerging AI/IT tracks.\n\nStudy and career context: Project and industry/community partnerships are highlighted.\nAffiliation: University programs; verify each program affiliation before display (KCC runs engineering, IT, management and media programs).\nAddress: Putalisadak, Kathmandu. Website: https://kcc.edu.np/.\nPrograms offered: BCA-IT; BBA; BE Civil; BE Computer; BIT; BTech AI; MCA-IT; MAMCJ; PGDCA.\nFacilities: Labs, research resources, project-based learning environment.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "aae1f696-086d-4268-9925-551bf0a8846a",
+        "title": "College: Advanced College of Engineering & Management (ACEM)",
+        "content": "Advanced College of Engineering & Management (ACEM) (Kalanki, Kathmandu)\nOverview: Engineering-industry collaboration, research/innovation, AI research activity, fellowships and dedicated placement support.\n\nGood fit for: Strong fit for engineering students who value research, innovation, industry exposure and Kalanki location.\n\nStudy and career context: Placement cell and industry fellowships are prominently advertised; treat percentages as claims to verify.\nAffiliation: Tribhuvan University / IOE (engineering) and TU FoHSS (BCA).\nAddress: Kalanki, Kathmandu. Website: https://www.acem.edu.np/.\nPrograms offered: BE Civil; BE Computer; BE Electrical; BE Electronics, Communication & Information; BCA.\nFacilities: Engineering labs, research/innovation spaces, library, sports/culture activities.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "d4b70479-88c7-43c2-ad2a-20cdcb1225c2",
+        "title": "College: Global College of Management (GCM)",
+        "content": "Global College of Management (GCM) (Mid-Baneshwor, Kathmandu)\nOverview: Large management-focused community, strong extracurricular/student-led activities, transport coverage and purpose-built management environment.\n\nGood fit for: Ideal mainly for students seeking +2 Management and a highly active management-focused campus culture.\n\nStudy and career context: Leadership and management skill-building begins early; higher-ed outcomes depend on next program.\nAffiliation: Primarily NEB management + institutional pathways; verify current higher-level offerings separately.\nAddress: Mid-Baneshwor, Kathmandu. Website: https://www.globalcollege.edu.np/.\nPrograms offered: Management-focused secondary/higher-secondary programs; website ecosystem also links management learning pathways.\nFacilities: Smart classrooms, computer lab, library/e-library, transport, cafeteria, research centre, digital resource point.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "acdd4b75-f4de-425a-88c0-86f340779838",
+        "title": "College: GoldenGate International College",
+        "content": "GoldenGate International College (Battisputali / Old Baneshwor, Kathmandu)\nOverview: Very broad bachelor/master portfolio across management, science, humanities and hotel management.\n\nGood fit for: Good for students who want many TU programs under one institutional group.\n\nStudy and career context: Program-dependent; strong breadth but users should compare department-specific faculty/labs before deciding.\nAffiliation: Tribhuvan University; NEB for +2.\nAddress: Battisputali / Old Baneshwor, Kathmandu. Website: https://college.goldengateintl.com/.\nPrograms offered: BBS; BHM; BA/BSW; MBS; MA English; MA Economics; MSc Physics; MSc Microbiology; MSc Environmental Science and other TU programs.\nFacilities: Academic blocks, labs, broad student activities.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "f5ef59c2-beb0-47d2-bc81-df2824ca5cef",
+        "title": "College: Greenland International College",
+        "content": "Greenland International College (Biratnagar)\nGreenland International College is a premier institution in Biratnagar affiliated with Pokhara University. It offers BBA and BCA programs with a focus on practical business skills and regional industry connections.\nAffiliation: Pokhara University.\nAddress: Biratnagar-2, Morang 56613. Website: https://greenlandcollege.edu.np.\nReal, on-file fees for programs at this college:\n- Bachelor of Business Administration (BBA) (4 Years): NPR 105,000, 60 seats. Scholarships available for this program.\n- Bachelor of Computer Application (BCA) (4 Years): NPR 115,000, 60 seats.\nVerification: unverified, source: not listed."
+      },
+      {
+        "id": "84d63ee3-c343-46e7-bf93-0399066d73fd",
+        "title": "College: Patan Multiple Campus",
+        "content": "Patan Multiple Campus (Patan Dhoka, Lalitpur)\nOverview: Large multidisciplinary public campus with humanities, science, management and IT in a historic Patan location.\n\nGood fit for: Excellent value for students who want broad TU options and public fees in Lalitpur.\n\nStudy and career context: Strong alumni/community base; career services vary by program.\nAffiliation: Tribhuvan University.\nAddress: Patan Dhoka, Lalitpur. Website: https://pmc.tu.edu.np/.\nPrograms offered: BCA; BIT; BSc CSIT; BBA; BBS; BA; BSc general; MBS; MIT; MCA; MSc Physics; MSc Environmental Science and humanities masters.\nFacilities: Departmental labs, libraries, public-campus grounds, self-sustaining IT/management programs.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "90082a92-2fee-461a-ad69-a8e11d10d6e1",
+        "title": "College: Pokhara Engineering College",
+        "content": "Pokhara Engineering College (Pokhara)\nPokhara Engineering College (PEC) is a top engineering college affiliated with Pokhara University in the Gandaki Province. It offers BE programs in Computer, Civil, and Electronics Engineering with modern engineering facilities.\nAffiliation: Pokhara University.\nAddress: Manamaiju, Pokhara 33700. Website: https://pec.edu.np.\nReal, on-file fees for programs at this college:\n- Bachelor of Engineering (BE) in Computer (4 Years): NPR 310,000, 48 seats. Scholarships available for this program.\n- Bachelor of Engineering (BE) in Civil (4 Years): NPR 295,000, 48 seats. Scholarships available for this program.\n- Bachelor of Engineering (BE) in Electronics (4 Years): NPR 300,000, 48 seats.\nVerification: unverified, source: not listed."
+      },
+      {
+        "id": "45406554-1730-4bf1-8915-e5a1f87ab4be",
+        "title": "College: Sagarmatha Engineering College",
+        "content": "Sagarmatha Engineering College (Sanepa, Lalitpur)\nOverview: Engineering-only focus, TU/IOE affiliation and Sanepa location; promotes innovation and research.\n\nGood fit for: Good for students wanting focused engineering programs in central Lalitpur.\n\nStudy and career context: Engineering career pathway with technical projects and exposure.\nAffiliation: Tribhuvan University / IOE.\nAddress: Sanepa, Lalitpur. Website: https://sagarmatha.edu.np/.\nPrograms offered: BE Computer; BE Civil; BE Electronics, Communication & Information.\nFacilities: Engineering labs, project, research activities.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "f17e9767-58fb-4720-8e3a-e2d3ab49e211",
+        "title": "Universities in Nepal",
+        "content": "Universities and their official websites, as listed on SikshyaNepal:\n- Far-Western University (FWU): https://fwu.edu.np\n- Kathmandu University (KU): https://ku.edu.np\n- Mid-Western University (MWU): https://mwu.edu.np\n- Pokhara University (PU): https://pu.edu.np\n- Purbanchal University (PurU): https://purbanchaluniversity.edu.np\n- Rajarshi Janak University (RJU): https://rju.edu.np\n- Tribhuvan University (TU): https://tu.edu.np"
+      },
+      {
+        "id": "2e249e95-ad7a-43a2-9ef7-f5b534a9eff4",
+        "title": "College: Apex College",
+        "content": "Apex College (Mid-Baneshwor, Kathmandu)\nOverview: Management + BCSIT mix, practical/observation-based learning, student clubs and exchange opportunities; part of ING/Kantipur-linked ecosystem.\n\nGood fit for: Good for students comparing PU management and BCSIT programs with an active student-life environment.\n\nStudy and career context: Hands-on learning and career opportunities through partner networks are emphasised.\nAffiliation: Pokhara University.\nAddress: Mid-Baneshwor, Kathmandu. Website: https://apexcollege.edu.np/.\nPrograms offered: BBA; BBA Finance; BCSIT; MBA; BBA Travel & Tourism (when offered).\nFacilities: Student clubs, centres/labs, events, exchange activities.\nReal, on-file fees for programs at this college:\n- Bachelor of Business Administration (BBA) (4 Years): NPR 165,000, 72 seats. Scholarships available for this program.\n- Bachelor of Computer Application (BCA) (4 Years): NPR 155,000, 60 seats.\n- Master of Business Administration (MBA) (2 Years): NPR 420,000, 40 seats. Scholarships available for this program.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "0f19acac-5fcb-4995-8eaf-aecef32234c0",
+        "title": "College: B.P. Koirala Institute of Health Sciences (BPKIHS)",
+        "content": "B.P. Koirala Institute of Health Sciences (BPKIHS) (Dharan, Sunsari)\nOverview: Major national centre for health-sciences education, research and tertiary care with community-oriented approach and broad advanced training.\n\nGood fit for: Top option for high-merit health-sciences students willing to study in Dharan and wanting strong clinical/research exposure.\n\nStudy and career context: Strong national reputation in medicine, dentistry, nursing, research and specialty training.\nAffiliation: Self-governing health sciences institution.\nAddress: Dharan, Sunsari. Website: https://bpkihs.edu/.\nPrograms offered: MBBS; BDS; BSc Nursing; MD/MS; MSc; MDS; DM/MCh; PhD; fellowships.\nFacilities: Large hospital, specialty clinics, research, postgraduate, advanced-care facilities.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "604c2dfc-8f98-47d0-ad67-ff1f62bf52b8",
+        "title": "College: Chitwan Medical College (CMC)",
+        "content": "Chitwan Medical College (CMC) (Bharatpur, Chitwan)\nOverview: Large integrated medical college and teaching hospital with 8 bachelor programs, broad postgraduate/superspecialty portfolio and strong clinical exposure in Chitwan.\n\nGood fit for: Excellent for students open to studying outside Kathmandu who want a large hospital-based health sciences campus.\n\nStudy and career context: Broad medical/nursing/public-health/allied-health pathways with strong hospital exposure.\nAffiliation: Tribhuvan University / IOM.\nAddress: Bharatpur, Chitwan. Website: https://cmc.edu.np/.\nPrograms offered: MBBS; BDS; BSc Nursing; BNS; BPH; BPharm; BSc MIT; BSc MLT; MD/MS; MDS; MPH; DM/MCh and other health programs.\nFacilities: Teaching hospital, specialty services, research budget, hostels, library, clinical, diagnostic facilities.\nReal, on-file fees for programs at this college:\n- Bachelor of Medicine, Bachelor of Surgery (MBBS) (5.5 Years): NPR 980,000, 100 seats. Scholarships available for this program.\n- Bachelor of Pharmacy (B.Pharm) (4 Years): NPR 290,000, 60 seats.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "c31a5784-a06d-41f6-8f87-4b44ea51db3e",
+        "title": "College: DAV College",
+        "content": "DAV College (Kathmandu)\nDayananda Anglo Vedic (DAV) College is a well-established institution in Kathmandu offering management and humanities programs. Affiliated with Tribhuvan University, it is known for its experienced faculty and affordable education.\nAffiliation: Tribhuvan University.\nAddress: Maitidevi, Kathmandu 44600. Website: https://davcollege.edu.np.\nReal, on-file fees for programs at this college:\n- Bachelor of Business Studies (BBS) (4 Years): NPR 95,000, 120 seats. Scholarships available for this program.\n- Bachelor of Business Administration (BBA) (4 Years): NPR 120,000, 80 seats.\n- Bachelor of Arts (BA) (4 Years): NPR 75,000, 100 seats.\nVerification: unverified, source: not listed."
+      },
+      {
+        "id": "15e49161-912f-46c7-8937-1aadbb4a527e",
+        "title": "College: Deerwalk Institute of Technology (DWIT)",
+        "content": "Deerwalk Institute of Technology (DWIT) (Sifal, Kathmandu)\nOverview: IT-focused environment, small-class positioning, paid internship opportunities at Deerwalk, workshops, incubation and IT community programs.\n\nGood fit for: Best for students prioritising software/IT culture, internships and tech-community exposure over a broad multi-faculty campus.\n\nStudy and career context: Paid internships, job fair and close linkage to Deerwalk technology ecosystem are highlighted.\nAffiliation: Tribhuvan University.\nAddress: Sifal, Kathmandu. Website: https://deerwalk.edu.np/dwit/.\nPrograms offered: BSc CSIT; BCA; Diploma in Data Analytics; DWIT credit courses.\nFacilities: IT labs, clubs, incubation centre, workshops, rural teaching program, student projects.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "967ce7f1-0313-468a-ae56-3dc4351963a5",
+        "title": "College: Gandaki Medical College",
+        "content": "Gandaki Medical College (Pokhara / Lekhnath, Kaski)\nOverview: Pokhara-based medical college with broad medical, dental, nursing and allied-health portfolio plus teaching hospital/research centre.\n\nGood fit for: Good for students wanting health-sciences training in Pokhara and a hospital-linked campus.\n\nStudy and career context: Professional healthcare pathway with PG options.\nAffiliation: Tribhuvan University, Institute of Medicine.\nAddress: Pokhara / Lekhnath, Kaski. Website: https://gmcthrc.edu.np/.\nPrograms offered: MBBS; BDS; BSc Nursing; BNS; BSc MIT; BSc MLT; BPH; BPharm; MD/MS; MDS; MN/MSc Nursing; MPH and other PG programs.\nFacilities: Teaching hospital, city hospital, dental college, labs, clinical departments.\nReal, on-file fees for programs at this college:\n- Bachelor of Medicine, Bachelor of Surgery (MBBS) (5.5 Years): NPR 950,000, 100 seats. Scholarships available for this program.\n- Bachelor of Nursing (B.Nurs) (4 Years): NPR 185,000, 60 seats.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "992d9778-fb9f-4dca-be98-f25564f571f4",
+        "title": "College: Itahari International College",
+        "content": "Itahari International College (Itahari)\nItahari International College (IIC) is the leading educational institution in eastern Nepal affiliated with Pokhara University. It offers BCA, BBA, and BIT programs serving students from Province No. 1 and beyond.\nAffiliation: Pokhara University.\nAddress: Itahari-7, Sunsari 56705. Website: https://iic.edu.np.\nReal, on-file fees for programs at this college:\n- Bachelor of Computer Application (BCA) (4 Years): NPR 110,000, 72 seats. Scholarships available for this program.\n- Bachelor of Business Administration (BBA) (4 Years): NPR 125,000, 60 seats.\n- Bachelor of Information Technology (BIT) (4 Years): NPR 118,000, 60 seats. Scholarships available for this program.\nVerification: unverified, source: not listed."
+      },
+      {
+        "id": "93640ca8-d3a3-492a-8a6f-edd988e5fad1",
+        "title": "College: Herald College Kathmandu",
+        "content": "Herald College Kathmandu (Naxal, Kathmandu)\nOverview: UK university degrees, international/exchange exposure, IT/business focus and ING ecosystem.\n\nGood fit for: Good for students wanting UK-style computing/business programs with international exposure.\n\nStudy and career context: Career value is tied to UK-awarded programs, practical projects and ING/industry network.\nAffiliation: University of Wolverhampton, UK.\nAddress: Naxal, Kathmandu. Website: https://heraldcollege.edu.np/.\nPrograms offered: BSc (Hons) Computer Science; BSc (Hons) Cybersecurity; BSc (Hons) International Business Management; International MBA.\nFacilities: IT learning spaces, student community, events, international exposure activities.\nReal, on-file fees for programs at this college:\n- Bachelor of Computer Application (BCA) (4 Years): NPR 260,000, 60 seats. Scholarships available for this program.\n- Bachelor of Business Administration (BBA) (4 Years): NPR 250,000, 60 seats.\n- Bachelor of Information Technology (BIT) (4 Years): NPR 270,000, 60 seats.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "eb62bb2d-a334-4c03-94d0-7325e013f1c3",
+        "title": "College: Himalaya College of Engineering (HCOE)",
+        "content": "Himalaya College of Engineering (HCOE) (Chyasal, Lalitpur)\nOverview: Long-running TU-affiliated engineering college in Lalitpur with engineering/computing/architecture focus.\n\nGood fit for: Good for Lalitpur-based students seeking IOE engineering in a private college.\n\nStudy and career context: Engineering project exposure; compare department-specific industry linkages.\nAffiliation: Tribhuvan University / IOE.\nAddress: Chyasal, Lalitpur. Website: https://hcoe.edu.np/.\nPrograms offered: BE Civil; BE Computer; BE Electronics, Communication & Information; B.Arch (current IOE list; verify campus offering each intake).\nFacilities: Engineering labs, academic spaces, project facilities.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "aec1d6cb-e54f-48ac-8243-d2c10bbe60e3",
+        "title": "College: IIMS College",
+        "content": "IIMS College (Kathmandu)\nOverview: Combines computing, business and hospitality honours degrees with specialisations such as AI, data science, cybersecurity and digital business.\n\nGood fit for: Good for students who want international honours programs and modern specialisations rather than TU/PU structure.\n\nStudy and career context: Industry-oriented curricula in computing/business/hospitality; verify current internship partners.\nAffiliation: International partner university model; verify current awarding university on each course page.\nAddress: Kathmandu. Website: https://iimscollege.edu.np/.\nPrograms offered: Bachelor of Computer Science (Honours); Bachelors of Business (Honours); Bachelor of International Hospitality Management (Honours); MBA.\nFacilities: Modern private-college learning environment, student-life programming.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "f60a3d58-3e6b-444c-b598-6e385978c4a6",
+        "title": "College: Informatics College Pokhara",
+        "content": "Informatics College Pokhara (Pokhara)\nInformatics College Pokhara is the first IT college in the Gandaki Province affiliated with Pokhara University. It offers BCA, BIT, and BBA programs with a focus on hands-on technical training and entrepreneurship.\nAffiliation: Pokhara University.\nAddress: Chipledhunga, Pokhara 33700. Website: https://informatics.edu.np.\nReal, on-file fees for programs at this college:\n- Bachelor of Computer Application (BCA) (4 Years): NPR 120,000, 72 seats. Scholarships available for this program.\n- Bachelor of Information Technology (BIT) (4 Years): NPR 140,000, 60 seats.\n- Bachelor of Business Administration (BBA) (4 Years): NPR 130,000, 60 seats. Scholarships available for this program.\nVerification: unverified, source: not listed."
+      },
+      {
+        "id": "a89d4d50-d4af-4f0e-bd4a-12812e99e5b9",
+        "title": "College: Islington College",
+        "content": "Islington College (Kamal Pokhari, Kathmandu)\nOverview: Large range of international IT/business degrees, AI/cybersecurity options, international exposure and ING network.\n\nGood fit for: Good for students prioritising international degree structure, modern IT specialisations and project-based private-college environment.\n\nStudy and career context: International degree positioning plus alumni/industry network; verify current internship/placement metrics before showing percentages.\nAffiliation: International/UK degree pathways via London Metropolitan University (verify current awarding arrangement on course page before display).\nAddress: Kamal Pokhari, Kathmandu. Website: https://islington.edu.np/.\nPrograms offered: BSc (Hons) Computing; BSc (Hons) Computing with AI; BSc (Hons) Computer Networking & IT Security; BSc (Hons) Multimedia Technologies; BA (Hons) Business Administration tracks; BA (Hons) Accounting & Finance; MSc IT specialisations; MBA specialisations.\nFacilities: Purpose-built IT/business learning environment, student areas, international exposure, scholarship support are highlighted.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "b29d1056-aec6-4f75-9656-fe1f2fb8064f",
+        "title": "College: ISMT College",
+        "content": "ISMT College (Kathmandu)\nISMT College is a pioneering institution affiliated with Pokhara University, specializing in management, IT, and travel & tourism programs. Located in central Kathmandu with experienced faculty and industry-focused curriculum.\nAffiliation: Pokhara University.\nAddress: Kamaladi, Kathmandu 44600. Website: https://ismt.edu.np.\nReal, on-file fees for programs at this college:\n- Bachelor of Computer Application (BCA) (4 Years): NPR 140,000, 72 seats. Scholarships available for this program.\n- Bachelor of Business Administration (BBA) (4 Years): NPR 155,000, 60 seats.\n- Master of Business Administration (MBA) (2 Years): NPR 350,000, 36 seats. Scholarships available for this program.\nVerification: unverified, source: not listed."
+      },
+      {
+        "id": "b4ded7d4-8b66-452d-8564-fb446538595b",
+        "title": "College: National College",
+        "content": "National College (Kathmandu)\nOverview: Highly specialised social-science/development college; official site positions it as unique in Development Studies/Finance and pure Psychology.\n\nGood fit for: Excellent for students interested in development, public policy, IR, psychology and social research rather than mainstream BBA/IT.\n\nStudy and career context: Pathways into development sector, NGOs/INGOs, policy, research, finance/development institutions and postgraduate study.\nAffiliation: Kathmandu University for current specialised programs (verify by program).\nAddress: Kathmandu. Website: https://www.nationalcollege.edu.np/.\nPrograms offered: Development Studies; Development Finance; Social Sciences; International Relations; Psychology (KU).\nFacilities: Research-oriented academic environment, exchange links, specialised faculty.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "4874c376-ca81-4b7d-a401-6999185b68f6",
+        "title": "College: Kantipur Engineering College (KEC Dhapakhel)",
+        "content": "Kantipur Engineering College (KEC Dhapakhel) (Dhapakhel, Lalitpur)\nOverview: Long-running IOE-affiliated engineering campus in a quieter Lalitpur setting with engineering-focused environment.\n\nGood fit for: Good for students prioritising engineering-only focus, IOE curriculum and Lalitpur location.\n\nStudy and career context: Project/lab-heavy engineering training; verify employer partnerships by department.\nAffiliation: Tribhuvan University, Institute of Engineering (IOE).\nAddress: Dhapakhel, Lalitpur. Website: https://kec.edu.np/.\nPrograms offered: BE Civil; BE Computer; BE Electronics, Communication & Information.\nFacilities: Engineering labs, library, extracurricular/sports, student bodies.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "e0d53539-b45d-42d5-aff5-946cfa632fd1",
+        "title": "College: Kathford International College of Engineering and Management",
+        "content": "Kathford International College of Engineering and Management (Kathmandu)\nKathford is a leading KU-affiliated college offering BE programs in Computer, Civil, and Electronics engineering. It features state-of-the-art engineering labs, a dedicated placement cell, and strong industry partnerships.\nAffiliation: Kathmandu University.\nAddress: Balkumari, Lalitpur 44700. Website: https://kathford.edu.np.\nReal, on-file fees for programs at this college:\n- Bachelor of Engineering (BE) in Computer (4 Years): NPR 385,000, 48 seats. Scholarships available for this program.\n- Bachelor of Engineering (BE) in Civil (4 Years): NPR 365,000, 48 seats. Scholarships available for this program.\n- Bachelor of Engineering (BE) in Electronics (4 Years): NPR 370,000, 48 seats.\n- Bachelor of Computer Application (BCA) (4 Years): NPR 175,000, 60 seats. Scholarships available for this program.\n- Bachelor of Business Administration (BBA) (4 Years): NPR 195,000, 60 seats.\nVerification: unverified, source: not listed."
+      },
+      {
+        "id": "ffc6a7b5-3de4-4fbc-8656-656b367dcaf2",
+        "title": "College: Kathmandu BernHardt College",
+        "content": "Kathmandu BernHardt College (Bafal, Ring Road, Kathmandu)\nOverview: QAA-accredited private college, broad TU portfolio, sizable campus infrastructure and western-Kathmandu location.\n\nGood fit for: Good for students around Kalanki/Bafal side seeking TU CSIT/BCA/management/social science.\n\nStudy and career context: Career support and placements are promoted; verify exact placement metrics before display.\nAffiliation: Tribhuvan University.\nAddress: Bafal, Ring Road, Kathmandu. Website: https://kbc.edu.np/.\nPrograms offered: BSc CSIT; BCA; BBM; BBS; BA Psychology / Social Work; MBS.\nFacilities: Labs, classrooms, seminar hall, library, rooftop cafeteria, elevators, playground, parking.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "406c363d-c8db-410d-bdef-8ee63686dba3",
+        "title": "College: Kathmandu College of Management (KCM)",
+        "content": "Kathmandu College of Management (KCM) (Gwarko, Lalitpur)\nOverview: International Siam University degree, long management-school history, new data science/IT portfolio, global partnerships and articulation/exchange pathways.\n\nGood fit for: Good for students wanting international BBA/IT/data science in Lalitpur with a polished private-college environment.\n\nStudy and career context: Strong alumni network and practical, career-oriented curriculum; avoid ranking/placement claims without current evidence.\nAffiliation: Siam University, Thailand.\nAddress: Gwarko, Lalitpur. Website: https://www.kcm.edu.np/.\nPrograms offered: BBA; BSc Information Technology; BSc Computer and Data Science.\nFacilities: Professional learning spaces, global partnership activities, real-world learning.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "a46e8548-e017-4a69-b5a8-43ea2ec56ac9",
+        "title": "College: Kathmandu Engineering College (KEC Kathmandu)",
+        "content": "Kathmandu Engineering College (KEC Kathmandu) (Kalimati, Kathmandu)\nOverview: One of Kathmandu\u2019s best-known IOE-affiliated private engineering colleges; large campus footprint, specialised labs and many technical clubs.\n\nGood fit for: Strong for engineering students who want IOE curriculum but a private-college campus in central Kathmandu.\n\nStudy and career context: Technical clubs, projects and industry exposure; compare department-specific placements.\nAffiliation: Tribhuvan University, Institute of Engineering (IOE).\nAddress: Kalimati, Kathmandu. Website: https://www.kecktm.edu.np/.\nPrograms offered: BE Civil; BE Computer; BE Electrical; BE Electronics, Communication & Information; B.Arch.\nFacilities: Engineering labs, library, makerspace/robotics/IT clubs, multipurpose spaces, transport/parking support.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "aaca9856-edc6-464a-8044-23122afca96f",
+        "title": "College: Kathmandu Medical College (KMC Medical)",
+        "content": "Kathmandu Medical College (KMC Medical) (Kathmandu (Duwakot/Sinamangal teaching sites; verify current campus-by-program))\nOverview: Large private medical college with teaching hospital, broad UG/PG/superspecialty programs and Kathmandu Valley clinical exposure.\n\nGood fit for: For students who want medical/dental/nursing training in Kathmandu and can handle highly competitive, intensive clinical education.\n\nStudy and career context: Direct professional pathway subject to council licensing; postgraduate/specialty options available.\nAffiliation: Kathmandu University.\nAddress: Kathmandu (Duwakot/Sinamangal teaching sites; verify current campus-by-program). Website: https://kmc.edu.np/.\nPrograms offered: MBBS; BDS; BSc Nursing; BNS; MSc Nursing; MD/MS; MDS; DM/MCh programs.\nFacilities: Teaching hospital, clinical departments, labs, dental, nursing facilities.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "1ac93c57-be91-4be3-abf3-5f158d440e29",
+        "title": "College: Kathmandu Model College (KMC Bagbazar)",
+        "content": "Kathmandu Model College (KMC Bagbazar) (Bagbazar, Kathmandu)\nOverview: QAA-accredited by UGC and promoted by KMC as Best Campus of the Year 2080; strong central-city location, career/placement support, clubs, EMIS/LMS, entrepreneurship and industry links.\n\nGood fit for: Good for students wanting a busy central-Kathmandu campus, TU degrees, management/IT/social-science options and active clubs.\n\nStudy and career context: College highlights industry partners, job fairs, career counselling and placement-related support.\nAffiliation: Tribhuvan University (TU).\nAddress: Bagbazar, Kathmandu. Website: https://kmcen.edu.np/.\nPrograms offered: BBA; BBM (Entrepreneurship); BCA; BBS; BA / BSW / Psychology; MBS; MA English.\nFacilities: Computer labs, library, seminar/auditorium spaces, cafeteria, basketball court, innovation/entrepreneurship support, counselling, placement services.\nReal, on-file fees for programs at this college:\n- Bachelor of Business Studies (BBS) (4 Years): NPR 70,000, 200 seats. Scholarships available for this program.\n- Bachelor of Arts (BA) (4 Years): NPR 65,000, 150 seats.\n- Bachelor of Science (B.Sc.) (4 Years): NPR 80,000, 120 seats. Scholarships available for this program.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "f067624d-cc25-4671-85ed-cb91756f8d24",
+        "title": "College: King's College Nepal",
+        "content": "King's College Nepal (Kathmandu (check current campus address on Contact page))\nOverview: Entrepreneurial mindset, \u201cCommunity as Curriculum,\u201d community-based learning and US-affiliated programs.\n\nGood fit for: Strong fit for entrepreneurship-minded students wanting business/IT with project/community exposure.\n\nStudy and career context: Focus on entrepreneurial capability, applied projects and network-building.\nAffiliation: Westcliff University, USA; programs stated as approved by Nepal Ministry of Education.\nAddress: Kathmandu (check current campus address on Contact page). Website: https://www.kingscollege.edu.np/.\nPrograms offered: BBA; BSIT; BSCS; MBA; MSAI.\nFacilities: Collaborative learning, community projects, clubs, entrepreneurial ecosystem.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "bc0a2fe9-5433-4545-a099-693393b27a47",
+        "title": "College: KIST College",
+        "content": "KIST College (Kathmandu (verify exact contact location))\nOverview: Large alumni base, long operating history, broad +2-to-master ladder and both IT/management/science tracks.\n\nGood fit for: Useful for students wanting one institution with +2, bachelor and master options and broad extracurricular life.\n\nStudy and career context: Academic counselling, career orientation and alumni network are emphasized.\nAffiliation: TU for bachelor/master programs; NEB for +2.\nAddress: Kathmandu (verify exact contact location). Website: https://kist.edu.np/.\nPrograms offered: +2 Science; +2 Management; BBA; BITM; BIT; BBS; BSc Microbiology; MBS; MSc Microbiology; MIT.\nFacilities: Transportation, cafeteria, accommodation support, digital library, playground, e-learning resources.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "01f92d2f-422a-4eda-853b-cf2f29f509a3",
+        "title": "College: Lumbini Medical College",
+        "content": "Lumbini Medical College (Palpa)\nLumbini Medical College and Teaching Hospital is a TU-affiliated medical college located in Palpa. It provides quality MBBS education with modern medical facilities and strong clinical exposure.\nAffiliation: Tribhuvan University.\nAddress: Pravas, Tansen, Palpa 32500. Website: https://lmcth.edu.np.\nReal, on-file fees for programs at this college:\n- Bachelor of Medicine, Bachelor of Surgery (MBBS) (5.5 Years): NPR 875,000, 100 seats. Scholarships available for this program.\n- Bachelor of Nursing (B.Nurs) (4 Years): NPR 175,000, 50 seats.\nVerification: unverified, source: not listed."
+      },
+      {
+        "id": "e32068f9-329d-4b44-960a-254e98b50fd8",
+        "title": "College: Madan Bhandari Memorial College",
+        "content": "Madan Bhandari Memorial College (Kathmandu)\nMadan Bhandari Memorial College is a government-supported TU-affiliated college in Kathmandu offering affordable quality education in management and humanities. Named after the late political leader Madan Bhandari.\nAffiliation: Tribhuvan University.\nAddress: Urlabari, Morang 56705. Website: https://mbmc.edu.np.\nVerification: unverified, source: not listed."
+      },
+      {
+        "id": "fccf7222-26b0-4d1e-a55f-9dd740a8b83e",
+        "title": "College: Maharajgunj Medical Campus (IOM)",
+        "content": "Maharajgunj Medical Campus (IOM) (Maharajgunj, Kathmandu)\nOverview: Flagship public medical campus of IOM, closely linked with Tribhuvan University Teaching Hospital and advanced specialty training.\n\nGood fit for: Top choice for high-merit medical students seeking public tuition, major teaching-hospital exposure and strong research/specialty environment.\n\nStudy and career context: Exceptional clinical exposure and strong national professional reputation.\nAffiliation: Tribhuvan University, Institute of Medicine.\nAddress: Maharajgunj, Kathmandu. Website: https://mmciom.edu.np/.\nPrograms offered: MBBS; BDS; BASLP; B Optom; B Perfusion Technology and many MD/MS/MDS/allied health programs.\nFacilities: Major teaching hospital ecosystem, labs, departments, postgraduate/superspecialty facilities.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "90d42a68-6f06-497f-8e92-ceb5ab529944",
+        "title": "College: Manipal College of Medical Sciences",
+        "content": "Manipal College of Medical Sciences (Pokhara)\nManipal College of Medical Sciences (MCOMS) is one of Nepal's most prestigious medical colleges located in Pokhara. Affiliated with Kathmandu University, it offers MBBS, B.Pharm, and nursing programs with world-class facilities.\nAffiliation: Kathmandu University.\nAddress: Phulbari, Pokhara 33700. Website: https://manipal.edu.np.\nReal, on-file fees for programs at this college:\n- Bachelor of Medicine, Bachelor of Surgery (MBBS) (5.5 Years): NPR 1,150,000, 100 seats. Scholarships available for this program.\n- Bachelor of Pharmacy (B.Pharm) (4 Years): NPR 320,000, 60 seats.\n- Bachelor of Nursing (B.Nurs) (4 Years): NPR 215,000, 80 seats. Scholarships available for this program.\nVerification: unverified, source: not listed."
+      },
+      {
+        "id": "270cfc7f-2a9e-4441-b51d-f769c07d3c33",
+        "title": "College: NAMI (Naaya Aayam Multi-Disciplinary Institute)",
+        "content": "NAMI (Naaya Aayam Multi-Disciplinary Institute) (Kathmandu (verify current campus address))\nOverview: Multidisciplinary mix of computing, environment and business with international-style delivery.\n\nGood fit for: Good for students wanting a smaller international/private environment and computer/environment combinations.\n\nStudy and career context: Program-specific; computing and environmental science offer distinct career tracks.\nAffiliation: International/partner model; verify current awarding body on course page.\nAddress: Kathmandu (verify current campus address). Website: https://www.nami.edu.np/.\nPrograms offered: BSc Computer Science; BSc Environmental Science; BBA; MSc Computing; GCE A Level.\nFacilities: Labs, multidisciplinary academic resources.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "65f6d55e-7fae-4b4d-bca5-0ed04ceda413",
+        "title": "College: Presidential Graduate School",
+        "content": "Presidential Graduate School (Thapagaun, New Baneshwor, Kathmandu)\nOverview: Wide portfolio of US-affiliated business/technology degrees, including AI, software engineering and cybersecurity.\n\nGood fit for: For students wanting an American-style degree pathway with many specialisations in business and technology.\n\nStudy and career context: Career/skill-development services and job-placement support are explicitly promoted.\nAffiliation: Westcliff University, USA.\nAddress: Thapagaun, New Baneshwor, Kathmandu. Website: https://presidential.edu.np/.\nPrograms offered: BSIT; BBA; MBA; MSIT; MBA in IT; MBA in Data Analytics; MBA in Finance & Economics; BS Cybersecurity; BS Software Engineering; BS Artificial Intelligence.\nFacilities: Skill lab, writing center, Toastmasters, guest speakers, workshops, job placement cell, international internship support.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "1e74c957-7cb4-45ba-9235-ee59d9cd313d",
+        "title": "College: National College of Computer Studies (NCCS)",
+        "content": "National College of Computer Studies (NCCS) (Kathmandu)\nOverview: Established IT/management college with broad TU tech-management portfolio and strong brand recognition in computer studies.\n\nGood fit for: Good for students seeking TU IT/management programs in a college with long IT-focused history.\n\nStudy and career context: IT/management orientation and alumni outcomes; verify current placement/internship details.\nAffiliation: Tribhuvan University.\nAddress: Kathmandu. Website: https://www.nccs.edu.np/.\nPrograms offered: BITM; BHM; BSc CSIT; BBM; BCA.\nFacilities: Computer/academic facilities, student activities, practical learning environment.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "da548f74-49ea-4ff4-b023-533bca059c41",
+        "title": "College: Nepal College of Information Technology (NCIT)",
+        "content": "Nepal College of Information Technology (NCIT) (Balkumari / Lalitpur area (verify current contact page))\nOverview: One of the widest engineering/IT portfolios under Pokhara University, with morning/day shifts and large annual intake.\n\nGood fit for: Very good for students comparing Computer vs IT vs Software Engineering and wanting PU rather than IOE.\n\nStudy and career context: Broad tech/engineering ecosystem and alumni network; verify current placement data.\nAffiliation: Pokhara University.\nAddress: Balkumari / Lalitpur area (verify current contact page). Website: https://ncit.edu.np/.\nPrograms offered: BE Computer; BE IT; BE Software; BE Civil; BE Information & Communication Engineering; B.Arch; BCA; BBA; ME Computer; MSc Computer; MCIS.\nFacilities: Engineering/IT labs, clubs, competitions, research/conference activities.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "35e845e3-01ec-4c06-9b93-116365fdd113",
+        "title": "College: Nepal Commerce Campus (NCC Minbhawan)",
+        "content": "Nepal Commerce Campus (NCC Minbhawan) (Minbhawan, Kathmandu)\nOverview: Large public management campus with strong commerce/management identity, very large active student and alumni population.\n\nGood fit for: Good for students seeking affordable TU management education with large peer network.\n\nStudy and career context: Strong alumni reach across business, banking, government and accounting.\nAffiliation: Tribhuvan University.\nAddress: Minbhawan, Kathmandu. Website: https://fsuncc.edu.np/.\nPrograms offered: Management and IT-management bachelor/master programs; fetch exact current list from Academics before publishing.\nFacilities: Computer labs, digital resources, research spaces, general public-campus facilities.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "d56cbeaa-1c7b-4971-b474-85a9937488e8",
+        "title": "College: Nepal Medical College",
+        "content": "Nepal Medical College (Attarkhel, Gokarneshwor-8, Kathmandu)\nOverview: Established Kathmandu medical campus with teaching hospital, broad specialty services, labs, hostels and long clinical training history.\n\nGood fit for: Strong for medicine/dentistry/nursing students who prefer a quieter northeast Kathmandu campus with on-site hospital exposure.\n\nStudy and career context: Professional healthcare pathway with undergraduate through superspecialty training.\nAffiliation: Kathmandu University.\nAddress: Attarkhel, Gokarneshwor-8, Kathmandu. Website: https://www.nmcth.edu/.\nPrograms offered: MBBS; BDS; BSc Nursing; Lab Medicine / Medical Imaging undergraduate programs; MD/MS; MDS; DM/MCh.\nFacilities: Teaching hospital, medical/dental departments, labs, imaging, library, male/female hostels.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "9d50f20e-5e5d-43fe-a72a-d30dcb872ddd",
+        "title": "College: NIST College",
+        "content": "NIST College (Kathmandu)\nNIST College is an established institution affiliated with Pokhara University offering BCA, BBA, and BIT programs. It is renowned for its focus on student development, research activities, and industry collaboration.\nAffiliation: Pokhara University.\nAddress: Khusibu, Kathmandu 44600. Website: https://nist.edu.np.\nReal, on-file fees for programs at this college:\n- Bachelor of Computer Application (BCA) (4 Years): NPR 138,000, 72 seats. Scholarships available for this program.\n- Bachelor of Business Administration (BBA) (4 Years): NPR 148,000, 60 seats.\n- Bachelor of Information Technology (BIT) (4 Years): NPR 142,000, 60 seats. Scholarships available for this program.\nVerification: unverified, source: not listed."
+      },
+      {
+        "id": "c5bdad9c-eb67-4dae-a926-886366870e87",
+        "title": "College: Nobel Medical College Teaching Hospital",
+        "content": "Nobel Medical College Teaching Hospital (Biratnagar, Morang)\nOverview: Large eastern-Nepal medical college/teaching hospital with broad UG/PG programs and substantial clinical infrastructure.\n\nGood fit for: Good for students from eastern Nepal or those wanting a large medical campus outside Kathmandu.\n\nStudy and career context: Professional clinical pathways from undergraduate to specialty training.\nAffiliation: Kathmandu University.\nAddress: Biratnagar, Morang. Website: https://www.nobelmedicalcollege.com.np/.\nPrograms offered: MBBS; BDS; BSc Nursing; BNS; BPT; BMLT; MD/MS; DM and other PG/superspecialty programs.\nFacilities: Teaching hospital, specialty/superspecialty services, labs, clinical departments.\nReal, on-file fees for programs at this college:\n- Bachelor of Medicine, Bachelor of Surgery (MBBS) (5.5 Years): NPR 1,050,000, 100 seats. Scholarships available for this program.\n- Bachelor of Nursing (B.Nurs) (4 Years): NPR 200,000, 60 seats. Scholarships available for this program.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "9bc53479-919a-495c-a005-372c959ba684",
+        "title": "College: Orchid International College",
+        "content": "Orchid International College (Kathmandu)\nOrchid International College is a TU-affiliated engineering college in Kathmandu offering BE programs in Civil and Computer engineering. It features well-equipped labs, dedicated project rooms, and strong faculty.\nAffiliation: Tribhuvan University.\nAddress: Gaushala, Kathmandu 44600. Website: https://orchid.edu.np.\nReal, on-file fees for programs at this college:\n- Bachelor of Engineering (BE) in Computer (4 Years): NPR 340,000, 48 seats. Scholarships available for this program.\n- Bachelor of Engineering (BE) in Civil (4 Years): NPR 325,000, 48 seats.\nVerification: unverified, source: not listed."
+      },
+      {
+        "id": "ca651103-9446-411b-83f6-07b0239987ae",
+        "title": "College: Padma Kanya Multiple Campus",
+        "content": "Padma Kanya Multiple Campus (Bagbazaar, Kathmandu)\nOverview: Nepal\u2019s first women\u2019s campus and a major women-focused public higher-education institution with wide program breadth.\n\nGood fit for: Excellent for women wanting affordable TU education in central Kathmandu across IT, management, science and humanities.\n\nStudy and career context: Growing placement/research support plus large alumni base; outcomes vary by program.\nAffiliation: Tribhuvan University.\nAddress: Bagbazaar, Kathmandu. Website: https://pkmc.tu.edu.np/.\nPrograms offered: BCA; BPA; BSc Microbiology; BSc CSIT; BIT; BBA; BBM; BBS; BHM; BA and many humanities/social-science masters; MBS.\nFacilities: Departmental labs, library, placement cell, research management cell, public-campus services.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "42a96fe3-fdc2-453d-a4c2-f17465fe6970",
+        "title": "College: Patan Academy of Health Sciences (PAHS)",
+        "content": "Patan Academy of Health Sciences (PAHS) (Lagankhel, Lalitpur)\nOverview: Community-oriented medical education linked to Patan Hospital, with strong public-service and rural/community health ethos.\n\nGood fit for: Excellent for students attracted to patient-centred, community-based medical education and public health service.\n\nStudy and career context: Medical, nursing, midwifery and public-health professional pathways with strong community health orientation.\nAffiliation: Autonomous public academy.\nAddress: Lagankhel, Lalitpur. Website: https://web.pahs.edu.np/.\nPrograms offered: MBBS; MD/MS; Fellowship; BSc Nursing; BNS; BMS; MN; MPH; PhD/training programs.\nFacilities: Patan Hospital clinical environment, nursing/midwifery/public-health schools, research committees, training.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "60df320a-0603-41a9-a5a2-88f853f012b7",
+        "title": "College: Prime College",
+        "content": "Prime College (Khusibun, Nayabazar, Kathmandu)\nOverview: Strong IT-management mix, clear program/entrance information, scholarships and central Kathmandu access.\n\nGood fit for: Good for TU-focused students comparing CSIT/BCA with management programs in one campus.\n\nStudy and career context: Practical IT/management orientation; validate placement claims before publishing metrics.\nAffiliation: Tribhuvan University.\nAddress: Khusibun, Nayabazar, Kathmandu. Website: https://prime.edu.np/.\nPrograms offered: BSc CSIT; BCA; BBA; BITM; BBM; BBS; MBS.\nFacilities: IT labs, learning spaces, clubs, student activities, current site offers detailed program navigation.\nReal, on-file fees for programs at this college:\n- Bachelor of Science in Computer Science and Information Technology (B.Sc. CSIT) (4 Years): NPR 155,000, 72 seats. Scholarships available for this program.\n- Bachelor of Computer Application (BCA) (4 Years): NPR 145,000, 72 seats. Scholarships available for this program.\n- Bachelor of Business Administration (BBA) (4 Years): NPR 150,000, 60 seats.\n- Bachelor of Information Technology (BIT) (4 Years): NPR 148,000, 60 seats.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "4bac443b-748c-4fe4-8c1a-0458ed3e220f",
+        "title": "College: Pulchowk Campus, IOE",
+        "content": "Pulchowk Campus, IOE (Pulchowk, Lalitpur)\nOverview: Central campus of IOE and Nepal\u2019s most prestigious public engineering campus, with strongest breadth of engineering and postgraduate research.\n\nGood fit for: Best for high-performing engineering aspirants seeking low public tuition, rigorous academics and strong peer/research environment.\n\nStudy and career context: Strongest engineering alumni and employer recognition in Nepal; outcomes still vary by discipline and student.\nAffiliation: Tribhuvan University, Institute of Engineering.\nAddress: Pulchowk, Lalitpur. Website: https://pcampus.edu.np/.\nPrograms offered: Civil; Architecture; Electrical; Electronics, Communication & Information; Mechanical; Computer; Aerospace; Chemical Engineering plus many MSc/PhD programs.\nFacilities: Extensive departments, labs, research centres, library, large engineering campus.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "03f98b64-7750-43f5-96b6-5148bb23db31",
+        "title": "College: Shanker Dev Campus",
+        "content": "Shanker Dev Campus (Ram Shah Path / Putalisadak, Kathmandu)\nOverview: One of Nepal\u2019s most recognised public management campuses with large alumni base and central location.\n\nGood fit for: Excellent for cost-conscious management students comfortable with a large public-campus environment.\n\nStudy and career context: Strong alumni network across banking, accounting, management and public/private sectors.\nAffiliation: Tribhuvan University, Faculty of Management.\nAddress: Ram Shah Path / Putalisadak, Kathmandu. Website: https://sdc.tu.edu.np/.\nPrograms offered: BBS; BBA; BIM; BBM; BBA Finance; MBS; MBM; MBA Finance.\nFacilities: Management departments, library, public-campus services, experience is more self-directed than premium private colleges.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "e1bbe588-45e5-4461-950b-8ae637214aa1",
+        "title": "College: St. Xavier's College, Maitighar",
+        "content": "St. Xavier's College, Maitighar (Maitighar, Kathmandu)\nOverview: Highly selective, Jesuit-run institution known for academic discipline, science culture, service orientation, labs, clubs and strong brand recognition.\n\nGood fit for: Best for students comfortable with competitive selection, structured academics, science/research exposure and service-oriented campus culture.\n\nStudy and career context: Strong alumni reputation and academic progression; degree-level career outcomes depend on program.\nAffiliation: TU, Kathmandu University, NEB and Cambridge pathways depending on program.\nAddress: Maitighar, Kathmandu. Website: https://sxc.edu.np/.\nPrograms offered: +2 Science (NEB); GCE A Level; TU bachelor/master science and management programs (program availability should be read from current SXC portal).\nFacilities: Science, computer labs, project/field-work activities, clubs, seminars, exhibitions, social-service activities.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "5e712379-85fe-431c-8aa9-729f5b1805b7",
+        "title": "Notice: TU BBS 4th Year Examination Form Fill-Up Notice",
+        "content": "TU BBS 4th Year Examination Form Fill-Up Notice \u2014 Tribhuvan University\nTribhuvan University, Office of the Controller of Examinations, hereby notifies all regular and partial students of BBS 4th Year that the examination form fill-up for the 2080 academic year examination has commenced. Students must submit their examination forms along with the required fees at their respective campuses. The deadline for regular form submission is Bhadra 25, 2081. Late submission with additional fee will be accepted until Ashoj 5, 2081. Students who have not cleared their back papers from previous years must also indicate this on their form. Results of the examination will be published within 90 days of the last exam date.\nPublished: 2026-09-21."
+      },
+      {
+        "id": "e83a6b79-9946-4cb4-bc69-cc99317464e1",
+        "title": "College: Softwarica College of IT & E-Commerce",
+        "content": "Softwarica College of IT & E-Commerce (Kathmandu (verify exact current address from Contact page))\nOverview: Tech-only positioning, AI/cybersecurity emphasis, industry partners and hands-on computing focus.\n\nGood fit for: Strong fit for students who want an IT-specialist private college and modern computing specialisations.\n\nStudy and career context: College advertises strong placement and industry links; treat numerical placement rates as claims requiring periodic verification.\nAffiliation: International partner degree model (verify current awarding university on each course page).\nAddress: Kathmandu (verify exact current address from Contact page). Website: https://softwarica.edu.np/.\nPrograms offered: BSc (Hons) Computer Science with Artificial Intelligence; BSc (Hons) Ethical Hacking and Cybersecurity; Other current computing/IT programmes listed on official Courses page.\nFacilities: Computing labs, project environments, industry-linked activities.\nReal, on-file fees for programs at this college:\n- Bachelor of Computer Application (BCA) (4 Years): NPR 165,000, 72 seats. Scholarships available for this program.\n- Bachelor of Science in Computer Science and Information Technology (B.Sc. CSIT) (4 Years): NPR 185,000, 60 seats. Scholarships available for this program.\n- Bachelor of Information Technology (BIT) (4 Years): NPR 170,000, 60 seats.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "e7afe98b-21c6-47be-8f56-bb8550752b98",
+        "title": "College: Sunway College Kathmandu",
+        "content": "Sunway College Kathmandu (Maitidevi, Kathmandu)\nOverview: Strong AI/data positioning, BCU partnership, lecture-tutorial-workshop delivery and industry training.\n\nGood fit for: Especially strong for students who want an AI-specialist international degree in Kathmandu.\n\nStudy and career context: Placement cell and industry skill sessions are highlighted.\nAffiliation: Birmingham City University, UK.\nAddress: Maitidevi, Kathmandu. Website: https://sunway.edu.np/.\nPrograms offered: BSc (Hons) Computer Science with Artificial Intelligence; BSc (Hons) Business Information Technology.\nFacilities: IT labs, workshop-based learning, industry training support.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "1d6d09f6-a782-43c7-89df-b4ba09a1458b",
+        "title": "College: Texas International College",
+        "content": "Texas International College (Mitrapark, Chabahil, Kathmandu)\nOverview: IT/management/social-science mix, AI & robotics lab positioning, career services, hostel/coaching and active hackathon/research events.\n\nGood fit for: Good for students near Chabahil seeking TU CSIT/BCA plus management and social science in one college.\n\nStudy and career context: Dedicated placement/career cell is promoted.\nAffiliation: Tribhuvan University.\nAddress: Mitrapark, Chabahil, Kathmandu. Website: https://texasintl.edu.np/.\nPrograms offered: BSc CSIT; BCA; BBM; BBS; BASW; MBS.\nFacilities: AI & Robotics lab, computer labs, e-library, Wi-Fi, smart classrooms, career services, hostel/coaching, cafeteria.\nReal, on-file fees for programs at this college:\n- Bachelor of Computer Application (BCA) (4 Years): NPR 135,000, 72 seats. Scholarships available for this program.\n- Bachelor of Business Administration (BBA) (4 Years): NPR 145,000, 60 seats.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "f814a8d2-c437-4d13-bf2f-95c1b8593df4",
+        "title": "College: Thames International College",
+        "content": "Thames International College (Old Baneshwor / Kathmandu (verify current contact page))\nOverview: Multidisciplinary college combining business, social sciences and IT; offers additional future-ready/digital/entrepreneurship programs.\n\nGood fit for: Useful for students who want flexible social-science + management + IT combinations and broader liberal campus life.\n\nStudy and career context: Career readiness through supplemental programs and applied learning.\nAffiliation: Tribhuvan University programs.\nAddress: Old Baneshwor / Kathmandu (verify current contact page). Website: https://thamescollege.edu.np/.\nPrograms offered: Business Administration/Management pathways; Computer Application; Information Technology Management; Psychology; Social Work; Sociology and other TU humanities/management programs.\nFacilities: Academic advising, clubs, co-curricular learning, supplemental digital/entrepreneurship modules.\nReal, on-file fees for programs at this college:\n- Bachelor of Computer Application (BCA) (4 Years): NPR 150,000, 72 seats. Scholarships available for this program.\n- Bachelor of Science in Computer Science and Information Technology (B.Sc. CSIT) (4 Years): NPR 175,000, 60 seats. Scholarships available for this program.\n- Bachelor of Information Technology (BIT) (4 Years): NPR 160,000, 60 seats.\n- Bachelor of Business Administration (BBA) (4 Years): NPR 145,000, 60 seats. Scholarships available for this program.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "6056c36b-b73b-49f4-9956-5d66d8c0f82f",
+        "title": "College: Thapathali Campus, IOE",
+        "content": "Thapathali Campus, IOE (Thapathali, Kathmandu)\nOverview: Historic public engineering campus in central Kathmandu with strong mechanical/automobile/industrial legacy and modern digital infrastructure.\n\nGood fit for: Great for engineering students wanting public tuition and central-city accessibility.\n\nStudy and career context: Strong TU/IOE credential and practical engineering environment.\nAffiliation: Tribhuvan University, Institute of Engineering.\nAddress: Thapathali, Kathmandu. Website: https://tcioe.edu.np/.\nPrograms offered: Industrial; Civil; Electronics/Communication; Mechanical; Architecture; Automobile and other current IOE bachelor programs; MSc programs also offered.\nFacilities: Engineering labs, smart classrooms, campus-wide digital/EMIS services, clubs.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "a86b5f19-6669-4ea6-a70b-e4f92bebe936",
+        "title": "College: The British College",
+        "content": "The British College (Thapathali, Kathmandu)\nOverview: UK university awards, BAC accreditation claimed by the college, central Thapathali location and industry/employability links.\n\nGood fit for: For students seeking a British-degree pathway in Nepal, especially computing, AI/cybersecurity and business.\n\nStudy and career context: College highlights internships, Industry Advisory Board links and employability development.\nAffiliation: University of the West of England (UWE Bristol) and Leeds Beckett University.\nAddress: Thapathali, Kathmandu. Website: https://www.thebritishcollege.edu.np/.\nPrograms offered: BBA (Hons) Business and Management; BSc (Hons) Computing; BSc (Hons) Cyber Security and Digital Forensics; BSc (Hons) Computer Science - AI; MBA; Executive/Weekend MBA; MSc IT.\nFacilities: Urban business-centre campus with computing/business learning spaces, international mobility links.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "45f79d90-80e2-4ad4-a148-8c46d922da4a",
+        "title": "College: Tri-Chandra Multiple Campus",
+        "content": "Tri-Chandra Multiple Campus (Ghantaghar, Kathmandu)\nOverview: Nepal\u2019s first national higher-education institution; unmatched historical identity and broad science/humanities portfolio in the city centre.\n\nGood fit for: Best for students prioritising affordability, history and subject breadth rather than premium private-campus infrastructure.\n\nStudy and career context: Strong academic heritage; career support is more program/self-driven.\nAffiliation: Tribhuvan University.\nAddress: Ghantaghar, Kathmandu. Website: https://trc.tu.edu.np/.\nPrograms offered: BSc streams (Botany, Chemistry, Environmental Science, Geology, Mathematics, Meteorology, Microbiology, Physics, Statistics, Zoology); BA across many humanities/social-science subjects; MSc Chemistry/Engineering Geology/Microbiology; MA programs; PG Diploma in Counseling Psychology.\nFacilities: Science labs, departments, library, historic campus infrastructure (some facilities/buildings may be under reconstruction/upgrade).\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "2cb20b5c-e297-43d2-afc9-68be2c052f4c",
+        "title": "College: Trinity International College",
+        "content": "Trinity International College (Kathmandu)\nOverview: Well-known +2 and undergraduate brand with active clubs, competitions and broad campus life.\n\nGood fit for: Good for students wanting a large, activity-rich college environment in Kathmandu.\n\nStudy and career context: Academic progression and soft-skill development through student activities.\nAffiliation: NEB and TU-linked programs (verify by specific course).\nAddress: Kathmandu. Website: https://www.trinity.edu.np/.\nPrograms offered: +2 and bachelor programs; exact current list should be fetched from Academic Programs section.\nFacilities: Labs, library, clubs, competitions, events.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "f745e8e5-9093-4eff-83bf-97f39b17df61",
+        "title": "College: Uniglobe College",
+        "content": "Uniglobe College (New Baneshwor, Kathmandu)\nOverview: Management/finance-focused institution; states it was the first in Nepal to introduce MBA (Finance); has finance/communication labs and entrepreneurship/incubation support.\n\nGood fit for: Suitable for students focused on management, finance, business and a PU semester-system environment in Baneshwor.\n\nStudy and career context: Emphasis on management skills, entrepreneurship, networking and industry/research links.\nAffiliation: Pokhara University.\nAddress: New Baneshwor, Kathmandu. Website: https://uniglobe.edu.np/.\nPrograms offered: BCSIT; BBA; BBA Finance; MBA; MBA Finance.\nFacilities: Modern classrooms, library, finance, communication labs, incubation centre.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "6de37a23-bb59-453d-9a35-9ccb2560fa18",
+        "title": "College: Xavier International College",
+        "content": "Xavier International College (Boudha, Tushal, Kathmandu)\nOverview: Science + management + social work + IT mix, long-running TU affiliation and Boudha location.\n\nGood fit for: Good for students in east/northeast Kathmandu seeking TU programs across multiple streams.\n\nStudy and career context: Program-dependent; compare internship and department strength by course.\nAffiliation: Tribhuvan University.\nAddress: Boudha, Tushal, Kathmandu. Website: https://xaviercollege.edu.np/.\nPrograms offered: BCA; BBM; BSc Environmental Science; BSc Microbiology; BSW; BBS; MBS.\nFacilities: Labs, research activities, events, general campus infrastructure.\nVerification: source_verified, source: Nepal College Research Pack (primary-source review), last verified 2026-09-02."
+      },
+      {
+        "id": "3a7f5fbe-982f-4d9f-8a27-06851a17599c",
+        "title": "Notice: KU School of Engineering \u2014 Undergraduate Admission Notice 2081",
+        "content": "KU School of Engineering \u2014 Undergraduate Admission Notice 2081 \u2014 Kathmandu University\nKathmandu University, School of Engineering, invites applications from qualified Nepali and international students for undergraduate BE programs in the following disciplines: Computer Engineering, Electrical Engineering, Civil Engineering, Mechanical Engineering, and Geomatics Engineering for the 2081 academic session. Eligibility: Minimum 60% in Grade 12 (or equivalent) with Physics, Chemistry, and Mathematics. Entrance examination will be held on Ashad 20, 2081 at KU main campus Dhulikhel and satellite centers in Kathmandu, Pokhara, and Biratnagar. Application fee: NPR 1,500. Applications can be submitted online at admission.ku.edu.np.\nPublished: 2026-09-19.\nOfficial source: https://ku.edu.np/admission"
+      },
+      {
+        "id": "af8ffea6-f639-4f38-94a1-90b2ff03c818",
+        "title": "Notice: TU MSc CSIT Entrance Examination Result Published",
+        "content": "TU MSc CSIT Entrance Examination Result Published \u2014 Tribhuvan University\nThe Institute of Science and Technology (IOST), Tribhuvan University, has published the entrance examination results for MSc CSIT program for the 2081 academic year. Students can check their results on the IOST website at iost.tu.edu.np. A total of 1,247 students appeared in the entrance examination held on Jestha 28, 2081. Successful candidates must report to the respective campuses with all original documents within 10 days of result publication. The program will commence from Shrawan 15, 2081. Students are advised to contact their preferred campus directly for seat availability.\nPublished: 2026-09-16.\nOfficial source: https://iost.tu.edu.np"
+      },
+      {
+        "id": "493e8b0e-3099-40ce-a9b4-846306510dac",
+        "title": "Notice: KU Notice Regarding Semester End Examination Postponement",
+        "content": "KU Notice Regarding Semester End Examination Postponement \u2014 Kathmandu University\nKathmandu University has decided to postpone the Semester End Examination (SEE) for all undergraduate and postgraduate programs originally scheduled for Shrawan 2081 due to the ongoing monsoon disruption affecting transportation across the country. The revised examination schedule will be published within seven days. Students are advised to continue their preparation and watch the university's official website and notice boards for updates. The university regrets any inconvenience caused and assures that all students will be given adequate notice before the rescheduled examinations commence.\nPublished: 2026-09-14."
+      },
+      {
+        "id": "971f6965-3210-4d73-b078-60776ff0f07d",
+        "title": "Notice: TU Faculty of Management \u2014 Annual Examination Schedule 2081",
+        "content": "TU Faculty of Management \u2014 Annual Examination Schedule 2081 \u2014 Tribhuvan University\nThe Office of the Dean, Faculty of Management, Tribhuvan University, hereby publishes the annual examination schedule for BBS, BBA, BBM, and MBS programs for the 2080 batch (Academic Year 2081). The examinations will be conducted from Kartik 5 to Mangsir 15, 2081. Practical examinations and viva voce will be conducted separately as per departmental schedules. All students are advised to obtain their admit cards from their respective campuses one week before the examination commencement. Students are not allowed to enter the examination hall without a valid admit card.\nPublished: 2026-09-10.\nOfficial source: https://fom.tu.edu.np"
+      },
+      {
+        "id": "fb842773-2aad-460f-ac97-86530ceace7c",
+        "title": "Notice: KU Scholarship Announcement for Meritorious Students 2081",
+        "content": "KU Scholarship Announcement for Meritorious Students 2081 \u2014 Kathmandu University\nKathmandu University announces the availability of merit-based scholarships for students enrolling in engineering, medical, and management programs for the academic year 2081. Students who have secured distinction in their Grade 12 examination (GPA 3.6 and above or percentage 75% and above) are eligible to apply. Full scholarships (100% fee waiver) will be awarded to the top 5 students of each major program. Partial scholarships (25% to 50% fee waiver) will be given to students ranking 6th to 20th. Applications must be submitted within 15 days of admission confirmation. Contact the scholarship office at KU main campus for further information.\nPublished: 2026-09-08.\nOfficial source: https://ku.edu.np/scholarship"
+      },
+      {
+        "id": "8e001a10-0880-4baf-8d66-80b476f4bbe1",
+        "title": "Notice: TU MBBS First Year Examination Date Announcement",
+        "content": "TU MBBS First Year Examination Date Announcement \u2014 Tribhuvan University\nThe Tribhuvan University, Institute of Medicine (IOM), hereby announces that the first year MBBS (Pre-clinical) examinations for the 2079 batch will be held from Kartik 15 to Mangsir 5, 2081. All medical colleges affiliated with TU-IOM must ensure that eligible students collect their admit cards from the Dean's office at least 14 days before the examination. Students with attendance below 75% are not eligible to appear in the examination and must repeat the academic year. The examination centers will be published separately. For queries, contact the IOM office at iom.tu.edu.np.\nPublished: 2026-09-04.\nOfficial source: https://iom.tu.edu.np"
+      },
+      {
+        "id": "0e671ac7-9649-410a-82ab-8c3b31a9a2ce",
+        "title": "Notice: KU Dhulikhel Hospital \u2014 Medical Internship Program Announcement",
+        "content": "KU Dhulikhel Hospital \u2014 Medical Internship Program Announcement \u2014 Kathmandu University\nKathmandu University School of Medical Sciences (KUSMS) and Dhulikhel Hospital invite applications from final year MBBS students for rotating internship positions. The internship program covers all major clinical departments including Internal Medicine, Surgery, Obstetrics and Gynecology, Pediatrics, and Psychiatry. The one-year internship is mandatory for MBBS graduates before appearing in the Nepal Medical Council (NMC) licensing examination. Interested students should submit their applications along with transcripts and completed MBBS degree to the KUSMS Dean's office by Bhadra 30, 2081.\nPublished: 2026-09-01.\nOfficial source: https://ku.edu.np/kusms"
+      },
+      {
+        "id": "892d488a-7c47-4c9d-a2a2-227111943630",
+        "title": "Notice: TU BE (Computer/Civil/Electronics) First Year Admission Notice",
+        "content": "TU BE (Computer/Civil/Electronics) First Year Admission Notice \u2014 Tribhuvan University\nInstitute of Engineering (IOE), Tribhuvan University, announces undergraduate BE admissions for the 2081/82 academic year. Programs offered: Computer, Civil, Electronics & Communication, Electrical, Architecture, and Mechanical Engineering. Entrance examination (IOE Entrance Exam) will be held across examination centers in all 7 provinces. The exam syllabus covers Physics, Chemistry, and Mathematics at +2 level. Registration deadline: Ashadh 10, 2081. Exam date: Ashadh 28, 2081. Results: Shrawan 10, 2081. Students are advised to register early as late registrations will not be entertained.\nPublished: 2026-08-28.\nOfficial source: https://ioe.tu.edu.np"
+      },
+      {
+        "id": "ece149be-a57e-4a50-8cfd-f54e2d1b89ca",
+        "title": "Notice: PU BCA/BBA Entrance Examination Notice 2081",
+        "content": "PU BCA/BBA Entrance Examination Notice 2081 \u2014 Pokhara University\nPokhara University, School of Business and affiliated colleges, announces that the entrance examination for BCA and BBA programs will be held on Shrawan 20, 2081. Students appearing in the entrance exam will be considered for admission to all PU-affiliated colleges across Nepal. The entrance test consists of 100 multiple choice questions covering English, Mathematics, and General Aptitude. Examination centers are available in Kathmandu, Pokhara, Biratnagar, Butwal, Itahari, and Dhangadhi. Registration fee: NPR 1,000. Apply online at pu.edu.np. Contact your nearest PU-affiliated college for assistance.\nPublished: 2026-08-25.\nOfficial source: https://pu.edu.np"
+      },
+      {
+        "id": "490ef5c3-b009-4135-af0f-043caea1f047",
+        "title": "News: Kathmandu Model College: New scholarship for BBA students announced",
+        "content": "Kathmandu Model College: New scholarship for BBA students announced\nKathmandu Model College has announced a new merit-based scholarship for incoming BBA students starting the 2082 academic session. This SikshyaNepal brief helps students understand that an update is available without reproducing the institution wording. Applicants should verify the eligibility criteria, coverage, documents and deadline directly with the college.\nPublished: 2026-09-21.\nSource: https://kmc.edu.np/news/bba-scholarship-2082"
+      },
+      {
+        "id": "5c683b82-16d9-4f5c-9d7a-c1c3425914e5",
+        "title": "News: TU Announces Online Admission for 2081 Academic Session",
+        "content": "TU Announces Online Admission for 2081 Academic Session\nTribhuvan University has announced that admissions for the 2081 academic year will be processed entirely through its online portal. Students seeking enrollment in undergraduate programs including BBS, BA, BSc, and B.Ed. must apply through the official TU website. The university is accepting applications from Shrawan 1 to Bhadra 15, 2081. Applicants must upload their SLC/SEE and +2 mark sheets, citizenship documents, and passport-size photographs. TU Vice-Chancellor Prof. Dr. Keshar Jung Baral urged students to complete the application process early to avoid last-minute issues. The admission committee will publish the merit list within two weeks of the application deadline.\nPublished: 2026-09-20."
+      },
+      {
+        "id": "695ba8d5-95a1-4f98-ab35-3f1ee449bcda",
+        "title": "News: KU Entrance Exam Results Published \u2014 Check Your Score Now",
+        "content": "KU Entrance Exam Results Published \u2014 Check Your Score Now\nKathmandu University has published the results of its undergraduate entrance examination for the 2081 academic session. Students who appeared in the entrance test for BE, BPH, BAMS, and BBA programs can now check their results on the official KU website at ku.edu.np. The university conducted the entrance examination at various centers across Nepal including Kathmandu, Pokhara, Biratnagar, and Butwal. KU will be offering 480 seats in engineering programs this year. Successful candidates must complete the enrollment process within 15 days of the result publication. Students scoring in the top 10% of each program will be eligible for merit-based fee waivers.\nPublished: 2026-09-17."
+      },
+      {
+        "id": "7a7b4e0b-e5b3-4a48-b899-fcd156fe26a3",
+        "title": "News: NEB Grade 12 Results 2080 \u2014 Record Pass Rate Reported",
+        "content": "NEB Grade 12 Results 2080 \u2014 Record Pass Rate Reported\nThe National Examinations Board (NEB) has released the Grade 12 (Class 12) results for the 2080 examination. This year, a record 82.47% of students passed the examination, the highest pass rate in the past five years. Science stream students achieved a 79.3% pass rate while management students had an 84.6% pass rate. A total of 4,23,891 students appeared in the exam from 1,482 examination centers across Nepal. Pokhara district topped the national pass percentage at 89.2%. Students can check their results through the NEB website, SMS service, or through their respective schools. Those who failed in one or two subjects can apply for partial re-examination.\nPublished: 2026-09-12."
+      },
+      {
+        "id": "49acc9e2-2e45-44b8-b33e-69e2e165c641",
+        "title": "News: Medical College Fee Structure Regulated by Supreme Court Order",
+        "content": "Medical College Fee Structure Regulated by Supreme Court Order\nThe Supreme Court of Nepal has issued a landmark order directing the government to strictly regulate medical college fees. Following a public interest litigation filed by medical student groups, the court has ordered the Medical Education Commission (MEC) to cap annual MBBS fees at NPR 12 lakh for private medical colleges. The ruling also mandates that 20% of seats in all private medical colleges must be reserved for economically disadvantaged students at subsidized rates. Medical college owners have been given 30 days to comply with the new fee structure. The Nepal Medical Association has welcomed the decision, calling it a \"historic step\" toward making medical education more accessible to ordinary Nepali families.\nPublished: 2026-09-07."
+      },
+      {
+        "id": "0f7af8f4-3365-468d-a614-1b95574eba8e",
+        "title": "News: Scholarship Opportunities for Nepali Students in 2081 \u2014 Complete Guide",
+        "content": "Scholarship Opportunities for Nepali Students in 2081 \u2014 Complete Guide\nAs the 2081 academic year begins, SikshyaNepal has compiled a comprehensive list of scholarship opportunities available to Nepali students across different levels and programs. The Government of Nepal is offering 500 fully-funded scholarships through various universities including TU, KU, PU, and PurU for undergraduate programs. Additionally, several private colleges have announced merit-based scholarships covering 25% to 100% of tuition fees. International scholarships from countries including India (ICCR), China (CSC), Japan (MEXT), and Korea (GKS) are also open for applications. Students with GPA above 3.5 in their +2 examinations are encouraged to apply. SikshyaNepal will be hosting a free scholarship counseling session in Kathmandu next month.\nPublished: 2026-09-02."
+      },
+      {
+        "id": "c4379b94-5cbf-47aa-8774-203cd8c1ff98",
+        "title": "Scholarship: Softwarica Women in Tech Scholarship",
+        "content": "Softwarica Women in Tech Scholarship\nOffered by: Softwarica College of IT & E-Commerce.\nSoftwarica College is committed to increasing female participation in IT and offers a dedicated scholarship for women enrolling in BCA and BSc CSIT programs. The scholarship covers 40% of annual tuition fees and also includes free access to coding bootcamps and mentorship sessions.\nAmount: NPR 74,000.\nEligibility: Female students only. Minimum grade B+ in +2 Computer Science or Mathematics. Demonstrates interest in technology. Interview required.\nDeadline: 2026-10-22.\nApply: https://softwarica.edu.np/scholarship"
+      },
+      {
+        "id": "5fce274f-06f2-406b-82e7-b7e9aa01fc31",
+        "title": "Scholarship: Prime College CSIT Merit Award 2081",
+        "content": "Prime College CSIT Merit Award 2081\nOffered by: Prime College.\nPrime College offers annual merit scholarships for the BSc CSIT program to students who have demonstrated academic excellence in their +2 Science examination. The award covers 30% of annual tuition fees and is renewable based on maintaining above 70% marks each semester.\nAmount: NPR 46,500.\nEligibility: Minimum 75% marks or GPA 3.5 in +2 Science (Physics, Chemistry, Mathematics). Must enroll in BSc CSIT at Prime College. Scholarship based on merit, not financial need.\nDeadline: 2026-11-01.\nApply: https://primecollege.edu.np/scholarship"
+      },
+      {
+        "id": "ed1767d9-6420-413e-98b2-4d084ee2aca3",
+        "title": "Scholarship: Kathford Engineering Excellence Scholarship",
+        "content": "Kathford Engineering Excellence Scholarship\nOffered by: Kathford International College of Engineering and Management.\nKathford International College awards full tuition waivers to exceptionally talented students in the IOE entrance examination. Recipients must maintain top academic standing throughout the 4-year BE program. The scholarship is renewable annually based on academic performance.\nAmount: NPR 385,000.\nEligibility: Top 5 rank in KU entrance examination for engineering. Minimum 70% in +2 with Physics, Chemistry, and Mathematics. Financial need may be considered.\nDeadline: 2026-11-06.\nApply: https://kathford.edu.np/scholarship"
+      },
+      {
+        "id": "418725f5-293d-46d4-a66f-6ab8959b3fe7",
+        "title": "Scholarship: MCOMS Merit Scholarship 2081",
+        "content": "MCOMS Merit Scholarship 2081\nOffered by: Manipal College of Medical Sciences.\nManipal College of Medical Sciences offers merit-based scholarships for top-ranking students in the KU entrance examination for the MBBS program. The scholarship covers 50% of the annual tuition fee for the entire 5.5-year duration, subject to maintaining a minimum GPA of 3.0 each year.\nAmount: NPR 575,000.\nEligibility: Top 10 rankers in KU entrance examination. Minimum 75% in Grade 12 Science. Nepali citizen.\nDeadline: 2026-11-21.\nApply: https://manipal.edu.np/scholarship"
+      },
+      {
+        "id": "a154b9f2-e7a2-4947-873d-5af4970ef1eb",
+        "title": "Scholarship: Government of Nepal Merit Scholarship 2081",
+        "content": "Government of Nepal Merit Scholarship 2081\nThe Government of Nepal, Ministry of Education, offers fully-funded scholarships for meritorious students to pursue undergraduate education at TU, KU, PU, and other public universities across Nepal. This scholarship covers full tuition, examination fees, and a monthly stipend of NPR 3,000.\nAmount: NPR 0.\nEligibility: GPA 3.6 or above in Grade 12 final examination. Nepali citizen under 25 years. Annual family income below NPR 3 lakhs. Must apply through the Ministry of Education portal.\nDeadline: 2026-12-21.\nApply: https://moest.gov.np/scholarship"
+      },
+      {
+        "id": "b3b940f0-ba22-46f8-a4db-ac7bee90c84c",
+        "title": "Recent exam results",
+        "content": "Recently published exam results on file, with links to check the official result:\n- TU BBS 4th Year Annual Examination Result 2080 (TU BBS, 4th Year, 2080) \u2014 https://tucexam.edu.np/result (published 2026-09-18)\n- KU BE Computer Engineering 7th Semester Result 2081 (KU BE Computer Engineering, 7th Semester, 2081) \u2014 https://exam.ku.edu.np/result (published 2026-09-13)\n- TU BCA 6th Semester Annual Examination Result 2080 (TU BCA, 6th Semester, 2080) \u2014 https://tucexam.edu.np/result (published 2026-09-07)\n- PU BBA 4th Semester End Examination Result 2080 (PU BBA, 4th Semester, 2080) \u2014 https://pu.edu.np/result (published 2026-08-31)\n- TU MBBS (IOM) First Professional Examination Result 2080 (TU MBBS, 1st Year, 2080) \u2014 https://iom.tu.edu.np/result (published 2026-08-23)"
+      }
+    ],
+    "hours": []
+  }
+}

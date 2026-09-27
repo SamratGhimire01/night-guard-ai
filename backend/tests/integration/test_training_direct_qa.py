@@ -8,6 +8,7 @@ import json as jsonlib
 
 from app.db.database import SessionLocal
 from app.db.models.knowledge import KnowledgeChunk, KnowledgeDocument, KnowledgeDocumentStatus
+from app.services.conversation.response_templates import render
 from tests.integration.test_training import (  # noqa: F401
     _CORRECTION,
     _HONEST_FALLBACK,
@@ -69,7 +70,11 @@ def test_authored_qa_reaches_a_real_customer_conversation_and_not_another_busine
 
     assert ask_as_customer("a").startswith(_ANSWER)
     other = ask_as_customer("b")
-    assert other.startswith(_HONEST_FALLBACK) and _ANSWER not in other, "another business never sees it"
+    # Business B has no matching knowledge, so the orchestrator's zero-retrieval
+    # backstop (orchestrator.py, "using honest fallback") overrides the stubbed
+    # LLM reply with this real deterministic template -- never the raw stub text.
+    assert other.startswith(render("unconfirmed_fact_fallback", "en"))
+    assert _ANSWER not in other, "another business never sees it"
 
 
 def test_authoring_validates_and_is_owner_admin_only(two_businesses, staff_token):

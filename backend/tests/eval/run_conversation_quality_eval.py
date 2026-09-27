@@ -15,6 +15,7 @@ behind as fake customer traffic (same discipline as every other live
 verification script in this project).
 """
 
+import json
 import sys
 
 from app.db.database import SessionLocal
@@ -31,7 +32,7 @@ from app.services.conversation.orchestrator import handle_incoming_message
 from tests.eval.conversation_quality_cases import CASES
 
 
-def _run_case(db, business, case: dict) -> None:
+def _run_case(db, business, case: dict, record: list | None = None) -> None:
     # Contact info already on file (a returning-customer shape) so cases that
     # exercise booking/availability/cancellation reach the real flow instead
     # of stalling at the contact-info gate — most real transcripts this eval
@@ -47,13 +48,27 @@ def _run_case(db, business, case: dict) -> None:
     if case.get("real_before"):
         print(f"REAL BEFORE: {case['real_before']}\n")
 
+    turns_so_far: list[dict[str, str]] = []
     try:
         for turn in case["turns"]:
             result = handle_incoming_message(
                 db, conversation_id=conversation.id, business_id=business.id, content=turn
             )
+            reply = result["response"] if result else "(no result)"
             print(f"CUSTOMER: {turn}")
-            print(f"AGENT:    {result['response'] if result else '(no result)'}")
+            print(f"AGENT:    {reply}")
+            if record is not None:
+                record.append(
+                    {
+                        "case_id": case["id"],
+                        "category": case["category"],
+                        "conversation_so_far": list(turns_so_far),
+                        "customer_message": turn,
+                        "reply": reply,
+                        "check_for": case["check_for"],
+                    }
+                )
+            turns_so_far.append({"customer": turn, "agent": reply})
     finally:
         db.rollback()  # discard anything left half-applied by a mid-case exception
         db.refresh(conversation)
@@ -74,7 +89,14 @@ def _run_case(db, business, case: dict) -> None:
 
 
 def main() -> None:
-    business_name = sys.argv[1] if len(sys.argv) > 1 else "Samaj Dental Clinic"
+    args = sys.argv[1:]
+    json_out = None
+    if "--json" in args:
+        idx = args.index("--json")
+        json_out = args[idx + 1]
+        args = args[:idx] + args[idx + 2 :]
+    business_name = args[0] if args else "Samaj Dental Clinic"
+
     db = SessionLocal()
     business = db.query(Business).filter(Business.name == business_name).first()
     if business is None:
@@ -82,8 +104,14 @@ def main() -> None:
         raise SystemExit(1)
     service_service.list_services(db, business_id=business.id)  # fail fast if the business has none configured
 
+    record: list = [] if json_out else None
     for case in CASES:
-        _run_case(db, business, case)
+        _run_case(db, business, case, record=record)
+
+    if json_out:
+        with open(json_out, "w") as f:
+            json.dump(record, f, indent=2)
+        print(f"\nWrote {len(record)} turns to {json_out}")
 
 
 if __name__ == "__main__":

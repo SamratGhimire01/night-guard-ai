@@ -10,7 +10,17 @@
       "Bash(grep -E \"pycache|\\\\.env$|settings.local|\\\\.pyc\")",
       "Bash(git worktree *)",
       "Bash(docker exec *)",
-      "Bash(docker run *)"
+      "Bash(docker run *)",
+      "Bash(pkill -f \"next dev\")",
+      "Read(//home/samrat01/SN/sikshyanepal/**)",
+      "Bash(nohup npm run dev)",
+      "Bash(disown)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/)",
+      "Bash(cp -r .next /tmp/sikshyanepal-dev-next-backup)",
+      "Bash(npm run *)",
+      "Bash(echo \"BUILD EXIT: $?\")",
+      "Read(//tmp/**)",
+      "Bash(mv /tmp/sikshyanepal-dev-next-backup .next)"
     ]
   }
 }

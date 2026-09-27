@@ -1,0 +1,47 @@
+{
+  "conversation_id": "54decd8b-55fb-4a77-809e-2232a29fac65",
+  "business_id": "ccc0ddd3-ef75-4bf2-9e55-26cebfac58ed",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-05T05:01:21.421510",
+  "customer": {
+    "id": "b64f91d2-d76b-4e4c-a85e-d5b6a34adcb9",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "flood message 9",
+      "detected_intent": "unknown",
+      "created_at": "2026-09-05T05:01:21.424893"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I didn't quite catch that \u2014 could you clarify what you mean by \u201cflood message 9\u201d? I'm here to help with Rate Limit Fix Co appointments, services, hours, and similar questions.",
+      "detected_intent": null,
+      "created_at": "2026-09-05T05:01:25.924841"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "ccc0ddd3-ef75-4bf2-9e55-26cebfac58ed",
+    "name": "Rate Limit Fix Co",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [],
+    "knowledge_documents": [],
+    "hours": []
+  }
+}

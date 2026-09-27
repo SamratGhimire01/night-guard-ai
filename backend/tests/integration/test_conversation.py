@@ -5279,3 +5279,84 @@ def test_aggregator_business_answers_normally_when_llm_recognizes_real_content(t
     body = _post_message(token_a, conversation_id, "What's the latest notice from Kathmandu University?")
     assert body["intent"] == "general_question"
     assert body["response"] == real_answer
+
+
+# --- Phase 58: booking as a real optional module (booking_enabled) -------------------------------------------------
+# Real gap found dogfooding SikshyaNepal (PHASE_STATUS.md Phase 53 "Gap 1"): booking was assumed-present
+# everywhere, with no way for a pure Q&A tenant to turn it off. booking_enabled defaults True (every pre-existing
+# business, zero behavior change); False both (a) drops the booking-family intents from what the LLM's system
+# prompt even offers it, and (b) makes tools.find_tool() hard-refuse every booking-family tool regardless of what
+# the LLM classifies -- the latter is the real code-level guarantee, tested adversarially below.
+
+
+def _set_booking_enabled(token: str, enabled: bool):
+    return client.patch("/api/v1/business/me", headers=_auth_header(token), json={"booking_enabled": enabled})
+
+
+def test_booking_enabled_defaults_true_and_is_settable_via_the_business_api(two_businesses):
+    token = two_businesses["token_a"]
+    assert client.get("/api/v1/business/me", headers=_auth_header(token)).json()["booking_enabled"] is True
+    resp = _set_booking_enabled(token, False)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["booking_enabled"] is False
+    assert client.get("/api/v1/business/me", headers=_auth_header(token)).json()["booking_enabled"] is False
+    assert _set_booking_enabled(token, True).json()["booking_enabled"] is True
+    # an explicit null is rejected -- never reach the DB
+    assert client.patch("/api/v1/business/me", headers=_auth_header(token), json={"booking_enabled": None}).status_code == 422
+    # other businesses are unaffected
+    assert (
+        client.get("/api/v1/business/me", headers=_auth_header(two_businesses["token_b"])).json()["booking_enabled"]
+        is True
+    )
+
+
+def test_system_prompt_drops_booking_intents_and_adds_the_disabled_note_when_off(two_businesses, monkeypatch):
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    stub = _stub_providers(monkeypatch, json.dumps({"intent": "greeting", "response": "Hi!"}))
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    _post_message(token_a, conversation_id, "hi")
+    system_prompt = stub.calls[0][0]["content"]
+    intent_list_line = system_prompt.split("intent from this list:")[1].split(".")[0]
+    assert "booking" in intent_list_line
+    assert "does NOT accept bookings" not in system_prompt
+
+    assert _set_booking_enabled(token_a, False).status_code == 200
+    stub.calls.clear()
+    conversation_id2 = _create_conversation(business_id_a, _create_customer(token_a))
+    _post_message(token_a, conversation_id2, "hi")
+    system_prompt2 = stub.calls[0][0]["content"]
+    intent_list_line = system_prompt2.split("intent from this list:")[1].split(".")[0]
+    for excluded in ("booking", "rescheduling", "cancellation", "appointment_status", "resend_confirmation"):
+        assert excluded not in intent_list_line, f"{excluded!r} must be excluded from the intent list when booking is off"
+    assert "does NOT accept bookings" in system_prompt2
+
+
+def test_booking_tool_never_runs_when_booking_is_disabled_even_if_the_llm_still_classifies_booking(two_businesses, monkeypatch):
+    """Adversarial: forces the LLM's own classification to "booking" with a full, resolvable booking_request
+    (as if the prompt-level exclusion above failed or was bypassed) while booking_enabled is False. The real
+    code-level gate (tools.find_tool) must still block it -- no Appointment row, no booking confirmation text."""
+    token_a = two_businesses["token_a"]
+    business_id_a = two_businesses["business_id_a"]
+    service_id = _setup_booking_business(token_a)
+    assert _set_booking_enabled(token_a, False).status_code == 200
+    customer_id = _create_customer_with_contact(token_a)
+    conversation_id = _create_conversation(business_id_a, customer_id)
+    target_date = _next_monday()
+
+    honest_decline = "We don't take bookings through chat here, but I can connect you with the team."
+    _stub_providers(monkeypatch, _booking_reply("Cleaning", target_date.isoformat(), "14:00", response=honest_decline))
+
+    resp = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        headers=_auth_header(token_a),
+        json={"content": "Can I get a cleaning next Monday at 2pm?"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["response"] == honest_decline, "with the tool gated off, the LLM's own (honest) drafted text must pass through untouched"
+
+    with SessionLocal() as db:
+        from app.db.models.appointment import Appointment
+
+        appointments = list(db.query(Appointment).filter(Appointment.business_id == business_id_a).all())
+    assert appointments == [], "the real code-level gate must have blocked tool.run() -- no appointment may exist"

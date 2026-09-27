@@ -43,3 +43,45 @@ def extract_incoming_text_messages(payload: dict) -> list[dict]:
                 continue
             results.append({"account_id": account_id, "sender_id": sender_id, "message_id": message_id, "text": text})
     return results
+
+
+# Attachment `type` -> what staff see. Messenger and Instagram share these; anything not listed gets the generic line.
+_ATTACHMENT_PLACEHOLDERS = {
+    "image": "[Customer sent an image]",
+    "audio": "[Customer sent a voice note]",
+    "video": "[Customer sent a video]",
+    "file": "[Customer sent a document]",
+    "location": "[Customer shared a location]",
+    "share": "[Customer shared a post]",
+    "story_mention": "[Customer mentioned your story]",
+}
+_GENERIC_PLACEHOLDER = "[Customer sent a message this channel can't show]"
+
+
+def extract_incoming_non_text_messages(payload: dict) -> list[dict]:
+    """The attachment-only counterpart of `extract_incoming_text_messages`: one dict per real incoming message that has NO
+    text but at least one attachment: {account_id, sender_id, message_id, placeholder}. Echoes of our own sends, receipts and
+    postbacks are still skipped. (A message with text AND an attachment is handled by the text path: the text is kept and the
+    attachment is not recorded — a known v1 limit.)"""
+    results = []
+    for entry in payload.get("entry", []) or []:
+        account_id = entry.get("id")
+        for event in entry.get("messaging", []) or []:
+            message = event.get("message") or {}
+            if not message or message.get("is_echo") or message.get("text"):
+                continue
+            attachments = message.get("attachments") or []
+            sender_id = (event.get("sender") or {}).get("id")
+            message_id = message.get("mid")
+            if not (attachments and account_id and sender_id and message_id):
+                continue
+            kind = (attachments[0] or {}).get("type")
+            results.append(
+                {
+                    "account_id": account_id,
+                    "sender_id": sender_id,
+                    "message_id": message_id,
+                    "placeholder": _ATTACHMENT_PLACEHOLDERS.get(kind, _GENERIC_PLACEHOLDER),
+                }
+            )
+    return results

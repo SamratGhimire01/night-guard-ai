@@ -1,12 +1,14 @@
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models.conversation import Message
 from app.db.models.integration import Integration
+from app.services.channels.base import record_non_text_message
 from app.services.channels.instagram import InstagramChannelAdapter
+from app.services.channels.meta_messaging_webhook import extract_incoming_non_text_messages
 from app.services.channels.meta_messaging_webhook import (
     extract_incoming_text_messages as _extract_from_messaging_shape,
 )
@@ -68,11 +70,17 @@ def _resolve_integration(db: Session, *, ig_account_id: str) -> Integration | No
     send_message also needs this business's own per-account access token out
     of `config` — same reasoning as Messenger's page_access_token (Instagram
     has no platform-wide token either)."""
+    # Matches EITHER id Instagram gives the account: the typed `ig_account_id`, or `ig_user_id` (the professional account id
+    # Meta puts in every webhook's entry[].id — stored automatically on save). Before this, a business that had typed the
+    # other id had every inbound DM silently dropped with only a log line ("no business registered").
     return db.execute(
         select(Integration).where(
             Integration.type == "instagram",
             Integration.enabled.is_(True),
-            Integration.config["ig_account_id"].astext == ig_account_id,
+            or_(
+                Integration.config["ig_account_id"].astext == ig_account_id,
+                Integration.config["ig_user_id"].astext == ig_account_id,
+            ),
         )
     ).scalar_one_or_none()
 
@@ -125,6 +133,12 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
                 external_customer_ref=incoming["sender_id"],
                 content=incoming["text"],
                 external_message_id=incoming["message_id"],
+                deliver=lambda text, incoming=incoming, integration=integration: _adapter.send_message(
+                    igsid=incoming["sender_id"],
+                    text=text,
+                    ig_account_id=incoming["account_id"],
+                    access_token=(integration.config or {}).get("access_token") or "",
+                ),
             )
         except IntegrityError:
             # Real backstop for a genuine race between two concurrent
@@ -139,12 +153,12 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
             outcomes.append({"message_id": incoming["message_id"], "status": "business_not_found"})
             continue
 
-        send_detail = _adapter.send_message(
-            igsid=incoming["sender_id"],
-            text=result["response"],
-            ig_account_id=incoming["account_id"],
-            access_token=(integration.config or {}).get("access_token") or "",
-        )
+        if result.get("response") is None:
+            # Phase 52: a staff member owns this conversation -- the customer's message is stored (inbox), nothing is sent.
+            outcomes.append({"message_id": incoming["message_id"], "status": "human_takeover"})
+            continue
+
+        send_detail = result.get("delivery_detail")
         outcomes.append(
             {
                 "message_id": incoming["message_id"],
@@ -154,4 +168,24 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
                 "send_detail": send_detail,
             }
         )
+    for incoming in extract_incoming_non_text_messages(payload):
+        integration = _resolve_integration(db, ig_account_id=incoming["account_id"])
+        if integration is None:
+            outcomes.append({"message_id": incoming["message_id"], "status": "unknown_account_id"})
+            continue
+        try:
+            record_non_text_message(
+                db,
+                business_id=integration.business_id,
+                channel="instagram",
+                external_ref=incoming["sender_id"],
+                placeholder=incoming["placeholder"],
+                external_message_id=incoming["message_id"],
+                default_customer_name="Instagram Contact",
+            )
+        except IntegrityError:
+            db.rollback()  # a redelivery of a message we already stored
+            outcomes.append({"message_id": incoming["message_id"], "status": "duplicate_skipped"})
+            continue
+        outcomes.append({"message_id": incoming["message_id"], "status": "non_text_recorded"})
     return outcomes

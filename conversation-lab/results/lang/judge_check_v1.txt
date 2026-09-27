@@ -1,0 +1,9 @@
+PASS  switch en->roman                 language_match good 5.0 vs bad 1.4   | total good 97.0 vs bad 44.0
+PASS  switch roman->en                 language_match good 5.0 vs bad 1.8   | total good 100.0 vs bad 55.0
+PASS  switch roman->deva               language_match good 5.0 vs bad 1.0   | total good 100.0 vs bad 43.0
+PASS  neutral 'ok' after Devanagari    language_match good 5.0 vs bad 2.6   | total good 100.0 vs bad 64.1
+FAIL  neutral 'thanks' after Roman     language_match good 2.0 vs bad 5.0   | total good 55.0 vs bad 100.0
+PASS  within-message mix               language_match good 5.0 vs bad 2.2   | total good 100.0 vs bad 60.0
+PASS  within-message mix vs over-formal language_match good 5.0 vs bad 2.0   | total good 100.0 vs bad 57.8
+PASS  explicit request                 language_match good 5.0 vs bad 1.0   | total good 91.3 vs bad 28.4
+language_match pairwise: 7/8

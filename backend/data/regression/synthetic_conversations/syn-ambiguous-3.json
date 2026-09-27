@@ -1,0 +1,114 @@
+{
+  "id": "syn-ambiguous-3",
+  "category": "ambiguous_clarification",
+  "source": "synthetic",
+  "turns": [
+    "kehi sodhna man xa"
+  ],
+  "expect": {
+    "expect_no_appointment": true,
+    "expect_max_questions": 1
+  },
+  "business": {
+    "name": "Kathmandu Smile Dental (synthetic)",
+    "timezone": "Asia/Kathmandu",
+    "currency": "NPR",
+    "languages": [
+      "en",
+      "ne"
+    ],
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": true,
+    "payment_providers": [
+      "esewa"
+    ],
+    "services": [
+      {
+        "name": "Dental Consultation",
+        "description": null,
+        "price": 500.0,
+        "duration_minutes": 20,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "name": "Teeth Cleaning",
+        "description": null,
+        "price": 1500.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "name": "Root Canal Treatment",
+        "description": null,
+        "price": 8000.0,
+        "duration_minutes": 60,
+        "deposit_enabled": true,
+        "deposit_percentage": 20
+      },
+      {
+        "name": "Tooth Extraction",
+        "description": null,
+        "price": 1500.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "name": "Braces Consultation",
+        "description": null,
+        "price": 800.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "20:00:00"
+      }
+    ]
+  }
+}

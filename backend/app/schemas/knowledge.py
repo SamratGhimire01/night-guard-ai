@@ -72,6 +72,21 @@ class KnowledgeDocumentRead(BaseModel):
     updated_at: datetime
 
 
+class KnowledgeURLIngestRequest(BaseModel):
+    """Part 2B: a single page by default; `crawl=true` also follows same-domain links
+    found ON that page (depth 1, robots.txt-respecting, capped), one KnowledgeDocument
+    per page. Every resulting document lands as draft, same as upload/manual entry."""
+
+    url: safe_str(2048)
+    crawl: bool = False
+    max_pages: int = Field(default=1, ge=1, le=8)
+
+    @field_validator("url")
+    @classmethod
+    def url_not_blank(cls, value: str) -> str:
+        return _not_blank(value)
+
+
 class KnowledgeSearchRequest(BaseModel):
     query: str
     top_k: int = Field(default=5, ge=1, le=20)

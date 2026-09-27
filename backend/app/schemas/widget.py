@@ -30,10 +30,14 @@ class WidgetMessageRequest(BaseModel):
 
 class WidgetMessageResponse(BaseModel):
     session_token: str
-    response: str
-    intent: str
+    # None (Phase 52) = a staff member owns this conversation: the message was stored, no AI reply is coming. The widget
+    # shows nothing for it and picks the staff reply up through GET .../updates.
+    response: str | None = None
+    intent: str | None = None
     # what the widget passes back to GET .../updates so it only ever receives messages newer than this reply
     agent_message_id: uuid.UUID | None = None
+    # the visitor's own message id: the polling cursor when there is no AI reply (a staff member owns the conversation)
+    customer_message_id: uuid.UUID | None = None
 
 
 class WidgetUpdate(BaseModel):
@@ -54,8 +58,10 @@ class WidgetVoiceMessageResponse(BaseModel):
 
     session_token: str | None = None
     transcript: str
-    response: str
+    response: str | None = None  # None: a staff member owns this conversation (Phase 52), see WidgetMessageResponse
     intent: str | None = None
+    agent_message_id: uuid.UUID | None = None
+    customer_message_id: uuid.UUID | None = None
 
 
 class WidgetConfigResponse(BaseModel):

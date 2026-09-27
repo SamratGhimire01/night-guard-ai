@@ -1,0 +1,95 @@
+{
+  "conversation_id": "86866c98-3760-449f-b2fa-94082a60089e",
+  "business_id": "804a0a4a-0d8d-4515-ad39-83dbf1d249c0",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-22T10:05:31.139254",
+  "customer": {
+    "id": "ca1eb572-5cb5-40f4-9029-906f6ef99f79",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "namaste, malai appointment ko barema sodhnu thiyo",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-22T10:05:35.461331"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Namaste \u2014 tapaiko appointment ko ke sodhna man cha? Hamro systemma appointment sambandhi thaha chhaina, ma team sanga connect garera confirm garidinchu. Ke tapaile phone number ya email dinu huncha? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-22T10:05:35.466676"
+    },
+    {
+      "sender_type": "customer",
+      "content": "malai bholi ko lagi cleaning chainxa",
+      "detected_intent": "booking",
+      "created_at": "2026-09-22T10:05:48.115857"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Bujhe \u2014 kripaya malai kun service ra kun samaya batauna sakinu huncha?",
+      "detected_intent": null,
+      "created_at": "2026-09-22T10:05:48.127222"
+    },
+    {
+      "sender_type": "customer",
+      "content": "What time do you open tomorrow?",
+      "detected_intent": "business_hours",
+      "created_at": "2026-09-22T10:06:00.881401"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Yaha opening time ko info hamro systemma chhaina. Ma team sanga confirm garera tapai lai follow-up garna sakincha \u2014 phone ma ho ki email ma ho? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-22T10:06:00.890096"
+    },
+    {
+      "sender_type": "customer",
+      "content": "How much does a cleaning cost?",
+      "detected_intent": "pricing_question",
+      "created_at": "2026-09-22T10:06:09.890237"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Cleaning ko price hamro systemma chhaina \u2014 maile yo info file ma payein. Ma team sanga confirm garera tapai lai follow-up garna sakchu; phone ma ho ki email ma? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-22T10:06:09.897399"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Do you accept walk-in customers?",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-22T10:06:15.624357"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Yo kura hamro record ma chhaina \u2014 hami walk-in linue ki hudaina bhanera team sanga confirm garera bhann sakchhau; tapai phone ma hunuhunchha ki email ma? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-22T10:06:15.631560"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": "2026-09-23",
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "804a0a4a-0d8d-4515-ad39-83dbf1d249c0",
+    "name": "Anchor Test Biz After",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [],
+    "knowledge_documents": [],
+    "hours": []
+  }
+}

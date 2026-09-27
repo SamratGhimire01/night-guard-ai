@@ -1,3 +1,4 @@
+import asyncio
 import io
 import uuid
 from pathlib import Path
@@ -24,8 +25,9 @@ from app.schemas.knowledge import (
     KnowledgeSearchRequest,
     KnowledgeSearchResponse,
     KnowledgeSearchResult,
+    KnowledgeURLIngestRequest,
 )
-from app.services import knowledge_service
+from app.services import knowledge_service, url_ingestion
 
 router = APIRouter()
 
@@ -138,11 +140,13 @@ async def upload_knowledge_document(
             f"File exceeds the {_MAX_UPLOAD_BYTES // (1024 * 1024)}MB upload limit."
         )
 
-    content = _extract_pdf_text(raw) if extension == ".pdf" else _extract_txt_text(raw)
+    # PDF parsing and the embedding calls inside create_document are blocking: off the event loop (see webhooks.py).
+    content = await asyncio.to_thread(_extract_pdf_text if extension == ".pdf" else _extract_txt_text, raw)
     if not content.strip():
         raise UnprocessableEntityError("No extractable text was found in this file.")
 
-    document = knowledge_service.create_document(
+    document = await asyncio.to_thread(
+        knowledge_service.create_document,
         db,
         business_id=current_user.business_id,
         title=file.filename or "Untitled",
@@ -150,6 +154,37 @@ async def upload_knowledge_document(
         source="upload",
     )
     return KnowledgeDocumentRead.model_validate(document)
+
+
+@router.post("/knowledge/ingest-url", response_model=list[KnowledgeDocumentRead], status_code=201)
+async def ingest_knowledge_url(
+    payload: KnowledgeURLIngestRequest,
+    current_user: BusinessUser = Depends(require_role(["owner", "admin"])),
+    db: Session = Depends(get_db),
+) -> list[KnowledgeDocumentRead]:
+    """Part 2B (Chatbase parity): fetch a real page, strip boilerplate, and feed the
+    clean text into the same create_document() pipeline as upload/manual entry -- lands
+    as draft, never auto-approved. The fetch/parse/embed chain is blocking network +
+    CPU work: off the event loop, same discipline as PDF upload and the webhook
+    handlers (see webhooks.py)."""
+    if payload.crawl:
+        pages = await asyncio.to_thread(url_ingestion.crawl_site, payload.url, max_pages=payload.max_pages)
+    else:
+        title, text = await asyncio.to_thread(url_ingestion.fetch_and_extract, payload.url)
+        pages = [(payload.url, title, text)]
+
+    documents = [
+        await asyncio.to_thread(
+            knowledge_service.create_document,
+            db,
+            business_id=current_user.business_id,
+            title=title,
+            content=text,
+            source="url",
+        )
+        for _url, title, text in pages
+    ]
+    return [KnowledgeDocumentRead.model_validate(d) for d in documents]
 
 
 @router.post("/knowledge/search", response_model=KnowledgeSearchResponse)

@@ -1,0 +1,108 @@
+{
+  "conversation_id": "10d1fd3f-f7cf-4e77-8bc7-60680446fd85",
+  "business_id": "6c07ae5e-f466-400a-b44a-ea5b8d3a8370",
+  "channel": "sms",
+  "status": "open",
+  "detected_language": null,
+  "created_at": "2026-09-04T16:51:38.850421",
+  "customer": {
+    "id": "d4ca806d-590a-4e94-99ae-d1010abf6564",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Can I book a cleaning next Monday at 2pm?",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T16:51:38.858882"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Got it \u2014 Cleaning, Monday, September 7 at 2:00 PM. I just need your name and a phone number or email to lock that in.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T16:51:38.892878"
+    }
+  ],
+  "booking_draft": {
+    "service_id": "3568f94d-d3d5-44f2-b793-fd168c8e05ae",
+    "date": "2026-09-07",
+    "time": "14:00"
+  },
+  "appointments_for_this_customer": [
+    {
+      "id": "b22e2825-1de7-4773-ac6c-5242a18ba9b3",
+      "service_id": "3568f94d-d3d5-44f2-b793-fd168c8e05ae",
+      "scheduled_at": "2026-09-07T14:00:00+00:00",
+      "status": "confirmed",
+      "created_at": "2026-09-04T16:51:38.933153"
+    }
+  ],
+  "business": {
+    "id": "6c07ae5e-f466-400a-b44a-ea5b8d3a8370",
+    "name": "Conv A",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "3568f94d-d3d5-44f2-b793-fd168c8e05ae",
+        "name": "Cleaning",
+        "description": null,
+        "price": 50.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

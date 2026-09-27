@@ -1,0 +1,213 @@
+{
+  "conversation_id": "d42b6b0e-f2d9-4ebf-b1ae-2fd3fbc42efd",
+  "business_id": "3421eb20-e71f-4eda-b5b7-e2043b2ac065",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-04T15:41:58.214173",
+  "customer": {
+    "id": "e3a65179-0905-4b9e-8d3a-be4e01a28298",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "I need a root canal",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T15:41:58.222758"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Got it \u2014 Root Canal. I just need your name and a phone number or email to lock that in.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:42:10.701324"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Actually, back to just a cleaning.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T15:42:18.337934"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Got it \u2014 Teeth Cleaning. I just need your name and a phone number or email to lock that in.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:42:25.749005"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Tomorrow please.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T15:42:25.767114"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Got it \u2014 Teeth Cleaning, Saturday, September 5. I just need your name and a phone number or email to lock that in.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:42:36.108049"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Actually, make it the day after tomorrow instead.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T15:42:36.126940"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Got it \u2014 Teeth Cleaning, Sunday, September 6. I just need your name and a phone number or email to lock that in.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:42:46.275651"
+    },
+    {
+      "sender_type": "customer",
+      "content": "3pm works.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T15:42:46.296944"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Got it \u2014 Teeth Cleaning, Sunday, September 6 at 3:00 PM. I just need your name and a phone number or email to lock that in.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:42:54.451483"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Sure, name is Jamie Lin, jamie.lin@example.com",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-04T15:43:26.721381"
+    },
+    {
+      "sender_type": "agent",
+      "content": "That time isn't available anymore, Jamie Lin \u2014 requested time is not available (outside business hours, on a closed date, in the past, or already booked). Here are some other openings for Teeth Cleaning: Monday, September 7 at 9:00 AM, Monday, September 7 at 9:15 AM, Monday, September 7 at 9:30 AM, Monday, September 7 at 10:30 AM, Monday, September 7 at 10:45 AM. Would any of those work? I've updated your contact info on file.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:43:26.743563"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Monday at 9am works.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T15:44:00.085479"
+    },
+    {
+      "sender_type": "agent",
+      "content": "You're all set, Jamie Lin! I've booked Teeth Cleaning for Monday, September 7 at 9:00 AM (30 min). Your booking ID is 19f49b02-8f53-48ed-9f02-d5f460f464dc.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:44:00.093488"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [
+    {
+      "id": "19f49b02-8f53-48ed-9f02-d5f460f464dc",
+      "service_id": "fd08a57f-879c-40ba-84fa-a44a8d7571f3",
+      "scheduled_at": "2026-09-07T13:00:00+00:00",
+      "status": "confirmed",
+      "created_at": "2026-09-04T15:43:37.823080"
+    }
+  ],
+  "business": {
+    "id": "3421eb20-e71f-4eda-b5b7-e2043b2ac065",
+    "name": "Test Chat Biz",
+    "timezone": "America/New_York",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "6e918b34-a382-4531-bbb2-b4b0e1182877",
+        "name": "Dental Consultation",
+        "description": null,
+        "price": 50.0,
+        "duration_minutes": 20,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "fd08a57f-879c-40ba-84fa-a44a8d7571f3",
+        "name": "Teeth Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "3a58abef-c4e7-4fdf-83ed-d8691fafd295",
+        "name": "Root Canal",
+        "description": null,
+        "price": 450.0,
+        "duration_minutes": 60,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "6b7cd7d1-ed84-4fc6-b6b5-3713809a9f48",
+        "name": "Braces Consultation",
+        "description": null,
+        "price": 75.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [
+      {
+        "id": "ebb82b04-2261-4dd6-88cf-98b0fddcd14a",
+        "title": "General Clinic Info",
+        "content": "Our clinic is located at 123 Main Street. We accept cash and card as payment methods. If you need to cancel or reschedule an appointment, please give us at least 24 hours notice. If you are experiencing a dental emergency, please call the front desk directly rather than using this chat."
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

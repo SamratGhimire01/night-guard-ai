@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -36,9 +37,11 @@ def _log_webhook_outcome_counts(channel: str, outcomes: list[dict]) -> None:
     failed = sum(
         1 for o in outcomes if o["status"] in _FAILURE_STATUSES or o["status"].startswith("unknown_")
     )
+    human_takeover = sum(1 for o in outcomes if o["status"] == "human_takeover")
     logger.info(
         "webhook delivery processed",
         extra={
+            "webhook_human_takeover": human_takeover,
             "webhook_channel": channel,
             "webhook_received": received,
             "webhook_processed": processed,
@@ -83,7 +86,10 @@ async def receive_whatsapp_webhook(request: Request, db: Session = Depends(get_d
         raise UnauthorizedError("Invalid webhook signature.")
 
     payload = json.loads(raw_body)
-    outcomes = process_webhook_payload(db, payload)
+    # Off the event loop: a turn is embedding + LLM + send (seconds, blocking urllib/httpx). Run directly inside this
+    # `async def` it froze EVERY request in the process (measured: /health took 5.5s during a 5.8s turn). Same fix
+    # the voice route uses; the same applies to the Messenger and Instagram handlers below.
+    outcomes = await asyncio.to_thread(process_webhook_payload, db, payload)
     _log_webhook_outcome_counts("whatsapp", outcomes)
     return {"status": "ok"}
 
@@ -120,7 +126,7 @@ async def receive_messenger_webhook(request: Request, db: Session = Depends(get_
         raise UnauthorizedError("Invalid webhook signature.")
 
     payload = json.loads(raw_body)
-    outcomes = process_messenger_webhook_payload(db, payload)
+    outcomes = await asyncio.to_thread(process_messenger_webhook_payload, db, payload)
     _log_webhook_outcome_counts("messenger", outcomes)
     return {"status": "ok"}
 
@@ -157,6 +163,6 @@ async def receive_instagram_webhook(request: Request, db: Session = Depends(get_
         raise UnauthorizedError("Invalid webhook signature.")
 
     payload = json.loads(raw_body)
-    outcomes = process_instagram_webhook_payload(db, payload)
+    outcomes = await asyncio.to_thread(process_instagram_webhook_payload, db, payload)
     _log_webhook_outcome_counts("instagram", outcomes)
     return {"status": "ok"}

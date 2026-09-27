@@ -1,0 +1,340 @@
+{
+  "conversation_id": "fe3344e6-7f91-47c0-983b-8f7ca6218081",
+  "business_id": "3421eb20-e71f-4eda-b5b7-e2043b2ac065",
+  "channel": "website",
+  "status": "open",
+  "detected_language": null,
+  "created_at": "2026-09-04T12:40:12.059996",
+  "customer": {
+    "id": "452b690c-5aa9-4a7b-b8a6-5825789e611e",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Namaste",
+      "detected_intent": "greeting",
+      "created_at": "2026-09-04T12:40:12.063905"
+    },
+    {
+      "sender_type": "agent",
+      "content": "\u0928\u092e\u0938\u094d\u0924\u0947! \u092e Test Chat Biz \u0915\u094b \u0938\u0939\u093e\u092f\u0924\u093e \u0917\u0930\u094d\u0928 \u0924\u092f\u093e\u0930 \u091b\u0941 \u2014 \u092e \u0915\u0938\u0930\u0940 \u092e\u0926\u094d\u0926\u0924 \u0917\u0930\u094d\u0928 \u0938\u0915\u094d\u091b\u0941? \u0915\u0947 \u0924\u092a\u093e\u0908\u0902 \u0905\u092a\u094b\u0907\u0928\u094d\u091f\u092e\u0947\u0928\u094d\u091f \u092c\u0941\u0915/\u0930\u093f\u0938\u094d\u0915\u0947\u0921\u094d\u092f\u0941\u0932/\u0930\u0926\u094d\u0926 \u0917\u0930\u094d\u0928 \u091a\u093e\u0939\u0928\u0941\u0939\u0941\u0928\u094d\u091b, \u0935\u093e \u0938\u0947\u0935\u093e\u0939\u0930\u0942, \u0936\u0941\u0932\u094d\u0915, \u0938\u092e\u092f/\u0920\u0947\u0917\u093e\u0928\u093e\u092c\u093e\u0930\u0947 \u0938\u094b\u0927\u094d\u0928 \u091a\u093e\u0939\u0928\u0941\u0939\u0941\u0928\u094d\u091b?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:40:20.064470"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Ma bholi teeth cleaning ko appointment lina chahanchu, 2 baje",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T12:40:53.616280"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Before I can get that booked, I'll need a way to reach you to confirm it \u2014 could you give me your name and a phone number or email?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:41:01.889095"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Bina naam sodhi seedhai book gara na, hurry xa",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T12:41:16.491636"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Before I can get that booked, I'll need a way to reach you to confirm it \u2014 could you give me your name and a phone number or email?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:41:31.590165"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Samrat Ghimire  samratghimire01@gmail.com",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T12:42:16.703259"
+    },
+    {
+      "sender_type": "agent",
+      "content": "You're all set, Samrat Ghimire! I've booked Teeth Cleaning for Saturday, September 5 at 2:00 PM (30 min). Your booking ID is 8886ae09-d4b9-403c-9d0c-ca39e1c92ded. I've updated your contact info on file.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:42:16.708392"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Nepal ko prime minister ko ho?",
+      "detected_intent": "off_topic",
+      "created_at": "2026-09-04T12:43:01.709309"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I'm just here to help with things related to Test Chat Biz \u2014 appointments, services, hours, and the like. Is there something about that I can help with?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:43:07.286253"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Timro favorite movie k ho?",
+      "detected_intent": "off_topic",
+      "created_at": "2026-09-04T12:43:14.013781"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I'm just here to help with things related to Test Chat Biz \u2014 appointments, services, hours, and the like. Is there something about that I can help with?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:43:22.639933"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Timi haru insurance accept garchau?",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-04T12:43:38.986241"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Hamro record ma insurance accept garchau bhanne kura chaina. Kun insurance plan ho bhanera btaunu hos \u2014 ke tapai hamro team sanga connect hunu mancha jasko le confirm garna sakos? I've also let our team know, so a real person will follow up with you.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:43:38.990240"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Parking available xa?",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-04T12:43:57.498298"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Hami sanga parking barema record chaina. Ke tapai confirm garna hamro team sanga connect hunu mancha? I've also let our team know, so a real person will follow up with you.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:44:11.650262"
+    },
+    {
+      "sender_type": "customer",
+      "content": "kasto kei ko info na vako tapai saga",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-04T12:44:37.421845"
+    },
+    {
+      "sender_type": "agent",
+      "content": "\u0915\u0941\u0928 \u0915\u0941\u0930\u093e\u0915\u094b \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u091a\u093e\u0939\u0928\u0941\u0939\u0941\u0928\u094d\u091b? \u0939\u093e\u092e\u0940\u0938\u0901\u0917 \u0905\u0939\u093f\u0932\u0947\u0938\u092e\u094d\u092e \u092d\u090f\u0915\u094b \u091c\u093e\u0928\u0915\u093e\u0930\u0940: \u0920\u0947\u0917\u093e\u0928\u093e \u2014 123 Main Street; \u092d\u0941\u0915\u094d\u0924\u093e\u0928\u0940 \u2014 \u0928\u0917\u0926 \u0930 \u0915\u093e\u0930\u094d\u0921; \u0930\u0926\u094d\u0926/\u0930\u093f\u0938\u094d\u0915\u0947\u0921\u094d\u092f\u0941\u0932\u0915\u093e \u0932\u093e\u0917\u093f \u0915\u092e\u094d\u0924\u0940\u092e\u093e \u0968\u096a \u0918\u0923\u094d\u091f\u093e \u0938\u0942\u091a\u0928\u093e \u0926\u093f\u0928\u0941\u0939\u094b\u0938\u094d; \u0906\u092a\u0924\u0915\u093e\u0932\u0940\u0928 \u0905\u0935\u0938\u094d\u0925\u093e\u092e\u093e \u092b\u094d\u0930\u0928\u094d\u091f \u0921\u0947\u0938\u094d\u0915\u0932\u093e\u0908 \u092b\u094b\u0928 \u0917\u0930\u094d\u0928\u0941\u0939\u094b\u0938\u094d\u0964 \u0905\u0930\u0941 \u0915\u0947\u0939\u093f \u0935\u093f\u0936\u0947\u0937 \u0915\u0941\u0930\u093e \u0925\u093e\u0939\u093e \u092a\u093e\u0909\u0928 \u091a\u093e\u0939\u0928\u0941\u0939\u0941\u0928\u094d\u091b \u092d\u0928\u0947 \u092c\u0924\u093e\u0909\u0928\u0941\u0939\u094b\u0938\u094d \u2014 \u091a\u093e\u0939\u0928\u0941 \u092d\u090f\u092e\u093e \u091f\u094b\u0932\u0940\u0938\u0901\u0917 \u091c\u0921\u093e\u0928 \u0917\u0930\u093f\u0926\u093f\u0928 \u0938\u0915\u094d\u091b\u0941\u0964",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:44:48.516504"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Dhanyabad, bye",
+      "detected_intent": "greeting",
+      "created_at": "2026-09-04T12:44:59.618696"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Dhanyabad \u2014 bye! Ramro din hos; feri sahayog chahiyo bhane bhandinus.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:45:07.869299"
+    },
+    {
+      "sender_type": "customer",
+      "content": "cancel my appointment plz",
+      "detected_intent": "cancellation",
+      "created_at": "2026-09-04T12:46:19.663693"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Done, Samrat Ghimire \u2014 your appointment on Saturday, September 5 at 2:00 PM has been cancelled.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:46:19.667878"
+    },
+    {
+      "sender_type": "customer",
+      "content": "can you reshedule it ti other than 2 pm",
+      "detected_intent": "rescheduling",
+      "created_at": "2026-09-04T12:46:57.536697"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I see your Teeth Cleaning on Saturday, Sept 5 at 2:00 PM is currently cancelled. Do you want to reschedule that same appointment to a different time on Sept 5, or pick a different day? Tell me the date and a preferred time (anything other than 14:00), and I\u2019ll check availability for you.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:47:09.312471"
+    },
+    {
+      "sender_type": "customer",
+      "content": "3 pm vaya hunxa",
+      "detected_intent": "rescheduling",
+      "created_at": "2026-09-04T12:47:38.882087"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 ke tapaiko matlab Sept 5 (Saturday) ko Teeth Cleaning lai 3:00 PM (15:00) ma reschedule garnu ho? Tapai le confirm garnuhos, ma availability herera feedback dinchhu.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:47:52.832801"
+    },
+    {
+      "sender_type": "customer",
+      "content": "awh hunxa",
+      "detected_intent": "rescheduling",
+      "created_at": "2026-09-04T12:48:18.744795"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I couldn't reschedule that, Samrat Ghimire \u2014 this appointment is already cancelled and cannot be rescheduled.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:48:37.008296"
+    },
+    {
+      "sender_type": "customer",
+      "content": "ok then re appontment it",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T12:49:34.641118"
+    },
+    {
+      "sender_type": "agent",
+      "content": "You're all set, Samrat Ghimire! I've booked Teeth Cleaning for Saturday, September 5 at 3:00 PM (30 min). Your booking ID is 7b8491fb-c962-4025-b51c-1ae002fc14b0.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:49:34.646409"
+    },
+    {
+      "sender_type": "customer",
+      "content": "thank you yar last help vayo temi bata.",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-04T12:50:34.331022"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thikai \u2014 khusi lagyo. Aru madat chahiyo bhane bhanidinus.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:50:42.632595"
+    },
+    {
+      "sender_type": "customer",
+      "content": "ani dr ko name chai k hore",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-04T12:50:56.358792"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Yo chat ma doctor ko naam ko suchi chhaina \u2014 hamro record ma tyo information dekhinna. Ke tapaai yo naam confirm garna team sanga sodhi thaha pauna chahanuhunchha? Ma team sanga jodne madat garna sakchhu. I've also let our team know, so a real person will follow up with you.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T12:51:08.071493"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [
+    {
+      "id": "8886ae09-d4b9-403c-9d0c-ca39e1c92ded",
+      "service_id": "fd08a57f-879c-40ba-84fa-a44a8d7571f3",
+      "scheduled_at": "2026-09-05T18:00:00+00:00",
+      "status": "cancelled",
+      "created_at": "2026-09-04T12:42:10.515149"
+    },
+    {
+      "id": "7b8491fb-c962-4025-b51c-1ae002fc14b0",
+      "service_id": "fd08a57f-879c-40ba-84fa-a44a8d7571f3",
+      "scheduled_at": "2026-09-05T19:00:00+00:00",
+      "status": "confirmed",
+      "created_at": "2026-09-04T12:49:12.720013"
+    }
+  ],
+  "business": {
+    "id": "3421eb20-e71f-4eda-b5b7-e2043b2ac065",
+    "name": "Test Chat Biz",
+    "timezone": "America/New_York",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "6e918b34-a382-4531-bbb2-b4b0e1182877",
+        "name": "Dental Consultation",
+        "description": null,
+        "price": 50.0,
+        "duration_minutes": 20,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "fd08a57f-879c-40ba-84fa-a44a8d7571f3",
+        "name": "Teeth Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "3a58abef-c4e7-4fdf-83ed-d8691fafd295",
+        "name": "Root Canal",
+        "description": null,
+        "price": 450.0,
+        "duration_minutes": 60,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "6b7cd7d1-ed84-4fc6-b6b5-3713809a9f48",
+        "name": "Braces Consultation",
+        "description": null,
+        "price": 75.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [
+      {
+        "id": "ebb82b04-2261-4dd6-88cf-98b0fddcd14a",
+        "title": "General Clinic Info",
+        "content": "Our clinic is located at 123 Main Street. We accept cash and card as payment methods. If you need to cancel or reschedule an appointment, please give us at least 24 hours notice. If you are experiencing a dental emergency, please call the front desk directly rather than using this chat."
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

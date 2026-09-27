@@ -1,0 +1,47 @@
+{
+  "conversation_id": "29cb9509-eb18-4506-8297-a27c076223bb",
+  "business_id": "ccc0ddd3-ef75-4bf2-9e55-26cebfac58ed",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-05T05:04:47.754665",
+  "customer": {
+    "id": "57a1c09a-547d-4f8a-9d03-24b95a6f9cb7",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "flood message 40",
+      "detected_intent": "unknown",
+      "created_at": "2026-09-05T05:04:47.758122"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Hi \u2014 I\u2019m not sure what you mean by \u201cflood message 40.\u201d Do you mean you received 40 messages, or are you asking about sending one? A bit more detail will help me assist you.",
+      "detected_intent": null,
+      "created_at": "2026-09-05T05:04:54.849403"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "ccc0ddd3-ef75-4bf2-9e55-26cebfac58ed",
+    "name": "Rate Limit Fix Co",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [],
+    "knowledge_documents": [],
+    "hours": []
+  }
+}

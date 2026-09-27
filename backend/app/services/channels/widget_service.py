@@ -97,8 +97,8 @@ def get_locked_language(db: Session, *, business_id: uuid.UUID, session_token: s
 def get_agent_messages_after(
     db: Session, *, business_id: uuid.UUID, session_token: str, after_message_id: uuid.UUID
 ) -> list[Message] | None:
-    """Messages the system sent into this widget session on its own (a "payment received" confirmation) since
-    `after_message_id` — the widget has no push channel, so it asks. Same session isolation as everywhere else here:
+    """Messages the business sent into this widget session on its own — a "payment received" confirmation (AGENT) or a staff
+    member's reply from the inbox (STAFF, Phase 52) — since `after_message_id`; the widget has no push channel, so it asks. Same session isolation as everywhere else here:
     the token is only trusted when its hash matches a ChannelIdentity of THIS business, and an unknown token/message
     id returns None (the route answers with an empty list — no oracle). Never creates anything."""
     identity = db.execute(
@@ -128,7 +128,7 @@ def get_agent_messages_after(
             select(Message)
             .where(
                 Message.conversation_id == conversation.id,
-                Message.sender_type == MessageSenderType.AGENT,
+                Message.sender_type.in_([MessageSenderType.AGENT, MessageSenderType.STAFF]),
                 Message.created_at > after.created_at,
             )
             .order_by(Message.created_at)

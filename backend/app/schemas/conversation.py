@@ -58,7 +58,9 @@ class IncomingMessageCreate(BaseModel):
 
 
 class OrchestratedMessageResponse(BaseModel):
-    intent: ConversationIntent
-    response: str
+    # intent/response/agent_message_id are None when a staff member owns the conversation (Phase 52): the customer message
+    # was stored, the AI drafted nothing. `intent` may still be set if the LLM had classified it before takeover was noticed.
+    intent: ConversationIntent | None = None
+    response: str | None = None
     customer_message_id: uuid.UUID
-    agent_message_id: uuid.UUID
+    agent_message_id: uuid.UUID | None = None

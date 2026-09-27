@@ -3,8 +3,9 @@ import uuid
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
+import psycopg2.errors
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, NotFoundError, UnprocessableEntityError
@@ -257,6 +258,19 @@ def create_appointment(
         try:
             db.flush()
         except IntegrityError:
+            db.rollback()
+            raise ConflictError("This slot was just booked by someone else — please choose another time.")
+        except OperationalError as exc:
+            # Two real concurrent requests for the exact same slot can make Postgres's
+            # exclusion-constraint check deadlock rather than cleanly reject one side
+            # with an IntegrityError (real, live-verified failure mode — see
+            # test_concurrent_booking_race_exactly_one_succeeds). Only a genuine
+            # deadlock is treated as "someone else just won this slot, safe to say so
+            # and retry" -- any OTHER OperationalError (a real connection/infra
+            # failure) is never this codebase's chance to invent a friendlier lie, so
+            # it re-raises and reaches the customer as the real 500 it is.
+            if not isinstance(exc.orig, psycopg2.errors.DeadlockDetected):
+                raise
             db.rollback()
             raise ConflictError("This slot was just booked by someone else — please choose another time.")
 

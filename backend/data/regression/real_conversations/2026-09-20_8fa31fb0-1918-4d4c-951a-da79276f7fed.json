@@ -1,0 +1,112 @@
+{
+  "conversation_id": "8fa31fb0-1918-4d4c-951a-da79276f7fed",
+  "business_id": "969b60fc-0124-4086-a6a6-733ef8b8a03c",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-20T11:25:51.479485",
+  "customer": {
+    "id": "3ef246e7-a4ec-4365-8c5f-881a439fa5d6",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "what times do you have for a teeth cleaning tomorrow?",
+      "detected_intent": "booking",
+      "created_at": "2026-09-20T11:25:51.483193"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Here's what's open for Teeth Cleaning: Monday, September 21 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Which works for you?",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:25:55.573507"
+    },
+    {
+      "sender_type": "customer",
+      "content": "actually, is Monday morning possible instead?",
+      "detected_intent": "booking",
+      "created_at": "2026-09-20T11:25:55.583665"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Yes, that day works. Those are the times still open: Monday, September 21 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Just tell me which one you'd like (say the time, or \"the first one\") and I'll book it.",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:26:01.485539"
+    }
+  ],
+  "booking_draft": {
+    "service_id": "210a08c5-7100-49d3-92bb-6ac93424e57a",
+    "date": "2026-09-21",
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "969b60fc-0124-4086-a6a6-733ef8b8a03c",
+    "name": "Phase 16 Test Clinic",
+    "timezone": "Asia/Kathmandu",
+    "currency": "NPR",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "210a08c5-7100-49d3-92bb-6ac93424e57a",
+        "name": "Teeth Cleaning",
+        "description": null,
+        "price": 1500.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

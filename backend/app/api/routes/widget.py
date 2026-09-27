@@ -132,8 +132,9 @@ def post_widget_message(
     return WidgetMessageResponse(
         session_token=session_token,
         response=orchestrated["response"],
-        intent=orchestrated["intent"].value,
+        intent=orchestrated["intent"].value if orchestrated["intent"] is not None else None,
         agent_message_id=orchestrated.get("agent_message_id"),
+        customer_message_id=orchestrated.get("customer_message_id"),
     )
 
 

@@ -117,5 +117,7 @@ async def post_widget_voice_message(
         session_token=new_session_token,
         transcript=transcript,
         response=orchestrated["response"],
-        intent=orchestrated["intent"].value,
+        intent=orchestrated["intent"].value if orchestrated["intent"] is not None else None,
+        agent_message_id=orchestrated.get("agent_message_id"),
+        customer_message_id=orchestrated.get("customer_message_id"),
     )

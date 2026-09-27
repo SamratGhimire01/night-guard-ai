@@ -258,12 +258,13 @@ def test_message_echo_of_our_own_send_is_ignored_not_processed(business_with_mes
         assert len(conversations) == 0  # never created anything
 
 
-def test_attachment_only_message_with_no_text_is_acked_and_skipped_not_a_crash(business_with_messenger):
+def test_attachment_only_message_is_recorded_as_a_placeholder_not_dropped(business_with_messenger):
     """A real Messenger attachment (image/sticker/etc.) or a button-tap
     postback carries no `message.text` field at all — only `attachments`/
     `postback`. meta_messaging_webhook.py's own docstring already documents
-    this exact case as deliberately skipped (`if not (... and text): continue`),
-    but until now nothing proved it: this was a happy-path-only gap."""
+    this exact case as skipped by the TEXT extractor. Phase 52: such a message is
+    now stored as a placeholder CUSTOMER message ("[Customer sent an image]") by
+    the attachment path instead of being dropped; the AI does not answer it."""
     payload = {
         "object": "page",
         "entry": [
@@ -288,8 +289,9 @@ def test_attachment_only_message_with_no_text_is_acked_and_skipped_not_a_crash(b
     assert status == 200, body
 
     with SessionLocal() as db:
-        conversations = db.query(Conversation).filter(Conversation.business_id == business_with_messenger["business_id"]).all()
-        assert conversations == [], "a text-less attachment message must be skipped, never crash and never create a conversation"
+        (conversation,) = db.query(Conversation).filter(Conversation.business_id == business_with_messenger["business_id"]).all()
+        messages = db.query(Message).filter(Message.conversation_id == conversation.id).all()
+        assert [(m.sender_type, m.content) for m in messages] == [(MessageSenderType.CUSTOMER, "[Customer sent an image]")]
 
 
 # ---------------------------------------------------------------------------

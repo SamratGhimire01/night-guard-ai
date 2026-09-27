@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.db.models.conversation import Message
 from app.db.models.integration import Integration
+from app.services.channels.base import record_non_text_message
 from app.services.channels.messenger import MessengerChannelAdapter
-from app.services.channels.meta_messaging_webhook import extract_incoming_text_messages
+from app.services.channels.meta_messaging_webhook import extract_incoming_non_text_messages, extract_incoming_text_messages
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,11 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
                 external_customer_ref=incoming["sender_id"],
                 content=incoming["text"],
                 external_message_id=incoming["message_id"],
+                deliver=lambda text, incoming=incoming, integration=integration: _adapter.send_message(
+                    psid=incoming["sender_id"],
+                    text=text,
+                    page_access_token=(integration.config or {}).get("page_access_token") or "",
+                ),
             )
         except IntegrityError:
             # Real backstop for a genuine race between two concurrent
@@ -101,11 +107,12 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
             outcomes.append({"message_id": incoming["message_id"], "status": "business_not_found"})
             continue
 
-        send_detail = _adapter.send_message(
-            psid=incoming["sender_id"],
-            text=result["response"],
-            page_access_token=(integration.config or {}).get("page_access_token") or "",
-        )
+        if result.get("response") is None:
+            # Phase 52: a staff member owns this conversation -- the customer's message is stored (inbox), nothing is sent.
+            outcomes.append({"message_id": incoming["message_id"], "status": "human_takeover"})
+            continue
+
+        send_detail = result.get("delivery_detail")
         outcomes.append(
             {
                 "message_id": incoming["message_id"],
@@ -115,4 +122,24 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
                 "send_detail": send_detail,
             }
         )
+    for incoming in extract_incoming_non_text_messages(payload):
+        integration = _resolve_integration(db, page_id=incoming["account_id"])
+        if integration is None:
+            outcomes.append({"message_id": incoming["message_id"], "status": "unknown_account_id"})
+            continue
+        try:
+            record_non_text_message(
+                db,
+                business_id=integration.business_id,
+                channel="messenger",
+                external_ref=incoming["sender_id"],
+                placeholder=incoming["placeholder"],
+                external_message_id=incoming["message_id"],
+                default_customer_name="Messenger Contact",
+            )
+        except IntegrityError:
+            db.rollback()  # a redelivery of a message we already stored
+            outcomes.append({"message_id": incoming["message_id"], "status": "duplicate_skipped"})
+            continue
+        outcomes.append({"message_id": incoming["message_id"], "status": "non_text_recorded"})
     return outcomes

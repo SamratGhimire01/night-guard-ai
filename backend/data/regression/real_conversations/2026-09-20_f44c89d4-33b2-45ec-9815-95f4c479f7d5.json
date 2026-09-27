@@ -1,0 +1,304 @@
+{
+  "conversation_id": "f44c89d4-33b2-45ec-9815-95f4c479f7d5",
+  "business_id": "969b60fc-0124-4086-a6a6-733ef8b8a03c",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "ne_roman",
+  "created_at": "2026-09-20T11:42:01.380373",
+  "customer": {
+    "id": "203b0f11-9a61-4127-b261-4ec65b81d6f6",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "what times do you have for a teeth cleaning tomorrow?",
+      "detected_intent": "booking",
+      "created_at": "2026-09-20T11:42:01.386021"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Here's what's open for Teeth Cleaning: Monday, September 21 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Which works for you?",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:42:05.216446"
+    },
+    {
+      "sender_type": "customer",
+      "content": "actually, is Thursday morning possible instead?",
+      "detected_intent": "booking",
+      "created_at": "2026-09-20T11:42:05.290182"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Here's what's open for Teeth Cleaning: Thursday, September 24 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Which works for you? Switching to Thursday, September 24 instead of Monday, September 21.",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:42:10.601660"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Thursday works, thanks",
+      "detected_intent": "booking",
+      "created_at": "2026-09-20T11:42:10.709150"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Here's what's open for Teeth Cleaning: Thursday, September 24 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Which works for you?",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:42:14.786909"
+    },
+    {
+      "sender_type": "customer",
+      "content": "doctoer consulation garda thik hola mero ali ali bleeding ne vako xa",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-20T11:43:07.373319"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Sorry to hear about the bleeding. We don't have a consultation service listed here \u2014 our available service is Teeth Cleaning (NPR 1500, 30 min). It's best a clinician assesses that bleeding; would you like me to connect you with our team so they can advise and arrange the right appointment? I've also let our team know, so a real person will follow up with you.",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:43:07.377216"
+    },
+    {
+      "sender_type": "customer",
+      "content": "tapai ko clinic ko naam k ho",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-20T11:43:45.995821"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Our clinic is Phase 16 Test Clinic, located in Kathmandu. How can I help you with an appointment or service?",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:43:49.820012"
+    },
+    {
+      "sender_type": "customer",
+      "content": "kati barsa vayo yo khuleko",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-20T11:44:10.612636"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I don't have that information on file \u2014 would you like me to connect you with our team so they can confirm how long Phase 16 Test Clinic has been open? I've also let our team know, so a real person will follow up with you.",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:44:14.771646"
+    },
+    {
+      "sender_type": "customer",
+      "content": "pardaina teso vayo tapai ko ma yei eauta matra service xa",
+      "detected_intent": "complaint",
+      "created_at": "2026-09-20T11:44:40.002887"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Bujhe \u2014 naramro lagyo. Ho, hamro available services mathi matra Teeth Cleaning listed cha. Tapaiko bleeding jasto samasya ko lagi clinician ko assessment ra arko treatment zaruri huna sakcha; ma team sanga connect garna sakincha bhane bhannu? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:44:46.969587"
+    },
+    {
+      "sender_type": "customer",
+      "content": "lala teso vayo aabo tei garnu paryo ne",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-20T11:45:05.910884"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 ma team sanga connect garna sakchu. Kun number ra kun channel (WhatsApp, phone call, or email) ma tapaai lai contact garna mano cha?",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:45:12.075686"
+    },
+    {
+      "sender_type": "customer",
+      "content": "whatapp",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-20T11:45:26.319565"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 WhatsApp ma contact garne bhayo. Kun WhatsApp number ma hami le message garnu?",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:45:33.275469"
+    },
+    {
+      "sender_type": "customer",
+      "content": "9823045928",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-20T11:45:51.674199"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha, WhatsApp number 9823045928 liyeko chu. Kun samaya ma contact garna milcha tapaikai laagi? Maile tapaiko contact information update gare.",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:45:51.681571"
+    },
+    {
+      "sender_type": "customer",
+      "content": "ghun time vaya ne hunxa",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-20T11:46:08.164275"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Maile bujhina \u2014 tapaile \u201cghun time\u201d bhanera ke bujhnu bhayo? Kun din ra kun samaya ma WhatsApp ma contact garna milcha? Hamro hours Mon\u2013Fri 9:00\u201317:00 huncha.",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:46:14.724342"
+    },
+    {
+      "sender_type": "customer",
+      "content": "sorry jhun time vayane hunxa",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-20T11:46:43.387395"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 bujhe. Tapaiko \u201cany time\u201d bhayo bhanera note gare. Hamro staff tapaiko WhatsApp 9823045928 ma office hours Mon\u2013Fri 9:00\u201317:00 bhitra contact garne chan. Yedi kunai particular samaya manparcha bhane bhannu, nabhaye thik cha.",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:46:52.603121"
+    },
+    {
+      "sender_type": "customer",
+      "content": "ok xata thank you hai sarai thulo help vayo",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-20T11:47:22.825893"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Swagat cha! Khusi lagyo madat bhayeko ma. \ud83d\ude0a",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:47:29.572372"
+    },
+    {
+      "sender_type": "customer",
+      "content": "love you bitch",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-20T11:47:40.626383"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Ma Phase 16 Test Clinic ko receptionist hu \u2014 ma appointments, services, hours adi ma madat garna sakchu. Kun kurama madat chahanchau?",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:47:46.099966"
+    },
+    {
+      "sender_type": "customer",
+      "content": "mero name k ho re",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-20T11:48:03.279350"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Tapai ko naam hamro record ma \"Website Visitor\" cha \u2014 yo naam change garna man cha?",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:48:08.279064"
+    },
+    {
+      "sender_type": "customer",
+      "content": "awh Boss rakha hai mula mero naam",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-20T11:48:29.920388"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 clear garna sakincha? Tapaiko naam \"Boss\" huncha ki \"Mula\" huncha?",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:48:35.311044"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Boss",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-20T11:48:59.168750"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha, Boss \u2014 bujhe. Maile tapaiko contact information update gare.",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:48:59.174737"
+    },
+    {
+      "sender_type": "customer",
+      "content": "yo",
+      "detected_intent": "greeting",
+      "created_at": "2026-09-20T11:51:31.889914"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Ho Boss \u2014 ke ma kehi madat garna sakchu?",
+      "detected_intent": null,
+      "created_at": "2026-09-20T11:51:37.024183"
+    }
+  ],
+  "booking_draft": {
+    "service_id": "210a08c5-7100-49d3-92bb-6ac93424e57a",
+    "date": "2026-09-24",
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "969b60fc-0124-4086-a6a6-733ef8b8a03c",
+    "name": "Phase 16 Test Clinic",
+    "timezone": "Asia/Kathmandu",
+    "currency": "NPR",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "210a08c5-7100-49d3-92bb-6ac93424e57a",
+        "name": "Teeth Cleaning",
+        "description": null,
+        "price": 1500.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

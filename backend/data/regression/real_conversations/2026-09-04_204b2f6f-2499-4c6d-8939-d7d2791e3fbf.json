@@ -1,0 +1,112 @@
+{
+  "conversation_id": "204b2f6f-2499-4c6d-8939-d7d2791e3fbf",
+  "business_id": "3027173d-1704-49bc-993f-f11063145335",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-04T14:34:49.778630",
+  "customer": {
+    "id": "dbf6cdac-bab0-4156-b18b-ce3b810c3faa",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "I want to book a cleaning.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T14:34:49.782076"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Before I can get that booked, I'll need a way to reach you to confirm it \u2014 could you give me your name and a phone number or email?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T14:34:55.618171"
+    },
+    {
+      "sender_type": "customer",
+      "content": "How about next Tuesday?",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T14:34:56.630624"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Before I can get that booked, I'll need a way to reach you to confirm it \u2014 could you give me your name and a phone number or email?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T14:35:05.985777"
+    }
+  ],
+  "booking_draft": {
+    "service_id": "4a8676d5-b5fa-4a0a-89d7-73265201161d",
+    "date": "2026-09-08",
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "3027173d-1704-49bc-993f-f11063145335",
+    "name": "Riverside Dental",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "4a8676d5-b5fa-4a0a-89d7-73265201161d",
+        "name": "Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

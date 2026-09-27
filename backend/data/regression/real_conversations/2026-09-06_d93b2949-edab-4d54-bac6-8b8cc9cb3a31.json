@@ -1,0 +1,115 @@
+{
+  "conversation_id": "d93b2949-edab-4d54-bac6-8b8cc9cb3a31",
+  "business_id": "8eda5526-2444-48b1-b045-a60d33735b5a",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-06T11:22:02.696159",
+  "customer": {
+    "id": "dc4ece31-b475-4802-aa4c-29d1c6895c06",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "regression burst 3",
+      "detected_intent": "unknown",
+      "created_at": "2026-09-06T11:22:02.716031"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I\u2019m not sure what you mean by \u201cregression burst 3.\u201d Could you clarify? I can help with appointments, services, pricing, hours, or cancellations.",
+      "detected_intent": null,
+      "created_at": "2026-09-06T11:22:10.361411"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "8eda5526-2444-48b1-b045-a60d33735b5a",
+    "name": "Standing Test Biz Free",
+    "timezone": "America/New_York",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "f38bf2f8-5cdb-41be-b2c2-38f28ebaec52",
+        "name": "Basic Cleaning",
+        "description": "Standard dental cleaning",
+        "price": 75.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "96606336-d694-419d-a230-7cef88d35595",
+        "name": "Whitening",
+        "description": "Teeth whitening session",
+        "price": 150.0,
+        "duration_minutes": 45,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [
+      {
+        "id": "c6c1aa0a-6680-4660-b0dc-95a05a5b52b1",
+        "title": "Cancellation Policy",
+        "content": "Appointments can be cancelled or rescheduled up to 24 hours in advance with no fee. Cancellations within 24 hours may incur a $25 fee."
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "14:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

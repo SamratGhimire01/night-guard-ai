@@ -1,0 +1,153 @@
+{
+  "conversation_id": "70dc2288-23e0-42b4-9f3b-6dee3c9c6e1c",
+  "business_id": "3421eb20-e71f-4eda-b5b7-e2043b2ac065",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-04T15:44:11.635700",
+  "customer": {
+    "id": "472b96e5-ccb5-4e68-8bb6-bd4c6569ea1f",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Book me a teeth cleaning next Monday at 9am, name Priya Shah, priya.shah@example.com",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T15:44:25.218737"
+    },
+    {
+      "sender_type": "agent",
+      "content": "That time isn't available anymore, Priya Shah \u2014 requested time is not available (outside business hours, on a closed date, in the past, or already booked). Here are some other openings for Teeth Cleaning: Monday, September 7 at 9:30 AM, Monday, September 7 at 10:30 AM, Monday, September 7 at 10:45 AM, Monday, September 7 at 11:00 AM, Monday, September 7 at 11:15 AM. Would any of those work? I've updated your contact info on file.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:44:25.235486"
+    },
+    {
+      "sender_type": "customer",
+      "content": "9:30am works.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T15:44:54.821705"
+    },
+    {
+      "sender_type": "agent",
+      "content": "You're all set, Priya Shah! I've booked Teeth Cleaning for Monday, September 7 at 9:30 AM (30 min). Your booking ID is 1adb1289-1f91-4734-8dea-775df7ae7afb.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T15:44:54.826744"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [
+    {
+      "id": "1adb1289-1f91-4734-8dea-775df7ae7afb",
+      "service_id": "fd08a57f-879c-40ba-84fa-a44a8d7571f3",
+      "scheduled_at": "2026-09-07T13:30:00+00:00",
+      "status": "confirmed",
+      "created_at": "2026-09-04T15:44:37.777036"
+    }
+  ],
+  "business": {
+    "id": "3421eb20-e71f-4eda-b5b7-e2043b2ac065",
+    "name": "Test Chat Biz",
+    "timezone": "America/New_York",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "6e918b34-a382-4531-bbb2-b4b0e1182877",
+        "name": "Dental Consultation",
+        "description": null,
+        "price": 50.0,
+        "duration_minutes": 20,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "fd08a57f-879c-40ba-84fa-a44a8d7571f3",
+        "name": "Teeth Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "3a58abef-c4e7-4fdf-83ed-d8691fafd295",
+        "name": "Root Canal",
+        "description": null,
+        "price": 450.0,
+        "duration_minutes": 60,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "6b7cd7d1-ed84-4fc6-b6b5-3713809a9f48",
+        "name": "Braces Consultation",
+        "description": null,
+        "price": 75.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [
+      {
+        "id": "ebb82b04-2261-4dd6-88cf-98b0fddcd14a",
+        "title": "General Clinic Info",
+        "content": "Our clinic is located at 123 Main Street. We accept cash and card as payment methods. If you need to cancel or reschedule an appointment, please give us at least 24 hours notice. If you are experiencing a dental emergency, please call the front desk directly rather than using this chat."
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

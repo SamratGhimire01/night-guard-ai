@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ActionIcon, Button, Group, Paper, SegmentedControl, Stack, Table, Text, Tooltip } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { IconCheck, IconHeadset } from '@tabler/icons-react'
+import { IconCheck, IconHeadset, IconInbox } from '@tabler/icons-react'
+import { Link } from 'react-router-dom'
 import { apiFetch, ApiError } from '../../api/client'
 import type { HandoffListItem } from '../../api/types'
 import { EmptyRow } from '../../components/EmptyState'
@@ -99,6 +100,12 @@ export default function HandoffsPage() {
                       <StatusBadge status={h.status} />
                     </Table.Td>
                     <Table.Td>
+                      <Group gap={4} wrap="nowrap">
+                      <Tooltip label="Open in inbox">
+                        <ActionIcon component={Link} to={`/dashboard/inbox/${h.conversation_id}`} aria-label="Open in inbox">
+                          <IconInbox size={17} stroke={1.75} />
+                        </ActionIcon>
+                      </Tooltip>
                       {h.status !== 'resolved' && (
                         <Tooltip label="Mark resolved">
                           <ActionIcon color="teal" aria-label="Mark resolved" onClick={() => resolve(h.id)}>
@@ -106,6 +113,7 @@ export default function HandoffsPage() {
                           </ActionIcon>
                         </Tooltip>
                       )}
+                      </Group>
                     </Table.Td>
                   </Table.Tr>
                 ))

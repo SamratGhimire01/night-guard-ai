@@ -1,0 +1,3854 @@
+{
+  "flagged_conversations": [
+    {
+      "conversation_id": "0381e97f-fc92-4431-9c18-e75e1794bb45",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T17:03:43.459910",
+      "message_count": 10,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "0670c55a-8ad2-498b-a829-fc7aaeb785aa",
+      "business_name": "Riverside Dental",
+      "channel": "website",
+      "created_at": "2026-09-04T12:30:09.569025",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: e70302d4-74da-47cf-944c-1c5e6494b826"
+        }
+      ]
+    },
+    {
+      "conversation_id": "08d61038-ccaf-44d7-a4a2-2054db228416",
+      "business_name": "Riverside Dental",
+      "channel": "website",
+      "created_at": "2026-09-04T14:22:17.603857",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: a39ed754-0f09-4dfb-aa47-5ae74de5de2c"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "204b2f6f-2499-4c6d-8939-d7d2791e3fbf",
+      "business_name": "Riverside Dental",
+      "channel": "website",
+      "created_at": "2026-09-04T14:34:49.778630",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "2d86eb8f-94c4-43b6-8ac5-6409f623dfa3",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T10:50:36.805763",
+      "message_count": 34,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 2a186b8a-3240-4b8c-a475-0d65e6f1aec7"
+        },
+        {
+          "category": "multi_question",
+          "detail": "3 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "4f620508-4277-4c79-b9cd-4e1114bee9bf",
+      "business_name": "Riverside Dental",
+      "channel": "website",
+      "created_at": "2026-09-04T14:33:06.574871",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 5ffc83e2-3782-4e4b-9f0b-6ed8239e3572"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "53a87e6c-6f94-49d6-af6f-8ceb76254c69",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T11:37:45.541455",
+      "message_count": 12,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 0c998f69-c26c-425f-9c39-c9d5b2ddd4e4"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 0c998f69-c26c-425f-9c39-c9d5b2ddd4e4"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 0c998f69-c26c-425f-9c39-c9d5b2ddd4e4"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "55fb33ac-2caf-4cf4-b25a-732ee377471d",
+      "business_name": "Riverside Dental",
+      "channel": "website",
+      "created_at": "2026-09-04T14:23:32.498512",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 17978562-1a1c-46eb-a69f-a1217ab18a5e"
+        }
+      ]
+    },
+    {
+      "conversation_id": "5d72cbeb-908e-49c6-9688-0e71eb59e2f9",
+      "business_name": "Riverside Dental",
+      "channel": "website",
+      "created_at": "2026-09-04T12:24:36.543762",
+      "message_count": 16,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "62cb25ef-e317-47ee-b3cf-987ee0d0ff00",
+      "business_name": "Riverside Dental",
+      "channel": "website",
+      "created_at": "2026-09-04T12:26:02.958631",
+      "message_count": 16,
+      "flags": [
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "6a7c6838-c84c-4a4e-b2e0-0e9ba2d005bd",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T15:45:19.282355",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 500474cf-1e06-4dbc-a504-07ba1dde4ca0"
+        }
+      ]
+    },
+    {
+      "conversation_id": "7019d666-b5dd-427c-9fef-7d07772b2b11",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T16:21:59.858496",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: a184e425-d2a9-4862-ad61-653497bf20b4"
+        }
+      ]
+    },
+    {
+      "conversation_id": "70dc2288-23e0-42b4-9f3b-6dee3c9c6e1c",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T15:44:11.635700",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 1adb1289-1f91-4734-8dea-775df7ae7afb"
+        }
+      ]
+    },
+    {
+      "conversation_id": "74a60e09-8161-4703-9cfa-8370c61117dc",
+      "business_name": "Riverside Dental",
+      "channel": "website",
+      "created_at": "2026-09-04T14:23:58.038831",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "77f54630-75f8-431c-bd47-16053b8f7638",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T16:16:17.423318",
+      "message_count": 26,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: d203e02e-3343-4f24-9dba-928682168f8f"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: d203e02e-3343-4f24-9dba-928682168f8f"
+        }
+      ]
+    },
+    {
+      "conversation_id": "7a6c9d54-74df-4252-8d49-ccd5cb82e1fd",
+      "business_name": "Riverside Dental",
+      "channel": "website",
+      "created_at": "2026-09-04T14:33:59.296553",
+      "message_count": 10,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: b45ab1bb-a9a5-469c-8490-2b7fac3ccfb0"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 1ab936d6-0ad9-4a5d-ae9c-31569652ec1a"
+        }
+      ]
+    },
+    {
+      "conversation_id": "7f6de45e-4a39-465e-a604-ddf83962e195",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T15:46:40.295017",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 22424fb9-df4b-41ac-a50d-002accddacd2"
+        }
+      ]
+    },
+    {
+      "conversation_id": "7f72b8f1-38d9-4cec-83d9-ae0c0baa3083",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T13:49:02.485857",
+      "message_count": 34,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "90279226-aebf-4689-a6c0-9c48c79d1a32",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T13:46:26.240550",
+      "message_count": 12,
+      "flags": [
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "a9973129-5989-4412-be90-c67eec6d50ee",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T11:55:00.801547",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: c803284c-65db-4e90-9309-4929183b8a60"
+        }
+      ]
+    },
+    {
+      "conversation_id": "b153f7d2-4f99-44c3-955e-fc61db8dc91c",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T15:22:34.590615",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 4a4ffb6d-fb21-477b-aa1b-7c25835ebac0"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "b89e0864-3cc8-4289-a3df-66ec8efb2fbc",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T16:23:19.754857",
+      "message_count": 14,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 985dbf33-a9ff-498a-8fe1-6801af2f38e7"
+        }
+      ]
+    },
+    {
+      "conversation_id": "baf1f104-c9aa-43f7-816b-f17d1dcca086",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T17:28:43.037560",
+      "message_count": 38,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "3 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 87d9ab8a-6240-4b2b-920a-6edaeaa41497"
+        },
+        {
+          "category": "multi_question",
+          "detail": "3 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 87d9ab8a-6240-4b2b-920a-6edaeaa41497"
+        }
+      ]
+    },
+    {
+      "conversation_id": "bdec6528-48d1-41f6-97be-c4dbafdb0700",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T15:32:50.099089",
+      "message_count": 14,
+      "flags": [
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c24c840b-8f3a-4bd7-9c93-90025372454b",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T15:17:23.445952",
+      "message_count": 26,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "d42322b0-e28f-47d2-bc12-a4eb2d809ea3",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T15:21:58.996811",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "d42b6b0e-f2d9-4ebf-b1ae-2fd3fbc42efd",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T15:41:58.214173",
+      "message_count": 14,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 19f49b02-8f53-48ed-9f02-d5f460f464dc"
+        }
+      ]
+    },
+    {
+      "conversation_id": "e2b6cffb-68e3-42d7-a801-1d0b315a887c",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T16:52:19.755386",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "e55b0315-6ff5-48ee-a7d3-7b3ff5f4b284",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T12:03:49.934607",
+      "message_count": 16,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "3 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 26f3a3e9-d578-4bc9-adfe-65421af5bf6b"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "f2791d2b-86be-48ac-82f0-6d3782c89e9c",
+      "business_name": "Riverside Dental",
+      "channel": "website",
+      "created_at": "2026-09-04T13:17:19.435071",
+      "message_count": 18,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "f325ae02-423f-4cdf-8e73-c56b5607b6b4",
+      "business_name": "Riverside Dental",
+      "channel": "website",
+      "created_at": "2026-09-04T12:27:35.375595",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 6634831b-4be7-4e64-aad7-c96018e94191"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "f941521e-9a45-49fa-bd94-6bbd5ad50454",
+      "business_name": "Riverside Dental",
+      "channel": "debug_test2",
+      "created_at": "2026-09-04T13:23:49.722106",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "fc8ef02a-81c9-40f8-96fa-4ccb822d1bf3",
+      "business_name": "Test Chat Biz",
+      "channel": "sms",
+      "created_at": "2026-09-04T18:16:52.011250",
+      "message_count": 0,
+      "flags": [
+        {
+          "category": "empty_conversation",
+          "detail": "no messages at all"
+        }
+      ]
+    },
+    {
+      "conversation_id": "fe3344e6-7f91-47c0-983b-8f7ca6218081",
+      "business_name": "Test Chat Biz",
+      "channel": "website",
+      "created_at": "2026-09-04T12:40:12.059996",
+      "message_count": 34,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 8886ae09-d4b9-403c-9d0c-ca39e1c92ded"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 7b8491fb-c962-4025-b51c-1ae002fc14b0"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "03ac818b-2bcd-45f4-b7cc-65cb1762cd25",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:06:18.842784",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "153123be-5d4c-42e0-951c-d8872cc06d04",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-05T13:56:40.105826",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "106 words in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "289f1c28-f4c3-4772-89f8-140738a02060",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:03:19.436853",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "3b77f941-827f-453a-be98-80fb9fa57440",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:01:41.923007",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "3ffb0825-b45c-4d1b-b7ed-6359006480dd",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-05T10:39:38.631642",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 11749d5d-fc01-4f79-93fb-9853387fd7bc"
+        }
+      ]
+    },
+    {
+      "conversation_id": "4760c744-f777-449b-9067-d897c69b6a80",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:10:48.356423",
+      "message_count": 0,
+      "flags": [
+        {
+          "category": "empty_conversation",
+          "detail": "no messages at all"
+        }
+      ]
+    },
+    {
+      "conversation_id": "479e459f-c7d5-4d3c-901f-8b0ded5a766b",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:06:52.047974",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "55801bc2-c530-420a-8ae0-451c05f17678",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:10:06.801413",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "58229d51-173a-47db-861d-7e874b079ef9",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:04:02.151193",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "5ac34165-5e67-4a36-adc4-2235bafc7876",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:02:20.430155",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "600ac9c4-e9d4-406d-8179-773c95eed197",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:05:20.655293",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "3 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "79a5d996-e60b-414e-9ca0-108d2f11b870",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:07:00.014191",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "7f45a76f-5aa4-4f67-8659-3f67150ceaf4",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:06:12.880912",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "98799446-74b2-4abd-8318-ab1634f2dfb5",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-05T13:20:46.110453",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "179 words in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "aab03d5b-b2ea-42a1-82b1-3490ba3f93f8",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:10:00.522754",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "bb271108-d5f8-4086-a40d-2e99bb3494e8",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-05T10:40:55.423468",
+      "message_count": 14,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 12ea0174-351d-4a2f-8539-cc028f1e2606"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c303b56b-352d-4fc1-9617-5374e98ac989",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:02:56.089107",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "ce3268ff-71d5-4bd1-b5f9-90ae4fac3648",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:09:14.889331",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "ced01d9a-9b32-4f0e-8eae-11a2749f0949",
+      "business_name": "Rate Limit Fix Co",
+      "channel": "website",
+      "created_at": "2026-09-05T05:10:29.050232",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "e378e61a-d37b-48b7-a7ad-9eee62ca3f6c",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-05T10:34:01.916571",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 7e40b7d3-9f48-4b7e-a118-ecf649a2135a"
+        }
+      ]
+    },
+    {
+      "conversation_id": "f98ba2d8-df80-4c07-b54d-2f861592a583",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-05T13:47:57.260865",
+      "message_count": 118,
+      "flags": [
+        {
+          "category": "unusually_long",
+          "detail": "118 messages"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "91 words in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 91c5633d-bd72-4e34-a163-c43ef7da9cdf"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 91c5633d-bd72-4e34-a163-c43ef7da9cdf"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: c886c23a-b6bb-4c8b-8152-0dc4a24d14b3"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 375275d9-6804-4140-86b4-8ad9b138302b"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 12,000 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 1,600 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "93 words in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: c886c23a-b6bb-4c8b-8152-0dc4a24d14b3"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 375275d9-6804-4140-86b4-8ad9b138302b"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 91c5633d-bd72-4e34-a163-c43ef7da9cdf"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 1,600 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "3 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 12,000 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 1,600 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: c886c23a-b6bb-4c8b-8152-0dc4a24d14b3"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 375275d9-6804-4140-86b4-8ad9b138302b"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 91c5633d-bd72-4e34-a163-c43ef7da9cdf"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "fbf2343e-b991-46b8-8bed-1ca9becd4d68",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-05T13:56:48.108699",
+      "message_count": 24,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 5b5748a5-6710-4bb4-adf0-8eb82d69fcb4"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "fd2859ae-e74d-4a98-b202-cf8eb744e34f",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-05T09:39:56.404777",
+      "message_count": 66,
+      "flags": [
+        {
+          "category": "unusually_long",
+          "detail": "66 messages"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "98 words in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "100 words in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "125 words in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "132 words in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "3 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 0c55f3f8-2ae2-49a6-b1e1-aeab1e0a7240"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 2288d450-83d1-4922-8575-120719804998"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 0c55f3f8-2ae2-49a6-b1e1-aeab1e0a7240"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 2288d450-83d1-4922-8575-120719804998"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 0c55f3f8-2ae2-49a6-b1e1-aeab1e0a7240"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 2288d450-83d1-4922-8575-120719804998"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "027096db-cbf0-4fc1-bb93-63f518247e9c",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-06T16:42:45.152927",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: d25cd618-6296-4ff0-a0d1-8aca08123a5e"
+        }
+      ]
+    },
+    {
+      "conversation_id": "1f4532a8-0f14-4925-9b3c-a4482c5af302",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-06T16:10:17.806409",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 09640c63-f0cd-4454-b8d4-00160c79856a"
+        }
+      ]
+    },
+    {
+      "conversation_id": "32aea5c3-1d30-4396-a5d5-036857119cdc",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-06T15:52:00.934397",
+      "message_count": 12,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 69403613-e573-4d76-8ac1-071647061bf4"
+        }
+      ]
+    },
+    {
+      "conversation_id": "3bcebf98-c43b-4edd-8845-b06da5ab909a",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-06T03:16:27.257463",
+      "message_count": 24,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: f65f8684-8ca5-45e7-873f-5985ca574ba4"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: f5b47e44-b0ec-4a9f-bad3-5de9aac447bd"
+        }
+      ]
+    },
+    {
+      "conversation_id": "58d5f5b9-6517-4ba7-81ec-beddc3476cb7",
+      "business_name": "BRN",
+      "channel": "website",
+      "created_at": "2026-09-06T11:19:57.096802",
+      "message_count": 0,
+      "flags": [
+        {
+          "category": "empty_conversation",
+          "detail": "no messages at all"
+        }
+      ]
+    },
+    {
+      "conversation_id": "61f4af33-e125-48e1-836d-e2f29ec5a5c3",
+      "business_name": "Standing Test Biz Free",
+      "channel": "website",
+      "created_at": "2026-09-06T11:18:52.776022",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 25 which matches no configured service price ([75.0, 150.0])"
+        }
+      ]
+    },
+    {
+      "conversation_id": "6bdedafe-c543-49db-9842-96314be63b03",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-06T17:24:59.935974",
+      "message_count": 48,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 56c523bc-ca1b-42e9-a38e-df4c7e6a73e3"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 56c523bc-ca1b-42e9-a38e-df4c7e6a73e3"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 56c523bc-ca1b-42e9-a38e-df4c7e6a73e3"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 56c523bc-ca1b-42e9-a38e-df4c7e6a73e3"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "74f9bc87-bddd-4f13-af37-29e0950287bb",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-06T03:44:51.062780",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 981fb7f7-7476-49dc-8312-924b78e2a8b6"
+        }
+      ]
+    },
+    {
+      "conversation_id": "821eb136-74e9-48bf-8134-682240e1d9a9",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-06T03:44:36.005370",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "844f32f0-f476-4762-ad5d-849ff8502b70",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-06T04:24:39.413692",
+      "message_count": 18,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 12d373ba-e370-4be2-bc44-39d6292069d3"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: ebb4db68-77ea-4d41-86b1-da619310405e"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "88dafd5d-1e26-411a-9028-f931f44cb1f7",
+      "business_name": "Standing Test Biz Free",
+      "channel": "website",
+      "created_at": "2026-09-06T11:19:35.263043",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 25 which matches no configured service price ([75.0, 150.0])"
+        }
+      ]
+    },
+    {
+      "conversation_id": "ab5af821-73f8-4c7c-a346-31d0ff8e4d7c",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-06T03:43:30.884260",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 85134fc3-f926-40b3-b373-39d52c628852"
+        }
+      ]
+    },
+    {
+      "conversation_id": "ecb33d1e-4dd5-4db9-94ed-1fca7f4a06e1",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-06T19:45:43.742684",
+      "message_count": 46,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "91 words in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "99 words in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "3 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 802f1de9-48ee-43db-a9e2-3239a537a5c9"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 802f1de9-48ee-43db-a9e2-3239a537a5c9"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "98 words in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "eda0682b-b87e-44ea-9cec-d08a9ccf29ea",
+      "business_name": "BRN",
+      "channel": "website",
+      "created_at": "2026-09-06T11:20:02.650846",
+      "message_count": 0,
+      "flags": [
+        {
+          "category": "empty_conversation",
+          "detail": "no messages at all"
+        }
+      ]
+    },
+    {
+      "conversation_id": "f3242b3f-c980-49d0-88c3-85231f5a071b",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-06T08:04:32.196113",
+      "message_count": 26,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "98 words in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "2b11a236-89c7-4ce2-b42d-7d649926c78f",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-07T04:25:32.083671",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "92 words in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "30ec23e7-4f2f-460a-be51-fb2b78d35c5d",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-07T01:00:00.650916",
+      "message_count": 24,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 5df857a5-9a80-4835-9f67-a0821f13f7dd"
+        }
+      ]
+    },
+    {
+      "conversation_id": "42e638d0-0e45-4d28-aa66-28192dc7fbea",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-07T03:09:04.767272",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "49372d30-f822-43a9-861a-5dc7cee88bc6",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-07T03:29:22.826143",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "4a0de7b9-8d7c-4ab8-abc2-28854dcd0fa4",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-07T04:27:59.020758",
+      "message_count": 16,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "103 words in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 5e148621-6202-48f6-8622-4dc10a8917d8"
+        }
+      ]
+    },
+    {
+      "conversation_id": "4aa1e59a-85c4-470e-87e5-aeb05d0ac505",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-07T03:31:48.755245",
+      "message_count": 22,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "91 words in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 6a717dc9-1292-45b2-9245-de8d2dcfc8f3"
+        }
+      ]
+    },
+    {
+      "conversation_id": "5b33fcca-51e3-41a6-a646-2c98ca0c89c3",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-07T01:56:18.448573",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: b1fbf68f-66f5-440c-9b9a-a362b6f6d3cd"
+        }
+      ]
+    },
+    {
+      "conversation_id": "5e369b91-6ba1-4143-bce8-d9841d69a5a2",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-07T03:48:58.082670",
+      "message_count": 32,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: a3c525ef-9ce7-4634-a79a-52b803b1917f"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "735e739a-028f-4203-b049-81c69d6fd20f",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-07T03:25:15.133876",
+      "message_count": 20,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "134 words in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "80e159fe-5788-4cd6-ab7f-d54a3af14ad2",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-07T00:54:50.454153",
+      "message_count": 16,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 1713cde0-6b2f-43c7-bd8b-590ae492c123"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: b97a0271-9d7f-454b-b220-f2780b2cae48"
+        }
+      ]
+    },
+    {
+      "conversation_id": "e16bef81-5841-468c-a154-4b6811c2ad9f",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-07T04:47:43.043333",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "e448ef46-d4a7-435a-bd57-9a94d34af65b",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "messenger",
+      "created_at": "2026-09-11T19:42:01.393419",
+      "message_count": 35,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "111 words in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 32867021-aed1-4023-bf4e-b93494ba9f35"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "171506b8-bb53-4f50-984f-e1df4f34ef18",
+      "business_name": "Riverside Dental",
+      "channel": "widget",
+      "created_at": "2026-09-12T17:58:58.039147",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "3db7b0b2-df3f-474f-bfa9-9da5bf6532f1",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "whatsapp",
+      "created_at": "2026-09-12T09:36:15.748909",
+      "message_count": 199,
+      "flags": [
+        {
+          "category": "unusually_long",
+          "detail": "199 messages"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "100 words in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "120 words in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 1c0574b0-8425-4a19-b9aa-37852b71b2dd"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 119af0ce-fb65-4926-bffa-0968aa7c0c4d"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "103 words in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 3852aa6d-3cb8-456d-a823-260625933fcc"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: bd33a80f-e00b-4052-9f9b-23fe9dd23a45"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 12.00 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 1188.00 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 1188 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 3852aa6d-3cb8-456d-a823-260625933fcc"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 1188 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: cf653594-a632-4272-adbe-0b809fca4d91"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: e3bec930-5e46-4be3-ae99-bd55a22b7425"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: e3bec930-5e46-4be3-ae99-bd55a22b7425"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 9518cc98-ec2a-43d1-bd0b-eb84c4f59ed8"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 12.00 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 1188.00 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: fb105366-c986-4f7d-a20e-46d75eaa6a7f"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: fb105366-c986-4f7d-a20e-46d75eaa6a7f"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 5b11d7d5-ac6a-46b7-86fc-3d6fc9dec0ba"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 12.00 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 1188.00 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 5b11d7d5-ac6a-46b7-86fc-3d6fc9dec0ba"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 12.00 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "3e1da47f-fa19-4f2f-a6f0-e35a6cad35ce",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-12T19:04:18.837230",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 164f68a9-db93-4a0f-93e1-c4c739974841"
+        }
+      ]
+    },
+    {
+      "conversation_id": "48e3f029-653b-4c02-9c81-758b4fbbfcc0",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "whatsapp",
+      "created_at": "2026-09-12T16:11:59.404072",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "102 words in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "65b0abbd-0d58-4dc7-92d4-753cf20099aa",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "whatsapp",
+      "created_at": "2026-09-12T16:03:31.323637",
+      "message_count": 10,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: b3479a9f-b48e-4890-afe5-048b7f95bef0"
+        }
+      ]
+    },
+    {
+      "conversation_id": "6791f3a8-9a82-407d-b83c-281b67915c9c",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "whatsapp",
+      "created_at": "2026-09-12T10:41:48.226900",
+      "message_count": 96,
+      "flags": [
+        {
+          "category": "unusually_long",
+          "detail": "96 messages"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "93 words in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "209 words in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: a43e7841-c0c8-4f59-9534-2312dc257d82"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "7ec75570-db57-4a00-a360-0ad990980851",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-12T19:01:34.922616",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "af40da5f-af6a-4e61-9904-c4ec0cbe7176",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-12T19:02:26.212948",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: cf67c7ba-c0dc-469d-bfe6-31471a34d465"
+        }
+      ]
+    },
+    {
+      "conversation_id": "d0606f81-ee7a-4409-b84f-09f9d4d817ff",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "whatsapp",
+      "created_at": "2026-09-12T09:59:38.966890",
+      "message_count": 42,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 03c1b417-dc9f-489a-ab30-5f0adeeeab97"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "116 words in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "d68d584a-1d79-43d1-9131-17c70a377d86",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-12T18:59:17.583419",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: a65e015e-c672-4de7-8b0d-a2433cf32e61"
+        }
+      ]
+    },
+    {
+      "conversation_id": "debb88bf-39a5-47c0-8801-ae0ddebc6721",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-12T18:16:32.102003",
+      "message_count": 20,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "94 words in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 3a2681c6-16d2-4931-a936-cbf59d20e66b"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "118 words in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "df6add7e-4243-49cd-be87-bfbcf65d7d70",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-12T18:34:29.041718",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 9b3ee3e9-bb83-4219-be8c-98d7bd00a556"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 727de52e-5721-4371-97c3-4a54c8371943"
+        }
+      ]
+    },
+    {
+      "conversation_id": "f426cfed-95fd-4031-9dbd-6bda80c91fb0",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "whatsapp",
+      "created_at": "2026-09-12T10:21:19.196689",
+      "message_count": 14,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 7df66f2f-9a10-4544-8eb4-84e55e2aa7a3"
+        }
+      ]
+    },
+    {
+      "conversation_id": "db98dbb5-6912-45a0-9229-9e1947293363",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-13T18:01:15.320739",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 8fe24512-a0ce-408d-8f34-6659d2000d0d"
+        }
+      ]
+    },
+    {
+      "conversation_id": "e3569b60-150d-4ed1-aa22-8e7bce7e8964",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-13T12:44:14.962669",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: f297d724-f961-4ee4-821f-85d1807c0a85"
+        }
+      ]
+    },
+    {
+      "conversation_id": "1ad85833-7e44-44fa-b4f7-b420b91e054b",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "whatsapp",
+      "created_at": "2026-09-16T03:27:12.365446",
+      "message_count": 56,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "3 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "97 words in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 1cab7a7c-81ac-4d9b-afd3-fb6699731bd1"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 1cab7a7c-81ac-4d9b-afd3-fb6699731bd1"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 1cab7a7c-81ac-4d9b-afd3-fb6699731bd1"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 4c0b348e-b1c4-4bfb-81f5-8339bd15b1a2"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 1cab7a7c-81ac-4d9b-afd3-fb6699731bd1"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 4c0b348e-b1c4-4bfb-81f5-8339bd15b1a2"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "28017051-7ebc-4a8a-90ab-5d51a0553a0d",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "whatsapp",
+      "created_at": "2026-09-16T01:57:32.003247",
+      "message_count": 30,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "3 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: ef22b8a3-4ca3-4e73-8234-fceb6ae4e428"
+        }
+      ]
+    },
+    {
+      "conversation_id": "9934ad59-bad4-42c4-8c30-41532dc67f72",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-16T18:10:19.162264",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 03dacc95-2dea-4758-9879-b35c5a0269a1"
+        }
+      ]
+    },
+    {
+      "conversation_id": "ac9079a1-9a87-4453-9c64-3288aae71934",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-16T09:54:43.976114",
+      "message_count": 14,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 48916342-be3a-4f0e-808a-9ae7c9952d40"
+        }
+      ]
+    },
+    {
+      "conversation_id": "073217a5-4acc-4880-83ac-20bb70277026",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:05:15.262063",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "0932ac98-b4df-4140-957e-f7eca3785403",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:21:56.297960",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "15a6b2ce-f014-4aa5-b074-158b10da8280",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:22:40.838517",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "1858baf9-7572-43e5-aadb-fb31ddb4baa4",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:23:03.263679",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "38077dbe-fe59-482f-a31b-17f370cce8db",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-19T18:53:42.847232",
+      "message_count": 22,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 70edf480-422b-4c67-875b-275313396768"
+        }
+      ]
+    },
+    {
+      "conversation_id": "4bde9baa-91e4-489b-b59e-46f9e58d8293",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:24:22.991994",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "56e6ddd6-37ed-466b-8a7a-29e90d51e969",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:23:32.870407",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "7b1b416e-61d9-4523-b2ef-93496436e4d3",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-19T19:01:00.491297",
+      "message_count": 24,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 3b2e5f65-a539-401d-9003-e1b0b3b0b060"
+        }
+      ]
+    },
+    {
+      "conversation_id": "87b7ac20-c505-45c9-a91f-2dffc70e613d",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:24:01.193123",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "8f702dc5-5f13-4c73-ac87-21a2376983f4",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:24:46.586023",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "920c159f-effa-4b73-bd0d-385bc1ad9c5b",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:06:07.253358",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "92c768ae-ff4f-4de6-bcd7-10427b60422b",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:25:10.741369",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "a8401a66-6a98-4b70-8f2a-3681e42183cd",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:05:42.168550",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "b1f290a4-5473-4a3e-98b4-d03d948461d8",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:21:18.293182",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "d70420b1-366c-4384-abec-d197469f5790",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-19T16:47:08.525608",
+      "message_count": 34,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: f5194ebf-64f0-46c5-8408-ae8a3d1b57f9"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: f5194ebf-64f0-46c5-8408-ae8a3d1b57f9"
+        }
+      ]
+    },
+    {
+      "conversation_id": "e1affd07-ccef-4b4d-9336-ed86c5e1c9dd",
+      "business_name": "Phase 14 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-19T18:27:55.764298",
+      "message_count": 14,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 21955948-be74-468f-a8da-57f825d7a37c"
+        }
+      ]
+    },
+    {
+      "conversation_id": "f062c074-c034-4c82-8f8d-0662de17bf97",
+      "business_name": "Phase 14 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-19T18:22:30.849426",
+      "message_count": 14,
+      "flags": [
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 2c5253de-41b4-4754-b9b0-a29a23968ad8"
+        }
+      ]
+    },
+    {
+      "conversation_id": "fc989289-0721-4698-afc4-e58c222c594e",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-19T17:22:22.195913",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "002972c7-b350-4bd2-9132-d1781c05b287",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:26:15.312649",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "086dca06-452c-4350-9380-0515d3ed356c",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:30:07.687095",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "0d2f950c-888a-4d8a-a4f0-4b495534b8a6",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:35:48.001767",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "0e536311-b6ac-4b48-812e-cc09432fa819",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:36:45.302424",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "108c14f2-ac0c-4c71-8c1b-9c16289458b2",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:27:03.117710",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "10920459-076e-4b79-925d-8cca81e14f6c",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T04:32:19.887773",
+      "message_count": 12,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "96 words in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "1147abb4-e0a8-4402-a9cc-4471c90c58ab",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:31:47.268313",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "1312948e-b674-4564-b4aa-e5cea5a15900",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:35:09.239882",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "14e12688-99a0-4aef-acef-f07df4a9d2e2",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:21:38.272653",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "16d5dc68-311b-49cf-9a50-0405b61dfdd4",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:23:42.235889",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "1a365c7c-a15a-4ea3-bb11-d594d84cdad1",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:40:09.782707",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "23b50173-59b1-4cdf-97cc-3ab2288c7281",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:35:22.668140",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "24aa3725-fe43-492e-b088-828699215aa9",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:29:41.458773",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "2f8ab471-9308-46bc-a763-2668091680c1",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T05:44:24.209953",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "38b242a6-7c00-4126-8cd0-435473baab0c",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:36:35.840982",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "3a430f6e-8913-45c2-8c6f-e2f4db3761b0",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:28:53.318787",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "3c20e7ed-d817-466f-ad11-78219cc9c0e5",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:37:04.047542",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "3e009ee3-1d44-41ef-9a58-a99073af269f",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:34:43.754957",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "4304c776-5bcb-4ed4-9b64-ddc28d6b13a0",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:32:43.673125",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "487176dd-f5f7-4d3e-9d13-43d00a761d9a",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:38:48.108753",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "4d439cbb-ff8b-4b57-95e7-e33b9123540e",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T04:15:38.147976",
+      "message_count": 12,
+      "flags": [
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "50f04797-ecc9-4f42-a860-74fc1aad805b",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:25:27.899541",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "5441ec25-f706-42c8-ab3c-6c47025035dd",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:24:13.058496",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "55361db5-ac64-4dc1-86bc-029d78fc6b21",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:27:22.909878",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "55579615-c416-4eab-8d92-24be4e1e1e7d",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:37:30.141723",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "57a71956-c82e-4d10-ae3b-f0da03c45d11",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:37:17.901776",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "58e0434f-e78b-4a67-a353-b6b100432108",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:30:39.719865",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "59700596-2cdb-42f6-803c-e653c56c1e36",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-20T05:14:24.076647",
+      "message_count": 12,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "59740bfe-dbcb-41ae-9692-5f8acb125975",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:41:23.718045",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "5bdbebc3-e9a8-48de-8ef7-fe565a814c4f",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-20T05:13:28.024746",
+      "message_count": 12,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "603f5026-5982-4a44-824a-b937d484f889",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:38:03.835008",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "64b72909-bbd2-40a5-b553-980eb88a61ab",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:26:01.500091",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "64fcd363-04dc-48b5-bd40-87901fc8dbba",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T04:36:00.340910",
+      "message_count": 12,
+      "flags": [
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "6634dfb6-3cee-4ed0-a095-94dbfbfa0ef3",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T04:08:10.592825",
+      "message_count": 18,
+      "flags": [
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "708ce6c3-c4d2-45e8-bd70-b886e3d0e9e0",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:39:00.664024",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "7f9bfe41-16ba-4e86-b997-d1aa40be743d",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:28:06.338138",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "80d78d71-2c9d-4480-aa8f-261f56897537",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:38:17.416806",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "818a403a-e936-4ef9-8ee8-37fa8434cda9",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:38:31.911559",
+      "message_count": 12,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "wall_of_text",
+          "detail": "104 words in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "83031129-cd95-40c3-87d3-755c99f2e0a1",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:21:56.662071",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "889213a3-f544-4c49-9c43-fc2c2d8be46e",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:34:57.154730",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "89770515-4910-4e87-a1bb-442276608ccc",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:26:29.661388",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "8b7ace56-6fff-4bd3-95a8-75d317e1d171",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:29:26.169485",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "8bc07549-16e5-4839-b436-53161012f43c",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:40:39.275133",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "8cec9e95-c54a-44e4-a24f-602a3aa7c87f",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:38:32.623450",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "8d7818e5-a238-43e4-89ff-c032e7d30e12",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:23:08.032842",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "90228d50-d7f3-44af-8f95-3988dce8ca4c",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:22:51.242445",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "97c27013-2dbf-4df4-a1b3-97ccc7599cec",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:39:32.339268",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "9ab394a9-3db3-4939-8d25-dba11a2ea6a2",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:35:59.389405",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "9b1e16bd-50ad-4001-954d-924dc5b79a2f",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:22:35.575203",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "9c4e8796-a93c-4d1c-a76d-1938db73706a",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:34:02.682816",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "9ecced97-fa1e-44f6-a3f8-b3121ffb3f36",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:31:28.465265",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "9ed60a71-734a-42be-8ff3-bedb1e6de2c9",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T04:31:05.021460",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "99 words in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "a07e1f6d-6532-44a8-89ce-b4ecc1aabd22",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:34:16.225741",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "a4885922-8a89-46ab-899a-909c74519074",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:30:59.063771",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "ac47760e-bc81-44f4-bb0f-1c458e35739b",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:29:09.006844",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "b0611240-8d19-4d26-b4cc-b7cafb1955ce",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "whatsapp",
+      "created_at": "2026-09-20T16:16:28.068048",
+      "message_count": 12,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "123 words in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 82884e1c-683a-4ae5-986c-8d0d431162c7"
+        }
+      ]
+    },
+    {
+      "conversation_id": "b3822446-4417-4840-aabe-7775b3533b9a",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T04:39:06.514411",
+      "message_count": 14,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "b74fe03c-cbaf-4d13-96ee-57b7b7006217",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:32:00.823783",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "b95b9523-9b87-4d21-bb43-049888a16f08",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:24:53.608821",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "bb87736b-098b-41eb-96fb-1147b4d61c42",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:28:37.658701",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "bc026ffc-d544-41ab-b5d5-b413c2a1e348",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:23:26.029327",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "bf2c4044-8a47-4f99-b6f5-5f56b1627b1d",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:31:14.350039",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c1e333de-2b0b-4b6a-8739-f89cc3da0925",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:36:49.362853",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c34e67bb-735d-43c1-a970-75b6165879c8",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:33:10.556623",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c3749b35-4e81-44e4-b94c-1decb5fb9859",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:36:20.334230",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c594f147-d449-476f-bfec-92e084236fa7",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:37:45.193479",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c60c920a-7075-47ac-a2b9-eca670ba96e3",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:32:56.841898",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c678ddce-e0db-4f30-a0b3-c82b0e5db79f",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:34:30.225195",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c8edc86f-fab9-44e1-b6c7-adfc8ef12a8a",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:35:34.626161",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c92553cb-1e7e-43a9-9850-fead42198900",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:22:22.641437",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c9c2c8a7-4f93-4518-8c64-bef671f927cc",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:40:54.178853",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "cdd59fee-a396-4ca4-bf1f-4f5a4342be7a",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T05:43:36.503142",
+      "message_count": 16,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "d0727807-b4b3-4a31-b498-d53f2304bfcb",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:24:29.242877",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "d653b5ce-0cd0-4476-a992-e105a1f475c7",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:33:41.448655",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "d6c0515e-f5a0-4cf0-a46c-e21ceb3752d5",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:41:07.438560",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "d7c5c68b-3c1d-4fbc-93c9-c97a906e57a4",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:33:25.082073",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "d9c5a038-908e-4b75-995a-92f21c41514e",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:25:46.551139",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "da69d2cb-3670-4778-9017-22bbab2427f6",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:28:20.024208",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "e02a81da-d712-4d31-be23-308e7f52c945",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:22:09.769531",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "e6476889-79de-495d-84ab-14c01283b64a",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:39:54.402335",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "e7e29ac8-7d99-438c-adf6-63ee3d6d5d98",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T10:21:47.507449",
+      "message_count": 4,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "e7ef68b0-6d9d-4394-88f4-fb25eebfc337",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:40:26.163213",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "ec85fca2-efe8-4fd3-ba77-94281390b19e",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:39:13.550968",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "f44c89d4-33b2-45ec-9815-95f4c479f7d5",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:42:01.380373",
+      "message_count": 36,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "f622a416-e63d-4e27-9d2d-e9992417d987",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:23:57.760221",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "fa489b16-1c7a-461f-8f77-30b8ba2cc5e9",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T14:37:47.458317",
+      "message_count": 24,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "106 words in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: c4e44e12-9bac-48e0-9a04-9c56ff4ea79d"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "fefce36b-e72c-43de-a493-98500a8f788d",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:26:45.025680",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "fff5fad1-461b-4ac0-822c-4c1deddce223",
+      "business_name": "Phase 16 Test Clinic",
+      "channel": "website",
+      "created_at": "2026-09-20T11:30:25.315146",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "1634ec7b-b4ff-4187-89f6-40b1eafe6d4c",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-21T13:25:33.138350",
+      "message_count": 0,
+      "flags": [
+        {
+          "category": "empty_conversation",
+          "detail": "no messages at all"
+        }
+      ]
+    },
+    {
+      "conversation_id": "259f1b9d-7b2f-4f33-ab17-7ffcd35c2ec8",
+      "business_name": "Standing Test Biz Premium",
+      "channel": "website",
+      "created_at": "2026-09-21T13:26:31.143104",
+      "message_count": 0,
+      "flags": [
+        {
+          "category": "empty_conversation",
+          "detail": "no messages at all"
+        }
+      ]
+    },
+    {
+      "conversation_id": "54058ce5-eb71-4e28-8c16-24309915876b",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-21T02:44:42.167556",
+      "message_count": 23,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 038542fa-7da3-44e0-a459-f1c071a05b35"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 97501cf9-083c-470b-9309-e7fa118598c9"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 97501cf9-083c-470b-9309-e7fa118598c9"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 12.00 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 1188.00 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 038542fa-7da3-44e0-a459-f1c071a05b35"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 12.00 which matches no configured service price ([500.0, 800.0, 1200.0, 1500.0, 6000.0, 8000.0, 45000.0, 60000.0])"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: 038542fa-7da3-44e0-a459-f1c071a05b35"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "62bf6bb4-934a-47f2-a525-7938701d3bc1",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "whatsapp",
+      "created_at": "2026-09-21T09:38:32.946218",
+      "message_count": 44,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "6 question marks in one reply"
+        },
+        {
+          "category": "id_leak",
+          "detail": "raw UUID in reply: e602fc06-2bf6-4b07-ba17-3c7668622c00"
+        },
+        {
+          "category": "possible_loop",
+          "detail": "identical agent reply sent twice in a row"
+        }
+      ]
+    },
+    {
+      "conversation_id": "bc105720-242a-4966-b75a-ddd89b7b450d",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-21T02:49:03.155737",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "2a7f8f07-5c6e-41c2-afb5-006f074349c3",
+      "business_name": "SikshyaNepal",
+      "channel": "website",
+      "created_at": "2026-09-22T07:23:07.466351",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 575,000 which matches no configured service price ([])"
+        }
+      ]
+    },
+    {
+      "conversation_id": "3c9fd176-d2ca-4f14-b493-8b9dae7f869c",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-22T10:07:42.140323",
+      "message_count": 16,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "4be84614-02c9-49cd-8429-508c68dad05a",
+      "business_name": "Anchor Test Biz",
+      "channel": "website",
+      "created_at": "2026-09-22T10:03:23.028908",
+      "message_count": 10,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "58b21829-a35d-4746-b955-5c3d47d0926a",
+      "business_name": "SikshyaNepal",
+      "channel": "website",
+      "created_at": "2026-09-22T10:40:29.183473",
+      "message_count": 20,
+      "flags": [
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 105,000 which matches no configured service price ([])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 145,000 which matches no configured service price ([])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 70,000 which matches no configured service price ([])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 65,000 which matches no configured service price ([])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 80,000 which matches no configured service price ([])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 70,000 which matches no configured service price ([])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 65,000 which matches no configured service price ([])"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 80,000 which matches no configured service price ([])"
+        }
+      ]
+    },
+    {
+      "conversation_id": "82dc77d5-1dfb-4bff-b700-004998890c4e",
+      "business_name": "SikshyaNepal",
+      "channel": "website",
+      "created_at": "2026-09-22T07:14:41.255146",
+      "message_count": 8,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "86866c98-3760-449f-b2fa-94082a60089e",
+      "business_name": "Anchor Test Biz After",
+      "channel": "website",
+      "created_at": "2026-09-22T10:05:31.139254",
+      "message_count": 10,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        },
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    },
+    {
+      "conversation_id": "94355eb3-4554-4a89-b94d-2849c0a7c24e",
+      "business_name": "SikshyaNepal",
+      "channel": "website",
+      "created_at": "2026-09-22T07:45:02.277722",
+      "message_count": 6,
+      "flags": [
+        {
+          "category": "wall_of_text",
+          "detail": "91 words in one reply"
+        },
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 1,500 which matches no configured service price ([])"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c48407e8-786a-4b45-984d-d73a668e27fe",
+      "business_name": "SikshyaNepal",
+      "channel": "website",
+      "created_at": "2026-09-22T07:22:54.870586",
+      "message_count": 2,
+      "flags": [
+        {
+          "category": "price_mismatch",
+          "detail": "reply states 95,000 which matches no configured service price ([])"
+        }
+      ]
+    },
+    {
+      "conversation_id": "c76a0baf-77d0-43bf-a9a2-2d2b0adc7b5c",
+      "business_name": "Samaj Dental Clinic",
+      "channel": "website",
+      "created_at": "2026-09-22T10:02:12.582478",
+      "message_count": 14,
+      "flags": [
+        {
+          "category": "multi_question",
+          "detail": "2 question marks in one reply"
+        }
+      ]
+    },
+    {
+      "conversation_id": "e33b0691-82b6-4024-a6b6-169b07cc3010",
+      "business_name": "Anchor Test Biz Final",
+      "channel": "website",
+      "created_at": "2026-09-22T10:06:38.970872",
+      "message_count": 12,
+      "flags": [
+        {
+          "category": "booking_incomplete",
+          "detail": "customer discussed booking, draft had a date, but no appointment row exists (may be legitimately abandoned by the customer -- needs a read)"
+        }
+      ]
+    }
+  ],
+  "category_counts": {
+    "multi_question": 111,
+    "id_leak": 117,
+    "possible_loop": 51,
+    "booking_incomplete": 104,
+    "empty_conversation": 6,
+    "wall_of_text": 33,
+    "unusually_long": 4,
+    "price_mismatch": 30
+  }
+}

@@ -40,6 +40,7 @@ class InstagramChannelAdapter(ChannelAdapter):
         external_customer_ref: str,
         content: str,
         external_message_id: str | None = None,
+        deliver=None,
     ) -> dict | None:
         # external_customer_ref is the real Instagram-scoped id (IGSID) —
         # like WhatsApp's wa_id/Messenger's PSID and unlike the widget's
@@ -60,6 +61,7 @@ class InstagramChannelAdapter(ChannelAdapter):
             business_id=business_id,
             content=content,
             external_message_id=external_message_id,
+            deliver=deliver,
         )
 
     def send_message(self, *, igsid: str, text: str, ig_account_id: str, access_token: str) -> str:

@@ -1,0 +1,47 @@
+{
+  "conversation_id": "c1629db8-a5eb-45f8-b3df-6f93c2b5c664",
+  "business_id": "671f3593-2794-412f-8040-0e4391fc6648",
+  "channel": "website",
+  "status": "open",
+  "detected_language": null,
+  "created_at": "2026-09-06T18:36:23.598363",
+  "customer": {
+    "id": "ee1c1b1b-0a90-4e1d-b91f-f55458b3de46",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "What are your hours",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-06T18:36:23.701691"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thanks for calling! I've also let our team know, so a real person will follow up with you.",
+      "detected_intent": null,
+      "created_at": "2026-09-06T18:36:23.726401"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "671f3593-2794-412f-8040-0e4391fc6648",
+    "name": "Voice Test Biz",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [],
+    "knowledge_documents": [],
+    "hours": []
+  }
+}

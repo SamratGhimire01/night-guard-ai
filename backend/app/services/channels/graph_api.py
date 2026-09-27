@@ -101,3 +101,24 @@ def test_messenger_credentials(*, access_token: str, api_version: str) -> tuple[
     except urllib.error.URLError as exc:
         logger.info("messenger test-connection could not reach Graph API (%s)", type(exc.reason).__name__)
         return False, "Could not reach Meta's Graph API. Please try again."
+
+
+def fetch_instagram_user_id(*, access_token: str, api_version: str) -> str | None:
+    """The Instagram professional account id (`user_id`) behind this token, or None. Instagram gives every account TWO ids:
+    `id` (what `GET /me` returns as the app-scoped id — what a person typically copies into "Instagram Account ID") and
+    `user_id` (the professional account id — what Meta puts in `entry[].id` of every WEBHOOK). Matching incoming webhooks to
+    a business needs the second one; a business that typed only the first had every inbound DM dropped. Best-effort, never
+    raises, never logs the token."""
+    if not access_token:
+        return None
+    host = instagram_graph_host(access_token)
+    request = urllib.request.Request(
+        f"https://{host}/{api_version}/me?fields=user_id&access_token={access_token}", method="GET"
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:
+            user_id = json.loads(response.read()).get("user_id")
+            return str(user_id) if user_id else None
+    except (urllib.error.URLError, ValueError, json.JSONDecodeError):
+        logger.info("could not look up the Instagram professional account id (non-fatal)")
+        return None

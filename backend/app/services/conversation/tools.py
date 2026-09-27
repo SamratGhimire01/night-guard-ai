@@ -1,9 +1,13 @@
 import uuid
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
 from app.schemas.conversation import ConversationIntent
+
+if TYPE_CHECKING:
+    from app.db.models.business import Business
 
 # Master-plan rule: the LLM is never the source of truth and never mutates data
 # directly. A ConversationTool is the only thing allowed to touch business data
@@ -32,5 +36,13 @@ class ConversationTool(ABC):
 TOOL_REGISTRY: dict[ConversationIntent, ConversationTool] = {}
 
 
-def find_tool(intent: ConversationIntent) -> ConversationTool | None:
+def find_tool(intent: ConversationIntent, business: "Business | None" = None) -> ConversationTool | None:
+    """Phase 58: every tool ever registered here is booking-family (booking/cancel/
+    reschedule/appointment-status/resend-confirmation — see TOOL_REGISTRY above), so
+    `business.booking_enabled == False` hard-refuses ALL of them, regardless of what the
+    LLM classified this turn. This is the real code-level backstop; intent.py's
+    exclusion of these intents from the LLM's own intent_list is the (best-effort, not
+    load-bearing) prompt-level half of the same gate."""
+    if business is not None and not business.booking_enabled:
+        return None
     return TOOL_REGISTRY.get(intent)

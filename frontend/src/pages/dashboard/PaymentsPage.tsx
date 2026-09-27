@@ -1,35 +1,22 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import {
-  Alert,
-  Badge,
-  Button,
-  Center,
-  Loader,
-  Paper,
-  Stack,
-  Switch,
-  Table,
-  Text,
-  Title,
-} from '@mantine/core'
+import { Alert, Anchor, Button, Paper, Stack, Switch, Table, Title } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { IconAlertTriangle, IconCreditCard, IconExternalLink, IconSparkles } from '@tabler/icons-react'
 import { apiFetch, ApiError } from '../../api/client'
 import { useAuth } from '../../auth/AuthContext'
 import type { BusinessRead, PaymentRead, PlanRead } from '../../api/types'
-
-type DashboardContext = { business: BusinessRead | null; plan: PlanRead | null }
+import { EmptyRow } from '../../components/EmptyState'
+import PageHeader from '../../components/PageHeader'
+import StatusBadge from '../../components/StatusBadge'
+import TableSkeleton from '../../components/TableSkeleton'
 
 const GATEWAYS = [
   { value: 'esewa', label: 'eSewa' },
   { value: 'khalti', label: 'Khalti' },
 ]
 
-const STATUS_COLORS: Record<PaymentRead['status'], string> = {
-  pending: 'yellow',
-  completed: 'green',
-  failed: 'red',
-}
+type DashboardContext = { business: BusinessRead | null; plan: PlanRead | null }
 
 export default function PaymentsPage() {
   const { business, plan } = useOutletContext<DashboardContext>()
@@ -74,28 +61,28 @@ export default function PaymentsPage() {
 
   return (
     <Stack gap="md">
-      <Title order={2}>Payments</Title>
-      <Text c="dimmed" size="sm">
-        Collect a real deposit through eSewa or Khalti after a booking is confirmed — configured per-service under
-        Services (a service with no deposit configured is always paid in person, unaffected by this setting).
-      </Text>
+      <PageHeader
+        title="Payments"
+        description="Collect a real deposit through eSewa or Khalti after a booking is confirmed — configured per-service under Services (a service with no deposit configured is always paid in person, unaffected by this setting)."
+      />
 
       {!isPremium && (
-        <Alert color="grape" title="Upgrade to Premium" variant="light">
+        <Alert color="violet" title="Upgrade to Premium" variant="light" icon={<IconSparkles size={18} stroke={1.75} />}>
           Online payment collection is a Premium-plan feature. Ask an owner on your team to upgrade the business's
           plan to enable it.
         </Alert>
       )}
 
       {nonNpr && (
-        <Alert color="yellow" title="NPR currency required" variant="light">
+        <Alert color="yellow" title="NPR currency required" variant="light" icon={<IconAlertTriangle size={18} stroke={1.75} />}>
           eSewa and Khalti only process NPR. Switch this business's currency to NPR under Settings before enabling
           payment collection.
         </Alert>
       )}
 
-      <Paper withBorder p="md" radius="md" maw={480}>
+      <Paper p="md" maw={640}>
         <Stack gap="sm">
+          <Title order={4}>Online deposits</Title>
           <Switch
             label="Collect a real deposit online"
             checked={enabled}
@@ -121,72 +108,68 @@ export default function PaymentsPage() {
             </Stack>
           )}
           {canWrite && (
-            <Button onClick={handleSave} loading={saving} disabled={!isPremium || nonNpr || (enabled && providers.length === 0)}>
+            <Button
+              onClick={handleSave}
+              loading={saving}
+              disabled={!isPremium || nonNpr || (enabled && providers.length === 0)}
+              w="fit-content"
+            >
               Save
             </Button>
           )}
         </Stack>
       </Paper>
 
-      <Title order={4} mt="sm">
+      <Title order={3} mt="sm">
         Payment history
       </Title>
-      <Table.ScrollContainer minWidth={600}>
-        <Table verticalSpacing="sm">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Provider</Table.Th>
-              <Table.Th>Amount</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Gateway reference</Table.Th>
-              <Table.Th>Payment link</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {loading && (
+      <Paper p={0} style={{ overflow: 'hidden' }}>
+        <Table.ScrollContainer minWidth={600}>
+          <Table>
+            <Table.Thead>
               <Table.Tr>
-                <Table.Td colSpan={5}>
-                  <Center py="md">
-                    <Loader size="sm" />
-                  </Center>
-                </Table.Td>
+                <Table.Th>Provider</Table.Th>
+                <Table.Th>Amount</Table.Th>
+                <Table.Th>Status</Table.Th>
+                <Table.Th>Gateway reference</Table.Th>
+                <Table.Th>Payment link</Table.Th>
               </Table.Tr>
-            )}
-            {!loading && payments.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={5}>
-                  <Text c="dimmed" ta="center" py="md">
-                    No payments yet.
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-            {payments.map((p) => (
-              <Table.Tr key={p.id}>
-                <Table.Td style={{ textTransform: 'capitalize' }}>{p.provider}</Table.Td>
-                <Table.Td>
-                  {p.currency} {p.amount}
-                </Table.Td>
-                <Table.Td>
-                  <Badge color={STATUS_COLORS[p.status]} variant="light">
-                    {p.status}
-                  </Badge>
-                </Table.Td>
-                <Table.Td>{p.gateway_reference ?? '—'}</Table.Td>
-                <Table.Td>
-                  {p.status === 'pending' ? (
-                    <a href={p.payment_url} target="_blank" rel="noreferrer">
-                      Open
-                    </a>
-                  ) : (
-                    '—'
-                  )}
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
+            </Table.Thead>
+            <Table.Tbody>
+              {loading && <TableSkeleton cols={5} />}
+              {!loading && payments.length === 0 && (
+                <EmptyRow
+                  colSpan={5}
+                  icon={<IconCreditCard size={22} stroke={1.75} />}
+                  title="No payments yet"
+                  hint="Deposits collected through eSewa or Khalti will appear here."
+                />
+              )}
+              {payments.map((p) => (
+                <Table.Tr key={p.id}>
+                  <Table.Td style={{ textTransform: 'capitalize' }}>{p.provider}</Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                    {p.currency} {p.amount}
+                  </Table.Td>
+                  <Table.Td>
+                    <StatusBadge status={p.status} />
+                  </Table.Td>
+                  <Table.Td>{p.gateway_reference ?? '—'}</Table.Td>
+                  <Table.Td>
+                    {p.status === 'pending' ? (
+                      <Anchor href={p.payment_url} target="_blank" rel="noreferrer" size="sm">
+                        Open <IconExternalLink size={14} style={{ verticalAlign: '-2px' }} />
+                      </Anchor>
+                    ) : (
+                      '—'
+                    )}
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      </Paper>
     </Stack>
   )
 }

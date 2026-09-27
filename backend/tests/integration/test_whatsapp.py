@@ -237,13 +237,15 @@ def test_incoming_message_flows_through_the_real_shared_orchestrator(business_wi
         assert "I've also let our team know, so a real person will follow up with you." in agent_msg.content
 
 
-def test_non_text_message_and_status_only_webhooks_are_acked_and_skipped_not_a_crash(business_with_whatsapp):
+def test_non_text_message_is_recorded_as_a_placeholder_and_status_only_webhooks_are_skipped(business_with_whatsapp):
     """extract_incoming_text_messages's own docstring documents two real,
     frequent Meta webhook shapes this codebase deliberately doesn't act on:
     a non-text message (image/sticker/button, `type != "text"`) and a
     delivery/read-receipt status webhook (`statuses` key, no `messages` key
-    at all) — both silently skipped, never a 500. Until now nothing proved
-    either one: a happy-path-only gap."""
+    at all). Phase 52 changed the first: a non-text message is now STORED as a
+    placeholder CUSTOMER message ("[Customer sent an image]") instead of being
+    dropped without a trace (the AI still does not answer it); a status-only
+    webhook is still skipped, never a 500 and never a conversation."""
     non_text_payload = {
         "object": "whatsapp_business_account",
         "entry": [
@@ -290,13 +292,19 @@ def test_non_text_message_and_status_only_webhooks_are_acked_and_skipped_not_a_c
         ],
     }
 
-    for payload in (non_text_payload, status_only_payload):
-        status, body = _post_webhook(payload)
-        assert status == 200, body
-
+    status, body = _post_webhook(status_only_payload)
+    assert status == 200, body
     with SessionLocal() as db:
-        conversations = db.query(Conversation).filter(Conversation.business_id == business_with_whatsapp["business_id"]).all()
-        assert conversations == [], "a non-text message or a status-only webhook must never create a conversation"
+        assert db.query(Conversation).filter(Conversation.business_id == business_with_whatsapp["business_id"]).count() == 0, (
+            "a status-only webhook must never create a conversation"
+        )
+
+    status, body = _post_webhook(non_text_payload)
+    assert status == 200, body
+    with SessionLocal() as db:
+        (conversation,) = db.query(Conversation).filter(Conversation.business_id == business_with_whatsapp["business_id"]).all()
+        messages = db.query(Message).filter(Message.conversation_id == conversation.id).all()
+        assert [(m.sender_type, m.content) for m in messages] == [(MessageSenderType.CUSTOMER, "[Customer sent an image]")]
 
 
 # ---------------------------------------------------------------------------
@@ -498,6 +506,70 @@ def test_resend_qr_link_reaches_whatsapp_as_a_plain_link_through_the_real_webhoo
     assert sent["text"]["body"] == out["stored_reply"], "what WhatsApp received is exactly what was stored/answered"
     url = re.search(r"https?://\S+", sent["text"]["body"]).group(0)
     assert qr_link_service.verify_token(url.rsplit("/qr/", 1)[1]) == out["appointment_id"]
+
+
+# ---------------------------------------------------------------------------
+# Typing indicator (Meta: POST /messages with status=read + typing_indicator)
+# ---------------------------------------------------------------------------
+
+
+def test_typing_indicator_posts_metas_documented_body(monkeypatch):
+    from app.services.channels import whatsapp as whatsapp_module
+
+    calls = []
+    monkeypatch.setattr(
+        whatsapp_module.httpx, "post", lambda url, **kw: calls.append((url, kw)) or _FakeHttpxResponse(200, {"success": True})
+    )
+    detail = whatsapp_module.WhatsAppChannelAdapter().send_typing_indicator(
+        message_id="wamid.IN1", phone_number_id="12345", access_token="tok"
+    )
+    assert detail == "sent"
+    url, kw = calls[0]
+    assert url.endswith("/12345/messages")
+    assert kw["json"] == {
+        "messaging_product": "whatsapp",
+        "status": "read",
+        "message_id": "wamid.IN1",
+        "typing_indicator": {"type": "text"},
+    }
+    assert kw["headers"] == {"Authorization": "Bearer tok"}
+
+
+def test_typing_indicator_never_raises_and_is_skipped_without_a_token(monkeypatch):
+    import httpx
+
+    from app.services.channels import whatsapp as whatsapp_module
+
+    adapter = whatsapp_module.WhatsAppChannelAdapter()
+
+    def _boom(url, **kw):
+        raise httpx.ConnectError("down")
+
+    monkeypatch.setattr(whatsapp_module.httpx, "post", _boom)
+    assert adapter.send_typing_indicator(message_id="m", phone_number_id="1", access_token="tok").startswith("failed")
+
+    monkeypatch.setattr(whatsapp_module.httpx, "post", lambda *a, **k: _FakeHttpxResponse(400, {}))
+    assert adapter.send_typing_indicator(message_id="m", phone_number_id="1", access_token="tok") == "failed: HTTP 400"
+
+    monkeypatch.setattr(settings, "whatsapp_access_token", "")
+    monkeypatch.setattr(whatsapp_module.httpx, "post", _boom)  # would raise if it were reached
+    assert adapter.send_typing_indicator(message_id="m", phone_number_id="1").startswith("simulated")
+
+
+def test_webhook_shows_typing_once_per_new_message_and_not_for_duplicates(business_with_whatsapp, monkeypatch):
+    from app.services.channels import whatsapp_webhook
+
+    typed = []
+    monkeypatch.setattr(
+        whatsapp_webhook._adapter, "send_typing_indicator", lambda **kw: typed.append(kw["message_id"]) or "sent"
+    )
+    message_id = f"wamid.{uuid.uuid4().hex}"
+    payload = _build_payload(
+        phone_number_id=business_with_whatsapp["phone_number_id"], wa_id="15551230011", message_id=message_id, text="hi"
+    )
+    assert _post_webhook(payload)[0] == 200
+    assert _post_webhook(payload)[0] == 200  # Meta redelivery
+    assert typed == [message_id]
 
 
 # ---------------------------------------------------------------------------

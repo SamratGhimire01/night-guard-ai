@@ -1,0 +1,322 @@
+"""Language-handling MECHANISMS for the multi-turn language experiment (conversation-lab only).
+
+Four arms, each a function `step(state, history, customer, biz, lm) -> dict` that produces ONE assistant reply:
+  pre25       the ORIGINAL system: the real pre-Phase-25 prompt (git 2456440, rule 7 = "match the customer", no lock).
+              This is the reconstruction of the flip-flop failure Phase 25 was built to fix.
+  prod        the CURRENT production mechanism: current intent.py prompt + the lock line injected into the user prompt +
+              the REAL orchestrator functions `_resolve_message_language` / `_resolve_locked_language` (extracted from
+              orchestrator.py with `ast`, read-only, executed here -- nothing is re-implemented, so the word list, the
+              3-message streak and the Phase 25b explicit-switch path are exactly production's).
+  hybrid      NEW: no lock, no streak. Per-message matching; the only carried state is the language the conversation is
+              being held in (set by substantive messages/explicit requests), shown to the model ONLY on very short messages.
+  hybrid_nt   ablation of `hybrid`: identical, minus the tiebreak (no previous-language line, no tiebreak rule). Shows whether
+              the tiebreak is what buys stability or whether it is just luck.
+Not replicated (same limits as lab.production_prompt): deterministic templates, knowledge retrieval, booking tools.
+Backend files are READ ONLY here."""
+import ast
+import enum
+import json
+import re
+import subprocess
+from collections import Counter
+
+from lab.items import Item
+from lab.production_prompt import _BACKEND, TEMPLATE, parse_response, system_prompt, user_prompt
+
+_REPO = _BACKEND.parents[1]
+_ORCH = _BACKEND / "services/conversation/orchestrator.py"
+DEVA = re.compile(r"[ऀ-ॿ]")
+
+
+# ---------------------------------------------------------------- production pieces, read-only
+def _load_prod():
+    schema = (_BACKEND / "schemas/conversation.py").read_text()
+    body = schema[schema.index("class ConversationLanguage"):]
+    body = body[: body.index("\nclass ", 1)]
+    members = dict(re.findall(r'^\s+([A-Z_]+) = "([a-z_]+)"', body, re.M))
+    ns = {"re": re, "Conversation": object, "ConversationLanguage": enum.Enum("ConversationLanguage", members, type=str)}
+    src = _ORCH.read_text()
+    want = {"_LANGUAGE_LOCK_STREAK_THRESHOLD", "_VALID_LANGUAGES", "_DEVANAGARI_RE", "_AMBIGUOUS_GREETING_TOKENS",
+            "_WORD_RE", "_ROMAN_NEPALI_WORDS", "_resolve_message_language", "_resolve_locked_language"}
+    for node in ast.parse(src).body:
+        name = (node.targets[0].id if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
+                else getattr(node, "name", None))
+        if name in want:
+            exec(ast.get_source_segment(src, node), ns)
+            want.discard(name)
+    assert not want, f"production symbols not found in orchestrator.py: {want}"
+    labels = None
+    tsrc = (_BACKEND / "services/conversation/response_templates.py").read_text()
+    for node in ast.parse(tsrc).body:
+        if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", "") == "LANGUAGE_LABELS":
+            labels = ast.literal_eval(node.value)
+    return ns, labels
+
+
+_PROD, LABELS = _load_prod()
+resolve_message_language = _PROD["_resolve_message_language"]
+resolve_locked_language = _PROD["_resolve_locked_language"]
+
+
+class ConvState:
+    """Mirror of the two Conversation columns production persists (detected_language, language_switch_streak) plus the
+    hybrid's only state: the language of the previous assistant reply."""
+    def __init__(self):
+        self.detected_language = None
+        self.language_switch_streak = 0
+        self.strong_language = None  # hybrid: language of the last reply to a SUBSTANTIVE message (or an explicit request)
+
+
+# ---------------------------------------------------------------- pre-Phase-25 prompt (historical, from git)
+def _pre25_template() -> str:
+    src = subprocess.run(["git", "-C", str(_REPO), "show", "2456440:backend/app/services/conversation/intent.py"],
+                         capture_output=True, text=True, check=True).stdout
+    tree = ast.parse(src)
+    return next(n.value.value for n in tree.body
+                if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "_SYSTEM_PROMPT_TEMPLATE")
+
+
+PRE25_TEMPLATE = _pre25_template()
+
+
+# ---------------------------------------------------------------- hybrid prompt (patched in memory; intent.py untouched)
+_TIEBREAK = (
+    " When the CURRENT message is too short to show a language on its own -- a bare number, \"ok\", \"yes\", "
+    "\"thanks\", a time, a weekday, a name, a service name, an emoji, a single generic word -- do NOT let it pull you "
+    "into English: the user prompt then tells you which language the conversation is actually being held in; write in "
+    "that one. That is the ONLY use of earlier turns; a message that shows its own language is never overruled by history."
+)
+
+
+def _hybrid_rule7(tiebreak: bool) -> str:
+    return (
+        "7. Match the language of THIS message, message by message. There is no fixed language for the conversation: read what "
+        "the CURRENT customer message itself shows and write `response` the way they just wrote -- English -> English; "
+        "Nepali in Devanagari -> Devanagari Nepali; Romanized Nepali -> Romanized Nepali; a genuine mix inside one message "
+        "(a Nepali sentence with English nouns, times or service names; or an English sentence with a few Nepali words) -> "
+        "mix back the same way, in about the same proportion, like a bilingual friend texting -- never force a mixed message "
+        "into pure English or into formal Nepali. If a message clearly changes language from the earlier ones, follow the "
+        "new language immediately, in that same reply; never keep answering in the old language because the conversation "
+        "used it before." + (_TIEBREAK if tiebreak else "") +
+        " If the customer explicitly asks to change language (\"let's talk in Nepali\", \"English please\"), do it at once, "
+        "yourself, in that same reply, and keep to it on later neutral turns. You are natively fluent in English, Nepali "
+        "(Devanagari) and Romanized Nepali and any mix of them -- never say you need a \"Nepali-speaking team member\" and "
+        "never set `needs_human_handoff` true just because of a language. When writing Romanized Nepali, write the way "
+        "customers actually text it -- natural spoken forms like \"cha,\" \"xa,\" \"huncha,\" \"hunxa,\" \"garna paryo,\" "
+        "\"gardim,\" \"milcha,\" \"bholi,\" \"aile\" -- never silently upgrade it into formal Devanagari-style vocabulary; "
+        "English service names or numbers inside a Romanized sentence stay as they are. Report in the JSON: "
+        "`message_language` = your honest read of the CURRENT message (\"en\", \"ne_deva\", \"ne_roman\", \"mixed\" or "
+        "\"unclear\") and `reply_language` = the language/script you actually wrote `response` in (\"en\", \"ne_deva\", "
+        "\"ne_roman\" or \"mixed\"); also set `language_switch_request` to the requested language ONLY when the message explicitly asks to change language, else null.\n"
+    )
+
+
+_HYBRID_EXAMPLES = """\
+Example — a genuinely mixed message gets a mixed reply, in the same proportion (Nepali sentence frame, English nouns kept as they are):
+Customer: "yo shirt ko size exchange garna milcha ki milcha na, receipt chai haraayo"
+Assistant: {{"intent": "general_question", "response": "Milcha, 7 din bhitra exchange garna sakincha. Receipt haraeko bhaye pani phone number bata order find garna sakchu.", "message_language": "mixed", "reply_language": "mixed"}}
+
+Example — the customer's PREVIOUS messages were Romanized Nepali, but this message is a clear, full English sentence: follow it at once, do not hold the old language:
+Recent conversation:
+CUSTOMER: pickup kati baje samma huncha?
+AGENT: 6 baje samma huncha.
+Customer: "Actually, can you tell me if I can collect it on Thursday morning instead?"
+Assistant: {{"intent": "general_question", "response": "Yes, Thursday morning works -- we open at 9.", "message_language": "en", "reply_language": "en"}}
+
+Example — a very short neutral message right after Romanized Nepali replies keeps the language of the previous reply (a neutral word must not flip it):
+Recent conversation:
+CUSTOMER: delivery ko charge kati ho?
+AGENT: Kathmandu bhitra Rs 100 ho.
+Language note: this message is too short to show a language. Write `response` in Nepali, written in Romanized/Latin letters (e.g. "Timro naam k ho?") -- the language this conversation is actually being held in. The only exception is if this message explicitly asks you to change language.
+Customer: "2pm"
+Assistant: {{"intent": "follow_up", "response": "2pm ko lagi note gareko chu, Rs 100 delivery sahit.", "message_language": "unclear", "reply_language": "ne_roman"}}
+
+Example — an explicit request to change language is honored immediately and stays:
+Customer: "Can we talk in Nepali from now on?"
+Assistant: {{"intent": "general_question", "response": "Pakka, ma Nepali ma kura garna sakchu! Kehi sodhna man lagcha?", "message_language": "en", "reply_language": "ne_roman", "language_switch_request": "ne_roman", "needs_human_handoff": false}}
+
+"""
+
+
+def _hybrid_template(tiebreak: bool) -> str:
+    t = TEMPLATE
+    a, b = t.index("7. This conversation locks to ONE language"), t.index("\n8. Classify")
+    t = t[:a] + _hybrid_rule7(tiebreak).rstrip("\n") + t[b:]
+    a = t.index("Example — this conversation's language is already locked to Romanized Nepali")
+    b = t.index("Example — a pure pricing question still names a real service")
+    t = t[:a] + _HYBRID_EXAMPLES + t[b:]
+    t, n = re.subn(r'"language_switch_request": null or "<one of en, ne_deva, ne_roman, mixed>"\}\}$',
+                   '"reply_language": "<one of en, ne_deva, ne_roman, mixed>", "language_switch_request": null or "<one of en, ne_deva, ne_roman, mixed>"}}', t)
+    assert n == 1, "JSON tail of the production template changed; update the hybrid surgery"
+    return t
+
+
+HYBRID_TEMPLATE = _hybrid_template(True)
+HYBRID_NT_TEMPLATE = _hybrid_template(False)
+
+
+def is_short(msg: str) -> bool:
+    """Deterministic 'too little to show a language' test: no Devanagari and at most 2 Latin words (digits/emoji/times
+    have 0). Decides ONLY whether the tiebreak line is shown; the model still judges whether the words are neutral."""
+    return not DEVA.search(msg) and len(re.findall(r"[A-Za-z]+", msg)) <= 2
+
+
+def _tiebreak_line(strong: str | None) -> str | None:
+    if not strong or strong not in LABELS:
+        return None
+    return ("Language note: this message is too short to show a language. Write `response` in "
+            f"{LABELS[strong]} -- the language this conversation is actually being held in. The only exception is if "
+            "this message explicitly asks you to change language.")
+
+
+def _script_note(msg: str) -> str | None:
+    """Per-message SCRIPT hint (deterministic, never carried over): script is mechanically checkable, so the model is told
+    it instead of being trusted to notice. Skipped on short messages, where the tiebreak decides."""
+    if is_short(msg):
+        return None
+    if DEVA.search(msg):
+        return ("Script note: the customer wrote in Devanagari script. Write `response` in Devanagari Nepali (English "
+                "service names, numbers and times may stay in Latin letters).")
+    return ("Script note: the customer wrote in Latin letters. Write `response` in Latin letters (English or Romanized "
+            "Nepali), not Devanagari -- unless this message explicitly asks for Devanagari script.")
+
+
+_FAM = {"en": "en", "ne_deva": "deva", "ne_roman": "roman", "mixed": "roman"}
+
+
+def _insert_before_customer(prompt: str, line: str) -> str:
+    head, sep, tail = prompt.rpartition("\n\nNew customer message to respond to:\n")
+    return f"{head}\n\n{line}{sep}{tail}"
+
+
+# ---------------------------------------------------------------- one LLM call -> parsed JSON
+def parse_full(raw: str) -> dict:
+    text = raw.strip()
+    if text.startswith("```"):
+        text = text.strip("`").strip()
+        if text.lower().startswith("json"):
+            text = text[4:].strip()
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            data["response"] = (data.get("response") or "").strip() or text
+            return data
+    except json.JSONDecodeError:
+        pass
+    return {"response": text}
+
+
+def _reply_language(d: dict) -> str | None:
+    rl = d.get("reply_language")
+    if DEVA.search(d["response"]):
+        return "ne_deva" if len(DEVA.findall(d["response"])) > len(re.findall(r"[A-Za-z]", d["response"])) else (rl or "mixed")
+    return None if rl == "ne_deva" else rl  # a Devanagari claim the text cannot back up is dropped (production's trust rule)
+
+
+def _call(lm, system: str, user: str) -> dict:
+    out = lm(messages=[{"role": "system", "content": system}, {"role": "user", "content": user}])
+    return parse_full(out[0] if isinstance(out, list) else out)
+
+
+def _item(biz, history, customer):
+    return Item(id="lang", biz=biz, customer=customer, history=list(history))
+
+
+def step(arm: str, state: ConvState, history, customer: str, biz: str, lm) -> dict:
+    """history: [(who, text)] of prior turns (who in Customer/Assistant), the arm's OWN earlier replies. Mutates `state`."""
+    if arm.startswith("prod_fix"):  # L8 arms (lab/lang_anchor.py); lazy import: lang_anchor imports this module
+        from lab import lang_anchor
+        return lang_anchor.step(arm, state, history, customer, biz, lm)
+    it = _item(biz, history, customer)
+    if arm == "pre25":
+        d = _call(lm, system_prompt(biz, PRE25_TEMPLATE), user_prompt(it))
+        return {"reply": d["response"], "meta": {}}
+
+    if arm == "prod":
+        up = user_prompt(it)
+        if state.detected_language in LABELS:
+            up = (f"This conversation's locked language: {LABELS[state.detected_language]}. Write `response` in this exact "
+                  "language/script regardless of minor drift in the customer's current message.\n\n") + up
+        lock_before = state.detected_language
+        d = _call(lm, system_prompt(biz), up)
+        msg_lang = resolve_message_language(customer, d.get("message_language"))
+        used = resolve_locked_language(state, msg_lang, d.get("language_switch_request"))
+        return {"reply": d["response"], "meta": {"lock_before": lock_before, "lock_after": state.detected_language,
+                                                 "streak": state.language_switch_streak, "resolved_msg_lang": msg_lang,
+                                                 "llm_message_language": d.get("message_language"),
+                                                 "switch_request": d.get("language_switch_request"), "lock_used": used}}
+
+    if arm in ("hybrid", "hybrid_nt"):
+        tb = arm == "hybrid"
+        system = system_prompt(biz, HYBRID_TEMPLATE if tb else HYBRID_NT_TEMPLATE)
+        up = user_prompt(it)
+        line = _tiebreak_line(state.strong_language) if (tb and is_short(customer)) else _script_note(customer)
+        if line:
+            up = _insert_before_customer(up, line)
+        d = _call(lm, system, up)
+        rl = _reply_language(d)
+        retried = False
+        # verify-and-retry (tiebreak arm only): on a too-short-to-show-a-language turn the reply must stay in the
+        # conversation's language; the model reports what it wrote, so a mismatch is caught and redrafted ONCE.
+        if (tb and is_short(customer) and state.strong_language and rl in LABELS and d.get("language_switch_request") not in LABELS
+                and _FAM[rl] != _FAM[state.strong_language]):
+            retried = True
+            d = _call(lm, system, up + f"\n\n[Your draft was written in {LABELS[rl]}, but this message is too short to change "
+                      f"the language. Rewrite `response` in {LABELS[state.strong_language]}. Keep every other JSON field.]")
+            rl = _reply_language(d)
+        explicit = d.get("language_switch_request") in LABELS
+        if rl in LABELS and (not is_short(customer) or explicit):
+            state.strong_language = rl
+        return {"reply": d["response"], "meta": {"tiebreak_shown": bool(line) and tb and is_short(customer), "retried": retried,
+                                                 "strong_used": state.strong_language, "message_language": d.get("message_language"),
+                                                 "reply_language": rl, "explicit": explicit}}
+    raise ValueError(arm)
+
+
+ARMS = ("pre25", "prod", "hybrid", "hybrid_nt")
+
+
+# ---------------------------------------------------------------- independent reply-language labeler
+_LABEL_PROMPT = (
+    "You label the language/script of ONE customer-service chat reply. Answer with JSON only: {\"label\": \"<x>\"}.\n"
+    "Labels:\n"
+    "en = English sentence frame (at most a Nepali greeting/thanks word such as Namaste or Dhanyabad).\n"
+    "ne_deva = Nepali written in Devanagari script.\n"
+    "ne_roman = Nepali written in Latin letters: Nepali grammar/function words (cha, ho, ko, ma, huncha, milcha, garnu, "
+    "chahanu, ...) form the sentence; English nouns, numbers, times, service names inside it are normal.\n"
+    "mixed = a real blend: sentences in both frames, or an English frame carrying several Nepali function words/clauses.\n"
+    "Judge the sentence frame, not isolated loan words."
+)
+
+
+def label_reply(text: str, lm, votes: int = 3) -> str:
+    if DEVA.search(text):
+        deva, latin = len(DEVA.findall(text)), len(re.findall(r"[A-Za-z]", text))
+        return "ne_deva" if deva >= 0.3 * (deva + latin) else "mixed"
+    got = []
+    for _ in range(votes):
+        out = lm(messages=[{"role": "system", "content": _LABEL_PROMPT}, {"role": "user", "content": text}])
+        try:
+            lab = json.loads(re.search(r"\{.*\}", out[0] if isinstance(out, list) else out, re.S).group(0))["label"]
+        except (AttributeError, ValueError, KeyError):
+            continue
+        got.append(lab)
+    return Counter(got).most_common(1)[0][0] if got else "unknown"
+
+
+if __name__ == "__main__":  # smallest checks that fail if the surgery / extraction breaks
+    assert "locked language" not in HYBRID_TEMPLATE.lower()
+    assert '"reply_language"' in HYBRID_TEMPLATE and "7. Match the language of THIS message" in HYBRID_TEMPLATE
+    assert "ONLY use of earlier turns" in HYBRID_TEMPLATE and "ONLY use of earlier turns" not in HYBRID_NT_TEMPLATE
+    assert "locks to ONE language" in TEMPLATE and "Match the customer's language and style" in PRE25_TEMPLATE
+    HYBRID_TEMPLATE.format(business_name="x", business_description="", tone="t", intent_list="a")
+    s = ConvState()
+    assert resolve_message_language("मलाई cleaning", None) == "ne_deva"
+    assert resolve_message_language("malai xa", "en") == "ne_roman"
+    assert resolve_locked_language(s, "ne_roman") == "ne_roman" and s.detected_language == "ne_roman"
+    for _ in range(2):
+        assert resolve_locked_language(s, "en") == "ne_roman"          # 2 differing messages: lock holds
+    assert resolve_locked_language(s, "en") == "ne_roman" and s.detected_language == "en"  # 3rd flips the lock for NEXT turn
+    assert is_short("ok") and is_short("3pm") and is_short("K xa") and not is_short("malai bholi aauchu")
+    assert '"reply_language"' in HYBRID_TEMPLATE and LABELS["ne_roman"]
+    print("lang_mech checks ok")

@@ -359,9 +359,14 @@ def test_real_orchestrator_no_knowledge_match_creates_handoff_and_appends_honest
     assert resp.status_code == 201, resp.text
     body = resp.json()
 
-    # Phase 8's honest text is preserved verbatim, not replaced/mangled —
-    # confirms this doesn't regress the guardrail's natural tone.
-    assert honest_llm_text in body["response"]
+    # Phase 5 grounding guard update: a low-similarity info-question answer is
+    # now ALWAYS replaced by the fixed honest-fallback template, never left as
+    # the LLM's own self-reported "I don't know" wording — code decides this
+    # is ungrounded, not the model's own (unverifiable) honesty. The stub's
+    # `honest_llm_text` deliberately does NOT appear in the real response
+    # anymore; that's the guarantee this test now checks.
+    assert honest_llm_text not in body["response"]
+    assert "don't want to guess" in body["response"]
     assert "real person will follow up" in body["response"]
 
     handoffs = _open_handoffs(conversation_id)

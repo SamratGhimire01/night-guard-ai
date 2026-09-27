@@ -1,0 +1,136 @@
+{
+  "conversation_id": "d62cdb94-1c7c-405d-b946-8fe0008bcb91",
+  "business_id": "3027173d-1704-49bc-993f-f11063145335",
+  "channel": "debug_test4",
+  "status": "open",
+  "detected_language": "ne_roman",
+  "created_at": "2026-09-04T13:28:25.406762",
+  "customer": {
+    "id": "a3b3a5ed-f0f4-4a4e-9cf9-52993288c8a1",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Namaste, hajur ko cleaning ko price kati ho?",
+      "detected_intent": "pricing_question",
+      "created_at": "2026-09-04T13:28:25.414585"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Namaste! Hamro Cleaning ko price $90.00 ho ra samaya 30 minute samma hunchha. Appointment book garnu cha bhane kun date ra time milne ho bhanera bhannu hos.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:28:31.717600"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Can we just switch to English please?",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-04T13:28:31.721254"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 bujhe. Tara yo conversation Romanized Nepali ma locked bhayeko le ma Romanized Nepali ma matrai jawab dinchhu. English ma sahayog chahanu huncha? Bhanuhos, ma team sanga English support cha ki chaina sodhi dinchu.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:28:44.747829"
+    },
+    {
+      "sender_type": "customer",
+      "content": "What are your business hours?",
+      "detected_intent": "business_hours",
+      "created_at": "2026-09-04T13:28:57.858560"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Maaf garnuhos \u2014 hamro business hours ko info yo chat ma available chaina. Ke ma timilai hamro team sanga connect garidinchu? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:28:57.863898"
+    },
+    {
+      "sender_type": "customer",
+      "content": "One more question in English, are you open on weekends?",
+      "detected_intent": "business_hours",
+      "created_at": "2026-09-04T13:28:57.867171"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Maaf garnuhos \u2014 yo chat ma weekend khula cha ki chhaina bhanne thik janakari chaina. Ke ma timilai hamro team sanga connect garidinchu? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:29:06.050592"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "3027173d-1704-49bc-993f-f11063145335",
+    "name": "Riverside Dental",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "4a8676d5-b5fa-4a0a-89d7-73265201161d",
+        "name": "Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

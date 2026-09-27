@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   ActionIcon,
   AppShell,
+  Badge,
   Burger,
   Group,
   NavLink as MantineNavLink,
@@ -25,6 +26,7 @@ import {
   IconCreditCard,
   IconDental,
   IconHeadset,
+  IconInbox,
   IconLayoutDashboard,
   IconLogout,
   IconMessageCircle,
@@ -40,13 +42,15 @@ import {
 } from '@tabler/icons-react'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch } from '../../api/client'
-import type { BusinessRead, PlanRead } from '../../api/types'
+import type { BusinessRead, InboxSummary, PlanRead } from '../../api/types'
+import { usePolling } from './inbox/usePolling'
 import StatusBadge from '../../components/StatusBadge'
 
 const ICON = { size: 18, stroke: 1.75 }
 
 const NAV_SECTIONS: { label: string; to: string; icon: ReactNode; ownerAdminOnly?: boolean }[] = [
   { label: 'Overview', to: '/dashboard', icon: <IconLayoutDashboard {...ICON} /> },
+  { label: 'Inbox', to: '/dashboard/inbox', icon: <IconInbox {...ICON} /> },
   { label: 'Appointments', to: '/dashboard/appointments', icon: <IconCalendarEvent {...ICON} /> },
   { label: 'Services', to: '/dashboard/services', icon: <IconDental {...ICON} /> },
   { label: 'Staff', to: '/dashboard/staff', icon: <IconUsers {...ICON} /> },
@@ -90,6 +94,16 @@ export default function DashboardLayout() {
   const { pathname } = useLocation()
   const [business, setBusiness] = useState<BusinessRead | null>(null)
   const [plan, setPlan] = useState<PlanRead | null>(null)
+  const [waiting, setWaiting] = useState(0)
+
+  // Sidebar badge: conversations waiting for a person. Quiet on failure (the badge just doesn't update).
+  usePolling(async () => {
+    try {
+      setWaiting((await apiFetch<InboxSummary>('/inbox/summary')).needs_reply)
+    } catch {
+      /* keep the last known count */
+    }
+  }, 30000)
 
   useEffect(() => {
     let cancelled = false
@@ -162,6 +176,7 @@ export default function DashboardLayout() {
               active={item.to === '/dashboard' ? pathname === item.to : pathname.startsWith(item.to)}
               label={item.label}
               leftSection={item.icon}
+              rightSection={item.to === '/dashboard/inbox' && waiting > 0 ? <Badge color="orange" size="sm" circle>{waiting}</Badge> : undefined}
               onClick={close}
               mb={2}
             />

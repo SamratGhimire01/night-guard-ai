@@ -9,7 +9,12 @@ from app.core.config import settings
 from app.db.models.integration import Integration
 from app.schemas.integration import IntegrationUpsert
 from app.services.notifications.email_provider import test_smtp_credentials
-from app.services.channels.graph_api import instagram_graph_host, test_graph_credentials, test_messenger_credentials
+from app.services.channels.graph_api import (
+    fetch_instagram_user_id,
+    instagram_graph_host,
+    test_graph_credentials,
+    test_messenger_credentials,
+)
 
 
 def _check_whatsapp(config: dict) -> tuple[bool, str]:
@@ -122,9 +127,14 @@ def upsert_integration(db: Session, *, business_id: uuid.UUID, payload: Integrat
     live with a Meta Page/App (Messenger/WhatsApp/Instagram only; Google
     Calendar's tokens are never hand-typed through this endpoint, see
     save_integration_config's docstring)."""
-    return save_integration_config(
-        db, business_id=business_id, type_=payload.type, config=payload.config, enabled=payload.enabled
-    )
+    config = dict(payload.config)
+    if payload.type == "instagram":
+        # Webhooks address the account by its professional id, which is not the id people usually paste as "Instagram
+        # Account ID" — look it up from the token so inbound DMs are matched either way (see fetch_instagram_user_id).
+        user_id = fetch_instagram_user_id(access_token=config.get("access_token", ""), api_version=settings.instagram_api_version)
+        if user_id:
+            config["ig_user_id"] = user_id
+    return save_integration_config(db, business_id=business_id, type_=payload.type, config=config, enabled=payload.enabled)
 
 
 def test_connection(db: Session, *, business_id: uuid.UUID, type_: str) -> tuple[bool, str]:

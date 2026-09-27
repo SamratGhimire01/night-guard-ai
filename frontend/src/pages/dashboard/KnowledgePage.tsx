@@ -1,31 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  ActionIcon,
-  Badge,
-  Button,
-  Center,
-  Group,
-  Loader,
-  Modal,
-  Stack,
-  Table,
-  Text,
-  Textarea,
-  TextInput,
-  Title,
-  Tooltip,
-} from '@mantine/core'
+import { ActionIcon, Anchor, Button, Checkbox, Group, Modal, NumberInput, Paper, Stack, Table, Text, Textarea, TextInput, Tooltip } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
+import { IconArchive, IconBook2, IconCheck, IconPlus, IconUpload, IconWorld } from '@tabler/icons-react'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch, ApiError } from '../../api/client'
 import type { KnowledgeDocumentRead, KnowledgeStatus } from '../../api/types'
-
-const STATUS_COLOR: Record<KnowledgeStatus, string> = {
-  draft: 'gray',
-  approved: 'green',
-  archived: 'dark',
-}
+import { EmptyRow } from '../../components/EmptyState'
+import PageHeader from '../../components/PageHeader'
+import RowActions from '../../components/RowActions'
+import StatusBadge from '../../components/StatusBadge'
+import TableSkeleton from '../../components/TableSkeleton'
 
 export default function KnowledgePage() {
   const { role } = useAuth()
@@ -38,6 +23,8 @@ export default function KnowledgePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [ingestOpen, setIngestOpen] = useState(false)
+  const [ingesting, setIngesting] = useState(false)
   const [viewing, setViewing] = useState<KnowledgeDocumentRead | null>(null)
 
   async function load() {
@@ -60,6 +47,10 @@ export default function KnowledgePage() {
     },
   })
   const editForm = useForm({ initialValues: { title: '', content: '' } })
+  const ingestForm = useForm({
+    initialValues: { url: '', crawl: false, max_pages: 5 },
+    validate: { url: (v) => (v.trim() ? null : 'URL is required.') },
+  })
 
   async function handleCreate(values: typeof createForm.values) {
     try {
@@ -98,6 +89,30 @@ export default function KnowledgePage() {
       notifications.show({ message: err instanceof ApiError ? err.message : 'Upload failed.', color: 'red' })
     } finally {
       setUploading(false)
+    }
+  }
+
+  async function handleIngestUrl(values: typeof ingestForm.values) {
+    setIngesting(true)
+    try {
+      const created = await apiFetch<KnowledgeDocumentRead[]>('/knowledge/ingest-url', {
+        method: 'POST',
+        body: JSON.stringify(values),
+      })
+      setDocuments((prev) => [...created, ...prev])
+      notifications.show({
+        message:
+          created.length === 1
+            ? `"${created[0].title}" fetched and added as a draft.`
+            : `${created.length} pages fetched and added as drafts.`,
+        color: 'green',
+      })
+      ingestForm.reset()
+      setIngestOpen(false)
+    } catch (err) {
+      notifications.show({ message: err instanceof ApiError ? err.message : 'Fetching that URL failed.', color: 'red' })
+    } finally {
+      setIngesting(false)
     }
   }
 
@@ -156,112 +171,114 @@ export default function KnowledgePage() {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between">
-        <Title order={2}>Knowledge Base</Title>
-        {canWrite && (
-          <Group>
-            <Button variant="default" onClick={handleUploadClick} loading={uploading}>
-              Upload file
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.txt"
-              hidden
-              onChange={handleFileChosen}
-            />
-            <Button onClick={() => setCreateOpen(true)}>New document</Button>
-          </Group>
-        )}
-      </Group>
+      <PageHeader
+        title="Knowledge Base"
+        description="What your AI assistant knows. Only approved documents are used to answer customers."
+        actions={
+          canWrite && (
+            <>
+              <Button
+                variant="default"
+                leftSection={<IconUpload size={16} stroke={1.75} />}
+                onClick={handleUploadClick}
+                loading={uploading}
+              >
+                Upload file
+              </Button>
+              <input ref={fileInputRef} type="file" accept=".pdf,.txt" hidden onChange={handleFileChosen} />
+              <Button
+                variant="default"
+                leftSection={<IconWorld size={16} stroke={1.75} />}
+                onClick={() => setIngestOpen(true)}
+              >
+                From URL
+              </Button>
+              <Button leftSection={<IconPlus size={16} stroke={2} />} onClick={() => setCreateOpen(true)}>
+                New document
+              </Button>
+            </>
+          )
+        }
+      />
 
-      <Table.ScrollContainer minWidth={700}>
-        <Table verticalSpacing="sm">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Title</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Source</Table.Th>
-              <Table.Th>Version</Table.Th>
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {loading && (
+      <Paper p={0} style={{ overflow: 'hidden' }}>
+        <Table.ScrollContainer minWidth={560}>
+          <Table>
+            <Table.Thead>
               <Table.Tr>
-                <Table.Td colSpan={5}>
-                  <Center py="md">
-                    <Loader size="sm" />
-                  </Center>
-                </Table.Td>
+                <Table.Th>Title</Table.Th>
+                <Table.Th>Status</Table.Th>
+                <Table.Th visibleFrom="md">Source</Table.Th>
+                <Table.Th visibleFrom="md">Version</Table.Th>
+                <Table.Th />
               </Table.Tr>
-            )}
-            {!loading && documents.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={5}>
-                  <Text c="dimmed" ta="center" py="md">
-                    No knowledge documents yet.
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
-            {documents.map((doc) => (
-              <Table.Tr key={doc.id}>
-                <Table.Td>
-                  <Text component="button" onClick={() => openView(doc)} style={{ all: 'unset', cursor: 'pointer', textDecoration: 'underline' }}>
-                    {doc.title}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  <Badge color={STATUS_COLOR[doc.status]} variant="light" tt="capitalize">
-                    {doc.status}
-                  </Badge>
-                </Table.Td>
-                <Table.Td>{doc.source}</Table.Td>
-                <Table.Td>{doc.version}</Table.Td>
-                <Table.Td>
-                  <Group gap={4} justify="flex-end">
-                    {canWrite ? (
-                      <>
-                        {doc.status !== 'approved' && (
-                          <Button
-                            size="compact-xs"
-                            variant="light"
-                            color="green"
-                            loading={busyId === doc.id}
-                            onClick={() => setStatus(doc, 'approved')}
-                          >
-                            Approve
-                          </Button>
-                        )}
-                        {doc.status !== 'archived' && (
-                          <Button
-                            size="compact-xs"
-                            variant="light"
-                            loading={busyId === doc.id}
-                            onClick={() => setStatus(doc, 'archived')}
-                          >
-                            Archive
-                          </Button>
-                        )}
-                        <ActionIcon variant="subtle" color="red" onClick={() => handleDelete(doc)} aria-label="Delete">
-                          🗑️
-                        </ActionIcon>
-                      </>
-                    ) : (
-                      <Tooltip label="Owners and admins only">
-                        <Text size="xs" c="dimmed">
-                          Read-only
-                        </Text>
-                      </Tooltip>
-                    )}
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
+            </Table.Thead>
+            <Table.Tbody>
+              {loading && <TableSkeleton cols={5} />}
+              {!loading && documents.length === 0 && (
+                <EmptyRow
+                  colSpan={5}
+                  icon={<IconBook2 size={22} stroke={1.75} />}
+                  title="No knowledge documents yet"
+                  hint="Upload a PDF or write a document so the assistant can answer questions about your business."
+                />
+              )}
+              {documents.map((doc) => (
+                <Table.Tr key={doc.id}>
+                  <Table.Td>
+                    <Anchor component="button" type="button" fw={500} ta="left" onClick={() => openView(doc)}>
+                      {doc.title}
+                    </Anchor>
+                  </Table.Td>
+                  <Table.Td>
+                    <StatusBadge status={doc.status} />
+                  </Table.Td>
+                  <Table.Td visibleFrom="md">{doc.source}</Table.Td>
+                  <Table.Td visibleFrom="md">{doc.version}</Table.Td>
+                  <Table.Td>
+                    <Group gap={4} justify="flex-end" wrap="nowrap">
+                      {canWrite ? (
+                        <>
+                          {doc.status !== 'approved' && (
+                            <Tooltip label="Approve">
+                              <ActionIcon
+                                color="teal"
+                                aria-label="Approve"
+                                loading={busyId === doc.id}
+                                onClick={() => setStatus(doc, 'approved')}
+                              >
+                                <IconCheck size={17} stroke={1.75} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
+                          {doc.status !== 'archived' && (
+                            <Tooltip label="Archive">
+                              <ActionIcon
+                                aria-label="Archive"
+                                loading={busyId === doc.id}
+                                onClick={() => setStatus(doc, 'archived')}
+                              >
+                                <IconArchive size={17} stroke={1.75} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
+                          <RowActions canWrite onDelete={() => handleDelete(doc)} />
+                        </>
+                      ) : (
+                        <Tooltip label="Owners and admins only">
+                          <Text size="xs" c="dimmed">
+                            Read-only
+                          </Text>
+                        </Tooltip>
+                      )}
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      </Paper>
 
       <Modal opened={createOpen} onClose={() => setCreateOpen(false)} title="New knowledge document" size="lg">
         <form onSubmit={createForm.onSubmit(handleCreate)}>
@@ -273,12 +290,44 @@ export default function KnowledgePage() {
         </form>
       </Modal>
 
+      <Modal opened={ingestOpen} onClose={() => setIngestOpen(false)} title="Add from a website URL" size="lg">
+        <form onSubmit={ingestForm.onSubmit(handleIngestUrl)}>
+          <Stack gap="sm">
+            <Text c="dimmed" size="sm">
+              Fetches the page, strips navigation/footer clutter, and adds the real content as a draft document —
+              same review step as a manual entry or file upload.
+            </Text>
+            <TextInput
+              label="Page URL"
+              withAsterisk
+              placeholder="https://example.com/faq"
+              {...ingestForm.getInputProps('url')}
+            />
+            <Checkbox
+              label="Also follow links on this page (same website only)"
+              {...ingestForm.getInputProps('crawl', { type: 'checkbox' })}
+            />
+            {ingestForm.values.crawl && (
+              <NumberInput
+                label="Max pages"
+                withAsterisk
+                min={1}
+                max={8}
+                value={ingestForm.values.max_pages}
+                onChange={(v) => ingestForm.setFieldValue('max_pages', v === '' ? 1 : Number(v))}
+              />
+            )}
+            <Button type="submit" loading={ingesting}>
+              Fetch and add as draft
+            </Button>
+          </Stack>
+        </form>
+      </Modal>
+
       <Modal opened={viewing !== null} onClose={() => setViewing(null)} title={viewing?.title} size="lg">
         {viewing && (
           <Stack gap="sm">
-            <Badge color={STATUS_COLOR[viewing.status]} variant="light" tt="capitalize" w="fit-content">
-              {viewing.status}
-            </Badge>
+            <StatusBadge status={viewing.status} w="fit-content" />
             {canWrite ? (
               <>
                 <TextInput label="Title" {...editForm.getInputProps('title')} />

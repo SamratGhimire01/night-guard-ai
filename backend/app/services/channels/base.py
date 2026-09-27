@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models.channel_identity import ChannelIdentity
-from app.db.models.conversation import Conversation
+from app.db.models.conversation import Conversation, Message, MessageSenderType
 from app.db.models.customer import Customer
 from app.services.conversation.orchestrator import handle_incoming_message
 
@@ -74,6 +74,35 @@ def get_or_create_conversation(
     return conversation
 
 
+def record_non_text_message(
+    db: Session,
+    *,
+    business_id: uuid.UUID,
+    channel: str,
+    external_ref: str,
+    placeholder: str,
+    external_message_id: str,
+    default_customer_name: str,
+) -> Conversation:
+    """Store what a customer sent that isn't text (a photo, a voice note, …) as a real CUSTOMER message reading e.g.
+    "[Customer sent an image]", so staff reading the conversation see that something arrived — before Phase 52 these were
+    dropped without a trace. The AI is NOT invoked for it (it can't read the attachment; before, the customer got silence
+    too) and no reply is sent. Idempotent on `external_message_id` (the caller catches the IntegrityError of a redelivery)."""
+    conversation = get_or_create_conversation(
+        db, business_id=business_id, channel=channel, external_ref=external_ref, default_customer_name=default_customer_name
+    )
+    db.add(
+        Message(
+            conversation_id=conversation.id,
+            sender_type=MessageSenderType.CUSTOMER,
+            content=placeholder,
+            external_message_id=external_message_id,
+        )
+    )
+    db.commit()
+    return conversation
+
+
 class ChannelAdapter(ABC):
     """One implementation per external channel. The ONLY job of an adapter is
     channel-specific plumbing (session/identity handling, payload shape) —
@@ -94,6 +123,7 @@ class ChannelAdapter(ABC):
         content: str,
         external_message_id: str | None = None,
         force_language: str | None = None,
+        deliver=None,
     ) -> dict | None:
         """Returns the same dict handle_incoming_message returns
         ({"intent", "response", "customer_message_id", "agent_message_id"}),
@@ -123,6 +153,7 @@ class WebsiteChannelAdapter(ChannelAdapter):
         content: str,
         external_message_id: str | None = None,
         force_language: str | None = None,
+        deliver=None,
     ) -> dict | None:
         conversation = get_or_create_conversation(
             db,
@@ -140,4 +171,5 @@ class WebsiteChannelAdapter(ChannelAdapter):
             content=content,
             external_message_id=external_message_id,
             force_language=force_language,
+            deliver=deliver,
         )

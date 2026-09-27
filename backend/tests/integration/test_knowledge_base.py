@@ -312,4 +312,153 @@ def test_filter_for_llm_drops_noise_keeps_real_matches():
     ]
     filtered = knowledge_service.filter_for_llm(results)
     assert [r[0] for r in filtered] == ["chunk_real_match", "chunk_weak_match", "chunk_borderline"]
+
+
+# --- Phase 58 Part 2B: website-URL ingestion (Chatbase parity) ------------------------------------------------------
+# Feeds a fetched page's clean text into the SAME create_document() pipeline as manual entry/upload -- draft by
+# default, same chunking/embedding/approval lifecycle -- so these tests mock only the network fetch (url_ingestion.
+# fetch_and_extract / crawl_site), never knowledge_service itself, to prove the wiring is the real pipeline.
+
+
+def test_ingest_url_creates_a_draft_document_from_the_fetched_page(two_businesses, monkeypatch):
+    from app.services import url_ingestion
+
+    monkeypatch.setattr(
+        url_ingestion, "fetch_and_extract", lambda url: ("Acme FAQ", "We are open 9am-5pm.\nWalk-ins welcome.")
+    )
+    resp = client.post(
+        "/api/v1/knowledge/ingest-url",
+        json={"url": "https://acme.example.com/faq"},
+        headers=_auth_header(two_businesses["token_a"]),
+    )
+    assert resp.status_code == 201, resp.text
+    docs = resp.json()
+    assert len(docs) == 1
+    assert docs[0]["title"] == "Acme FAQ"
+    assert docs[0]["content"] == "We are open 9am-5pm.\nWalk-ins welcome."
+    assert docs[0]["source"] == "url"
+    assert docs[0]["status"] == "draft", "new content must never auto-approve"
+
+    listed = client.get("/api/v1/knowledge", headers=_auth_header(two_businesses["token_a"])).json()
+    assert len(listed) == 1 and listed[0]["id"] == docs[0]["id"]
+
+
+def test_ingest_url_with_crawl_creates_one_draft_document_per_page(two_businesses, monkeypatch):
+    from app.services import url_ingestion
+
+    pages = [
+        ("https://acme.example.com/", "Acme Home", "Welcome to Acme."),
+        ("https://acme.example.com/pricing", "Acme Pricing", "Plans start at $10."),
+    ]
+    monkeypatch.setattr(url_ingestion, "crawl_site", lambda url, max_pages: pages)
+    resp = client.post(
+        "/api/v1/knowledge/ingest-url",
+        json={"url": "https://acme.example.com/", "crawl": True, "max_pages": 5},
+        headers=_auth_header(two_businesses["token_a"]),
+    )
+    assert resp.status_code == 201, resp.text
+    docs = resp.json()
+    assert {d["title"] for d in docs} == {"Acme Home", "Acme Pricing"}
+    assert all(d["status"] == "draft" and d["source"] == "url" for d in docs)
+
+
+def test_ingest_url_surfaces_a_real_fetch_error_and_creates_nothing(two_businesses, monkeypatch):
+    from app.services import url_ingestion
+
+    def _raise(url):
+        raise url_ingestion.URLFetchError("Refusing to fetch a non-public / internal address.")
+
+    monkeypatch.setattr(url_ingestion, "fetch_and_extract", _raise)
+    resp = client.post(
+        "/api/v1/knowledge/ingest-url",
+        json={"url": "http://169.254.169.254/latest/meta-data/"},
+        headers=_auth_header(two_businesses["token_a"]),
+    )
+    assert resp.status_code == 422, resp.text
+    assert "non-public" in resp.json()["error"]["message"]
+    assert client.get("/api/v1/knowledge", headers=_auth_header(two_businesses["token_a"])).json() == []
+
+
+def test_ingest_url_is_owner_admin_only(staff_token, two_businesses, monkeypatch):
+    from app.services import url_ingestion
+
+    monkeypatch.setattr(url_ingestion, "fetch_and_extract", lambda url: ("T", "content"))
+    resp = client.post(
+        "/api/v1/knowledge/ingest-url",
+        json={"url": "https://acme.example.com/faq"},
+        headers=_auth_header(staff_token),
+    )
+    assert resp.status_code == 403, resp.text
+    assert client.get("/api/v1/knowledge", headers=_auth_header(two_businesses["token_a"])).json() == []
+
+
+def test_ingest_url_rejects_blank_and_over_length_url_with_422(two_businesses):
+    assert client.post(
+        "/api/v1/knowledge/ingest-url", json={"url": ""}, headers=_auth_header(two_businesses["token_a"])
+    ).status_code == 422
+    assert client.post(
+        "/api/v1/knowledge/ingest-url", json={"url": "x" * 2049}, headers=_auth_header(two_businesses["token_a"])
+    ).status_code == 422
+
+
+# --- app.services.url_ingestion: real extraction + SSRF-safety unit tests (no network) ------------------------------
+
+
+def test_extract_title_and_text_strips_boilerplate_and_keeps_real_content():
+    from app.services.url_ingestion import extract_title_and_text
+
+    html = """
+    <html><head><title>FAQ - Acme</title></head>
+    <body>
+      <nav>Home | About | Contact</nav>
+      <header>Acme Corp</header>
+      <main>
+        <h1>Frequently Asked Questions</h1>
+        <p>What are your hours?</p>
+        <p>We are open 9am-5pm.</p>
+        <script>var x = 1;</script>
+      </main>
+      <footer>Copyright 2026 Acme</footer>
+    </body></html>
+    """
+    title, text = extract_title_and_text(html)
+    assert title == "FAQ - Acme"
+    assert "Home | About | Contact" not in text
+    assert "Copyright 2026 Acme" not in text
+    assert "var x = 1" not in text
+    assert "Frequently Asked Questions" in text
+    assert "We are open 9am-5pm." in text
+
+
+def test_extract_title_and_text_falls_back_to_h1_when_no_title_tag():
+    from app.services.url_ingestion import extract_title_and_text
+
+    title, text = extract_title_and_text("<html><body><h1>Trekking Packages</h1><p>Everest Base Camp, 14 days.</p></body></html>")
+    assert title == "Trekking Packages"
+    assert "Everest Base Camp, 14 days." in text
+
+
+@pytest.mark.parametrize(
+    "bad_url",
+    [
+        "http://127.0.0.1/",
+        "http://localhost:8000/",
+        "http://169.254.169.254/latest/meta-data/",  # cloud metadata endpoint
+        "http://10.0.0.5/",
+        "http://192.168.1.1/",
+        "ftp://example.com/",
+        "not-a-url",
+    ],
+)
+def test_validate_public_url_rejects_non_public_and_non_http_urls(bad_url):
+    from app.services.url_ingestion import URLFetchError, _validate_public_url
+
+    with pytest.raises(URLFetchError):
+        _validate_public_url(bad_url)
+
+
+def test_validate_public_url_allows_a_real_public_host():
+    from app.services.url_ingestion import _validate_public_url
+
+    _validate_public_url("https://example.com/")  # must not raise
     assert knowledge_service.filter_for_llm([]) == []

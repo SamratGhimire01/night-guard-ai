@@ -25,6 +25,7 @@ from app.db.models.business import Business
 from app.db.models.channel_identity import ChannelIdentity
 from app.db.models.conversation import Conversation, Message
 from app.main import app
+from app.services.conversation.response_templates import render
 
 client = TestClient(app)
 
@@ -89,12 +90,14 @@ def test_first_contact_creates_real_session_customer_and_conversation(business):
     body = resp.json()
     assert body["session_token"]
     assert len(body["session_token"]) >= 32  # real high-entropy token, not a short/sequential id
-    # The stubbed LLM's own text is preserved verbatim, plus Phase 19's real
-    # honest handoff sentence — this business has no knowledge base at all,
-    # so a general_question here correctly triggers a real HumanHandoff too
-    # (proof the widget path reuses the FULL real orchestrator, not a
-    # simplified copy of it).
-    assert body["response"] == "Thanks for reaching out! I've also let our team know, so a real person will follow up with you."
+    # This business has no knowledge base at all, so the zero-retrieval
+    # grounding backstop (orchestrator.py, "using honest fallback") overrides
+    # the stubbed LLM's text with this real deterministic template, plus
+    # Phase 19's real honest handoff sentence -- proof the widget path reuses
+    # the FULL real orchestrator, not a simplified copy of it.
+    assert body["response"] == render("unconfirmed_fact_fallback", "en") + (
+        " I've also let our team know, so a real person will follow up with you."
+    )
     assert body["intent"] == "general_question"
 
     with SessionLocal() as db:

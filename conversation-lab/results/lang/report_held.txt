@@ -1,0 +1,30 @@
+arm       type  runs   turn match   neutral flips    switch latency (0 = immediate)
+pre25     A        6     15/21           0/0                                      -
+pre25     B        9     42/45           0/12               mean 0.2 (n=9, never=0)
+pre25     C        9     36/60           8/51                                     -
+pre25     D        4     33/40           3/13                                     -
+pre25     ALL     28    126/166         11/76    
+
+prod      A        6     15/21           0/0                                      -
+prod      B        9     27/45           0/12               mean 0.0 (n=9, never=6)
+prod      C        9     58/60           2/51                                     -
+prod      D        4     40/40           0/13                                     -
+prod      ALL     28    140/166          2/76    
+
+hybrid    A        6     16/21           0/0                                      -
+hybrid    B        9     45/45           0/12               mean 0.0 (n=9, never=0)
+hybrid    C       10     66/67           1/57                                     -
+hybrid    D        3     30/30           0/9                                      -
+hybrid    ALL     28    157/163          1/78    
+
+hybrid_nt A        6     14/21           0/0                                      -
+hybrid_nt B        9     44/45           1/12               mean 0.0 (n=9, never=0)
+hybrid_nt C        9     31/60          11/51                                     -
+hybrid_nt D        5     48/50           2/17                                     -
+hybrid_nt ALL     29    137/176         14/80    
+
+Run-to-run stability (distinct reply-family sequences across reps of the same scenario; 1 = identical every time):
+  pre25      scenarios with 1 distinct sequence: 6/10   HA2:2 HB2:3 HC1:3 HC3:2
+  prod       scenarios with 1 distinct sequence: 9/10   HC1:2
+  hybrid     scenarios with 1 distinct sequence: 7/9   HA1:2 HC1:2
+  hybrid_nt  scenarios with 1 distinct sequence: 4/10   HA1:2 HA2:2 HC1:2 HC3:2 HD2:2 HB3b:2

@@ -1,0 +1,217 @@
+{
+  "conversation_id": "32aea5c3-1d30-4396-a5d5-036857119cdc",
+  "business_id": "4ff5b470-2451-4647-a72a-71686f25fa9f",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-06T15:52:00.934397",
+  "customer": {
+    "id": "b82fbb33-c2ef-45ff-87ed-d27ef4cf0699",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "is tooth cleaning avaiable",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-06T15:52:00.944711"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Yes \u2014 we offer Basic Cleaning (30 minutes) for $75. Would you like me to check available appointment times for you?",
+      "detected_intent": null,
+      "created_at": "2026-09-06T15:52:07.005905"
+    },
+    {
+      "sender_type": "customer",
+      "content": "book it for tomorrow",
+      "detected_intent": "booking",
+      "created_at": "2026-09-06T15:52:26.221236"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Got it \u2014 Basic Cleaning, Monday, September 7. I just need your name and a phone number or email to lock that in.",
+      "detected_intent": null,
+      "created_at": "2026-09-06T15:52:39.773125"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Samrat Ghimire 9823045928 samratghimire01@gmail.com",
+      "detected_intent": "booking",
+      "created_at": "2026-09-06T15:53:32.917541"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Got it \u2014 could you tell me what time? I've updated your contact info on file.",
+      "detected_intent": null,
+      "created_at": "2026-09-06T15:53:32.924323"
+    },
+    {
+      "sender_type": "customer",
+      "content": "what time is avaiable",
+      "detected_intent": "booking",
+      "created_at": "2026-09-06T15:53:43.605725"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Here's what's open for Basic Cleaning: Monday, September 7 at 9:00 AM, Monday, September 7 at 9:15 AM, Monday, September 7 at 9:30 AM, Monday, September 7 at 9:45 AM, Monday, September 7 at 10:00 AM. Which works for you?",
+      "detected_intent": null,
+      "created_at": "2026-09-06T15:53:51.346391"
+    },
+    {
+      "sender_type": "customer",
+      "content": "lets do 10 am",
+      "detected_intent": "booking",
+      "created_at": "2026-09-06T15:54:24.222517"
+    },
+    {
+      "sender_type": "agent",
+      "content": "You're all set, Samrat Ghimire! I've booked Basic Cleaning for Monday, September 7 at 10:00 AM (30 min). Your booking ID is 69403613-e573-4d76-8ac1-071647061bf4.",
+      "detected_intent": null,
+      "created_at": "2026-09-06T15:54:24.229067"
+    },
+    {
+      "sender_type": "customer",
+      "content": "cancel it",
+      "detected_intent": "cancellation",
+      "created_at": "2026-09-06T15:59:45.278216"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Done, Samrat Ghimire \u2014 your appointment on Monday, September 7 at 10:00 AM has been cancelled.",
+      "detected_intent": null,
+      "created_at": "2026-09-06T15:59:45.283904"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [
+    {
+      "id": "69403613-e573-4d76-8ac1-071647061bf4",
+      "service_id": "69fb896b-1b0f-4d56-a509-2c9a2145009b",
+      "scheduled_at": "2026-09-07T14:00:00+00:00",
+      "status": "cancelled",
+      "created_at": "2026-09-06T15:54:07.827591"
+    },
+    {
+      "id": "7c00c4d3-fdd9-4be0-8c41-79e33c3d274b",
+      "service_id": "69fb896b-1b0f-4d56-a509-2c9a2145009b",
+      "scheduled_at": "2026-09-14T14:00:00+00:00",
+      "status": "confirmed",
+      "created_at": "2026-09-07T03:27:40.495647"
+    },
+    {
+      "id": "2355836a-13e1-4743-a978-fd1b719e4318",
+      "service_id": "c29317d2-c7e5-40df-a61d-9b26b0aebac7",
+      "scheduled_at": "2026-09-11T16:00:00+00:00",
+      "status": "cancelled",
+      "created_at": "2026-09-07T03:27:45.626346"
+    }
+  ],
+  "business": {
+    "id": "4ff5b470-2451-4647-a72a-71686f25fa9f",
+    "name": "Standing Test Biz Premium",
+    "timezone": "America/New_York",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "69fb896b-1b0f-4d56-a509-2c9a2145009b",
+        "name": "Basic Cleaning",
+        "description": "Standard dental cleaning",
+        "price": 75.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "c29317d2-c7e5-40df-a61d-9b26b0aebac7",
+        "name": "Whitening",
+        "description": "Teeth whitening session",
+        "price": 150.0,
+        "duration_minutes": 45,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [
+      {
+        "id": "0043d460-8224-43b2-a6db-e192834a3f05",
+        "title": "Cancellation Policy",
+        "content": "Appointments can be cancelled or rescheduled up to 24 hours in advance with no fee. Cancellations within 24 hours may incur a $25 fee."
+      },
+      {
+        "id": "3a7ba71f-e254-4b54-9fa0-b52b1dcfb32a",
+        "title": "Training correction: Do you offer teeth whitening?",
+        "content": "Yes! We offer whitening for $150, 45 minutes."
+      },
+      {
+        "id": "56d50edb-e89a-4a23-a864-e2c1fe29f2e1",
+        "title": "Training correction: yo",
+        "content": "Hello there! how can i help you ?"
+      },
+      {
+        "id": "5888fcbc-9b83-49db-a8bf-e10420d1b148",
+        "title": "Training correction: Do you offer teeth whitening?",
+        "content": "Yes! We offer whitening for $150, 45 minutes."
+      },
+      {
+        "id": "7cd1857e-bb6f-4eed-b7cc-8cd1d5cc2d08",
+        "title": "Training correction: yo",
+        "content": "Hi \u2014 welcome to Standing Test Biz Premium! How can I help you today?"
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "14:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

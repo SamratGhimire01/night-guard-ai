@@ -1,0 +1,31 @@
+arm       type     n  judge total  lang_match (signal turns)  lang_match (neutral turns)*
+prod      A       40         97.4                4.97 (n=40)                            -
+prod      B      106         84.0                4.03 (n=78)                  4.61 (n=28)
+prod      C      106         90.4                4.87 (n=18)                  4.83 (n=88)
+prod      D       96         95.8                4.97 (n=60)                  4.86 (n=36)
+prod      ALL    348         90.7               4.59 (n=196)                 4.80 (n=152)
+
+hybrid    A       40         94.5                5.00 (n=40)                            -
+hybrid    B      106         97.0                4.97 (n=78)                  5.00 (n=28)
+hybrid    C      113         92.8                4.74 (n=19)                  4.77 (n=94)
+hybrid    D       86         92.7                4.94 (n=54)                  4.75 (n=32)
+hybrid    ALL    345         94.2               4.94 (n=191)                 4.81 (n=154)
+
+pre25     A       20         80.2                4.88 (n=20)                            -
+pre25     B       53         77.6                4.79 (n=39)                  5.00 (n=14)
+pre25     C       53         88.2                 5.00 (n=9)                  4.92 (n=44)
+pre25     D       53         76.9                4.46 (n=33)                  4.95 (n=20)
+pre25     ALL    179         80.8               4.72 (n=101)                  4.94 (n=78)
+
+hybrid_nt A       20         95.4                4.97 (n=20)                            -
+hybrid_nt B       53         94.7                4.88 (n=39)                  4.50 (n=14)
+hybrid_nt C       53         91.9                 4.70 (n=9)                  4.78 (n=44)
+hybrid_nt D       43         96.6                5.00 (n=27)                  4.98 (n=16)
+hybrid_nt ALL    169         94.4                4.92 (n=95)                  4.77 (n=74)
+
+* neutral-turn language_match is NOT trusted (judge rewards English replies to an English 'thanks'); use the flip metric.
+
+Paired hybrid - prod (same scenario/rep/turn), 95% cluster-bootstrap CI over scenarios:
+  judge total, all turns             +3.78  [+0.70, +7.38]  n=338
+  language_match, signal turns       +0.38  [+0.14, +0.66]  n=190
+  judge total, neutral turns         +1.93  [-1.75, +5.92]  n=148

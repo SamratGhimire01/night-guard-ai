@@ -1,0 +1,124 @@
+{
+  "conversation_id": "74a60e09-8161-4703-9cfa-8370c61117dc",
+  "business_id": "3027173d-1704-49bc-993f-f11063145335",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-04T14:23:58.038831",
+  "customer": {
+    "id": "cbb76473-5671-4537-a073-2b003120c9be",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Can I book a cleaning next Monday at 2pm?",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T14:23:58.042785"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Before I can get that booked, I'll need a way to reach you to confirm it \u2014 could you give me your name and a phone number or email?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T14:24:04.806061"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Actually, make it 3pm instead.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T14:24:05.820302"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Before I can get that booked, I'll need a way to reach you to confirm it \u2014 could you give me your name and a phone number or email?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T14:24:16.705931"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Sure, my name is Devon Clarke, email devon.clarke@example.com",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-04T14:24:26.811812"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thanks, Devon \u2014 and thanks for your email. Would you like me to go ahead and book the Cleaning for next Monday at 3:00 PM? I've updated your contact info on file.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T14:24:26.816109"
+    }
+  ],
+  "booking_draft": {
+    "service_id": "4a8676d5-b5fa-4a0a-89d7-73265201161d",
+    "date": "2026-09-07",
+    "time": "15:00"
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "3027173d-1704-49bc-993f-f11063145335",
+    "name": "Riverside Dental",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "4a8676d5-b5fa-4a0a-89d7-73265201161d",
+        "name": "Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

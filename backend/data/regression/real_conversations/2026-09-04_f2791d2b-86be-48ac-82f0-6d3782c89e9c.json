@@ -1,0 +1,196 @@
+{
+  "conversation_id": "f2791d2b-86be-48ac-82f0-6d3782c89e9c",
+  "business_id": "3027173d-1704-49bc-993f-f11063145335",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "ne_roman",
+  "created_at": "2026-09-04T13:17:19.435071",
+  "customer": {
+    "id": "688683ee-5b33-4cf5-9957-d10364bbcff6",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Namaste, tapaiko cleaning ko lagi kati parcha?",
+      "detected_intent": "pricing_question",
+      "created_at": "2026-09-04T13:17:19.488513"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Namaste! Hamro Cleaning ko charge $90.00 ho, ra praya 30 minutes lagchha. Booking garna chahanu huncha?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:17:26.726706"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Ma appointment book garna chahanchu, aaitabar 10 baje.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T13:17:27.739481"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Tyo book garnu aghi, confirm garna tapailai contact garne madhyam chahincha \u2014 kripaya tapaiko naam ra phone number wa email dinuhos?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:17:37.330214"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Cleaning nai ho. Mero naam Sunita Thapa ho, phone number 555-2231 ho.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T13:17:52.781204"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Tyo samaya ahile available chaina, Sunita Thapa \u2014 requested time is not available (outside business hours, on a closed date, in the past, or already booked). Cleaning ko lagi aru kehi available samaya haru: Monday, September 7 at 9:00 AM, Monday, September 7 at 9:15 AM, Monday, September 7 at 9:30 AM, Monday, September 7 at 9:45 AM, Monday, September 7 at 10:00 AM. Yi madhye kunai milcha? Maile tapaiko contact information update gare.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:17:52.820083"
+    },
+    {
+      "sender_type": "customer",
+      "content": "thanks!",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-04T13:17:53.833941"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Dhanyabad, Sunita! Ke tapaile mathi diye ko samayaharu (Sept 7 \u2014 9:00, 9:15, 9:30, 9:45, 10:00) ma bata kun channuhunchha? Ma availability herera agadi badnus?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:18:03.677558"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Arko kura, malai malum garnu paryo ki mero appointment kati bajera cha.",
+      "detected_intent": "appointment_status",
+      "created_at": "2026-09-04T13:18:04.688217"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Ahile tapaiko hamisanga kunai appointment record chaina, Sunita Thapa.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:18:15.299398"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Actually can we switch to English please?",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-04T13:22:12.481442"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 ke ma agadi English ma continue garu? Yo chat Romanized Nepali ma locked cha, tara tapaiko ichchha bhaye ma English ma jawab dinu suru garnechu.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:22:27.008894"
+    },
+    {
+      "sender_type": "customer",
+      "content": "I want to check my appointment status.",
+      "detected_intent": "appointment_status",
+      "created_at": "2026-09-04T13:22:28.018223"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Ahile tapaiko hamisanga kunai appointment record chaina, Sunita Thapa.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:22:39.386378"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Also what are your business hours?",
+      "detected_intent": "business_hours",
+      "created_at": "2026-09-04T13:22:48.650319"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Maaf garnuhos \u2014 yaha hamro office hours ko record chaina. Ke ma yo confirm garna hamro team sanga connect garna chahanu hunchha? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:22:48.653849"
+    },
+    {
+      "sender_type": "customer",
+      "content": "One more thing - can you check my appointment status again?",
+      "detected_intent": "appointment_status",
+      "created_at": "2026-09-04T13:22:49.668411"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Ahile tapaiko hamisanga kunai appointment record chaina, Sunita Thapa.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:23:02.513096"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "3027173d-1704-49bc-993f-f11063145335",
+    "name": "Riverside Dental",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "4a8676d5-b5fa-4a0a-89d7-73265201161d",
+        "name": "Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

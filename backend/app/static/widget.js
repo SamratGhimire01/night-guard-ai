@@ -143,7 +143,12 @@
     var opening = !root.classList.contains("ng-open");
     root.classList.toggle("ng-open");
     bubbleEl.setAttribute("aria-label", opening ? "Close chat" : "Open chat");
-    if (opening) inputEl.focus();
+    if (opening) {
+      inputEl.focus();
+      pollUpdates();
+    } else {
+      stopPolling();
+    }
   });
 
   // Message text is inserted as DOM text nodes (never innerHTML). Only http(s) URLs become links, so a reply that
@@ -196,36 +201,51 @@
          still gets a fully working, generically-branded widget */
     });
 
-  // ---- payment confirmation: the widget has no push channel, so while a reply's payment link is outstanding it asks
-  // the server every 5s (up to 30 min) for anything newer than the last reply -- the "payment received" message the
-  // backend sends once the gateway itself confirms. ----
-  var lastAgentMessageId = null, pollTimer = null, pollDeadline = 0;
+  // ---- messages the business sends on its own: the widget has no push channel, so while the panel is open (and the tab
+  // visible) it asks the server for anything newer than the last message it has seen -- a staff member's reply from the
+  // inbox, or the "payment received" message once the gateway confirms. Every 10s; every 5s for 30 min after a reply that
+  // contained a payment link. The cursor is the last message id this page knows (the AI reply, or the visitor's own message
+  // when a staff member owns the conversation and no AI reply comes). ----
+  var lastMessageId = null, pollTimer = null, payDeadline = 0;
 
   function stopPolling() {
-    clearInterval(pollTimer);
+    clearTimeout(pollTimer);
     pollTimer = null;
   }
 
+  function schedulePoll() {
+    stopPolling();
+    if (!lastMessageId || !root.classList.contains("ng-open") || document.hidden) return;
+    pollTimer = setTimeout(pollUpdates, Date.now() < payDeadline ? 5000 : 10000);
+  }
+
   function pollUpdates() {
+    pollTimer = null;
     var token = getSessionToken();
-    if (!token || !lastAgentMessageId || Date.now() > pollDeadline) return stopPolling();
-    if (inputEl.disabled) return; /* a reply is in flight: it will be appended by the submit handler itself */
-    fetch(updatesEndpoint + "?session_token=" + encodeURIComponent(token) + "&after=" + encodeURIComponent(lastAgentMessageId))
+    if (!token || !lastMessageId) return;
+    if (inputEl.disabled) return schedulePoll(); /* a reply is in flight: the submit handler appends it itself */
+    fetch(updatesEndpoint + "?session_token=" + encodeURIComponent(token) + "&after=" + encodeURIComponent(lastMessageId))
       .then(function (res) { return res.ok ? res.json() : { messages: [] }; })
       .then(function (data) {
         (data.messages || []).forEach(function (m) {
           appendMessage(m.content, "agent");
-          lastAgentMessageId = m.id;
+          lastMessageId = m.id;
         });
       })
-      .catch(function () { /* transient: the next tick retries */ });
+      .catch(function () { /* transient: the next tick retries */ })
+      .finally(schedulePoll);
   }
 
-  function watchForPaymentConfirmation(replyText) {
-    if (!/\/pay-qr\/|\/payments\//.test(replyText)) return;
-    pollDeadline = Date.now() + 30 * 60 * 1000;
-    if (!pollTimer) pollTimer = setInterval(pollUpdates, 5000);
+  function noteTurn(data) {
+    lastMessageId = data.agent_message_id || data.customer_message_id || lastMessageId;
+    if (data.response && /\/pay-qr\/|\/payments\//.test(data.response)) payDeadline = Date.now() + 30 * 60 * 1000;
+    schedulePoll();
   }
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) stopPolling();
+    else pollUpdates();
+  });
 
   function setSending(disabled) {
     inputEl.disabled = disabled;
@@ -255,9 +275,9 @@
       .then(function (data) {
         setSessionToken(data.session_token);
         setTyping(false);
-        appendMessage(data.response, "agent");
-        if (data.agent_message_id) lastAgentMessageId = data.agent_message_id;
-        watchForPaymentConfirmation(data.response);
+        /* response is null while a staff member owns the conversation: nothing to show for this turn */
+        if (data.response) appendMessage(data.response, "agent");
+        noteTurn(data);
       })
       .catch(function () {
         setTyping(false);
@@ -311,7 +331,8 @@
         setTyping(false);
         if (data.session_token) setSessionToken(data.session_token);
         if (data.transcript) appendMessage(data.transcript, "customer");
-        appendMessage(data.response, "agent");
+        if (data.response) appendMessage(data.response, "agent");
+        noteTurn(data);
       })
       .catch(function () {
         setTyping(false);

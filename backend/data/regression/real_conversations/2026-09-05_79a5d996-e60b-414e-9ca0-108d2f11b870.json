@@ -1,0 +1,47 @@
+{
+  "conversation_id": "79a5d996-e60b-414e-9ca0-108d2f11b870",
+  "business_id": "ccc0ddd3-ef75-4bf2-9e55-26cebfac58ed",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-05T05:07:00.014191",
+  "customer": {
+    "id": "fd9e4fac-37da-4e00-8cbb-0834eaa79a43",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "flood message 60",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-05T05:07:08.226277"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Could you clarify what you mean by \u201cflood message 60\u201d? If you mean sending or testing 60 messages at once, I don't have details in our info \u2014 would you like me to connect you with our team so they can help? I've also let our team know, so a real person will follow up with you.",
+      "detected_intent": null,
+      "created_at": "2026-09-05T05:07:08.229994"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "ccc0ddd3-ef75-4bf2-9e55-26cebfac58ed",
+    "name": "Rate Limit Fix Co",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [],
+    "knowledge_documents": [],
+    "hours": []
+  }
+}

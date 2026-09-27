@@ -298,7 +298,7 @@ POST {"name":"Maria Gonzalez","phone":"+15551234567","email":"maria.g@example.co
 
 ## 8. Conversations (internal orchestrator test endpoint)
 
-### `POST /api/v1/conversations/{conversation_id}/messages` — any role
+### `POST /api/v1/conversations/{conversation_id}/messages` — owner/admin only (403 for staff; was any role before Phase 52)
 **Not a channel integration point.** Real customer traffic arrives through the
 widget (§9) or a channel webhook (§10), each of which creates its own
 `Conversation` row internally. This route is the internal way to drive the
@@ -310,6 +310,59 @@ to create one directly from the dashboard.
 POST {"content": "..."}
 201 {"intent": "booking", "response": "...", "customer_message_id": "...", "agent_message_id": "..."}
 ```
+**While a staff member owns the conversation (Phase 52 human takeover)** the customer message is stored but the AI
+drafts nothing: `response` and `agent_message_id` are `null` (and `intent` is `null`, or the classification if the LLM had
+already produced one when takeover was noticed). The widget (`POST .../widget/{id}/messages`, `.../voice-message`) returns
+the same `null` `response`.
+
+### `POST /api/v1/inbox/conversations/{conversation_id}/takeover` — owner/admin/staff
+### `POST /api/v1/inbox/conversations/{conversation_id}/release` — owner/admin/staff
+Claim a conversation (the AI goes silent for `HUMAN_TAKEOVER_SECONDS`, default 7200 = 2h, sliding — every staff reply restarts
+it) / hand it back to the AI immediately (idempotent). Resolving a handoff (`PATCH /handoffs/{id}`) also releases.
+```
+200 {"active": true, "until": "2026-09-21T16:40:00Z", "taken_over_by": "<business_user_id>"}
+200 {"active": false, "until": null, "taken_over_by": null}      (release)
+```
+404 for a conversation that is not this business's (never reveals another tenant's).
+
+### `GET /api/v1/inbox/conversations?tab=all|needs_reply|handoffs&channel=whatsapp|messenger|instagram|website&q=<name>&limit&offset` — owner/admin/staff
+The inbox home, newest activity first. Item: `{id, channel, customer_name, last_message_preview (<=160 chars), last_message_sender,
+last_message_at (UTC), last_message_delivery_status, needs_reply, unread, open_handoff, takeover_active, takeover_by_email}`.
+`needs_reply` = a human is responsible (open handoff, or a staff member owns it) AND the customer spoke last. `unread` = the
+customer's latest message is newer than the last `POST .../read` (shared across staff). Conversations with no messages are not listed.
+### `GET /api/v1/inbox/summary` -> `{needs_reply, handoffs}` (sidebar badge)
+### `POST /api/v1/inbox/conversations/{id}/read` -> 204 (staff opened it; clears `unread`)
+
+### `GET /api/v1/inbox/conversations/{id}` — owner/admin/staff
+Header for one conversation: `{id, channel, customer_id, customer_name, takeover:{active,until,taken_over_by}, takeover_by_email, reply:{can_reply, reason, window_closes_at}, open_handoff:{id,reason}|null, last_customer_message_at}`.
+`reply.can_reply=false` + `reply.reason` (show verbatim) when a reply can't reach the customer: WhatsApp/Messenger/Instagram
+24-hour window closed ("Can't reply: the 24-hour WhatsApp reply window closed (the customer's last message was 30 hours ago)."),
+channel not connected, or a channel with no outbound path (sms/test channels). The website channel has no window.
+
+### `GET /api/v1/inbox/conversations/{id}/messages?after=<message_id>&limit=200&latest=false` — owner/admin/staff
+`latest=true` returns the NEWEST `limit` messages (still oldest-first) — what a chat view wants for a long conversation. All timestamps are UTC-tagged.
+The whole thread oldest-first, every channel through one query. Each item: `{id, sender_type: customer|agent|staff, content, created_at,
+delivery_status: sent|simulated|failed|suppressed|pending|null, delivery_detail, sent_by_user_id, sent_by_email}`.
+`agent` = the AI. `delivery_status` is recorded for staff replies, AI replies (webhook channels) and system messages (payment
+confirmation); `null` for customer messages, pre-Phase-52 messages and website-widget AI replies (their delivery is the HTTP response).
+`simulated` = no real token configured. `failed` carries `delivery_detail` like `failed: HTTP 400` (never a raw provider body).
+Non-text customer messages appear as text placeholders: `[Customer sent an image]`, `[Customer sent a voice note]`, … Poll with `after=<last id you have>`.
+
+### `POST /api/v1/inbox/conversations/{id}/reply` — owner/admin/staff
+```
+POST {"content": "Yes, we open at 9.", "client_msg_id": "<uuid per composer submit, optional>"}
+201 <InboxMessage>   (sender_type "staff"; a send Meta rejects is still 201 with delivery_status "failed" + the reason)
+409 {"error":{"message":"Can't reply: the 24-hour WhatsApp reply window closed (...)"}}   nothing stored, nothing sent, AI NOT silenced
+409 "This conversation is busy (an automated reply is being delivered). Please retry."   (rare; retry)
+422 blank, or over the channel limit (WhatsApp 4096 chars, Messenger 2000 chars, Instagram 1000 bytes, website 4000 chars)
+```
+A reply claims the conversation (AI silent for `HUMAN_TAKEOVER_SECONDS`, sliding). Repeating the same `client_msg_id` returns the first
+message and sends nothing again (to retry a `failed` send, use a NEW `client_msg_id`).
+
+### Widget changes (public)
+`POST .../widget/{id}/messages` and `.../voice-message` now also return `customer_message_id` (and `agent_message_id` for voice) — the
+polling cursor when there is no AI reply. `GET .../widget/{id}/updates?session_token&after=<message id>` now returns STAFF messages as
+well as system (AGENT) ones. widget.js polls while its panel is open and the tab is visible (10s; 5s for 30 min after a payment link).
 
 ---
 

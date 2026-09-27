@@ -1,0 +1,136 @@
+{
+  "conversation_id": "f941521e-9a45-49fa-bd94-6bbd5ad50454",
+  "business_id": "3027173d-1704-49bc-993f-f11063145335",
+  "channel": "debug_test2",
+  "status": "open",
+  "detected_language": "ne_deva",
+  "created_at": "2026-09-04T13:23:49.722106",
+  "customer": {
+    "id": "ca60684d-2806-4a8a-8230-13d067c6da00",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Namaste, hajur ko cleaning ko price kati ho?",
+      "detected_intent": "pricing_question",
+      "created_at": "2026-09-04T13:23:49.733824"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Namaste! \u0939\u093e\u092e\u094d\u0930\u094b Cleaning \u0915\u094b \u0936\u0941\u0932\u094d\u0915 $90.00 \u0939\u094b \u0930 \u0938\u092e\u092f \u0915\u0930\u093f\u092c 30 \u092e\u093f\u0928\u0947\u091f \u0939\u0941\u0928\u094d\u091b\u0964 \u0905\u092a\u094b\u0907\u0928\u094d\u091f\u092e\u0947\u0928\u094d\u091f \u092c\u0941\u0915 \u0917\u0930\u094d\u0928 \u091a\u093e\u0939\u0928\u0941\u0939\u0941\u0928\u094d\u091b?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:23:58.660634"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Can we just switch to English please?",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-04T13:23:58.666194"
+    },
+    {
+      "sender_type": "agent",
+      "content": "\u092e\u093e\u092b \u0917\u0930\u094d\u0928\u0941\u0939\u094b\u0938\u094d \u2014 \u092f\u094b \u0935\u093e\u0930\u094d\u0924\u093e\u0932\u093e\u092a \u092a\u0939\u093f\u0932\u0947 \u0928\u0948 \u0928\u0947\u092a\u093e\u0932\u0940 (\u0926\u0947\u0935\u0928\u093e\u0917\u0930\u0940) \u092e\u093e \u0932\u0915 \u0917\u0930\u093f\u090f\u0915\u094b \u091b, \u0924\u094d\u092f\u0938\u0948\u0932\u0947 \u092e \u092f\u0939\u093e\u0901 \u0926\u0947\u0935\u0928\u093e\u0917\u0930\u0940\u092e\u0948 \u091c\u0935\u093e\u092b \u0926\u093f\u0928\u094d\u091b\u0941\u0964 \u0915\u0947 \u092e \u0928\u0947\u092a\u093e\u0932\u0940\u092e\u0948 \u092e\u0926\u094d\u0926\u0924 \u0917\u0930\u0942\u0901? \u0924\u092a\u093e\u0908\u0902 \u0905\u0902\u0917\u094d\u0930\u0947\u091c\u0940\u092e\u093e \u0915\u0941\u0930\u093e \u0917\u0930\u094d\u0928 \u091a\u093e\u0939\u0928\u0941\u0939\u0941\u0928\u094d\u091b \u092d\u0928\u0947, \u092e \u0924\u092a\u093e\u0908\u0902\u0932\u093e\u0908 \u0939\u093e\u092e\u094d\u0930\u094b \u091f\u093f\u092e\u0938\u0901\u0917 \u0905\u0902\u0917\u094d\u0930\u0947\u091c\u0940\u092e\u093e \u0915\u0941\u0930\u093e \u0917\u0930\u093e\u0909\u0928 \u091c\u0921\u093e\u0928 \u0917\u0930\u094d\u0928\u0947 \u092a\u094d\u0930\u0938\u094d\u0924\u093e\u0935 \u0917\u0930\u094d\u0928 \u0938\u0915\u094d\u091b\u0941 \u2014 \u091a\u093e\u0939\u0928\u0941\u0939\u0941\u0928\u094d\u091b?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:24:12.639759"
+    },
+    {
+      "sender_type": "customer",
+      "content": "What are your business hours?",
+      "detected_intent": "business_hours",
+      "created_at": "2026-09-04T13:24:22.870051"
+    },
+    {
+      "sender_type": "agent",
+      "content": "\u092e\u093e\u092b \u0917\u0930\u094d\u0928\u0941\u0939\u094b\u0938\u094d \u2014 \u092f\u0939\u093e\u0901 \u0939\u093e\u092e\u094d\u0930\u094b \u0915\u093e\u0930\u094d\u092f\u093e\u0932\u092f \u0916\u094b\u0932\u094d\u0928\u0947 \u0938\u092e\u092f\u0915\u094b \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u091b\u0948\u0928\u0964 \u0915\u0947 \u092e \u0924\u092a\u093e\u0908\u0902\u0932\u093e\u0908 \u0939\u093e\u092e\u094d\u0930\u094b \u091f\u093f\u092e\u0938\u0901\u0917 \u091c\u0921\u093e\u0928 \u0917\u0930\u093e\u0907\u0926\u093f\u0928 \u0938\u0915\u094d\u091b\u0941 \u0924\u093e\u0915\u093f \u0909\u0928\u0940\u0939\u0930\u0942\u0932\u0947 \u0916\u0941\u0932\u094d\u0928\u0947 \u0938\u092e\u092f \u092a\u0941\u0937\u094d\u091f\u093f \u0917\u0930\u0942\u0928\u094d? \u092e\u0948\u0932\u0947 \u0939\u093e\u092e\u094d\u0930\u094b \u091f\u093f\u092e\u0932\u093e\u0908 \u092a\u0928\u093f \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0926\u093f\u090f\u0901, \u0924\u094d\u092f\u0938\u0948\u0932\u0947 \u090f\u0915 \u091c\u0928\u093e \u0938\u093e\u0901\u091a\u094d\u091a\u0948\u0915\u094b \u092e\u093e\u0928\u094d\u091b\u0947\u0932\u0947 \u0924\u092a\u093e\u0908\u0902\u0932\u093e\u0908 \u092b\u0932\u094b-\u0905\u092a \u0917\u0930\u094d\u0928\u0947\u091b\u0964",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:24:22.873416"
+    },
+    {
+      "sender_type": "customer",
+      "content": "One more question in English, are you open on weekends?",
+      "detected_intent": "business_hours",
+      "created_at": "2026-09-04T13:24:22.876934"
+    },
+    {
+      "sender_type": "agent",
+      "content": "\u092e\u093e\u092b \u0917\u0930\u094d\u0928\u0941\u0939\u094b\u0938\u094d \u2014 \u092f\u0939\u093e\u0901 \u092e\u0932\u093e\u0908 \u0938\u092a\u094d\u0924\u093e\u0939\u0928\u094d\u0924 (\u0936\u0928\u093f\u092c\u093e\u0930/\u0906\u0907\u0924\u092c\u093e\u0930) \u0916\u094b\u0932\u094d\u0928\u0947 \u092c\u093e\u0930\u0947 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u091b\u0948\u0928\u0964 \u0915\u0947 \u092e \u0924\u092a\u093e\u0908\u0902\u0932\u093e\u0908 \u0939\u093e\u092e\u094d\u0930\u094b \u091f\u093f\u092e\u0938\u0901\u0917 \u091c\u0921\u093e\u0928 \u0917\u0930\u093e\u0907\u0926\u093f\u0928 \u0938\u0915\u094d\u091b\u0941 \u0924\u093e\u0915\u093f \u0909\u0928\u0940\u0939\u0930\u0942\u0932\u0947 \u0916\u0941\u0932\u094d\u0928\u0947 \u0938\u092e\u092f \u092a\u0941\u0937\u094d\u091f\u093f \u0917\u0930\u0942\u0928\u094d? \u092e\u0948\u0932\u0947 \u0939\u093e\u092e\u094d\u0930\u094b \u091f\u093f\u092e\u0932\u093e\u0908 \u092a\u0928\u093f \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0926\u093f\u090f\u0901, \u0924\u094d\u092f\u0938\u0948\u0932\u0947 \u090f\u0915 \u091c\u0928\u093e \u0938\u093e\u0901\u091a\u094d\u091a\u0948\u0915\u094b \u092e\u093e\u0928\u094d\u091b\u0947\u0932\u0947 \u0924\u092a\u093e\u0908\u0902\u0932\u093e\u0908 \u092b\u0932\u094b-\u0905\u092a \u0917\u0930\u094d\u0928\u0947\u091b\u0964",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:24:31.724510"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "3027173d-1704-49bc-993f-f11063145335",
+    "name": "Riverside Dental",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "4a8676d5-b5fa-4a0a-89d7-73265201161d",
+        "name": "Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

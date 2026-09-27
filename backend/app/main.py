@@ -14,6 +14,7 @@ from app.api.routes import (
     followups,
     google_calendar,
     handoffs,
+    inbox,
     health,
     integrations,
     internal_metrics,
@@ -92,6 +93,7 @@ app.include_router(appointments.router, prefix="/api/v1", tags=["appointments"])
 app.include_router(reports.router, prefix="/api/v1", tags=["reports"])
 app.include_router(followups.router, prefix="/api/v1", tags=["followups"])
 app.include_router(handoffs.router, prefix="/api/v1", tags=["handoffs"])
+app.include_router(inbox.router, prefix="/api/v1", tags=["inbox"])
 app.include_router(integrations.router, prefix="/api/v1", tags=["integrations"])
 app.include_router(payments.router, prefix="/api/v1", tags=["payments"])
 app.include_router(google_calendar.router, prefix="/api/v1", tags=["google-calendar"])

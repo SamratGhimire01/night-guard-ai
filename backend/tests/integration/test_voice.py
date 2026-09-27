@@ -33,14 +33,19 @@ from app.db.database import SessionLocal
 from app.db.models.business import Business
 from app.db.models.conversation import Conversation, Message
 from app.main import app
+from app.services.conversation.response_templates import render
 
 client = TestClient(app)
 
 _STUB_RESPONSE = "Thanks for calling!"
-# This business has no knowledge base, so a general_question also triggers a
-# real Phase 19 handoff, appended verbatim -- same real behavior documented
-# in test_widget.py, not a voice-specific quirk.
-_EXPECTED_RESPONSE = _STUB_RESPONSE + " I've also let our team know, so a real person will follow up with you."
+# This business has no knowledge base, so a general_question also triggers the
+# zero-retrieval grounding backstop (orchestrator.py, "using honest fallback"),
+# which overrides the stubbed LLM reply with this real deterministic template
+# -- never the raw stub text -- plus the real Phase 19 handoff addendum, same
+# real behavior documented in test_widget.py, not a voice-specific quirk.
+_EXPECTED_RESPONSE = (
+    render("unconfirmed_fact_fallback", "en") + " I've also let our team know, so a real person will follow up with you."
+)
 
 _FAKE_AUDIO = b"fake webm bytes, never actually decoded -- Deepgram is stubbed"
 

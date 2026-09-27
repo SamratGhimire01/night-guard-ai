@@ -1,0 +1,148 @@
+{
+  "conversation_id": "3871a9b6-dca0-4a8b-93c9-9cd14a494f80",
+  "business_id": "3027173d-1704-49bc-993f-f11063145335",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-04T13:19:45.116206",
+  "customer": {
+    "id": "bf98bf03-d370-4731-90d1-5ff7633c3733",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Hi, how much is a cleaning?",
+      "detected_intent": "pricing_question",
+      "created_at": "2026-09-04T13:19:45.122384"
+    },
+    {
+      "sender_type": "agent",
+      "content": "A Cleaning is $90 and usually takes about 30 minutes. Would you like me to check availability to book one for you?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:19:50.369702"
+    },
+    {
+      "sender_type": "customer",
+      "content": "I would like to book one for Sunday at noon.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T13:19:51.383898"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Before I can get that booked, I'll need a way to reach you to confirm it \u2014 could you give me your name and a phone number or email?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:19:59.616022"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Cleaning, and my name is Jordan Lee, email jordan.lee@example.com.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T13:20:10.883467"
+    },
+    {
+      "sender_type": "agent",
+      "content": "That time isn't available anymore, Jordan Lee \u2014 requested time is not available (outside business hours, on a closed date, in the past, or already booked). Here are some other openings for Cleaning: Monday, September 7 at 9:00 AM, Monday, September 7 at 9:15 AM, Monday, September 7 at 9:30 AM, Monday, September 7 at 9:45 AM, Monday, September 7 at 10:00 AM. Would any of those work? I've updated your contact info on file.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:20:10.901209"
+    },
+    {
+      "sender_type": "customer",
+      "content": "cool thanks",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-04T13:20:11.911417"
+    },
+    {
+      "sender_type": "agent",
+      "content": "You\u2019re welcome, Jordan \u2014 glad to help. If you\u2019d like one of the Monday slots, tell me which time and I\u2019ll check availability for you.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:20:20.339544"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Also can you tell me when my appointment is?",
+      "detected_intent": "appointment_status",
+      "created_at": "2026-09-04T13:20:21.349131"
+    },
+    {
+      "sender_type": "agent",
+      "content": "You don't have any appointments on file with us right now, Jordan Lee.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:20:37.507035"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "3027173d-1704-49bc-993f-f11063145335",
+    "name": "Riverside Dental",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "4a8676d5-b5fa-4a0a-89d7-73265201161d",
+        "name": "Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,1326 @@
+[
+  {
+    "conversation_id": "002972c7-b350-4bd2-9132-d1781c05b287",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "053a70c8-c03c-4256-8c30-cc1dad0fa85b",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "0684b4bc-d76a-475a-b019-dd55f00c2533",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "086dca06-452c-4350-9380-0515d3ed356c",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "096e9a4d-1186-4d55-a5e2-580c06ffca27",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "0d2f950c-888a-4d8a-a4f0-4b495534b8a6",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "108c14f2-ac0c-4c71-8c1b-9c16289458b2",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "guessed_availability",
+        "summary": "Direct 'book on Saturday at 10am' request was confirmed without checking business hours; Saturday is a configured closed day (the parallel 'what times are open' flow correctly rejects this same date as closed).",
+        "evidence": "Got it — Teeth Cleaning, Saturday, September 26 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "10f8dea3-896d-4657-87b0-5b8f7c4ef9ed",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "1147abb4-e0a8-4402-a9cc-4471c90c58ab",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "1312948e-b674-4564-b4aa-e5cea5a15900",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "14e12688-99a0-4aef-acef-f07df4a9d2e2",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "16d5dc68-311b-49cf-9a50-0405b61dfdd4",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "184e20a0-d511-4d92-8687-ee098022131c",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "1a365c7c-a15a-4ea3-bb11-d594d84cdad1",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "1ac34d98-baee-4656-b9ed-41a4b45f02a7",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "1d3f6982-5d64-4417-85da-3648bbfc90d2",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "2008bed4-ca7a-4411-8bff-6c6fba2dc799",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "2047331d-087b-4a13-8684-bbd439a194f5",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "2222f60e-17be-445f-a214-53eb3aca086b",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "231510ea-cca1-475c-9955-5f4661d6c52f",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "23b50173-59b1-4cdf-97cc-3ab2288c7281",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "24aa3725-fe43-492e-b088-828699215aa9",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "2667a158-1944-4a21-ad99-5727c2d853eb",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "26ffe386-2b0d-4472-8f12-e40d73691007",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "2928af5b-d944-4bf4-9228-2a0b5e0837d7",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "2f8ab471-9308-46bc-a763-2668091680c1",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "3673d450-ac0d-4b79-9728-84a4505c6738",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "38b242a6-7c00-4126-8cd0-435473baab0c",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "3a413b48-1b94-4cfc-bd25-8daf99ab19dc",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "3a430f6e-8913-45c2-8c6f-e2f4db3761b0",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "3b20ffef-8153-4eb5-a6ce-63f70cf02349",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "3b863010-b0fa-4316-a87c-d8ba0a86605b",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "3c20e7ed-d817-466f-ad11-78219cc9c0e5",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "3e009ee3-1d44-41ef-9a58-a99073af269f",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "3ebd64c3-5d06-4e10-84a1-78b7c70d66b2",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "4304c776-5bcb-4ed4-9b64-ddc28d6b13a0",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "44984dea-ac87-410b-b2bb-e38e4694f6d9",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "460bb729-21c9-4c75-90ba-94788899065f",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "487176dd-f5f7-4d3e-9d13-43d00a761d9a",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "50f04797-ecc9-4f42-a860-74fc1aad805b",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "guessed_availability",
+        "summary": "Direct 'book on Sunday at 10am' request was confirmed without checking business hours; Sunday is a configured closed day (the parallel 'what times are open' flow correctly rejects this same date as closed).",
+        "evidence": "Got it — Teeth Cleaning, Sunday, September 20 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "525caace-e9df-4ca6-b0e4-e50f2be91cba",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "5441ec25-f706-42c8-ab3c-6c47025035dd",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "55361db5-ac64-4dc1-86bc-029d78fc6b21",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "guessed_availability",
+        "summary": "Direct 'book on Sunday at 10am' request was confirmed without checking business hours; Sunday is a configured closed day (the parallel 'what times are open' flow correctly rejects this same date as closed).",
+        "evidence": "Got it — Teeth Cleaning, Sunday, September 20 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "55579615-c416-4eab-8d92-24be4e1e1e7d",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "guessed_availability",
+        "summary": "Direct 'book on Saturday at 10am' request was confirmed without checking business hours; Saturday is a configured closed day (the parallel 'what times are open' flow correctly rejects this same date as closed).",
+        "evidence": "Got it — Teeth Cleaning, Saturday, September 26 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "57a71956-c82e-4d10-ae3b-f0da03c45d11",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "58e0434f-e78b-4a67-a353-b6b100432108",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "hallucinated_booking_detail",
+        "summary": "Customer asked to book on Thursday but the agent confirmed and saved a booking draft for Wednesday instead.",
+        "evidence": "Got it — Teeth Cleaning, Wednesday, September 23 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "59740bfe-dbcb-41ae-9692-5f8acb125975",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "guessed_availability",
+        "summary": "Direct 'book on Sunday at 10am' request was confirmed without checking business hours; Sunday is a configured closed day (the parallel 'what times are open' flow correctly rejects this same date as closed).",
+        "evidence": "Got it — Teeth Cleaning, Sunday, September 20 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "5a4a5b9a-3044-421c-8610-195fada71027",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "5ebadc16-8f1e-477a-a280-260a010a7ee8",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "603f5026-5982-4a44-824a-b937d484f889",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "61137d7d-33fd-42f0-8e9d-bcba194ffceb",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "64b72909-bbd2-40a5-b553-980eb88a61ab",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "676a1e7a-d315-4815-8c9c-b5db56b4e4b7",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "67dfa149-2b26-4670-b687-c7c9d36cd7a7",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "69db7388-09ab-4c0a-aa2d-a1e0b7fca944",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "6b8ffa33-c9a1-42d1-a099-c5de389b2f62",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "6c02e823-c85a-4a38-9b2a-18a20cd83d2f",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "708ce6c3-c4d2-45e8-bd70-b886e3d0e9e0",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "70d73a91-661f-4524-8df6-72f26fb6c124",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "75e7b574-6695-4fab-9cf9-0a633747a7f3",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "76a935e3-c74b-4f74-8c86-9bbef97a8f69",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "7888ade7-3489-4492-b983-6b92c2d37057",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "78f19491-9087-43e0-9aa1-11bea6705827",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "7f9bfe41-16ba-4e86-b997-d1aa40be743d",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "hallucinated_booking_detail",
+        "summary": "Customer asked to book on Thursday but the agent confirmed and saved a booking draft for Wednesday instead.",
+        "evidence": "Got it — Teeth Cleaning, Wednesday, September 23 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "80d78d71-2c9d-4480-aa8f-261f56897537",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "83031129-cd95-40c3-87d3-755c99f2e0a1",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "889213a3-f544-4c49-9c43-fc2c2d8be46e",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "895cee5a-82cb-4cca-9fbd-80c87eb81c8a",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "89770515-4910-4e87-a1bb-442276608ccc",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "8b7ace56-6fff-4bd3-95a8-75d317e1d171",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "8bc07549-16e5-4839-b436-53161012f43c",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "8c43993b-46c8-4713-8466-01e218c5d089",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "8cec9e95-c54a-44e4-a24f-602a3aa7c87f",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "8d088dc1-d483-481a-8f42-bd2465f528ab",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "8d286974-7a53-4906-b213-7aa2fe67eb57",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "8d7818e5-a238-43e4-89ff-c032e7d30e12",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "guessed_availability",
+        "summary": "Direct 'book on Sunday at 10am' request was confirmed without checking business hours; Sunday is a configured closed day (the parallel 'what times are open' flow correctly rejects this same date as closed).",
+        "evidence": "Got it — Teeth Cleaning, Sunday, September 20 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "8fa31fb0-1918-4d4c-951a-da79276f7fed",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "90228d50-d7f3-44af-8f95-3988dce8ca4c",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "guessed_availability",
+        "summary": "Direct 'book on Saturday at 10am' request was confirmed without checking business hours; Saturday is a configured closed day (the parallel 'what times are open' flow correctly rejects this same date as closed).",
+        "evidence": "Got it — Teeth Cleaning, Saturday, September 26 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "92ef2ea7-d5ef-4b1f-98d7-4618696eaa5b",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "9431eb09-1c94-4d53-831a-32d4f0fc09a7",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "946fc246-4461-4c38-8462-6ee357be8637",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "97c27013-2dbf-4df4-a1b3-97ccc7599cec",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "guessed_availability",
+        "summary": "Direct 'book on Sunday at 10am' request was confirmed without checking business hours; Sunday is a configured closed day (the parallel 'what times are open' flow correctly rejects this same date as closed).",
+        "evidence": "Got it — Teeth Cleaning, Sunday, September 20 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "99e88b02-e655-41e6-91c2-0a5c8af37111",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "9ab394a9-3db3-4939-8d25-dba11a2ea6a2",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "9b1e16bd-50ad-4001-954d-924dc5b79a2f",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "9c4e8796-a93c-4d1c-a76d-1938db73706a",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "9ecced97-fa1e-44f6-a3f8-b3121ffb3f36",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "a07e1f6d-6532-44a8-89ce-b4ecc1aabd22",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "a4885922-8a89-46ab-899a-909c74519074",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "hallucinated_booking_detail",
+        "summary": "Customer asked to book on Thursday but the agent confirmed and saved a booking draft for Wednesday instead.",
+        "evidence": "Got it — Teeth Cleaning, Wednesday, September 23 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "a77021f6-fb5a-4ef6-a8b1-3d0297218751",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "a7b46f2b-efff-4dd2-a73c-882cb8255aa1",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "a8cebc11-a865-47b1-a531-aa05a2c64bd5",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "aa03afbf-961e-47af-99d8-0be73b2fa2c9",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "ac47760e-bc81-44f4-bb0f-1c458e35739b",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "ad4953e5-c04b-4da0-9169-056f178cef89",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "ada52363-c3d6-48a1-a1a5-9dba6b22a857",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "b09476a2-9641-4763-abd1-5ce25aabf33d",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "b74fe03c-cbaf-4d13-96ee-57b7b7006217",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "hallucinated_booking_detail",
+        "summary": "Customer asked to book on Thursday but the agent confirmed and saved a booking draft for Wednesday instead.",
+        "evidence": "Got it — Teeth Cleaning, Wednesday, September 23 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "b7da7f9d-4a41-4de7-bb1f-4ac2cf478086",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "b95b9523-9b87-4d21-bb43-049888a16f08",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "guessed_availability",
+        "summary": "Direct 'book on Saturday at 10am' request was confirmed without checking business hours; Saturday is a configured closed day (the parallel 'what times are open' flow correctly rejects this same date as closed).",
+        "evidence": "Got it — Teeth Cleaning, Saturday, September 26 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "bb87736b-098b-41eb-96fb-1147b4d61c42",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "bb935960-cba9-4f4d-89b6-a7abec81abca",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "bc026ffc-d544-41ab-b5d5-b413c2a1e348",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "bed36751-ead0-4e21-ae2a-d3b481b19836",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "bf2c4044-8a47-4f99-b6f5-5f56b1627b1d",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c1e333de-2b0b-4b6a-8739-f89cc3da0925",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c34e67bb-735d-43c1-a970-75b6165879c8",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c3749b35-4e81-44e4-b94c-1decb5fb9859",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c3a80eb7-16a8-45d5-9c2c-2761199384a7",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c3c8363c-6962-49a2-810b-37f439ee8a5f",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c48d1dbc-1375-4785-b470-2e217b530e85",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c594f147-d449-476f-bfec-92e084236fa7",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "guessed_availability",
+        "summary": "Direct 'book on Sunday at 10am' request was confirmed without checking business hours; Sunday is a configured closed day (the parallel 'what times are open' flow correctly rejects this same date as closed).",
+        "evidence": "Got it — Teeth Cleaning, Sunday, September 20 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c5ee0e57-fee8-4170-8e40-372f72b5d831",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c60c920a-7075-47ac-a2b9-eca670ba96e3",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c678ddce-e0db-4f30-a0b3-c82b0e5db79f",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c8977a4d-9055-4d54-8123-8d4837fa9fda",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c8edc86f-fab9-44e1-b6c7-adfc8ef12a8a",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c92553cb-1e7e-43a9-9850-fead42198900",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "hallucinated_booking_detail",
+        "summary": "Customer asked to book on Thursday but the agent confirmed and saved a booking draft for Wednesday instead.",
+        "evidence": "Got it — Teeth Cleaning, Wednesday, September 23 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c9c2c8a7-4f93-4518-8c64-bef671f927cc",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "c9dade41-489b-49e8-8e41-34935b3b5703",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "cdd59fee-a396-4ca4-bf1f-4f5a4342be7a",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "d0727807-b4b3-4a31-b498-d53f2304bfcb",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "d653b5ce-0cd0-4476-a992-e105a1f475c7",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "d6c0515e-f5a0-4cf0-a46c-e21ceb3752d5",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "guessed_availability",
+        "summary": "Direct 'book on Saturday at 10am' request was confirmed without checking business hours; Saturday is a configured closed day (the parallel 'what times are open' flow correctly rejects this same date as closed).",
+        "evidence": "Got it — Teeth Cleaning, Saturday, September 26 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "d7c5c68b-3c1d-4fbc-93c9-c97a906e57a4",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "d912d8e4-b0fa-4fc9-b57c-a3299a8fe2b1",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "d9c5a038-908e-4b75-995a-92f21c41514e",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "da69d2cb-3670-4778-9017-22bbab2427f6",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "db880cd7-edd7-47c2-bbcb-ef76c0b45c37",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "e02a81da-d712-4d31-be23-308e7f52c945",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "e30c908d-b817-4e87-8fee-92ae4efadc37",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "e3ae330d-60d0-412d-ad99-712028f68f9e",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "e6476889-79de-495d-84ab-14c01283b64a",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "e648646a-ddd0-426c-8042-94064f98f602",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "e7ef68b0-6d9d-4394-88f4-fb25eebfc337",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "e8e6585a-12e5-414d-94b9-4f131820439b",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "e9498344-ed1c-4bb2-89df-607cf5a3a1e6",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "ec85fca2-efe8-4fd3-ba77-94281390b19e",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "guessed_availability",
+        "summary": "Direct 'book on Saturday at 10am' request was confirmed without checking business hours; Saturday is a configured closed day (the parallel 'what times are open' flow correctly rejects this same date as closed).",
+        "evidence": "Got it — Teeth Cleaning, Saturday, September 26 at 10:00 AM. I just need your name and a phone number or email to lock that in.",
+        "turn_index": 1
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "conversation_id": "f3c74995-9a57-4432-a4bc-1002f39c07d7",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "f44c89d4-33b2-45ec-9815-95f4c479f7d5",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "tone",
+        "summary": "After the customer already confirmed 'Thursday works, thanks', the agent re-sent the identical list of open Thursday time slots instead of proceeding (e.g. asking for a specific time or contact info).",
+        "evidence": "Here's what's open for Teeth Cleaning: Thursday, September 24 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Which works for you?",
+        "turn_index": 5
+      },
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent stated the clinic is 'located in Kathmandu' when no address field is configured for the business (only timezone Asia/Kathmandu is set, which is not itself an address claim).",
+        "evidence": "Our clinic is Phase 16 Test Clinic, located in Kathmandu. How can I help you with an appointment or service?",
+        "turn_index": 9
+      }
+    ],
+    "notes": "Conversation also contains a correctly-handled escalation for an out-of-scope medical question (bleeding gums) and graceful handling of an abusive message — those parts are good behavior, not failures."
+  },
+  {
+    "conversation_id": "f4fe8f10-730c-42ad-b815-535475f19556",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "f622a416-e63d-4e27-9d2d-e9992417d987",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "f6f0cf5e-c55c-4d82-bb41-6fee3dfe58e1",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "fa6c9844-a6c2-4c92-b85a-07c482d301b1",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "fb37f0d6-5efc-4d9b-a656-53bb76519f67",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "fb3d3c3d-89df-425b-b311-2fc3211327c1",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "fc506112-e538-4ef3-8827-a509690aed0f",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "fefce36b-e72c-43de-a493-98500a8f788d",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  },
+  {
+    "conversation_id": "fff5fad1-461b-4ac0-822c-4c1deddce223",
+    "business_name": "Phase 16 Test Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": [],
+    "notes": ""
+  }
+]

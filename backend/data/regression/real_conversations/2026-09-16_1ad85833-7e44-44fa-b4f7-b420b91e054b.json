@@ -1,0 +1,557 @@
+{
+  "conversation_id": "1ad85833-7e44-44fa-b4f7-b420b91e054b",
+  "business_id": "f0ca2a54-d76b-4c48-b727-1b0a0faea4cd",
+  "channel": "whatsapp",
+  "status": "open",
+  "detected_language": "ne_roman",
+  "created_at": "2026-09-16T03:27:12.365446",
+  "customer": {
+    "id": "0dbd601f-462c-4cb2-93da-80f537647383",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Yo",
+      "detected_intent": "greeting",
+      "created_at": "2026-09-16T03:27:12.374812"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Hi! Welcome to Samaj Dental Clinic \u2014 how can I help you today? I can help with appointments, our services and prices, or directions and parking.",
+      "detected_intent": null,
+      "created_at": "2026-09-16T03:27:18.569625"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Mero chak dukhe xa k garne book gardau ta chak ko",
+      "detected_intent": "booking",
+      "created_at": "2026-09-16T03:38:36.861139"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Tyo book garnu aghi, confirm garna tapailai contact garne madhyam chahincha \u2014 kripaya tapaiko naam ra phone number wa email dinuhos?",
+      "detected_intent": null,
+      "created_at": "2026-09-16T03:38:55.114585"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Qr pathau ta",
+      "detected_intent": "human_handoff",
+      "created_at": "2026-09-16T03:39:28.176619"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 kun QR pathaunu parcha bhanera confirmation dinuhos: payment ko QR ho ki aru kunai kura? Kun service ko payment ho bhane (e.g. consultation, filling), ra tapaiko naam ra phone number wa email dinuhos. Chahanu huncha vane ma front desk sanga connect garera uniharule QR pathauna bhanera arrange garna sakchhu \u2014 WhatsApp ho ki email thik huncha? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-16T03:39:28.182088"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Payment",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-16T03:39:42.943697"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Payment ko bare ma ho bhane: hamile cash ra card donai swikarchhau, ra saadharan roopma payment clinic ma appointment pachi huncha \u2014 tara agadi milayera QR pathauna pani thik cha. Thulo treatments (Root Canal, Full Braces, Dental Implant jasta) ko lagi 20% advance deposit magincha. Kun service ko payment ho? Ra tapaiko naam ra phone number wa email dinuhos; QR pathauna WhatsApp ho ki email thik huncha bhanera pani btaunuhos.",
+      "detected_intent": null,
+      "created_at": "2026-09-16T03:39:56.745318"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Esewa qr",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-16T03:40:11.893239"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 eSewa QR pathauna ma madad garna sakchhu. Kun service ko payment ho? Ra tapaiko naam ra phone number wa email dinuhos. QR WhatsApp ma pathaun ki email ma pathaun?",
+      "detected_intent": null,
+      "created_at": "2026-09-16T03:40:20.613518"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Teeth service ko lagi ho Mero",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-16T03:40:43.944465"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 eSewa QR teeth service ko lagi pathauna sakincha. Kun exact service ho bhanera confirm garnuhos (Teeth Cleaning (Scaling & Polishing), Tooth Filling, Root Canal Treatment, Tooth Extraction, Braces Consultation, Full Braces Treatment, Teeth Whitening, Dental Implant, Dental Consultation). Ra tapaiko naam ra phone number wa email dinuhos, ra QR WhatsApp ma pathaun ki email ma? Note: Root Canal Treatment, Full Braces Treatment, ra Dental Implant jasta thulo treatments ko lagi 20% advance deposit lagcha; aru routine treatments ko lagi advance chahindaina.",
+      "detected_intent": null,
+      "created_at": "2026-09-16T03:40:56.236760"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Ma tooth cleaning garna GANA lako esewa chai yo k",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-16T03:42:28.394453"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Ho \u2014 eSewa QR chalcha. Teeth Cleaning (Scaling & Polishing) NPR 1500 parcha ra kareeb 30 minutes lincha. Routine cleaning ko lagi advance chahindaina. Tapai QR pathauna chahanu huncha vane WhatsApp ho ki email ma? Ra kripaya tapaiko naam ra phone number wa email dinuhos.",
+      "detected_intent": null,
+      "created_at": "2026-09-16T03:42:37.222145"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Samrat Ghimire 9823045928 samratghimire01@gmail.com",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-16T03:46:15.116430"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Dhanyabad Samrat \u2014 tapaiko naam, phone, ra email paaye. Teeth Cleaning (Scaling & Polishing) NPR 1500 ho ra kareeb 30 minutes lincha; routine cleaning ko lagi advance chahindaina. Ma eSewa QR kasari pathaun? WhatsApp (9823045928) ma pathaun ki email (samratghimire01@gmail.com) ma pathaun? Maile tapaiko contact information update gare.",
+      "detected_intent": null,
+      "created_at": "2026-09-16T03:46:15.123587"
+    },
+    {
+      "sender_type": "customer",
+      "content": "2 wota Mai vaya hunxa",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-16T03:46:51.897735"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Thik cha \u2014 ke \u201c2 wota\u201d bhaneko 2 jana ko lagi ho? Dui jana dubaiko service Teeth Cleaning ho ki arko kunai service? Ra eSewa QR WhatsApp (9823045928) ma pathaun ki email (samratghimire01@gmail.com) ma? Kripaya confirm garnuhos.",
+      "detected_intent": null,
+      "created_at": "2026-09-16T03:47:07.244632"
+    },
+    {
+      "sender_type": "customer",
+      "content": "What app ma vaya hunxa",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-16T03:47:43.787453"
+    },
+    {
+      "sender_type": "agent",
+      "content": "WhatsApp ra email dubaima pathauna sakincha \u2014 WhatsApp ma 9823045928 ho ra email samratghimire01@gmail.com. Kun chahanu huncha? Ra kripaya ek chin confirm garnuhos: \u201c2 wota\u201d bhaneko 2 jana ho ra dubaiko service Teeth Cleaning ho ki arko kunai service?",
+      "detected_intent": null,
+      "created_at": "2026-09-16T03:47:51.677898"
+    },
+    {
+      "sender_type": "customer",
+      "content": "What app k",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-16T03:48:14.610663"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Tapaile WhatsApp chahnuhunchha? WhatsApp number 9823045928 ho. Ra kripaya confirm garnuhos \u2014 \u201c2 wota\u201d bhanda 2 jana ho ra dubaiko service Teeth Cleaning (Scaling & Polishing) ho ki arko kunai service?",
+      "detected_intent": null,
+      "created_at": "2026-09-16T03:48:24.040365"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Tooth cleaning Ani tei what app number ma pathaunu k",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-16T03:49:15.955159"
+    },
+    {
+      "sender_type": "agent",
+      "content": "WhatsApp number 9823045928 ho. Ma tyo number ma eSewa QR pathaun? Ra kripaya confirm garnuhos \u2014 \u201c2 wota\u201d bhaneko 2 jana ho ra dubaiko service Teeth Cleaning (Scaling & Polishing) nai ho? Routine cleaning ko lagi advance chahindaina; QR advance ma pathauna matra ho, tapaile chahanu bhaye pathaun.",
+      "detected_intent": null,
+      "created_at": "2026-09-16T03:49:25.374310"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Hello",
+      "detected_intent": "greeting",
+      "created_at": "2026-09-17T01:43:28.433689"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Namaste Samrat! 2 jana dubaiko service Teeth Cleaning ho ni? Tapai ko WhatsApp 9823045928 ra email samratghimire01@gmail.com ma cha \u2014 kripaya confirm garnuhos.",
+      "detected_intent": null,
+      "created_at": "2026-09-17T01:43:42.237612"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Confirm gardeyo",
+      "detected_intent": "booking",
+      "created_at": "2026-09-17T01:44:32.377279"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Maaf garnuhos, maile thik sanga bujhna chahanchu \u2014 kun service, ra kun miti ra samaya chahanu huncha bhanera batauna sakinu huncha?",
+      "detected_intent": null,
+      "created_at": "2026-09-17T01:44:47.180649"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Kun Kun date available xa ta ani service haru",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-17T01:45:23.544800"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Hamro clinic Monday\u2013Friday 9:00\u201318:00 khula cha (Saturday ra Sunday bandha). Hamile yei services dinchhau: Teeth Cleaning (Scaling & Polishing) \u2014 NPR 1500 (30 min); Tooth Filling \u2014 NPR 1200 (30 min); Root Canal Treatment \u2014 NPR 8000 (60 min); Tooth Extraction \u2014 NPR 1500 (20 min); Braces Consultation \u2014 NPR 800 (30 min); Full Braces Treatment \u2014 NPR 60000 (60 min); Teeth Whitening \u2014 NPR 6000 (45 min); Dental Implant (per tooth) \u2014 NPR 45000 (90 min); Dental Consultation \u2014 NPR 500 (25 min). Kun date ra time ma auna man cha? Ma herera available slots btaidinchu.",
+      "detected_intent": null,
+      "created_at": "2026-09-17T01:45:40.942488"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Tooth cleaning ma k kasto khal ko kriya kalap hunxa ta",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-17T01:46:25.329004"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Scaling le plaque ra tartar tooth surface ra gumline bata hataunchha; polishing le daant haru smooth ra chamkila banaunchha. Dherai mancheharu lai painful hudaina \u2014 kehi pressure ra vibration mahsoos huna sakcha, ani gums inflamed bhayema halka sensitivity thapdincha jun aksar 1 din bhitra thik huncha. Yo samanya rupma karib 30 minute lagcha ra praya 6 mahina pachi repeat garna salla dinchhau; routine cleaning ko lagi advance chahindaina.",
+      "detected_intent": null,
+      "created_at": "2026-09-17T01:46:41.461381"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Lala, think xa bholi bihana ko lagi appointment book gardinus na",
+      "detected_intent": "booking",
+      "created_at": "2026-09-17T01:49:16.714854"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Bujhe \u2014 kripaya malai kun miti ra kun samaya batauna sakinu huncha?",
+      "detected_intent": null,
+      "created_at": "2026-09-17T01:49:30.727913"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Friday ko lagi xa ki nai 9:00am",
+      "detected_intent": "booking",
+      "created_at": "2026-09-17T01:50:45.793145"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Sabai milyo, Samrat Ghimire! Maile Friday, September 18 at 9:00 AM (30 minute) ko lagi Teeth Cleaning (Scaling & Polishing) book gari diye. Tapaiko booking ID 1cab7a7c-81ac-4d9b-afd3-fb6699731bd1 ho.",
+      "detected_intent": null,
+      "created_at": "2026-09-17T01:50:45.806047"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Yo booking Id chai k ko lagi maile bujhena",
+      "detected_intent": "appointment_status",
+      "created_at": "2026-09-17T01:51:25.619357"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Friday, September 18 at 9:00 AM ma Teeth Cleaning (Scaling & Polishing) (booking ID 1cab7a7c-81ac-4d9b-afd3-fb6699731bd1), Samrat Ghimire \u2014 confirmed.",
+      "detected_intent": null,
+      "created_at": "2026-09-17T01:51:33.616086"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Kena bookings I'd Deko hai k Kam xa yesko",
+      "detected_intent": "appointment_status",
+      "created_at": "2026-09-17T01:52:12.415449"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Friday, September 18 at 9:00 AM ma Teeth Cleaning (Scaling & Polishing) (booking ID 1cab7a7c-81ac-4d9b-afd3-fb6699731bd1), Samrat Ghimire \u2014 confirmed.",
+      "detected_intent": null,
+      "created_at": "2026-09-17T01:52:22.654569"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Mc radi Kati eautai kura vaneko",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-17T01:52:52.595508"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Maile bujhina \u2014 tapaile 'MC radi' bhanera ke sodhnubhayo? Kati ota x-ray laagncha bhanera sodhnuhunchha ki price/aru kura? Ekchoti clear bhanya hola, ma front desk sanga confirm garera tapailai bhanna sakinchu. Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-17T01:53:17.161624"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Sunnu ma Mero xoro ko chak dukhay ko xa k garne hola",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-17T01:54:00.553408"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Samrat \u2014 chinta nagarnu. Bachha ko daant/masu dukhda pahila Dental Consultation ma lyaunu best huncha; doctor le herera pain ko karan bujhne ra kei filling/extraction jaruri cha bhane sodhnechan. Hamro Dental Consultation NPR 500, karib 25 minute ho. Yedi swelling, bukha, ya bachha khana garo bhayeko cha bhane chito aunu hola. Tapaiko choro ko umar kati ho?",
+      "detected_intent": null,
+      "created_at": "2026-09-17T01:54:13.969080"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Payals ho ke k ho",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-17T01:54:18.777607"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Namaste \u2014 ma Samaj Dental Clinic ko receptionist hu. Ma Payal hoina. K kura garna cha, ke sahayog garu?",
+      "detected_intent": null,
+      "created_at": "2026-09-17T01:54:27.383138"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Anal last dukhay ko xa",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-17T01:54:38.441333"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Samrat \u2014 dukhai bhayeko sune dukha lagyo. Kun daant ho ra dukhai kasto cha (tez, constant, halka, swelled)? Yedi swelling, bukha, ya khana garna garo bhaye chito aunu hola; hami aaja 9:00\u201318:00 samma khula chau. Tapaile aaja nai appointment chahanu huncha ki Sept 18, 9:00 AM ko existing appointment thik cha?",
+      "detected_intent": null,
+      "created_at": "2026-09-17T01:54:52.470336"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Hlw",
+      "detected_intent": "greeting",
+      "created_at": "2026-09-21T02:39:58.222505"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Namaste! K huncha, ma kasari madat garu?",
+      "detected_intent": null,
+      "created_at": "2026-09-21T02:40:07.092448"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Mero dhat cleaning garnu parne xa",
+      "detected_intent": "booking",
+      "created_at": "2026-09-21T02:41:34.959464"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Teeth Cleaning (Scaling & Polishing) ko lagi yi samaya haru khali chan: Monday, September 21 at 11:15 AM, 11:30 AM, 11:45 AM, 12:00 PM, 12:15 PM. Kun milcha?",
+      "detected_intent": null,
+      "created_at": "2026-09-21T02:41:35.557063"
+    },
+    {
+      "sender_type": "customer",
+      "content": "11:15am cleaning Kati jati kharxa aauxa hola",
+      "detected_intent": "booking",
+      "created_at": "2026-09-21T02:42:34.195431"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Sabai milyo, Samrat Ghimire! Maile Monday, September 21 at 11:15 AM (30 minute) ko lagi Teeth Cleaning (Scaling & Polishing) book gari diye. Tapaiko booking ID 4c0b348e-b1c4-4bfb-81f5-8339bd15b1a2 ho.",
+      "detected_intent": null,
+      "created_at": "2026-09-21T02:42:34.208344"
+    },
+    {
+      "sender_type": "customer",
+      "content": "ID chai k ko lagi",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-21T02:43:05.905576"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Booking ID bhaneko tapaiko appointment ko unique reference ho \u2014 hami le appointment khojna, confirmation/QR resend gareko cha ki chaina herna, ra front-desk sanga kura garna yo ID le madat garcha. Tapaiko ID 1cab7a7c-81ac-4d9b-afd3-fb6699731bd1 ra arko 4c0b348e-b1c4-4bfb-81f5-8339bd15b1a2 ho.",
+      "detected_intent": null,
+      "created_at": "2026-09-21T02:43:12.523717"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [
+    {
+      "id": "1cab7a7c-81ac-4d9b-afd3-fb6699731bd1",
+      "service_id": "92422a12-2ee1-4445-acf7-9faf6d753c9b",
+      "scheduled_at": "2026-09-18T03:15:00+00:00",
+      "status": "confirmed",
+      "created_at": "2026-09-17T01:50:17.105256"
+    },
+    {
+      "id": "4c0b348e-b1c4-4bfb-81f5-8339bd15b1a2",
+      "service_id": "92422a12-2ee1-4445-acf7-9faf6d753c9b",
+      "scheduled_at": "2026-09-21T05:30:00+00:00",
+      "status": "completed",
+      "created_at": "2026-09-21T02:42:21.030817"
+    }
+  ],
+  "business": {
+    "id": "f0ca2a54-d76b-4c48-b727-1b0a0faea4cd",
+    "name": "Samaj Dental Clinic",
+    "timezone": "Asia/Kathmandu",
+    "currency": "NPR",
+    "languages": [
+      "en",
+      "ne"
+    ],
+    "language_mode": "automatic",
+    "tone": "warm, reassuring, and professional",
+    "content_scope": "single_business",
+    "payment_collection_enabled": true,
+    "payment_providers": [
+      "esewa"
+    ],
+    "services": [
+      {
+        "id": "92422a12-2ee1-4445-acf7-9faf6d753c9b",
+        "name": "Teeth Cleaning (Scaling & Polishing)",
+        "description": "Professional removal of plaque and tartar, followed by polishing.",
+        "price": 1500.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "35bd7cb4-5487-4785-a6ba-897dcc4fbd24",
+        "name": "Root Canal Treatment",
+        "description": "Treatment to remove infected pulp and save a damaged tooth.",
+        "price": 8000.0,
+        "duration_minutes": 60,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "1191731c-0d77-4440-bf93-3575e3dbcb02",
+        "name": "Tooth Extraction",
+        "description": "Removal of a damaged or problematic tooth.",
+        "price": 1500.0,
+        "duration_minutes": 20,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "3a1fdeee-0194-4647-ae44-40bd22fe4f4b",
+        "name": "Braces Consultation",
+        "description": "Assessment and treatment planning for orthodontic braces.",
+        "price": 800.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "27c27b91-468b-4c83-a558-3bebde0ed76e",
+        "name": "Full Braces Treatment",
+        "description": "Complete orthodontic braces treatment (initial fitting appointment; ongoing adjustment visits follow separately).",
+        "price": 60000.0,
+        "duration_minutes": 60,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "db1dfcee-d7a4-4222-9f47-e5f4c9f586b5",
+        "name": "Teeth Whitening",
+        "description": "Professional in-clinic teeth whitening treatment.",
+        "price": 6000.0,
+        "duration_minutes": 45,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "80c9e71f-ba56-41a2-be00-d07f4734ef4f",
+        "name": "Dental Implant (per tooth)",
+        "description": "Surgical placement of a single dental implant.",
+        "price": 45000.0,
+        "duration_minutes": 90,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "a0693858-9e4b-4f09-90e1-dc6bc517e380",
+        "name": "Tooth Filling",
+        "description": "Composite or amalgam filling for a cavity.",
+        "price": 1200.0,
+        "duration_minutes": 30,
+        "deposit_enabled": true,
+        "deposit_percentage": 1
+      },
+      {
+        "id": "2ad947fb-4997-485b-9a6b-15ef1df6f9c4",
+        "name": "Dental Consultation",
+        "description": "Initial checkup and diagnosis with one of our dentists.",
+        "price": 500.0,
+        "duration_minutes": 25,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [
+      {
+        "id": "b289f561-ca11-4256-894a-e9c6c026460e",
+        "title": "Root Canal Treatment \u2014 What to Expect",
+        "content": "Root Canal Treatment \u2014 What to Expect\n\nMost root canal treatments at Smile Care Dental Clinic take 1 to 2 visits, depending on the tooth and severity of infection. A straightforward case can often be completed in a single visit; more complex cases (e.g. molars with multiple canals, or significant infection) may need a follow-up visit about a week later.\n\nPain expectations, honestly: local anesthesia is used throughout the procedure, so you should not feel sharp pain during the treatment itself \u2014 most patients feel pressure or vibration, not pain. It is normal to have mild soreness or tenderness in the treated tooth and surrounding gum for 2-3 days afterward, especially when biting down. This is manageable with over-the-counter pain relief (e.g. paracetamol/ibuprofen as advised) and is not a sign anything went wrong.\n\nRecovery: most patients return to normal eating and daily activities the next day, avoiding chewing on the treated side until any soreness settles and, if a crown is planned, until that's placed. A temporary filling or crown is usually placed first; a permanent crown is typically recommended afterward to protect the tooth long-term.\n\nAftercare: avoid chewing hard or sticky foods on the treated tooth for the first few days, keep up gentle brushing and flossing, and take any prescribed antibiotics or pain medication as directed. Contact the clinic if you experience severe pain, swelling, or a fever after the procedure \u2014 mild discomfort is normal, but these are not."
+      },
+      {
+        "id": "accccc49-8772-4ae3-bc93-0a03719a29bd",
+        "title": "Tooth Extraction \u2014 What to Expect",
+        "content": "Tooth Extraction \u2014 What to Expect\n\nThe area is fully numbed with local anesthesia before the tooth is removed, so you should not feel pain during the extraction itself \u2014 you may feel pressure or pulling sensations. After the anesthesia wears off (usually a few hours later), some soreness, mild swelling, and minor bleeding are completely normal for the first 24 hours.\n\nWhat's normal: light oozing of blood for a few hours (biting gently on the gauze provided controls this), swelling that peaks around day 2 and then improves, and mild-to-moderate discomfort manageable with the pain relief the dentist recommends or prescribes.\n\nAftercare instructions: apply an ice pack to the outside of the cheek for the first 24 hours to reduce swelling, stick to soft, cool foods (yogurt, soup, mashed potato) for the first day or two, avoid rinsing, spitting forcefully, or using a straw for 24 hours (this can dislodge the healing blood clot), and avoid smoking for at least 48 hours, as it significantly slows healing and increases the risk of complications.\n\nWhen to call the clinic instead of waiting: heavy bleeding that doesn't slow down after firm gauze pressure for 30 minutes, severe pain that worsens after day 2-3 rather than improving, a fever, or a bad taste/odor from the socket (possible signs of infection or \"dry socket\"). These are real reasons to call the front desk directly, not something to wait out."
+      },
+      {
+        "id": "e00a1b04-3c37-4e78-bf31-a4bc56dd9300",
+        "title": "Parking & Location",
+        "content": "Smile Care Dental Clinic has free on-site parking available for patients right outside the building \u2014 no need to search for street parking. The clinic is located in New Baneshwor, Kathmandu, near the Bhrikutimandap intersection, a well-known landmark. If you're arriving by taxi or ride-share, just tell the driver \"New Baneshwor, near Bhrikutimandap, Smile Care Dental Clinic\" and they will know the area. The clinic is also a short walk from the New Baneshwor bus stop for patients using public transport. Look for the clinic's signboard on the main road \u2014 the entrance and parking area are on the ground floor."
+      },
+      {
+        "id": "e2512df5-9553-42db-a227-14e5a51a5078",
+        "title": "Teeth Cleaning \u2014 What to Expect",
+        "content": "Teeth Cleaning (Scaling & Polishing) \u2014 What to Expect\n\nA professional cleaning is not painful for most patients. You may feel some mild pressure or vibration from the scaling tool as plaque and tartar are removed, and if your gums are inflamed or you have sensitive teeth, you might notice brief, mild sensitivity to cold water during or shortly after the cleaning \u2014 this is temporary and settles within a day.\n\nThe process: scaling removes plaque and tartar buildup from the tooth surface and along the gumline, and polishing smooths and cleans the tooth surface afterward, leaving teeth feeling noticeably smoother. The whole appointment typically takes about 30 minutes.\n\nHow often it's recommended: for most patients, a professional cleaning every 6 months is recommended to keep gums healthy and catch any issues early. Patients with a history of gum disease or heavier tartar buildup may be advised to come in more often, e.g. every 3-4 months."
+      },
+      {
+        "id": "cd17ed95-a86c-4b46-83d9-5d62a129159d",
+        "title": "Payment & Cancellation Policy",
+        "content": "Payment & Cancellation Policy\n\nPayment methods: Smile Care Dental Clinic accepts both cash and card payments. Payment is collected at the clinic after your appointment, unless otherwise arranged in advance.\n\nCancellation policy: we kindly ask for at least 24 hours' notice if you need to cancel or reschedule an appointment. This lets us offer the slot to another patient who may need it. Please call the front desk or message us as soon as you know you need to change your appointment.\n\nAdvance/deposit policy for higher-cost procedures: for larger treatments such as Root Canal Treatment, Full Braces Treatment, and Dental Implants, we request a 20% advance deposit at the time of booking to confirm the appointment slot, with the remaining balance due at the time of treatment. This deposit is credited toward your total treatment cost \u2014 it is not an additional charge. For routine appointments (consultations, cleanings, fillings, extractions), no advance deposit is required."
+      },
+      {
+        "id": "fc8cd8f7-5b18-485b-8528-4b2306e9d854",
+        "title": "Braces \u2014 Process & Timeline",
+        "content": "Braces \u2014 Process & Timeline\n\nThe typical journey: (1) a Braces Consultation appointment, where Dr. Sunita Koirala assesses your teeth and bite, discusses goals, and puts together a treatment plan; (2) the Full Braces Treatment fitting appointment, where the braces are actually placed \u2014 this initial fitting takes about an hour; (3) regular adjustment visits, usually every 4-6 weeks, where wires/bands are tightened or adjusted to keep teeth moving correctly.\n\nDuration: most full orthodontic treatments take between 1 and 2.5 years, depending on the complexity of the case, patient age, and how consistently any take-home instructions (like rubber bands) are followed. Dr. Koirala will give you a more specific estimate at your consultation once she's assessed your teeth.\n\nDoes it hurt: getting braces fitted itself is not painful, though your mouth may feel a little unusual for the first day or two as you adjust to the brackets and wires. After each adjustment visit, it's normal to feel pressure or soreness in your teeth for 2-4 days \u2014 this is a sign the braces are working, not something to worry about. Over-the-counter pain relief and sticking to softer foods for those first couple of days after each adjustment usually helps.\n\nCost expectations: the Braces Consultation is NPR 800 and is a separate, standalone appointment. Full Braces Treatment is priced at NPR 60,000, which covers the initial fitting; ongoing adjustment visits are part of the overall treatment plan discussed at your consultation \u2014 ask the front desk or Dr. Koirala for the specific payment schedule for your case, as this can vary depending on your treatment plan."
+      },
+      {
+        "id": "13c77666-94c3-41df-ba47-c87b9d721b8f",
+        "title": "Emergency Dental Care",
+        "content": "Emergency Dental Care\n\nWhat counts as a real dental emergency: severe, unrelenting tooth or jaw pain that isn't relieved by over-the-counter pain medication; significant facial or gum swelling, especially if it's spreading or affecting your ability to swallow or breathe; a knocked-out or badly broken tooth from an injury or trauma; uncontrolled bleeding from the mouth that doesn't stop with firm gauze pressure; and a fever accompanying dental pain or swelling (a possible sign of a spreading infection).\n\nWhat to do: if you're experiencing any of the above, please call our front desk directly right away rather than waiting for a chat response \u2014 a real emergency needs a real person on the phone who can advise you immediately and fit you in urgently. Our phone number is +977-1-4781234. If it's outside clinic hours and the situation feels severe (heavy uncontrolled bleeding, difficulty breathing/swallowing, facial trauma), please go to your nearest hospital emergency department rather than waiting until we reopen.\n\nFor non-emergency concerns \u2014 like mild sensitivity, a small chip, or general questions \u2014 a regular appointment booked through chat or a phone call is the right path, and there's no need to treat it as urgent."
+      },
+      {
+        "id": "6759ba7a-19f4-4182-ac5b-e01e91c321b6",
+        "title": "Creator and developer name",
+        "content": "IT hero Samrat Ghimire"
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "18:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "18:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "18:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "18:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "18:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      },
+      {
+        "day_of_week": 6,
+        "closed": false,
+        "open_time": "10:00:00",
+        "close_time": "18:00:00"
+      }
+    ]
+  }
+}

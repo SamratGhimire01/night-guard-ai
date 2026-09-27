@@ -8,6 +8,8 @@ from app.db.models.channel_identity import ChannelIdentity
 from app.db.models.conversation import Message
 from app.db.models.integration import Integration
 from app.services.channels.meta_webhook_signature import verify_signature
+from app.services import takeover_service
+from app.services.channels.base import record_non_text_message
 from app.services.channels.whatsapp import WhatsAppChannelAdapter
 
 logger = logging.getLogger(__name__)
@@ -19,7 +21,7 @@ _adapter = WhatsAppChannelAdapter()
 # mechanism is genuinely identical across Meta webhook products) so
 # app/api/routes/webhooks.py's existing `from ...whatsapp_webhook import
 # verify_signature` keeps working unchanged.
-__all__ = ["verify_signature", "process_webhook_payload", "extract_incoming_text_messages"]
+__all__ = ["verify_signature", "process_webhook_payload", "extract_incoming_text_messages", "extract_incoming_non_text_messages"]
 
 
 def extract_incoming_text_messages(payload: dict) -> list[dict]:
@@ -70,6 +72,62 @@ def extract_incoming_text_messages(payload: dict) -> list[dict]:
                         "contact_name": contacts.get(message.get("from")) or contacts.get(bsuid),
                         "message_id": message_id,
                         "text": text_body,
+                    }
+                )
+    return results
+
+
+# WhatsApp message `type` -> what staff see. Types that carry no customer intent (a reaction, a system notice) are not
+# recorded at all; anything else not listed gets the generic line.
+_NON_TEXT_PLACEHOLDERS = {
+    "image": "[Customer sent an image]",
+    "video": "[Customer sent a video]",
+    "document": "[Customer sent a document]",
+    "sticker": "[Customer sent a sticker]",
+    "location": "[Customer shared a location]",
+    "contacts": "[Customer shared a contact]",
+}
+_IGNORED_TYPES = frozenset({"text", "reaction", "system", "request_welcome", "unsupported"})
+_GENERIC_PLACEHOLDER = "[Customer sent a message this channel can't show]"
+
+
+def extract_incoming_non_text_messages(payload: dict) -> list[dict]:
+    """Same envelope walk as `extract_incoming_text_messages`, for the messages it skips: one dict per real incoming
+    non-text message {phone_number_id, wa_id, bsuid, contact_name, message_id, placeholder}. A voice note (an `audio`
+    message with `audio.voice: true`) is told apart from an ordinary audio file."""
+    results = []
+    for entry in payload.get("entry", []) or []:
+        for change in entry.get("changes", []) or []:
+            value = change.get("value", {}) or {}
+            phone_number_id = (value.get("metadata") or {}).get("phone_number_id")
+            contacts = {}
+            for c in value.get("contacts", []) or []:
+                for key in (c.get("wa_id"), c.get("user_id")):
+                    if key:
+                        contacts[key] = (c.get("profile") or {}).get("name")
+            for message in value.get("messages", []) or []:
+                kind = message.get("type")
+                if kind in _IGNORED_TYPES:
+                    continue
+                if kind == "audio":
+                    placeholder = (
+                        "[Customer sent a voice note]" if (message.get("audio") or {}).get("voice") else "[Customer sent an audio file]"
+                    )
+                else:
+                    placeholder = _NON_TEXT_PLACEHOLDERS.get(kind, _GENERIC_PLACEHOLDER)
+                bsuid = message.get("from_user_id")
+                wa_id = message.get("from") or bsuid
+                message_id = message.get("id")
+                if not (phone_number_id and wa_id and message_id):
+                    continue
+                results.append(
+                    {
+                        "phone_number_id": phone_number_id,
+                        "wa_id": wa_id,
+                        "bsuid": bsuid,
+                        "contact_name": contacts.get(message.get("from")) or contacts.get(bsuid),
+                        "message_id": message_id,
+                        "placeholder": placeholder,
                     }
                 )
     return results
@@ -153,6 +211,18 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
             outcomes.append({"message_id": incoming["message_id"], "status": "duplicate_skipped"})
             continue
 
+        # New message we're about to answer -> show "typing..." while the
+        # (multi-second) LLM turn runs. Never raises. Skipped when a staff member owns the conversation (Phase 52): no AI
+        # reply will follow, and a "typing…" that never resolves would mislead the customer.
+        if not takeover_service.is_active_for_contact(
+            db, business_id=business_id, channel="whatsapp", external_ref=incoming["wa_id"]
+        ):
+            _adapter.send_typing_indicator(
+                message_id=incoming["message_id"],
+                phone_number_id=incoming["phone_number_id"],
+                access_token=(integration.config or {}).get("access_token") or "",
+            )
+
         try:
             result = _adapter.receive_message(
                 db,
@@ -160,6 +230,13 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
                 external_customer_ref=incoming["wa_id"],
                 content=incoming["text"],
                 external_message_id=incoming["message_id"],
+                # Delivered inside the orchestrator's per-conversation lock, and the result recorded on the message.
+                deliver=lambda text, incoming=incoming, integration=integration: _adapter.send_message(
+                    to=incoming["wa_id"],
+                    text=text,
+                    phone_number_id=incoming["phone_number_id"],
+                    access_token=(integration.config or {}).get("access_token") or "",
+                ),
             )
         except IntegrityError:
             # Real backstop for a genuine race between two concurrent
@@ -177,12 +254,12 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
             continue
 
         _link_bsuid_alias(db, business_id=business_id, wa_id=incoming["wa_id"], bsuid=incoming.get("bsuid"))
-        send_detail = _adapter.send_message(
-            to=incoming["wa_id"],
-            text=result["response"],
-            phone_number_id=incoming["phone_number_id"],
-            access_token=(integration.config or {}).get("access_token") or "",
-        )
+        if result.get("response") is None:
+            # Phase 52: a staff member owns this conversation -- the customer's message is stored (inbox), nothing is sent.
+            outcomes.append({"message_id": incoming["message_id"], "status": "human_takeover"})
+            continue
+
+        send_detail = result.get("delivery_detail")
         outcomes.append(
             {
                 "message_id": incoming["message_id"],
@@ -192,4 +269,25 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
                 "send_detail": send_detail,
             }
         )
+    for incoming in extract_incoming_non_text_messages(payload):
+        integration = _resolve_integration(db, phone_number_id=incoming["phone_number_id"])
+        if integration is None:
+            outcomes.append({"message_id": incoming["message_id"], "status": "unknown_phone_number_id"})
+            continue
+        try:
+            record_non_text_message(
+                db,
+                business_id=integration.business_id,
+                channel="whatsapp",
+                external_ref=incoming["wa_id"],
+                placeholder=incoming["placeholder"],
+                external_message_id=incoming["message_id"],
+                default_customer_name="WhatsApp Contact",
+            )
+        except IntegrityError:
+            db.rollback()  # a redelivery of a message we already stored
+            outcomes.append({"message_id": incoming["message_id"], "status": "duplicate_skipped"})
+            continue
+        _link_bsuid_alias(db, business_id=integration.business_id, wa_id=incoming["wa_id"], bsuid=incoming.get("bsuid"))
+        outcomes.append({"message_id": incoming["message_id"], "status": "non_text_recorded"})
     return outcomes

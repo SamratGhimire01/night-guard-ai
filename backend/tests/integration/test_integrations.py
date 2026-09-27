@@ -280,7 +280,11 @@ def test_email_integration_saves_normalized_password_and_never_echoes_it(two_bus
     assert resp.status_code == 201, resp.text
     assert resp.json()["config"] == {"gmail_address": "owner@gmail.com"}
     listed = client.get("/api/v1/integrations", headers=_auth_header(two_businesses["token_a"]))
-    assert "app_password" not in listed.text and "abcd" not in listed.text
+    # Check the actual password value/key, not a raw substring -- a random
+    # integration UUID can coincidentally contain "abcd" and false-positive.
+    for integration in listed.json():
+        assert "app_password" not in integration["config"]
+        assert "abcdefghijklmnop" not in str(integration["config"])
 
     from app.services import integration_service
 

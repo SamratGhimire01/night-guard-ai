@@ -1,0 +1,148 @@
+{
+  "conversation_id": "b0e920e0-ddce-4275-bcbc-9641245022c2",
+  "business_id": "3027173d-1704-49bc-993f-f11063145335",
+  "channel": "website",
+  "status": "open",
+  "detected_language": null,
+  "created_at": "2026-09-04T13:14:13.230884",
+  "customer": {
+    "id": "f9d04731-307f-4e6a-82de-097c176e623f",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Namaste, tapaiko cleaning ko lagi kati parcha?",
+      "detected_intent": "pricing_question",
+      "created_at": "2026-09-04T13:14:13.234877"
+    },
+    {
+      "sender_type": "agent",
+      "content": "\u0928\u092e\u0938\u094d\u0924\u0947 \u2014 \u0939\u093e\u092e\u094d\u0930\u094b Cleaning \u0938\u0947\u0935\u093e $90.00 \u092a\u0930\u094d\u091b \u0930 \u0915\u0930\u093f\u092c \u0969\u0966 \u092e\u093f\u0928\u0947\u091f \u0932\u093e\u0917\u094d\u091b\u0964 Appointment \u092c\u0941\u0915 \u0917\u0930\u094d\u0928 \u091a\u093e\u0939\u0928\u0941\u0939\u0941\u0928\u094d\u091b?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:14:20.696737"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Ma appointment book garna chahanchu, aaitabar 10 baje.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T13:14:21.708201"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Before I can get that booked, I'll need a way to reach you to confirm it \u2014 could you give me your name and a phone number or email?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:14:32.513691"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Cleaning nai ho. Mero naam Sunita Thapa ho, phone number 555-2211 ho.",
+      "detected_intent": "booking",
+      "created_at": "2026-09-04T13:14:46.305458"
+    },
+    {
+      "sender_type": "agent",
+      "content": "That time isn't available anymore, Sunita Thapa \u2014 requested time is not available (outside business hours, on a closed date, in the past, or already booked). Here are some other openings for Cleaning: Monday, September 7 at 9:00 AM, Monday, September 7 at 9:15 AM, Monday, September 7 at 9:30 AM, Monday, September 7 at 9:45 AM, Monday, September 7 at 10:00 AM. Would any of those work? I've updated your contact info on file.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:14:46.319720"
+    },
+    {
+      "sender_type": "customer",
+      "content": "thanks!",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-04T13:14:47.329166"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Dhanyabad, Sunita! Ke ma Monday, Sept 7 ka (9:00, 9:15, 9:30, 9:45, 10:00) time haru ko availability heraun?",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:15:02.097698"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Arko kura, malai malum garnu paryo ki mero appointment kati bajera cha.",
+      "detected_intent": "appointment_status",
+      "created_at": "2026-09-04T13:15:03.106996"
+    },
+    {
+      "sender_type": "agent",
+      "content": "You don't have any appointments on file with us right now, Sunita Thapa.",
+      "detected_intent": null,
+      "created_at": "2026-09-04T13:15:14.224413"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "3027173d-1704-49bc-993f-f11063145335",
+    "name": "Riverside Dental",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "4a8676d5-b5fa-4a0a-89d7-73265201161d",
+        "name": "Cleaning",
+        "description": null,
+        "price": 90.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "09:00:00",
+        "close_time": "17:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}

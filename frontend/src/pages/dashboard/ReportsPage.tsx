@@ -35,8 +35,11 @@ type DashboardContext = { business: BusinessRead | null; plan: PlanRead | null }
 const STATUS_COLORS: Record<string, string> = { confirmed: 'blue', cancelled: 'red', completed: 'teal' }
 const PIE_PALETTE = ['blue.6', 'grape.6', 'teal.6', 'orange.6', 'red.6', 'yellow.6', 'cyan.6']
 
-function money(value: string | number) {
-  return `$${Number(value).toFixed(2)}`
+// Formats in the business's own currency (was a hardcoded "$", wrong for e.g. an NPR clinic).
+function useMoney() {
+  const { business } = useOutletContext<DashboardContext>()
+  const currency = business?.currency ?? 'USD'
+  return (value: string | number) => new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(Number(value))
 }
 
 function StatCard({ label, value }: { label: string; value: ReactNode }) {
@@ -53,6 +56,7 @@ function StatCard({ label, value }: { label: string; value: ReactNode }) {
 }
 
 function RevenueCallout({ revenue }: { revenue: RevenueEstimate }) {
+  const money = useMoney()
   return (
     <Paper withBorder p="md" radius="md">
       <Text size="xs" c="dimmed" fw={600} tt="uppercase">
@@ -70,6 +74,7 @@ function RevenueCallout({ revenue }: { revenue: RevenueEstimate }) {
 }
 
 function YoYStat({ label, metric, isMoney }: { label: string; metric: YearOverYearMetric; isMoney?: boolean }) {
+  const money = useMoney()
   const pct = metric.change_pct
   const color = pct == null ? 'gray' : pct > 0 ? 'green' : pct < 0 ? 'red' : 'gray'
   const format = (v: number | string) => (isMoney ? money(v) : String(v))

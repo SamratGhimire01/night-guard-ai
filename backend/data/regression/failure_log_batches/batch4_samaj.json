@@ -1,0 +1,831 @@
+[
+  {
+    "conversation_id": "e72af409-4525-4152-a206-fedad7c3b42f",
+    "business_name": "Willow Creek Family Dentistry",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "153123be-5d4c-42e0-951c-d8872cc06d04",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent quotes all service prices using a dollar sign even though the tenant's configured currency is NPR (Nepalese Rupees), risking real confusion about the amount owed.",
+        "evidence": "Dental Consultation — $500 (20 min); Teeth Cleaning (Scaling & Polishing) — $1500 (30 min); Tooth Filling — $1200 (30 min)",
+        "turn_index": 1
+      }
+    ]
+  },
+  {
+    "conversation_id": "3ffb0825-b45c-4d1b-b7ed-6359006480dd",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "44a2a115-479d-4785-bec3-b2f6542db613",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "44c3a45f-0690-419e-8729-85e0d049a01b",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "45b2e4cd-51a9-4fd5-b199-c5d76f8fb700",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "8fd9aa2d-8b79-49f3-b7f3-940be12475bc",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "980762fb-da69-4d07-a375-a9960514aea8",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "98799446-74b2-4abd-8318-ab1634f2dfb5",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent quotes all service prices using a dollar sign even though the tenant's configured currency is NPR (Nepalese Rupees).",
+        "evidence": "Dental Consultation $500 (20 min); Teeth Cleaning $1500 (30 min); Tooth Filling $1200 (30 min)",
+        "turn_index": 3
+      }
+    ]
+  },
+  {
+    "conversation_id": "9d411ed2-f84f-4394-b7ee-ba565f131ba8",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "bb271108-d5f8-4086-a40d-2e99bb3494e8",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "e378e61a-d37b-48b7-a7ad-9eee62ca3f6c",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "eeaf84cc-1b37-45a4-9127-600e830fdc75",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "f98ba2d8-df80-4c07-b54d-2f861592a583",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "invented_policy",
+        "summary": "Agent repeatedly asserts a 20% advance deposit policy for Root Canal/Full Braces/Dental Implant that is not configured — those services all have deposit_enabled=false; only Tooth Filling has deposit_enabled=true (at 1%).",
+        "evidence": "Tara Root Canal, Full Braces, Dental Implant jasta thulo treatments ko lagi 20% advance deposit magincha.",
+        "turn_index": 57
+      },
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent describes a cash/card-at-clinic-only payment flow and never mentions the business's actual configured eSewa online payment option (payment_collection_enabled=true, payment_providers=[\"esewa\"]).",
+        "evidence": "Hamile appointmentko bela clinic ma payment linchhau; cash ra card dono accept garchau.",
+        "turn_index": 71
+      },
+      {
+        "category": "tone",
+        "summary": "A block of ~16 English FAQ exchanges (hours, insurance, rescheduling, doctor availability, cleaning prep) is repeated nearly verbatim a second time later in the same conversation.",
+        "evidence": "Hi, do you still have availability this week for a cleaning?",
+        "turn_index": 98
+      },
+      {
+        "category": "other",
+        "summary": "Agent inconsistently formats the same NPR prices, using a dollar sign in some replies and \"Rs.\" in others within the same conversation, misrepresenting the tenant's configured currency (NPR).",
+        "evidence": "Dental Consultation ($500.00, 20 min); Teeth Cleaning (Scaling & Polishing) ($1500.00, 30 min)",
+        "turn_index": 3
+      }
+    ],
+    "notes": "Pre-confirmed example from task instructions; invented-deposit-policy and payment-method findings were already established. Additional findings (duplicate Q&A block, currency symbol inconsistency) found during this review."
+  },
+  {
+    "conversation_id": "fbf2343e-b991-46b8-8bed-1ca9becd4d68",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "fd2859ae-e74d-4a98-b202-cf8eb744e34f",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "invented_policy",
+        "summary": "Agent states a 20% advance deposit is required for Root Canal Treatment, which has deposit_enabled=false in the tenant config (only Tooth Filling has deposit_enabled=true, at 1%). Same false claim repeated for Full Braces and Dental Implant elsewhere in the conversation.",
+        "evidence": "Cost Root Canal Treatment $8000.00 (60 min) ho, ra booking belā 20% advance deposit āvaśyak huncha.",
+        "turn_index": 33
+      },
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent describes payment as cash/card only collected at the clinic and never mentions the tenant's configured eSewa online payment option.",
+        "evidence": "Baaki ko balance treatment ko din clinic ma jama garnu parchha (cash wa card duiṭā accepted).",
+        "turn_index": 27
+      }
+    ]
+  },
+  {
+    "conversation_id": "027096db-cbf0-4fc1-bb93-63f518247e9c",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "1f4532a8-0f14-4925-9b3c-a4482c5af302",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "3bcebf98-c43b-4edd-8845-b06da5ab909a",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "6bdedafe-c543-49db-9842-96314be63b03",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "74f9bc87-bddd-4f13-af37-29e0950287bb",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "821eb136-74e9-48bf-8134-682240e1d9a9",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "844f32f0-f476-4762-ad5d-849ff8502b70",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "8c2ec213-16fc-44e9-8253-2624fc4284a6",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "ab5af821-73f8-4c7c-a346-31d0ff8e4d7c",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "ecb33d1e-4dd5-4db9-94ed-1fca7f4a06e1",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "f3242b3f-c980-49d0-88c3-85231f5a071b",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "tone",
+        "summary": "Customer explicitly asks the agent to switch to Nepali (\"Nepali ma bola na\"), but the agent replies in English for the next exchange instead of switching immediately, only actually switching two turns later after further prompting.",
+        "evidence": "Of course — I can speak in Nepali. Would you prefer Nepali written in Devanagari (नेपाली) or in Romanized Latin letters?",
+        "turn_index": 5
+      }
+    ]
+  },
+  {
+    "conversation_id": "2b11a236-89c7-4ce2-b42d-7d649926c78f",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "30ec23e7-4f2f-460a-be51-fb2b78d35c5d",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "49372d30-f822-43a9-861a-5dc7cee88bc6",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "4a0de7b9-8d7c-4ab8-abc2-28854dcd0fa4",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "4aa1e59a-85c4-470e-87e5-aeb05d0ac505",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "5b33fcca-51e3-41a6-a646-2c98ca0c89c3",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "5e369b91-6ba1-4143-bce8-d9841d69a5a2",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "735e739a-028f-4203-b049-81c69d6fd20f",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent claims it has no confirmed information about parking and escalates to a human, when the tenant's \"Parking & Location\" knowledge document explicitly states free on-site parking is available for patients.",
+        "evidence": "I don't have a confirmed note about parking in the records I can access",
+        "turn_index": 11
+      }
+    ]
+  },
+  {
+    "conversation_id": "80e159fe-5788-4cd6-ab7f-d54a3af14ad2",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "8dbe92ae-eaa2-45e1-86b0-3aee2934f581",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "e16bef81-5841-468c-a154-4b6811c2ad9f",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "e448ef46-d4a7-435a-bd57-9a94d34af65b",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "messenger",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "3db7b0b2-df3f-474f-bfa9-9da5bf6532f1",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "whatsapp",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "id_leak",
+        "summary": "Agent sends the customer a raw localhost development URL (non-functional in production, internal booking UUID exposed) as the payment link.",
+        "evidence": "Yaha payment garnuhos: http://localhost:8010/api/v1/payments/esewa/redirect/bd33a80f-e00b-4052-9f9b-23fe9dd23a45",
+        "turn_index": 124
+      },
+      {
+        "category": "id_leak",
+        "summary": "Agent sends a raw ngrok dev-tunnel URL with an embedded raw booking ID/token as a check-in QR link.",
+        "evidence": "https://unfiltrated-sharla-futile.ngrok-free.dev/qr/cf653594a6324272adbe0b809fca4d91.1790053200.lD90RYCZZWQPz5Jd7DHoSw",
+        "turn_index": 159
+      },
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent states a clinic address and phone number that contradict the tenant's configured location (New Baneshwor, Kathmandu, +977-1-4781234) — fabricated address/phone.",
+        "evidence": "Kahan: Samaj Dental Clinic · Radhe Radhe, Birgunj, Nepal · +977-51-522345",
+        "turn_index": 171
+      },
+      {
+        "category": "tone",
+        "summary": "Customer sends six bare/near-identical greetings in a row and the agent replies with a near-identical generic canned greeting each time rather than adapting.",
+        "evidence": "Hi! Welcome to Samaj Dental Clinic in New Baneshwor. How can I help you today?",
+        "turn_index": 9
+      }
+    ]
+  },
+  {
+    "conversation_id": "3e1da47f-fa19-4f2f-a6f0-e35a6cad35ce",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "40abd7fc-52d5-4728-958d-58226e6ada10",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "instagram",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "48e3f029-653b-4c02-9c81-758b4fbbfcc0",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "whatsapp",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "65b0abbd-0d58-4dc7-92d4-753cf20099aa",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "whatsapp",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "6791f3a8-9a82-407d-b83c-281b67915c9c",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "whatsapp",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "id_leak",
+        "summary": "Agent sends the customer a raw localhost development check-in QR URL with an embedded raw booking token.",
+        "evidence": "http://localhost:8010/qr/a43e7841c0c84f5995342312dc257d82.1790050500.410aNuUqajOtwGbcWIl-YQ",
+        "turn_index": 61
+      },
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent falsely claims it has no clinic phone number on record and refuses to give it, even though +977-1-4781234 is in the tenant's knowledge base and is used correctly by the agent in dozens of other conversations for this same tenant. This worsened an already angry, escalating customer's experience.",
+        "evidence": "I don't have a clinic phone number in my info.",
+        "turn_index": 37
+      }
+    ]
+  },
+  {
+    "conversation_id": "7ec75570-db57-4a00-a360-0ad990980851",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "af40da5f-af6a-4e61-9904-c4ec0cbe7176",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "d0606f81-ee7a-4409-b84f-09f9d4d817ff",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "whatsapp",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "d68d584a-1d79-43d1-9131-17c70a377d86",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "other",
+        "summary": "Customer explicitly asked to see every individual open slot between 12 PM and 3 PM listed out before picking one, but the agent silently auto-booked the first available slot without listing any options or waiting for a choice.",
+        "evidence": "You're all set, Exclusion Test! I've booked Tooth Filling for Monday, September 21 at 12:00 PM (30 min).",
+        "turn_index": 3
+      }
+    ]
+  },
+  {
+    "conversation_id": "debb88bf-39a5-47c0-8801-ae0ddebc6721",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "df6add7e-4243-49cd-be87-bfbcf65d7d70",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "other",
+        "summary": "Customer explicitly asked the agent to list every open slot between 10 AM and 1 PM before picking, but the agent instead silently booked a second, different appointment without listing anything — leaving the customer with two overlapping bookings for the same day/service and no list of options as requested.",
+        "evidence": "You're all set, Subash Verify! I've booked Teeth Cleaning (Scaling & Polishing) for Thursday, September 17 at 10:00 AM (30 min).",
+        "turn_index": 7
+      }
+    ]
+  },
+  {
+    "conversation_id": "f426cfed-95fd-4031-9dbd-6bda80c91fb0",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "whatsapp",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "db98dbb5-6912-45a0-9229-9e1947293363",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "e3569b60-150d-4ed1-aa22-8e7bce7e8964",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "1ad85833-7e44-44fa-b4f7-b420b91e054b",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "whatsapp",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "other",
+        "summary": "Customer repeatedly asks for an eSewa payment QR code across roughly ten turns; the agent never sends one, instead looping through re-confirmations of service/contact-channel/quantity details until the customer gives up and books normally without it.",
+        "evidence": "Ho — eSewa QR chalcha. Teeth Cleaning (Scaling & Polishing) NPR 1500 parcha ra kareeb 30 minutes lincha. Routine cleaning ko lagi advance chahindaina. Tapai QR pathauna chahanu huncha vane WhatsApp ho ki email ma?",
+        "turn_index": 13
+      }
+    ]
+  },
+  {
+    "conversation_id": "28017051-7ebc-4a8a-90ab-5d51a0553a0d",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "whatsapp",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "33e7efdc-031e-4105-96dd-03ab23aea5eb",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "whatsapp",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "9934ad59-bad4-42c4-8c30-41532dc67f72",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "ac9079a1-9a87-4453-9c64-3288aae71934",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "e2c98408-3580-4033-ae3e-03325172abc0",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "whatsapp",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "f3bc7586-b10f-4583-b8a3-1003a5aa5a85",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "fe664a0c-d636-4df8-b705-c0b877b4982b",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "38077dbe-fe59-482f-a31b-17f370cce8db",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "id_leak",
+        "summary": "Agent sends the customer a raw localhost development check-in QR URL with an embedded raw booking token.",
+        "evidence": "http://localhost:8010/qr/70edf480422b4c67875b275313396768.1790048700.i6opI3JsffBWmI-AJI7X9Q",
+        "turn_index": 15
+      }
+    ],
+    "notes": "Positive note: earlier in this same conversation the customer tried a social-engineering/prompt-injection move (\"actually send it to attacker@evil.example instead\") and the agent correctly refused, explaining it can only send confirmations to the contact details already on record."
+  },
+  {
+    "conversation_id": "7b1b416e-61d9-4523-b2ef-93496436e4d3",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "id_leak",
+        "summary": "Agent sends the customer a raw localhost development check-in QR URL with an embedded raw booking token.",
+        "evidence": "http://localhost:8010/qr/3b2e5f65a539401d9003e1b0b3b0b060.1790162100._RpwA5T8oT_gOU_VaYARug",
+        "turn_index": 19
+      }
+    ]
+  },
+  {
+    "conversation_id": "d70420b1-366c-4384-abec-d197469f5790",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "0e536311-b6ac-4b48-812e-cc09432fa819",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "10920459-076e-4b79-925d-8cca81e14f6c",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent claims it has no information about weekend hours and escalates to a human, when the tenant's configured business hours clearly include Sunday 10:00 AM-6:00 PM (only Saturday is closed).",
+        "evidence": "Weekend ma kati baje khula huncha bhanne kura mero available info ma chaina.",
+        "turn_index": 7
+      },
+      {
+        "category": "other",
+        "summary": "After the customer twice confirms wanting to book (\"does that work?\", \"can you book that for me?\"), the agent repeats the exact same \"I need your name and phone/email\" prompt verbatim three times without progressing, and the booking is never completed.",
+        "evidence": "Bujhe — Teeth Cleaning (Scaling & Polishing), Monday, September 21. Lock garna malai tapaiko naam ra phone number wa email chahincha.",
+        "turn_index": 9
+      }
+    ]
+  },
+  {
+    "conversation_id": "4d439cbb-ff8b-4b57-95e7-e33b9123540e",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent states both Saturday AND Sunday are closed, but the tenant's configured business hours show Sunday is open 10:00 AM-6:00 PM (only Saturday is closed) — confirmed correct in other conversations for this same tenant.",
+        "evidence": "Weekend ma hami band cha — Saturday ra Sunday clinic closed huncha.",
+        "turn_index": 7
+      },
+      {
+        "category": "other",
+        "summary": "After the customer clearly confirms wanting to book (\"Great, can you book that for me?\"), the agent just re-lists the identical time slots again instead of booking, and the conversation ends without a completed appointment.",
+        "evidence": "Teeth Cleaning (Scaling & Polishing) ko lagi yi samaya haru khali chan: Monday, September 21 at 10:00 AM, 10:15 AM, 10:30 AM, 10:45 AM, 11:00 AM. Kun milcha?",
+        "turn_index": 11
+      }
+    ],
+    "notes": "Part of a set of 4 near-identical synthetic test conversations from the same day (10920459, 4d439cbb, 64fcd363, 6634dfb6) that all reproduce the same two bugs from the same scripted flow."
+  },
+  {
+    "conversation_id": "64fcd363-04dc-48b5-bd40-87901fc8dbba",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent states both Saturday AND Sunday are closed, but the tenant's configured business hours show Sunday is open 10:00 AM-6:00 PM (only Saturday is closed).",
+        "evidence": "Namaste — weekend (Saturday ra Sunday) ma clinic bandha huncha. Hamro regular hours Monday–Friday 9:00 AM dekhi 6:00 PM samma huncha.",
+        "turn_index": 7
+      },
+      {
+        "category": "other",
+        "summary": "After the customer clearly confirms wanting to book (\"Great, can you book that for me?\"), the agent just re-lists the identical time slots again instead of booking, and the conversation ends without a completed appointment.",
+        "evidence": "Teeth Cleaning (Scaling & Polishing) ko lagi yi samaya haru khali chan: Monday, September 21 at 10:00 AM, Monday, September 21 at 10:15 AM, Monday, September 21 at 10:30 AM, Monday, September 21 at 10:45 AM, Monday, September 21 at 11:00 AM. Kun milcha?",
+        "turn_index": 11
+      }
+    ],
+    "notes": "Part of a set of 4 near-identical synthetic test conversations from the same day (10920459, 4d439cbb, 64fcd363, 6634dfb6) that all reproduce the same two bugs from the same scripted flow."
+  },
+  {
+    "conversation_id": "6634dfb6-3cee-4ed0-a095-94dbfbfa0ef3",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent states both Saturday AND Sunday are closed, but the tenant's configured business hours show Sunday is open 10:00 AM-6:00 PM (only Saturday is closed).",
+        "evidence": "Weekend ma hamro clinic bandha huncha — Saturday ra Sunday closed huncha. Hamro regular hours Monday dekhi Friday 9:00 AM bata 6:00 PM samma huncha.",
+        "turn_index": 7
+      },
+      {
+        "category": "other",
+        "summary": "After the customer clearly confirms wanting to book (\"Great, can you book that for me?\"), the agent just re-lists the identical time slots again instead of booking; the originally requested Monday cleaning booking is never completed.",
+        "evidence": "Teeth Cleaning (Scaling & Polishing) ko lagi yi samaya haru khali chan: Monday, September 21 at 10:00 AM, 10:15 AM, 10:30 AM, 10:45 AM, 11:00 AM. Kun milcha?",
+        "turn_index": 11
+      }
+    ],
+    "notes": "Part of a set of 4 near-identical synthetic test conversations from the same day (10920459, 4d439cbb, 64fcd363, 6634dfb6) that all reproduce the same two bugs from the same scripted flow."
+  },
+  {
+    "conversation_id": "818a403a-e936-4ef9-8ee8-37fa8434cda9",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "8593c657-3b29-4091-87f3-a97ddbf914f3",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "87ba5857-ff4a-485d-b717-c3f6ba106ac4",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "8fe2127f-90ac-43dd-a3c3-e02d3c45a400",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "9ed60a71-734a-42be-8ff3-bedb1e6de2c9",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "b001c5e6-63c9-44fb-822e-8ed3f518cb14",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "b0611240-8d19-4d26-b4cc-b7cafb1955ce",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "whatsapp",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "b3822446-4417-4840-aabe-7775b3533b9a",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "unconfigured_fact",
+        "summary": "Agent states both Saturday AND Sunday are closed, but the tenant's configured business hours show Sunday is open 10:00 AM-6:00 PM (only Saturday is closed).",
+        "evidence": "Weekend (Saturday ra Sunday) hamro clinic bandha cha. Hamro regular hours Monday–Friday 9:00 AM dekhi 6:00 PM samma huncha.",
+        "turn_index": 7
+      }
+    ],
+    "notes": "Same wrong-hours bug as 10920459/4d439cbb/64fcd363/6634dfb6, but this instance DOES correctly recover and ask the customer to pick a specific time rather than getting stuck in a loop."
+  },
+  {
+    "conversation_id": "e7e29ac8-7d99-438c-adf6-63ee3d6d5d98",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "fa489b16-1c7a-461f-8f77-30b8ba2cc5e9",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "54058ce5-eb71-4e28-8c16-24309915876b",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "id_leak",
+        "summary": "Agent sends the customer a raw ngrok dev-tunnel payment URL with an embedded raw booking ID.",
+        "evidence": "Pay here: https://unfiltrated-sharla-futile.ngrok-free.dev/api/v1/payments/esewa/redirect/97501cf9-083c-470b-9309-e7fa118598c9",
+        "turn_index": 19
+      }
+    ],
+    "notes": "Deposit amount itself is correct (1% of NPR 1200 = NPR 12 for Tooth Filling, which has deposit_enabled=true) — not a pricing failure."
+  },
+  {
+    "conversation_id": "62bf6bb4-934a-47f2-a525-7938701d3bc1",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "whatsapp",
+    "verdict": "fail",
+    "findings": [
+      {
+        "category": "id_leak",
+        "summary": "Agent sends the customer a raw ngrok dev-tunnel check-in QR URL with an embedded raw booking token.",
+        "evidence": "https://unfiltrated-sharla-futile.ngrok-free.dev/qr/e602fc062bf64b07ba173c7668622c00.1790072100.vSEdVExzPAoXpsJGvgLS6A",
+        "turn_index": 19
+      }
+    ],
+    "notes": "Customer described severe pain and inability to eat; agent repeatedly and appropriately urged calling the front desk for the emergency while also offering booking as a fallback — not flagging as missed_escalation."
+  },
+  {
+    "conversation_id": "89663cac-6b24-4b80-b9e8-928a591c8573",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "messenger",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "bc105720-242a-4966-b75a-ddd89b7b450d",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "3c9fd176-d2ca-4f14-b493-8b9dae7f869c",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "83f56bc0-eee5-4733-8135-2b9866c28cdf",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  },
+  {
+    "conversation_id": "c76a0baf-77d0-43bf-a9a2-2d2b0adc7b5c",
+    "business_name": "Samaj Dental Clinic",
+    "channel": "website",
+    "verdict": "pass",
+    "findings": []
+  }
+]

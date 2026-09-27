@@ -1,0 +1,898 @@
+[
+ {
+  "case_id": "greeting-loop-repetition",
+  "category": "repetition / dynamic length",
+  "conversation_so_far": [],
+  "customer_message": "Yo",
+  "reply": "Hi! How can I help you today?",
+  "check_for": [
+   "should be SHORT for a bare greeting (rule 17)",
+   "should not stack a 3-way compound question (rule 3 addition)",
+   "wording should vary from a prior run of this same case, not repeat verbatim"
+  ],
+  "score": 100.0,
+  "per_sample": [
+   100.0,
+   100.0,
+   100.0,
+   100.0,
+   100.0
+  ],
+  "criteria": {
+   "length_fit": 5,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 5,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 7,
+   "sentence_count": 2,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer sent a bare greeting (\"Yo\"). The reply is short (two brief sentences), matches the customer's ambiguous language with English (allowed), uses a natural receptionist prompt (\"How can I help you today?\") which is exactly the single allowed follow-up question for a bare greeting, does not add extraneous information, contains no emoji, and appropriately moves the conversation forward without inventing facts. All criteria are satisfied."
+ },
+ {
+  "case_id": "rule-9-readiness-question-violation",
+  "category": "booking readiness question (rule 9)",
+  "conversation_so_far": [],
+  "customer_message": "Mero daant dukheko cha",
+  "reply": "Dukhai sunee, hajur. Ke ma tapaiko lagi appointment book garna sakchu?",
+  "check_for": [
+   "must never contain a 'should I book that?' / 'shall I go ahead?' style question (rule 9 reinforcement)",
+   "must acknowledge and move toward the one missing piece, not restart"
+  ],
+  "score": 94.1,
+  "per_sample": [
+   84.4,
+   100.0,
+   100.0,
+   86.0,
+   100.0
+  ],
+  "criteria": {
+   "length_fit": 5,
+   "language_match": 4.8,
+   "natural_tone": 4.6,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 5,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 11,
+   "sentence_count": 2,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "Customer wrote in Romanized Nepali saying their tooth hurts. The reply is appropriately short, in Romanized Nepali, and offers the one genuine next step (book an appointment). It stays on topic and doesn't add unasked-for info. Small language/naturalness issues: \"Dukhai sunee\" is slightly awkward phrasing for Romanized Nepali, and the tone is a touch formal rather than very chatty, so I dock a point there."
+ },
+ {
+  "case_id": "rule-9-readiness-question-violation",
+  "category": "booking readiness question (rule 9)",
+  "conversation_so_far": [
+   {
+    "customer": "Mero daant dukheko cha",
+    "agent": "Dukhai sunee, hajur. Ke ma tapaiko lagi appointment book garna sakchu?"
+   }
+  ],
+  "customer_message": "Chahanchu",
+  "reply": "Maaf garnuhos, maile thik sanga bujhna chahanchu — kun service, ra kun miti ra samaya chahanu huncha bhanera batauna sakinu huncha?",
+  "check_for": [
+   "must never contain a 'should I book that?' / 'shall I go ahead?' style question (rule 9 reinforcement)",
+   "must acknowledge and move toward the one missing piece, not restart"
+  ],
+  "score": 94.1,
+  "per_sample": [
+   86.0,
+   100.0,
+   84.4,
+   100.0,
+   100.0
+  ],
+  "criteria": {
+   "length_fit": 4.6,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 4.8,
+   "helpful_honest": 5,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 21,
+   "sentence_count": 1,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The reply correctly asks the one necessary follow-up to complete the booking: which service and which date/time. It's in the same (Romanized Nepali) language as the conversation, sounds natural and polite like a human receptionist, stays focused on the task, and doesn't add unneeded offers or invented facts. It's a bit concise (one sentence) though still asks all required details — so slightly below perfect for length."
+ },
+ {
+  "case_id": "rule-9-readiness-question-violation",
+  "category": "booking readiness question (rule 9)",
+  "conversation_so_far": [
+   {
+    "customer": "Mero daant dukheko cha",
+    "agent": "Dukhai sunee, hajur. Ke ma tapaiko lagi appointment book garna sakchu?"
+   },
+   {
+    "customer": "Chahanchu",
+    "agent": "Maaf garnuhos, maile thik sanga bujhna chahanchu — kun service, ra kun miti ra samaya chahanu huncha bhanera batauna sakinu huncha?"
+   }
+  ],
+  "customer_message": "Yes chahanchu",
+  "reply": "Maaf garnuhos, maile thik sanga bujhna chahanchu — kun service, ra kun miti ra samaya chahanu huncha bhanera batauna sakinu huncha?",
+  "check_for": [
+   "must never contain a 'should I book that?' / 'shall I go ahead?' style question (rule 9 reinforcement)",
+   "must acknowledge and move toward the one missing piece, not restart"
+  ],
+  "score": 82.8,
+  "per_sample": [
+   100.0,
+   82.8,
+   80.5,
+   64.8,
+   86.0
+  ],
+  "criteria": {
+   "length_fit": 4.2,
+   "language_match": 4.8,
+   "natural_tone": 4.4,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 4.2,
+   "helpful_honest": 4.6,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 21,
+   "sentence_count": 1,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer's \"Yes chahanchu\" did not supply which service, date or time they want, so asking that specific question is the correct next step. The reply is in Devanagari Nepali matching the earlier messages, is naturally phrased, concise but includes the one necessary request (service + date/time), and stays squarely within receptionist scope. It isn't a generic reflexive offer and contains no emojis or name misuse. It repeats an earlier question but that's appropriate because the customer hadn't given the needed details."
+ },
+ {
+  "case_id": "confirmation-ignored-mid-booking-regression",
+  "category": "state bug (§2.C) — now-fixed regression case",
+  "conversation_so_far": [],
+  "customer_message": "Teeth widening, you know, the talcumara.",
+  "reply": "Do you mean teeth whitening or do you mean widening/straightening of teeth by braces when you say “talcumara”? We offer Teeth Whitening (NPR 6000), Braces Consultation (NPR 800) and a Dental Consultation (NPR 500) — which one did you have in mind?",
+  "check_for": [
+   "must NOT ask 'which service' again once it was named earlier, even on a non-booking-intent turn",
+   "the booking should complete on turn 4, or ask only for whatever is genuinely still missing",
+   "probabilistic, not guaranteed — the LLM must still confidently name the service on turn 1 for this to fully resolve; a hedge ('do you mean whitening?') on turn 1 is an acceptable, honest response, not a bug"
+  ],
+  "score": 46.6,
+  "per_sample": [
+   40.6,
+   55.5,
+   40.6,
+   55.5,
+   40.6
+  ],
+  "criteria": {
+   "length_fit": 5,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 1.4,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 42,
+   "sentence_count": 2,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The reply correctly asks a single clarifying question about what the customer meant by \"talcumara\" (needed to proceed) and offers relevant service options in a short, natural way. It matches the customer's language (English) and sounds like a real receptionist rather than canned corporate phrasing. It doesn't tack on any irrelevant, reflexive offer; the questions are the genuine next step. The list of options is brief and context-relevant (not a dump). However, there were no facts provided to the assistant, so listing exact service names and prices (NPR 6000, 800, 500) is inventing information — a serious honesty violation."
+ },
+ {
+  "case_id": "confirmation-ignored-mid-booking-regression",
+  "category": "state bug (§2.C) — now-fixed regression case",
+  "conversation_so_far": [
+   {
+    "customer": "Teeth widening, you know, the talcumara.",
+    "agent": "Do you mean teeth whitening or do you mean widening/straightening of teeth by braces when you say “talcumara”? We offer Teeth Whitening (NPR 6000), Braces Consultation (NPR 800) and a Dental Consultation (NPR 500) — which one did you have in mind?"
+   }
+  ],
+  "customer_message": "भोलिको एक गरेको भए हुन्छ",
+  "reply": "Bujhe — kripaya malai kun service batauna sakinu huncha?",
+  "check_for": [
+   "must NOT ask 'which service' again once it was named earlier, even on a non-booking-intent turn",
+   "the booking should complete on turn 4, or ask only for whatever is genuinely still missing",
+   "probabilistic, not guaranteed — the LLM must still confidently name the service on turn 1 for this to fully resolve; a hedge ('do you mean whitening?') on turn 1 is an acceptable, honest response, not a bug"
+  ],
+  "score": 53.6,
+  "per_sample": [
+   56.2,
+   56.2,
+   57.8,
+   41.4,
+   56.2
+  ],
+  "criteria": {
+   "length_fit": 4.6,
+   "language_match": 1.8,
+   "natural_tone": 4.8,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 4.8,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 9,
+   "sentence_count": 1,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The reply correctly asks the one thing needed to proceed (which service) and is otherwise polite, concise, and in-scope — so it scores highly on helpfulness, focus, not tacking on an unnecessary question, staying in scope, and emoji policy. However the customer wrote in Devanagari Nepali; the candidate uses Romanized Nepali (Latin script). The rubric requires matching the customer's script/language, so this is a clear fault and must be penalized. Also the reply is very short (one sentence) — it's acceptable because it's the single needed question, but the length guideline preferred a slightly fuller medium reply; I mark that down a little."
+ },
+ {
+  "case_id": "confirmation-ignored-mid-booking-regression",
+  "category": "state bug (§2.C) — now-fixed regression case",
+  "conversation_so_far": [
+   {
+    "customer": "Teeth widening, you know, the talcumara.",
+    "agent": "Do you mean teeth whitening or do you mean widening/straightening of teeth by braces when you say “talcumara”? We offer Teeth Whitening (NPR 6000), Braces Consultation (NPR 800) and a Dental Consultation (NPR 500) — which one did you have in mind?"
+   },
+   {
+    "customer": "भोलिको एक गरेको भए हुन्छ",
+    "agent": "Bujhe — kripaya malai kun service batauna sakinu huncha?"
+   }
+  ],
+  "customer_message": "Samrat Ghimire samratghimire01@gmail.com 9823045928",
+  "reply": "Dhanyabad, Samrat hajur — details paye. Email: samratghimire01@gmail.com, Phone: 9823045928. Kun service ra kun samaya chahanu huncha bhanera bataunu hola so I can help with booking. Maile tapaiko contact information update gare.",
+  "check_for": [
+   "must NOT ask 'which service' again once it was named earlier, even on a non-booking-intent turn",
+   "the booking should complete on turn 4, or ask only for whatever is genuinely still missing",
+   "probabilistic, not guaranteed — the LLM must still confidently name the service on turn 1 for this to fully resolve; a hedge ('do you mean whitening?') on turn 1 is an acceptable, honest response, not a bug"
+  ],
+  "score": 100.0,
+  "per_sample": [
+   100.0,
+   100.0,
+   100.0,
+   100.0,
+   100.0
+  ],
+  "criteria": {
+   "length_fit": 5,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 5,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 32,
+   "sentence_count": 5,
+   "ends_with_question": false,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The reply is an appropriate, concise receptionist response: it acknowledges the contact details, repeats them back correctly, states an update to records, and asks the single specific next-step question (which service and time). Language is natural Romanized Nepali with harmless English labels (Email/Phone), which is allowed. Tone is friendly and human (uses \"hajur\", \"Dhanyabad\"), not stock customer-service phrasing. The follow-up question is the one genuine next step (customer had not given service/time), so it is not a reflexive tail. No off-topic content or unnecessary extra info. No emoji and the name is used naturally after the greeting. Overall meets the receptionist standards."
+ },
+ {
+  "case_id": "confirmation-ignored-mid-booking-regression",
+  "category": "state bug (§2.C) — now-fixed regression case",
+  "conversation_so_far": [
+   {
+    "customer": "Teeth widening, you know, the talcumara.",
+    "agent": "Do you mean teeth whitening or do you mean widening/straightening of teeth by braces when you say “talcumara”? We offer Teeth Whitening (NPR 6000), Braces Consultation (NPR 800) and a Dental Consultation (NPR 500) — which one did you have in mind?"
+   },
+   {
+    "customer": "भोलिको एक गरेको भए हुन्छ",
+    "agent": "Bujhe — kripaya malai kun service batauna sakinu huncha?"
+   },
+   {
+    "customer": "Samrat Ghimire samratghimire01@gmail.com 9823045928",
+    "agent": "Dhanyabad, Samrat hajur — details paye. Email: samratghimire01@gmail.com, Phone: 9823045928. Kun service ra kun samaya chahanu huncha bhanera bataunu hola so I can help with booking. Maile tapaiko contact information update gare."
+   }
+  ],
+  "customer_message": "yes",
+  "reply": "Bujhe — kripaya malai kun service batauna sakinu huncha?",
+  "check_for": [
+   "must NOT ask 'which service' again once it was named earlier, even on a non-booking-intent turn",
+   "the booking should complete on turn 4, or ask only for whatever is genuinely still missing",
+   "probabilistic, not guaranteed — the LLM must still confidently name the service on turn 1 for this to fully resolve; a hedge ('do you mean whitening?') on turn 1 is an acceptable, honest response, not a bug"
+  ],
+  "score": 97.2,
+  "per_sample": [
+   100.0,
+   86.0,
+   100.0,
+   100.0,
+   100.0
+  ],
+  "criteria": {
+   "length_fit": 4.8,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 5,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 9,
+   "sentence_count": 1,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer replied \"yes\" after the agent asked them to specify service and time. The candidate reply asks exactly that needed question in Romanized Nepali: \"Bujhe — kripaya malai kun service batauna sakinu huncha?\" It's short, directly actionable, in the conversation language style, polite and natural-sounding, and not adding extra unsolicited information or generic closings. It is an appropriate next-step question (not reflexive) to resolve the booking.\n\n- length_fit: Short single sentence, appropriate for the simple next-step question.\n- language_match: Uses Romanized Nepali consistent with prior messages and acceptable given the customer's mixed-language thread.\n- natural_tone: Sounds like a real receptionist (polite, not scripted).\n- no_reflexive_question: The question is the one genuine next step to complete the booking, so it's allowed.\n- focused_no_dump: Only asks for the service, no extra options or unrelated information.\n- helpful_honest: Moves the booking forward, doesn't invent facts or re-ask already-provided details.\n- stays_in_scope: Fully within receptionist duties.\n- emoji_name_policy: No emoji used and no inappropriate name usage."
+ },
+ {
+  "case_id": "bare-numeric-slot-selection",
+  "category": "§50 — deterministic slot pick, now-fixed regression case",
+  "conversation_so_far": [],
+  "customer_message": "I'd like to book a teeth cleaning",
+  "reply": "Here's what's open for Teeth Cleaning (Scaling & Polishing): Sunday, September 27 at 4:45 PM, Sunday, September 27 at 5:00 PM, Sunday, September 27 at 5:15 PM, Sunday, September 27 at 5:30 PM, Monday, September 28 at 9:00 AM. Which works for you?",
+  "check_for": [
+   "must book the SECOND shown slot, not ask for clarification",
+   "should be near-instant (no LLM round trip for this turn)"
+  ],
+  "score": 91.1,
+  "per_sample": [
+   100.0,
+   100.0,
+   55.5,
+   100.0,
+   100.0
+  ],
+  "criteria": {
+   "length_fit": 5,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 4.4,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 43,
+   "sentence_count": 2,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer asked to book a teeth cleaning; the candidate reply lists available time slots and asks which works — that's the correct next step, concise, in English, on-topic, and moves the booking forward without extraneous info or reflexive offers."
+ },
+ {
+  "case_id": "bare-numeric-slot-selection",
+  "category": "§50 — deterministic slot pick, now-fixed regression case",
+  "conversation_so_far": [
+   {
+    "customer": "I'd like to book a teeth cleaning",
+    "agent": "Here's what's open for Teeth Cleaning (Scaling & Polishing): Sunday, September 27 at 4:45 PM, Sunday, September 27 at 5:00 PM, Sunday, September 27 at 5:15 PM, Sunday, September 27 at 5:30 PM, Monday, September 28 at 9:00 AM. Which works for you?"
+   }
+  ],
+  "customer_message": "tomorrow",
+  "reply": "Here's what's open for Teeth Cleaning (Scaling & Polishing): Monday, September 28 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Which works for you?",
+  "check_for": [
+   "must book the SECOND shown slot, not ask for clarification",
+   "should be near-instant (no LLM round trip for this turn)"
+  ],
+  "score": 45.3,
+  "per_sample": [
+   39.0,
+   55.5,
+   55.5,
+   40.6,
+   36.0
+  ],
+  "criteria": {
+   "length_fit": 4.8,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 4.4,
+   "helpful_honest": 1.4,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 27,
+   "sentence_count": 2,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The reply is mostly appropriate in tone, language, and scope — it answers the customer's one-word request (\"tomorrow\") by offering times and asks which works, which is the single genuine next step. Language matches the customer's English. The message is focused (only gives times) and uses a natural receptionist question.\n\nHowever it fails a key factual/honest requirement: the agent's earlier message showed only one Monday slot (Sept 28 at 9:00 AM). The candidate invents additional 9:15–10:00 slots for the same day, which is inconsistent with the facts and therefore dishonest/misleading. That is a serious error for a booking receptionist and drives the low score on helpful_honest. No emoji, so emoji policy is fine.\n\nDetailed per-criterion notes:\n- length_fit: concise but appropriate for a needed choice of times (slightly short but acceptable).\n- language_match: English reply to English customer.\n- natural_tone: reads like a receptionist offering times.\n- no_reflexive_question: asking \"Which works for you?\" is the single genuine next step after the customer's request.\n- focused_no_dump: stays on the single task (selecting a time).\n- helpful_honest: invents extra availability not present earlier — major fault.\n- stays_in_scope: fully in-scope (booking).\n- emoji_name_policy: no emoji used."
+ },
+ {
+  "case_id": "bare-numeric-slot-selection",
+  "category": "§50 — deterministic slot pick, now-fixed regression case",
+  "conversation_so_far": [
+   {
+    "customer": "I'd like to book a teeth cleaning",
+    "agent": "Here's what's open for Teeth Cleaning (Scaling & Polishing): Sunday, September 27 at 4:45 PM, Sunday, September 27 at 5:00 PM, Sunday, September 27 at 5:15 PM, Sunday, September 27 at 5:30 PM, Monday, September 28 at 9:00 AM. Which works for you?"
+   },
+   {
+    "customer": "tomorrow",
+    "agent": "Here's what's open for Teeth Cleaning (Scaling & Polishing): Monday, September 28 at 9:00 AM, 9:15 AM, 9:30 AM, 9:45 AM, 10:00 AM. Which works for you?"
+   }
+  ],
+  "customer_message": "2",
+  "reply": "You're all set, Website Visitor! I've booked Teeth Cleaning (Scaling & Polishing) for Monday, September 28 at 9:15 AM (30 min). Your booking ID is MQ7JUAG.\nBooked for: Website Visitor\nWhere: Samaj Dental Clinic · Radhe Radhe, Birgunj, Nepal · +977-51-522345\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/aa52fbbb76e244d0adaf1cd3acf26d3f.1790652600.90S6bHKTpiZpKktyhhIC0w",
+  "check_for": [
+   "must book the SECOND shown slot, not ask for clarification",
+   "should be near-instant (no LLM round trip for this turn)"
+  ],
+  "score": 60.5,
+  "per_sample": [
+   68.8,
+   71.9,
+   36.0,
+   55.5,
+   70.3
+  ],
+  "criteria": {
+   "length_fit": 4.4,
+   "language_match": 5,
+   "natural_tone": 3.2,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 4.2,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 3.2
+  },
+  "objective": {
+   "word_count": 54,
+   "sentence_count": 8,
+   "ends_with_question": false,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer replied \"2\" to pick a time; the candidate correctly interpreted this as the second option (Mon Sep 28 at 9:15) and sent a full confirmation with booking ID, clinic info, and a check-in QR — this moves the customer forward and stays on-topic. Strengths: it completes the booking, contains the needed details, and does not add an unnecessary follow-up question. Weaknesses: the greeting uses the odd placeholder \"Website Visitor,\" which sounds like a bug and is not natural receptionist phrasing; the message is a bit longer than the absolute minimum but the extra details are reasonable for a confirmation. No emojis were used (good), but opening with the placeholder name violates the \"don't open with the customer's name out of habit\" guidance."
+ },
+ {
+  "case_id": "frustrated-customer-repeated-complaint",
+  "category": "frustration handling + no corporate phrasing",
+  "conversation_so_far": [],
+  "customer_message": "kati choti bhanne ma same kura? kaile respond garne?",
+  "reply": "Dherai bolnu parchha bhanera pareko jasto cha — afno intazaar ko lagi sorry hajur. Kun kura ko lagi respond chahanu huncha? Naam, thap details ra kun contact (phone/WhatsApp/email) ma contact garne bhanera dinuhos, ma team sanga connect garna sakchhu. Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+  "check_for": [
+   "brief, natural acknowledgment — not a repeated stock opener across runs (rule 4)",
+   "must not contain scripted phrasing like 'I understand how frustrating that is' or 'I apologize for the inconvenience' (rule 4 corporate-phrasing addition)",
+   "should move to being useful quickly, SHORT-to-MEDIUM length"
+  ],
+  "score": 64.5,
+  "per_sample": [
+   47.6,
+   67.2,
+   68.8,
+   70.3,
+   68.8
+  ],
+  "criteria": {
+   "length_fit": 4.8,
+   "language_match": 5,
+   "natural_tone": 4.4,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 4,
+   "helpful_honest": 2.8,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 55,
+   "sentence_count": 4,
+   "ends_with_question": false,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer wrote in Romanized Nepali, annoyed about repeated messages and asking when you'll respond. The candidate reply is mostly in the same language and offers an apology and next steps, which is good, but it has several problems:\n\n- Strengths: language matches the customer (Romanized Nepali); it apologizes and asks the single essential clarifying question (what the issue is) and requests contact details so the team can follow up — that is a valid next step and in-scope.\n- Problems: tone and wording are awkward and a bit scripted (\"afno intazaar ko lagi sorry hajur\", \"pareko jasto cha\"), not fully natural. It asks for multiple pieces of information at once (name, details, contact) which is borderline but arguably needed — still a bit heavy. Most importantly it claims \"Maile hamro team lai pani janakari diye\" (I already informed our team) and that someone will follow up, while also asking the user to provide details — this is inconsistent and could be dishonest if the assistant does not actually have that proof. That harms helpful_honest. There is also minor padding and a slightly unclear phrase (\"euta sacchai ko manche\") that reduces clarity.\n\nRatings reflect: correct language and scope, acceptable length, necessary clarification question allowed, but penalize phrasing, inconsistency/dishonesty, and slight information-dumping."
+ },
+ {
+  "case_id": "typo_heavy_booking_request",
+  "category": "typo tolerance",
+  "conversation_so_far": [],
+  "customer_message": "i want too book my teeth serviceing for tomorow",
+  "reply": "Here's what's open for Teeth Cleaning (Scaling & Polishing): Monday, September 28 at 9:45 AM, 10:00 AM, 10:15 AM, 10:30 AM, 10:45 AM. Which works for you?",
+  "check_for": [
+   "must not comment on or correct the customer's spelling",
+   "should proceed with normal booking clarification"
+  ],
+  "score": 52.5,
+  "per_sample": [
+   40.6,
+   40.6,
+   70.3,
+   55.5,
+   55.5
+  ],
+  "criteria": {
+   "length_fit": 5,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 1.8,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 27,
+   "sentence_count": 2,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer asked (in English, with typos) to book teeth servicing for tomorrow. The reply is overall well-structured and in-scope: it offers specific appointment slots and asks which works, which is the correct next step. Positives: correct language, appropriate length (a short list + one question), natural receptionist tone, focused on the booking with no extra noise, and no emoji or name misuse. Major problem: the assistant had no facts available but the reply invents a specific date and multiple times (and even a weekday + calendar date) — that is a factual claim the assistant cannot support and therefore violates \"helpful_honest.\" Because inventing availability can mislead a customer, that criterion is scored very low. Otherwise the reply is fine."
+ },
+ {
+  "case_id": "typo_heavy_booking_request",
+  "category": "typo tolerance",
+  "conversation_so_far": [
+   {
+    "customer": "i want too book my teeth serviceing for tomorow",
+    "agent": "Here's what's open for Teeth Cleaning (Scaling & Polishing): Monday, September 28 at 9:45 AM, 10:00 AM, 10:15 AM, 10:30 AM, 10:45 AM. Which works for you?"
+   }
+  ],
+  "customer_message": "docter Sharma vaye hunxa",
+  "reply": "I don't have Dr. Sharma's schedule in front of me — would you like me to connect you with our team to check if Dr. Sharma is available for the Teeth Cleaning slots tomorrow? I've also let our team know, so a real person will follow up with you.",
+  "check_for": [
+   "must not comment on or correct the customer's spelling",
+   "should proceed with normal booking clarification"
+  ],
+  "score": 36.0,
+  "per_sample": [
+   43.0,
+   36.0,
+   28.1,
+   43.8,
+   28.9
+  ],
+  "criteria": {
+   "length_fit": 4,
+   "language_match": 1.4,
+   "natural_tone": 2.6,
+   "no_reflexive_question": 4.4,
+   "focused_no_dump": 4,
+   "helpful_honest": 2.6,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 49,
+   "sentence_count": 4,
+   "ends_with_question": false,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer's message is in Romanized Nepali asking if Dr. Sharma is available. The candidate reply is usable but has several problems: it is in English rather than matching the customer's Romanized Nepali (language mismatch); it claims both that the agent doesn't have Dr. Sharma's schedule and that \"I've also let our team know,\" which is inconsistent and potentially a false action claim; it asks the right follow-up question (a genuine next step) so that part is fine; the reply is a little canned and not fully natural-sounding for a receptionist. It stays in scope and uses no emoji or name-opening, which is good.\n\n- length_fit: medium length (3 short sentences) appropriate for one required question — OK.\n- language_match: wrong language/script for a clear Romanized Nepali customer message — penalize.\n- natural_tone: somewhat scripted/canned phrasing (\"connect you with our team,\" \"a real person will follow up\") rather than warm receptionist wording — modest penalty.\n- no_reflexive_question: the question asked is the genuine next step to resolve their request — good.\n- focused_no_dump: mostly focused but adds an unnecessary/conflicting sentence about notifying the team — small penalty.\n- helpful_honest: attempts to move things forward, but the contradictory claim of having already notified the team is dishonest/inaccurate — significant penalty.\n- stays_in_scope: fully within receptionist duties — good.\n- emoji_name_policy: no emoji and no awkward name-opening — fine."
+ },
+ {
+  "case_id": "roman-nepali-common-spellings",
+  "category": "language mirroring — Step 3 word-list extension",
+  "conversation_so_far": [],
+  "customer_message": "k xa aaja ko lagi slot?",
+  "reply": "Bujhe — kripaya malai kun service ra kun samaya batauna sakinu huncha?",
+  "check_for": [
+   "conversation should lock to Roman Nepali from these messages",
+   "reply should stay in natural Roman Nepali contractions, not upgrade to formal Devanagari-style phrasing (rule 7 addition)"
+  ],
+  "score": 81.9,
+  "per_sample": [
+   86.0,
+   82.8,
+   68.8,
+   86.0,
+   86.0
+  ],
+  "criteria": {
+   "length_fit": 4.4,
+   "language_match": 4.8,
+   "natural_tone": 4.2,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 4.6,
+   "helpful_honest": 5,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 12,
+   "sentence_count": 1,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer asked in Romanized Nepali for today's slots. The candidate reply stays in Romanized Nepali and asks the one necessary clarifying question(s): which service (since slots may depend on service) and what time they prefer. It's the right length (short, one focused prompt), avoids generic tail questions, stays on-topic, and moves the booking forward. Tone is polite and receptionist-like though a bit formal with \"kripaya\" and slightly nonstandard Romanization; that is acceptable. No emojis or name-opening."
+ },
+ {
+  "case_id": "roman-nepali-common-spellings",
+  "category": "language mirroring — Step 3 word-list extension",
+  "conversation_so_far": [
+   {
+    "customer": "k xa aaja ko lagi slot?",
+    "agent": "Bujhe — kripaya malai kun service ra kun samaya batauna sakinu huncha?"
+   }
+  ],
+  "customer_message": "Bholi 2 baje huncha la, gardim hai",
+  "reply": "Bujhe — kripaya malai kun service batauna sakinu huncha? Sunday, September 27 ko sattama Monday, September 28.",
+  "check_for": [
+   "conversation should lock to Roman Nepali from these messages",
+   "reply should stay in natural Roman Nepali contractions, not upgrade to formal Devanagari-style phrasing (rule 7 addition)"
+  ],
+  "score": 48.5,
+  "per_sample": [
+   42.2,
+   46.1,
+   59.4,
+   48.5,
+   46.1
+  ],
+  "criteria": {
+   "length_fit": 3.2,
+   "language_match": 3.6,
+   "natural_tone": 2.8,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 2.2,
+   "helpful_honest": 3.4,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 17,
+   "sentence_count": 2,
+   "ends_with_question": false,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer confirmed a time (\"Bholi 2 baje...\"), so the agent's only needed next step was to ask which service — that part is fine and appropriate. However the reply is awkward and partially incorrect: it repeats a formal scripted phrase (\"Bujhe — kripaya malai kun service batauna sakinu huncha?\") which sounds robotic, and then adds a confusing English-date fragment (\"Sunday, September 27 ko sattama Monday, September 28.\") that the customer did not ask for and which looks erroneous. Language is a mix of Romanized Nepali and English dates; mixing can be acceptable, but here it reads unnatural and unclear. No emojis or name misuse. Overall it asks the right question (allowed) but adds irrelevant/confusing content and sounds scripted."
+ },
+ {
+  "case_id": "changed-mind-mid-booking",
+  "category": "changing mind mid-flow",
+  "conversation_so_far": [],
+  "customer_message": "book me a teeth cleaning tomorrow at 2pm",
+  "reply": "You're all set, Website Visitor! I've booked Teeth Cleaning (Scaling & Polishing) for Monday, September 28 at 2:00 PM (30 min). Your booking ID is Z7AAHWE.\nBooked for: Website Visitor\nWhere: Samaj Dental Clinic · Radhe Radhe, Birgunj, Nepal · +977-51-522345\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/30f6fa844ad74a058afe0a4e0cf8c93e.1790669700.yfJPcgJ-kt-jGQzO-NiPGg",
+  "check_for": [
+   "must use the corrected time (4pm), not the original (2pm)",
+   "must not re-ask for the service again"
+  ],
+  "score": 51.2,
+  "per_sample": [
+   67.2,
+   66.4,
+   35.1,
+   37.5,
+   50.0
+  ],
+  "criteria": {
+   "length_fit": 4.2,
+   "language_match": 5,
+   "natural_tone": 3,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 2.4,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 4
+  },
+  "objective": {
+   "word_count": 54,
+   "sentence_count": 8,
+   "ends_with_question": false,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer asked simply to book a teeth cleaning tomorrow at 2pm. The candidate reply confirms a booking and provides useful details (service, date/time, duration, booking ID, location, phone, and check-in QR). That directly satisfies the request and stays in scope.\n\nProblems:\n- Tone feels somewhat automated rather than a natural receptionist message (the fixed label \"Website Visitor\" is awkward and impersonal).\n- The reply asserts a created booking, booking ID, and a check-in QR (fine if the system actually made the booking) but the presence of a suspicious ngrok URL and the impersonal \"Website Visitor\" reduce credibility.\n- The message is slightly longer than the minimal needed confirmation but the extra details (ID, location, QR) are reasonable for a booking confirmation.\n\nScores reflect a mostly correct, in-scope, and helpful confirmation but penalize robotic phrasing and the odd name/URL."
+ },
+ {
+  "case_id": "changed-mind-mid-booking",
+  "category": "changing mind mid-flow",
+  "conversation_so_far": [
+   {
+    "customer": "book me a teeth cleaning tomorrow at 2pm",
+    "agent": "You're all set, Website Visitor! I've booked Teeth Cleaning (Scaling & Polishing) for Monday, September 28 at 2:00 PM (30 min). Your booking ID is Z7AAHWE.\nBooked for: Website Visitor\nWhere: Samaj Dental Clinic · Radhe Radhe, Birgunj, Nepal · +977-51-522345\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/30f6fa844ad74a058afe0a4e0cf8c93e.1790669700.yfJPcgJ-kt-jGQzO-NiPGg"
+   }
+  ],
+  "customer_message": "wait, actually 4pm instead",
+  "reply": "All set, Website Visitor — your appointment has been moved to Monday, September 28 at 4:00 PM.",
+  "check_for": [
+   "must use the corrected time (4pm), not the original (2pm)",
+   "must not re-ask for the service again"
+  ],
+  "score": 86.0,
+  "per_sample": [
+   86.0,
+   100.0,
+   85.2,
+   86.7,
+   71.9
+  ],
+  "criteria": {
+   "length_fit": 5,
+   "language_match": 5,
+   "natural_tone": 4.4,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 5,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 4.2
+  },
+  "objective": {
+   "word_count": 17,
+   "sentence_count": 1,
+   "ends_with_question": false,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The reply is a concise, correct confirmation of the requested time change. It matches the customer's language, stays on-topic, and contains no unnecessary follow-up question or extra info. The only minor issue is the mechanical placeholder name \"Website Visitor,\" which sounds slightly robotic rather than a natural human receptionist — otherwise the message is exactly the short, single-sentence confirmation you'd expect."
+ },
+ {
+  "case_id": "short-context-dependent-reply",
+  "category": "short reply resolved from context",
+  "conversation_so_far": [],
+  "customer_message": "what times do you have for a cleaning tomorrow?",
+  "reply": "Here's what's open for Teeth Cleaning (Scaling & Polishing): Monday, September 28 at 9:45 AM, 10:00 AM, 10:15 AM, 10:30 AM, 10:45 AM. Which works for you?",
+  "check_for": [
+   "'2 baje' must be understood as selecting the 2pm option from the just-shown list, not treated as a new, unrelated question"
+  ],
+  "score": 76.2,
+  "per_sample": [
+   40.6,
+   100.0,
+   100.0,
+   100.0,
+   40.6
+  ],
+  "criteria": {
+   "length_fit": 5,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 3.4,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 27,
+   "sentence_count": 2,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer asked for available cleaning times for \"tomorrow.\" The reply gives a clear, concise list of specific slots for \"Teeth Cleaning\" on the correct date and then asks which works — that matches the expected length, tone, language, and is an appropriate next-step question. However, the assistant had no availability facts provided; the candidate therefore invents specific times (and presents them as if authoritative). That is a serious honesty/problematic factuality issue for a receptionist bot. Breakdown:\n- Length_fit: Short, focused list + one question — appropriate.\n- Language_match: English reply to an English message — correct.\n- Natural_tone: Plain, natural receptionist wording; not overly scripted.\n- No_reflexive_question: \"Which works for you?\" is a genuine next step to complete booking, allowed.\n- Focused_no_dump: Only answers the requested question; no extra unrelated info.\n- Helpful_honest: Fails because specific availability was asserted despite no facts provided; inventing availability is unacceptable.\n- Stays_in_scope: The reply stays squarely within appointment scheduling.\n- Emoji_name_policy: No emoji used."
+ },
+ {
+  "case_id": "short-context-dependent-reply",
+  "category": "short reply resolved from context",
+  "conversation_so_far": [
+   {
+    "customer": "what times do you have for a cleaning tomorrow?",
+    "agent": "Here's what's open for Teeth Cleaning (Scaling & Polishing): Monday, September 28 at 9:45 AM, 10:00 AM, 10:15 AM, 10:30 AM, 10:45 AM. Which works for you?"
+   }
+  ],
+  "customer_message": "2 baje",
+  "reply": "You're all set, Website Visitor! I've booked Teeth Cleaning (Scaling & Polishing) for Monday, September 28 at 2:00 PM (30 min). Your booking ID is SFY3U35.\nBooked for: Website Visitor\nWhere: Samaj Dental Clinic · Radhe Radhe, Birgunj, Nepal · +977-51-522345\nYour check-in QR (show it at the front desk when you arrive): https://unfiltrated-sharla-futile.ngrok-free.dev/qr/007af192791e4a8998c9791adf2d153e.1790669700.AzeBEB7N34bRAGUu8UaeGA",
+  "check_for": [
+   "'2 baje' must be understood as selecting the 2pm option from the just-shown list, not treated as a new, unrelated question"
+  ],
+  "score": 17.5,
+  "per_sample": [
+   12.5,
+   21.9,
+   18.8,
+   14.1,
+   20.3
+  ],
+  "criteria": {
+   "length_fit": 1.4,
+   "language_match": 1.4,
+   "natural_tone": 1.4,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 1.6,
+   "helpful_honest": 1,
+   "stays_in_scope": 4.8,
+   "emoji_name_policy": 4.2
+  },
+  "objective": {
+   "word_count": 54,
+   "sentence_count": 8,
+   "ends_with_question": false,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer replied in Romanized Nepali (\"2 baje\") selecting a time. The candidate reply is problematic: it fabricates a confirmed booking, booking ID, and a QR link despite no prior confirmation that 2:00 PM was available (the agent had listed only morning slots). It also replies in English instead of matching the customer's Romanized Nepali, and uses robotic/system language (\"Website Visitor\", long machine-like details). Positives: it stays on-topic and does not tack on a reflexive question. Ratings reflect these failures (fabrication, language mismatch, unnatural tone, unnecessary data dump) and the single correct aspect (no reflexive question)."
+ },
+ {
+  "case_id": "cancellation-stays-fast",
+  "category": "cancellation confirmation-free path — confirmed unchanged by explicit decision",
+  "conversation_so_far": [],
+  "customer_message": "book me a teeth cleaning tomorrow at 2pm",
+  "reply": "Here's what's open for Teeth Cleaning (Scaling & Polishing): Monday, September 28 at 9:45 AM, 10:00 AM, 10:15 AM, 10:30 AM, 10:45 AM. Which works for you?",
+  "check_for": [
+   "must cancel immediately, no 'are you sure?' step introduced"
+  ],
+  "score": 36.9,
+  "per_sample": [
+   28.1,
+   32.8,
+   49.2,
+   44.5,
+   29.7
+  ],
+  "criteria": {
+   "length_fit": 2.8,
+   "language_match": 5,
+   "natural_tone": 4.2,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 1.8,
+   "helpful_honest": 1.4,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 27,
+   "sentence_count": 2,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The customer asked to book \"tomorrow at 2pm.\" The candidate reply does not address that request: it lists a set of slots on \"Monday, September 28\" (which may not be \"tomorrow\") and never says whether 2pm tomorrow is available or not. That fails to move the customer forward and could confuse them. Positives: reply is in English (matching the customer's language) and stays on-topic (booking). The closing question (\"Which works for you?\") is a legitimate choice question given the offered slots, so it's not a reflexive generic tail. No emoji or name issues. Overall the reply is unhelpful/honest about the customer's explicit request and not focused on the day/time they asked for."
+ },
+ {
+  "case_id": "cancellation-stays-fast",
+  "category": "cancellation confirmation-free path — confirmed unchanged by explicit decision",
+  "conversation_so_far": [
+   {
+    "customer": "book me a teeth cleaning tomorrow at 2pm",
+    "agent": "Here's what's open for Teeth Cleaning (Scaling & Polishing): Monday, September 28 at 9:45 AM, 10:00 AM, 10:15 AM, 10:30 AM, 10:45 AM. Which works for you?"
+   }
+  ],
+  "customer_message": "actually cancel it",
+  "reply": "I don't see any confirmed upcoming appointments on your profile — do you mean you want to cancel the booking request you just made for Teeth Cleaning tomorrow at 2:00 PM?",
+  "check_for": [
+   "must cancel immediately, no 'are you sure?' step introduced"
+  ],
+  "score": 100.0,
+  "per_sample": [
+   100.0,
+   100.0,
+   100.0,
+   100.0,
+   100.0
+  ],
+  "criteria": {
+   "length_fit": 5,
+   "language_match": 5,
+   "natural_tone": 5,
+   "no_reflexive_question": 5,
+   "focused_no_dump": 5,
+   "helpful_honest": 5,
+   "stays_in_scope": 5,
+   "emoji_name_policy": 5
+  },
+  "objective": {
+   "word_count": 31,
+   "sentence_count": 1,
+   "ends_with_question": true,
+   "emoji_count": 0,
+   "corporate_phrase_hits": []
+  },
+  "reasoning": "The reply is an appropriate, concise clarification that moves the conversation forward. It uses the customer's language (English), sounds like a real receptionist (\"I don't see...\"), and asks one specific, necessary question (clarifying which booking to cancel) rather than adding generic offers or extra information. It doesn't invent facts beyond a reasonable-profile-check statement, stays on-topic, and uses no emoji or name. Minor quibble: it assumes the customer might have \"just made\" a booking at 2:00 PM, but it frames that as a question, which is the correct cautious approach."
+ }
+]

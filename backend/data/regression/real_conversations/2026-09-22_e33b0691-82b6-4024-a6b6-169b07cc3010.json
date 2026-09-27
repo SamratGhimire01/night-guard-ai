@@ -1,0 +1,107 @@
+{
+  "conversation_id": "e33b0691-82b6-4024-a6b6-169b07cc3010",
+  "business_id": "932c5a66-db23-4d93-990d-94c6cca40397",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "en",
+  "created_at": "2026-09-22T10:06:38.970872",
+  "customer": {
+    "id": "67658eb9-bf16-4ce8-a3e1-f27ea02eb356",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "namaste, malai appointment ko barema sodhnu thiyo",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-22T10:06:43.751949"
+    },
+    {
+      "sender_type": "agent",
+      "content": "\u0928\u092e\u0938\u094d\u0924\u0947! Appointment \u0915\u094b \u092c\u093e\u0930\u0947\u092e\u093e \u0915\u0947 \u091c\u093e\u0928\u094d\u0928 \u091a\u093e\u0939\u093e\u0928\u0941\u0939\u0941\u0928\u094d\u0925\u094d\u092f\u094b \u2014 \u0928\u092f\u093e\u0901 \u092c\u0941\u0915\u093f\u0919, reschedule, \u0915\u093f cancellation \u0939\u094b?",
+      "detected_intent": null,
+      "created_at": "2026-09-22T10:06:43.758801"
+    },
+    {
+      "sender_type": "customer",
+      "content": "malai bholi ko lagi cleaning chainxa",
+      "detected_intent": "booking",
+      "created_at": "2026-09-22T10:06:52.999793"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Bujhe \u2014 kripaya malai kun service ra kun samaya batauna sakinu huncha?",
+      "detected_intent": null,
+      "created_at": "2026-09-22T10:06:53.007536"
+    },
+    {
+      "sender_type": "customer",
+      "content": "What time do you open tomorrow?",
+      "detected_intent": "business_hours",
+      "created_at": "2026-09-22T10:06:57.553819"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Maaf garnuhos \u2014 hamro khula hune samaya yaha configured bhayeko chhaina. K ninai team sanga sodhna chaahanuhunchha? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-22T10:06:57.557476"
+    },
+    {
+      "sender_type": "customer",
+      "content": "How much does a cleaning cost?",
+      "detected_intent": "pricing_question",
+      "created_at": "2026-09-22T10:07:02.522997"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Cleaning ko price hamro record ma configured bhayeko chhaina \u2014 ma yo confirm garera team sanga connect garna sakchhu. Tapai team sanga connect hunu huncha? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-22T10:07:02.529960"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Do you accept walk-in customers?",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-22T10:07:07.809545"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Maaf \u2014 hamro record ma walk-in policy configured bhayeko chhaina. Ma team sanga sodhi confirm garera tapailai connect garidinu? Maile hamro team lai pani janakari diye, tyesaile euta sacchai ko manche le tapailai follow-up garnecha.",
+      "detected_intent": null,
+      "created_at": "2026-09-22T10:07:07.816198"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Is parking available nearby?",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-22T10:07:12.660245"
+    },
+    {
+      "sender_type": "agent",
+      "content": "I don't have parking info on file for Anchor Test Biz Final \u2014 would you like me to connect you with our team so they can confirm nearby options? I've also let our team know, so a real person will follow up with you.",
+      "detected_intent": null,
+      "created_at": "2026-09-22T10:07:12.667263"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": "2026-09-23",
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "932c5a66-db23-4d93-990d-94c6cca40397",
+    "name": "Anchor Test Biz Final",
+    "timezone": "UTC",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [],
+    "knowledge_documents": [],
+    "hours": []
+  }
+}

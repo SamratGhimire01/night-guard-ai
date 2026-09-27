@@ -91,6 +91,8 @@ export default function SettingsPage() {
 
   const languageForm = useForm<{ language_mode: LanguageMode }>({ initialValues: { language_mode: 'automatic' } })
 
+  const bookingForm = useForm<{ booking_enabled: boolean }>({ initialValues: { booking_enabled: true } })
+
   const contentScopeForm = useForm<{ content_scope: ContentScope }>({
     initialValues: { content_scope: 'single_business' },
   })
@@ -114,6 +116,7 @@ export default function SettingsPage() {
     })
     languageForm.setValues({ language_mode: business.language_mode })
     contentScopeForm.setValues({ content_scope: business.content_scope })
+    bookingForm.setValues({ booking_enabled: business.booking_enabled })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [business])
 
@@ -178,6 +181,19 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleBookingSubmit(values: { booking_enabled: boolean }) {
+    try {
+      const updated = await apiFetch<BusinessRead>('/business/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ booking_enabled: values.booking_enabled }),
+      })
+      setBusiness(updated)
+      notifications.show({ message: 'Booking setting updated.', color: 'green' })
+    } catch (err) {
+      notifications.show({ message: err instanceof ApiError ? err.message : 'Save failed.', color: 'red' })
+    }
+  }
+
   async function handleContentScopeSubmit(values: { content_scope: ContentScope }) {
     try {
       const updated = await apiFetch<BusinessRead>('/business/me', {
@@ -226,6 +242,7 @@ export default function SettingsPage() {
           <Tabs.Tab value="profile">Business Profile</Tabs.Tab>
           <Tabs.Tab value="widget">Website Widget</Tabs.Tab>
           <Tabs.Tab value="reminders">Reminders</Tabs.Tab>
+          <Tabs.Tab value="booking">Booking</Tabs.Tab>
           <Tabs.Tab value="language">Language</Tabs.Tab>
           <Tabs.Tab value="content_scope">Content Scope</Tabs.Tab>
         </Tabs.List>
@@ -329,6 +346,25 @@ export default function SettingsPage() {
                   error={reminderForm.errors.reminder_minutes_before}
                 />
               )}
+              {saveButton('Save changes')}
+            </Stack>
+          </form>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="booking" pt="md">
+          <Text c="dimmed" size="sm" mb="sm">
+            Turn off if this business doesn't take bookings through chat (e.g. a pure Q&amp;A / informational
+            business). When off, the AI never offers to book, reschedule, cancel, or check an appointment — it
+            gives an honest answer and can connect the customer with your team instead.
+          </Text>
+          <form onSubmit={bookingForm.onSubmit(handleBookingSubmit)}>
+            <Stack gap="sm">
+              <Switch
+                label="Accept bookings through chat"
+                disabled={!canWrite}
+                checked={bookingForm.values.booking_enabled}
+                onChange={(e) => bookingForm.setFieldValue('booking_enabled', e.currentTarget.checked)}
+              />
               {saveButton('Save changes')}
             </Stack>
           </form>
