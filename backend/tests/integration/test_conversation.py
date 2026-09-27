@@ -1884,6 +1884,115 @@ def test_resolve_locked_language_explicit_switch_overrides_immediately_bypassing
     assert _resolve_locked_language(conversation, "en", explicit_switch_target="not_a_language") == "en"
 
 
+# --- Tone/language phase: post-generation language check + Hindi-leak guard -
+
+
+def test_contains_hindi_leak_detects_common_tokens_but_not_lookalikes():
+    """Regression set for the new Hindi-leak regex: Nepali and Hindi are close
+    enough that a model trained mostly on Hindi data sometimes drifts there
+    even when correctly told to write Nepali. These specific tokens don't
+    collide with real English or Roman-Nepali vocabulary, so a single match
+    is enough signal (unlike _ROMAN_NEPALI_WORDS' 2-match bar)."""
+    from app.services.conversation.orchestrator import _contains_hindi_leak
+
+    assert _contains_hindi_leak("Aapka appointment kal hai") is True
+    assert _contains_hindi_leak("Yeh price ke liye discount nahi hai") is True
+    assert _contains_hindi_leak("Kya aap bahut jaldi aa sakte hain?") is True
+    # Genuine English and genuine Roman Nepali must never false-positive.
+    assert _contains_hindi_leak("Your appointment is tomorrow at 6 PM.") is False
+    assert _contains_hindi_leak("Tapaiko appointment bholi 6 baje cha.") is False
+    # Adversarial: emoji-only and empty text are simply "no leak found".
+    assert _contains_hindi_leak("😊") is False
+    assert _contains_hindi_leak("") is False
+
+
+def test_response_language_mismatch_flags_wrong_script_and_hindi_leak():
+    """Regression set for the new post-generation check (tone/language phase)
+    — orchestrator._response_language_mismatch decides whether a DRAFTED
+    reply needs to be regenerated, using the same deterministic signals as
+    _resolve_message_language rather than trusting the model's own claim."""
+    from app.schemas.conversation import ConversationLanguage
+    from app.services.conversation.orchestrator import _response_language_mismatch
+
+    en = ConversationLanguage.EN.value
+    ne_deva = ConversationLanguage.NE_DEVA.value
+    ne_roman = ConversationLanguage.NE_ROMAN.value
+    mixed = ConversationLanguage.MIXED.value
+
+    # Correct script/language for each lock: no mismatch.
+    assert _response_language_mismatch("We're open until 7 PM today.", en) is False
+    assert _response_language_mismatch("नमस्ते, आज ७ बजे सम्म खुला छ।", ne_deva) is False
+    assert _response_language_mismatch("Aaja 7 baje samma khula cha.", ne_roman) is False
+    assert _response_language_mismatch("Sure, that works! Milcha.", mixed) is False
+
+    # Wrong script/language for the lock: real mismatches.
+    assert _response_language_mismatch("We're open until 7 PM today.", ne_deva) is True
+    assert _response_language_mismatch("नमस्ते, आज खुला छ।", en) is True
+    assert _response_language_mismatch("We are open until 7 PM today.", ne_roman) is True
+
+    # A genuine English reply under an English lock must not false-positive just
+    # because of one collision-prone word — same 2-match bar as the real detector.
+    assert _response_language_mismatch("La la la, sure thing!", en) is False
+
+    # Hindi leak is checked regardless of the target language, including "mixed".
+    assert _response_language_mismatch("Aapka appointment kal hai.", en) is True
+    assert _response_language_mismatch("Aapka appointment kal hai.", ne_roman) is True
+    assert _response_language_mismatch("Aapka appointment kal hai.", mixed) is True
+
+    # Adversarial: an emoji-only reply has no Nepali signal, which is exactly
+    # correct under an English lock (not flagged) -- but IS a real mismatch
+    # under a Nepali lock (no Nepali content at all is worth one regenerate,
+    # same as a literally empty draft would be).
+    assert _response_language_mismatch("😊", en) is False
+    assert _response_language_mismatch("😊", ne_roman) is True
+    assert _response_language_mismatch("", ne_roman) is True
+
+
+def test_expected_response_language_mirrors_lock_priority_without_mutating():
+    """Regression set for the new non-mutating preview used both to seed the
+    very first classify_and_respond call (before any lock exists) and by the
+    post-generation check — must return exactly what _resolve_locked_language
+    WOULD return, without ever touching conversation.detected_language or
+    language_switch_streak itself (that real mutation stays exactly where it
+    was, after the takeover check further down in process_incoming_message)."""
+    from types import SimpleNamespace
+
+    from app.services.conversation.orchestrator import _expected_response_language
+
+    # force_language (a voice turn) always wins, regardless of any lock.
+    forced = SimpleNamespace(detected_language="en", language_switch_streak=0)
+    assert _expected_response_language(forced, "kehi text", "ne_deva") == "ne_deva"
+    assert forced.detected_language == "en", "must never mutate the conversation"
+
+    # An explicit switch request wins over an existing lock, same turn.
+    locked = SimpleNamespace(detected_language="ne_roman", language_switch_streak=0)
+    assert _expected_response_language(locked, "let's talk in English", None, "en") == "en"
+    assert locked.detected_language == "ne_roman", "preview only -- the real lock hasn't moved yet"
+
+    # An existing lock (no switch request) wins over the raw message's own script.
+    assert _expected_response_language(locked, "What time do you open?", None, None) == "ne_roman"
+
+    # No lock yet: falls back to deterministic detection of the raw message —
+    # pure Devanagari, pure Roman Nepali (2+ curated words), and pure English
+    # each resolve correctly with zero LLM signal available yet.
+    fresh = SimpleNamespace(detected_language=None, language_switch_streak=0)
+    assert _expected_response_language(fresh, "नमस्ते", None) == "ne_deva"
+    assert _expected_response_language(fresh, "Malai tapaiko price kati ho?", None) == "ne_roman"
+    # Plain English with no LLM report yet (seeding the very first call, before
+    # classification exists) is a deliberate "no signal" -- the deterministic
+    # engine only ever confidently declares Nepali; English falls back to the
+    # LLM's own report, same as _resolve_message_language always has.
+    assert _expected_response_language(fresh, "What are your hours?", None) is None
+    # Once a classification exists, its message_language self-report fills that gap.
+    assert _expected_response_language(
+        fresh, "What are your hours?", None, llm_reported_message_language="en"
+    ) == "en"
+    # Adversarial: an ambiguous/short first message has no signal at all -- None,
+    # not a guess, exactly like _resolve_message_language's own ambiguous-greeting guard.
+    assert _expected_response_language(fresh, "ok", None) is None
+    assert fresh.detected_language is None, "must never mutate on a preview call"
+
+
 def test_handoff_reason_structurally_excludes_language_switch_regardless_of_intent():
     """Direct check of the structural (not just prompted) exclusion: even a
     COMPLAINT/HUMAN_HANDOFF intent, or an info-intent with zero knowledge
@@ -4630,7 +4739,11 @@ def test_automatic_mode_never_asks_and_goes_straight_to_the_llm(two_businesses, 
 def test_ask_mode_first_reply_asks_then_locks_to_the_answer_then_only_an_explicit_request_switches(two_businesses, monkeypatch):
     """The full ask-mode conversation: question (no LLM call) -> answer locks (no LLM call) -> 4 plain-English messages do NOT
     move the lock (no passive-drift detection in this mode) -> an explicit "switch to English" request does."""
-    stub = _stub_providers(monkeypatch, _lang_reply("en"))
+    # Genuine Romanized-Nepali reply text (not the usual generic "Sure.") -- the conversation
+    # locks to ne_roman below, and the tone/language phase's post-generation check would
+    # otherwise (correctly) flag a plain-English canned reply as a mismatch and regenerate,
+    # which isn't what this test is about (it's checking the LOCK survives passive drift).
+    stub = _stub_providers(monkeypatch, _lang_reply("en", text="Huncha, ma tapailai madat garna sakchu."))
     token = two_businesses["token_a"]
     assert _set_language_mode(token, "ask").status_code == 200
     conversation_id = _create_conversation(two_businesses["business_id_a"], _create_customer(token))

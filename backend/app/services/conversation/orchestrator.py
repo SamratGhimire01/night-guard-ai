@@ -1053,7 +1053,11 @@ def _resolve_message_language(content: str, llm_reported: str | None) -> str | N
         # never counts toward (or against) an existing streak.
         return None
 
-    roman_signal_count = sum(1 for w in words if w.lower() in _ROMAN_NEPALI_WORDS)
+    # Distinct words, not occurrences -- "la la la" (an English interjection, not
+    # Nepali) must not count as 2+ matches just by repeating one collision-prone
+    # token (see _ROMAN_NEPALI_WORDS' own docstring above, which already assumed
+    # "distinct" but the count here didn't actually dedupe until this fix).
+    roman_signal_count = len({w.lower() for w in words if w.lower() in _ROMAN_NEPALI_WORDS})
     if roman_signal_count >= 2:
         return ConversationLanguage.NE_ROMAN.value
 
@@ -1116,6 +1120,67 @@ def _resolve_locked_language(
             conversation.detected_language = message_language
             conversation.language_switch_streak = 0
     return language_for_this_turn
+
+
+# Tone/language phase: common Hindi-only tokens that sometimes leak into a
+# Nepali-locked reply (Nepali and Hindi are close enough that a model trained
+# mostly on Hindi data drifts there) -- none of these collide with the
+# English or Roman-Nepali vocabulary above, so a single match is enough
+# signal, unlike _ROMAN_NEPALI_WORDS' 2-match bar.
+_HINDI_LEAK_WORDS = {"hai", "hoga", "kya", "aap", "bahut", "accha", "nahi", "kaunsa"}
+_HINDI_LEAK_PHRASE_RE = re.compile(r"\bke\s+liye\b", re.IGNORECASE)
+
+
+def _contains_hindi_leak(text: str) -> bool:
+    if _HINDI_LEAK_PHRASE_RE.search(text):
+        return True
+    return any(w.lower() in _HINDI_LEAK_WORDS for w in _WORD_RE.findall(text))
+
+
+def _expected_response_language(
+    conversation: Conversation,
+    content: str,
+    force_language: str | None,
+    language_switch_request: str | None = None,
+    llm_reported_message_language: str | None = None,
+) -> str | None:
+    """Non-mutating preview of the language this turn's `response` should be
+    written in -- used both to seed the very first classify_and_respond call
+    (before any lock exists) and by the post-generation check below. Mirrors
+    _resolve_locked_language's own priority order exactly but never touches
+    conversation.detected_language/language_switch_streak itself: that real
+    mutation still happens later, after the takeover check, so an abandoned
+    draft never silently moves the persisted lock."""
+    if force_language:
+        return force_language
+    if language_switch_request in _VALID_LANGUAGES:
+        return language_switch_request
+    if conversation.detected_language:
+        return conversation.detected_language
+    return _resolve_message_language(content, llm_reported_message_language)
+
+
+def _response_language_mismatch(response_text: str, expected: str) -> bool:
+    """Post-generation check (tone/language phase): does the drafted reply
+    actually match the language it was told to write in? Reuses the same
+    deterministic signals as _resolve_message_language rather than trusting
+    the model's own self-report, for the same anchoring-bias reasons."""
+    if _contains_hindi_leak(response_text):
+        return True
+    if expected == ConversationLanguage.MIXED.value:
+        return False
+    has_devanagari = bool(_DEVANAGARI_RE.search(response_text))
+    roman_count = len({w.lower() for w in _WORD_RE.findall(response_text) if w.lower() in _ROMAN_NEPALI_WORDS})
+    if expected == ConversationLanguage.NE_DEVA.value:
+        return not has_devanagari
+    if expected == ConversationLanguage.NE_ROMAN.value:
+        return has_devanagari or roman_count == 0
+    if expected == ConversationLanguage.EN.value:
+        # Same 2-match bar as _resolve_message_language's own Roman-Nepali check, so a
+        # single collision-prone word (e.g. "la") never triggers a needless regenerate
+        # on a genuine English reply.
+        return has_devanagari or roman_count >= 2
+    return False
 
 
 def _handle_provider_failure(
@@ -1702,7 +1767,7 @@ def _handle_turn(
             knowledge_results=knowledge_results,
             customer_message=content,
             services=services,
-            locked_language=force_language or conversation.detected_language,
+            locked_language=_expected_response_language(conversation, content, force_language),
             hours=hours,
         )
         _t6 = time.perf_counter()
@@ -1716,6 +1781,14 @@ def _handle_turn(
                 "turn_llm_chat_ms": round((_t6 - _t5) * 1000, 1),
                 "turn_total_pre_dispatch_ms": round((_t6 - _t0) * 1000, 1),
             },
+        )
+
+        # Tone/language phase: the one deterministic "what language should this turn's
+        # reply be in" answer, computed once from this classification's own report and
+        # reused below both to seed the fact-grounding retry's locked_language and to
+        # drive the post-generation language check further down.
+        expected_reply_language = _expected_response_language(
+            conversation, content, force_language, classification.language_switch_request, classification.message_language,
         )
 
         # Fact grounding guard (read-through of backend/data/regression/failure_log_batches:
@@ -1757,7 +1830,7 @@ def _handle_turn(
                 knowledge_results=knowledge_results,
                 customer_message=content,
                 services=services,
-                locked_language=force_language or conversation.detected_language,
+                locked_language=expected_reply_language,
                 hours=hours,
                 flagged_claims=violations,
             )
@@ -1781,6 +1854,39 @@ def _handle_turn(
                 fact_check_front_desk_reason = (
                     "Drafted reply repeated an unconfirmed price/policy/hours/contact claim twice in a row."
                 )
+
+        # Tone/language phase: post-generation check -- does the drafted reply (the
+        # original draft, or the fact-grounding retry above) actually match the
+        # language it was told to write in? Skipped once fact-grounding has already
+        # replaced the response with the pre-rendered fallback template above, which
+        # is correctly-languaged by construction. expected_reply_language can be None
+        # (a first message too ambiguous to call) or "mixed" (no single script to
+        # enforce) -- both are real "nothing to check" cases, not bugs.
+        if (
+            fact_check_front_desk_reason is None
+            and expected_reply_language in _VALID_LANGUAGES
+            and _response_language_mismatch(classification.response, expected_reply_language)
+        ):
+            logger.warning(
+                "drafted reply in the wrong language, regenerating once: conversation_id=%s expected=%s",
+                conversation_id, expected_reply_language,
+            )
+            language_retry = classify_and_respond(
+                business=business,
+                context=context,
+                knowledge_results=knowledge_results,
+                customer_message=content,
+                services=services,
+                locked_language=expected_reply_language,
+                hours=hours,
+                language_repair_target=expected_reply_language,
+            )
+            if _response_language_mismatch(language_retry.response, expected_reply_language):
+                logger.warning(
+                    "language regenerate still didn't match, using it anyway: conversation_id=%s expected=%s",
+                    conversation_id, expected_reply_language,
+                )
+            classification = language_retry
     except RuntimeError:
         logger.exception(
             "LLM/embedding provider call failed after internal retries; degrading gracefully: "

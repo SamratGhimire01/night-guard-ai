@@ -142,7 +142,14 @@ it null for those; the sustained-drift streak above is what handles passive drif
 field). When you set `language_switch_request`, immediately write `response` in the NEWLY \
 requested language/script THIS turn — the system switches to it right away, it does not wait \
 for a sustained pattern the way passive drift does. Never set `needs_human_handoff` true just \
-because of a language switch — you can already do this yourself, no human is needed.
+because of a language switch — you can already do this yourself, no human is needed. When \
+`response` is in Nepali (Devanagari or Romanized) or code-mixed, address the customer as \
+"hajur" (तपाईं/hajur), never "timi" — "timi" is too casual for a receptionist talking to a \
+customer regardless of how casually the customer themselves writes. Keep "hajur" even if the \
+customer uses "timi" or writes very casually; matching their casual register (short sentences, \
+informal contractions, fewer pleasantries) is good, dropping to "timi" is not — warmth and \
+casualness are not the same as familiarity. If they write more formally, respond a bit more \
+formally in return, still as "hajur".
 8. Classify the customer's message into exactly one intent from this list: {intent_list}.
 9. Extract a `booking_request` object whenever THIS message clearly states or changes the \
 service, date, or time for a NEW appointment for ONE person — not changing or cancelling an \
@@ -481,7 +488,9 @@ request, an explanation the customer actually asked for, or a customer who seems
 things spelled out. Before writing `response`, silently check: is there a shorter way to say \
 the same thing without losing anything the customer needs? If yes, use it. Example: "open cha?" \
 → "Cha, aaja 7 baje samma khula cha." — not a restated greeting, not an offer to help further, \
-just the fact.
+just the fact. A short list (one item per line) is fine ONLY when actually comparing multiple \
+concrete items in the same message — several time slots, services, or prices — never for prose, \
+an explanation, or anything with just one item.
 18. When intent is "resend_confirmation" — the customer explicitly asks to have their \
 appointment confirmation and/or the check-in QR code (re)sent, or resent to a different/specific \
 place than however they originally got it (e.g. "can you send my QR to WhatsApp too", "resend my \
@@ -668,8 +677,24 @@ def _build_user_prompt(
     locked_language: str | None,
     currency: str,
     hours: list[BusinessHours] | None = None,
+    flagged_claims: list[str] | None = None,
+    language_repair_target: str | None = None,
 ) -> str:
     parts = []
+
+    # fact_validator.check_response_facts flagged a specific invented claim in this
+    # turn's FIRST draft (a price/policy/hours/contact fact not backed by anything
+    # above) -- this is the one-shot regenerate pass, telling the model exactly what
+    # it got wrong so it can either state the real value from the context above or
+    # honestly say it doesn't have it, instead of repeating the same invention.
+    if flagged_claims:
+        parts.append(
+            "Your previous draft reply for this same message was rejected because it stated something not "
+            "backed by the information below:\n" + "\n".join(f"- {c}" for c in flagged_claims) + "\n"
+            "Write a new `response` that does not repeat this. Only state a price, policy, deposit, or hours "
+            "detail that is explicitly present below — if it isn't, say honestly that you don't have it on file "
+            "and offer to connect the customer with the team."
+        )
 
     # Phase 25: the deterministic per-conversation language lock (see
     # orchestrator._resolve_locked_language) — told to the model explicitly
@@ -710,6 +735,20 @@ def _build_user_prompt(
         parts.append(f"Business hours:\n{_format_hours(hours)}")
     parts.append(f"Available services:\n{_format_services(services, currency)}")
     parts.append(f"New customer message to respond to:\n{customer_message}")
+
+    # Tone/language phase: restated closest to the actual message being answered
+    # (recency helps instruction-following on long prompts), on top of the fuller
+    # locked-language block above rather than instead of it. On a language-check
+    # regenerate pass this replaces the plain reminder with an explicit correction.
+    if language_repair_target and language_repair_target in LANGUAGE_LABELS:
+        parts.append(
+            "Your previous draft for this exact message was rejected: it was not actually written in "
+            f"{LANGUAGE_LABELS[language_repair_target]}. Ignore what you wrote before -- the new `response` "
+            f"MUST be written entirely in {LANGUAGE_LABELS[language_repair_target]}, no other language or "
+            "script mixed in."
+        )
+    elif locked_language and locked_language in LANGUAGE_LABELS:
+        parts.append(f"(Reminder: write `response` in {LANGUAGE_LABELS[locked_language]}.)")
 
     return "\n\n".join(parts)
 
@@ -942,6 +981,8 @@ def classify_and_respond(
     services: list[Service] | None = None,
     locked_language: str | None = None,
     hours: list[BusinessHours] | None = None,
+    flagged_claims: list[str] | None = None,
+    language_repair_target: str | None = None,
 ) -> ClassificationResult:
     tz = ZoneInfo(business.timezone) if business and business.timezone else ZoneInfo("UTC")
     today = datetime.now(tz).strftime("%Y-%m-%d (%A)")
@@ -951,7 +992,8 @@ def classify_and_respond(
         {
             "role": "user",
             "content": _build_user_prompt(
-                context, knowledge_results, customer_message, services or [], today, tz, locked_language, currency, hours
+                context, knowledge_results, customer_message, services or [], today, tz, locked_language, currency,
+                hours, flagged_claims, language_repair_target,
             ),
         },
     ]
