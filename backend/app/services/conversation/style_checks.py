@@ -187,13 +187,21 @@ def repair_length(reply: str, *, intent: str) -> str:
     return trimmed
 
 
+# Rule 16 limits clarifying questions piling up; a greeting's "how are you? how can I help?" isn't
+# that -- and the repair keeps the FIRST question, so it dropped the help offer and kept the
+# pleasantry (live: "Namaste hajur, ma Anjali — k cha? ...sahayog garna sakchu?" -> "...k cha?").
+_QUESTION_LIMIT_EXEMPT = {"greeting"}
+
+
 def check_response_style(reply: str, *, intent: str) -> list[str]:
-    return [*check_banned_phrases(reply), *check_question_count(reply), *check_length(reply, intent=intent)]
+    questions = [] if intent in _QUESTION_LIMIT_EXEMPT else check_question_count(reply)
+    return [*check_banned_phrases(reply), *questions, *check_length(reply, intent=intent)]
 
 
 def repair_response_style(reply: str, *, intent: str) -> str:
     reply = repair_banned_phrases(reply)
-    reply = repair_question_count(reply)
+    if intent not in _QUESTION_LIMIT_EXEMPT:
+        reply = repair_question_count(reply)
     reply = repair_length(reply, intent=intent)
     return reply
 
@@ -240,6 +248,12 @@ def _demo() -> None:
     bulleted = "Hello, I'm Priya. Our services:\n" + "\n".join(f"- Service {i} — NPR {i}00, 30 min" for i in range(1, 16))
     assert check_length(bulleted, intent="service_question")
     assert repair_length(bulleted, intent="service_question") == bulleted
+
+    # A greeting keeps both its pleasantry and its offer of help; other intents still get limited.
+    greeting = "Namaste hajur, ma Anjali — k cha? Ke ma kehi sahayog garna sakchu?"
+    assert not check_response_style(greeting, intent="greeting")
+    assert repair_response_style(greeting, intent="greeting") == greeting
+    assert check_response_style(greeting, intent="booking")
 
     print("style_checks self-check: all assertions passed")
 
