@@ -17220,3 +17220,247 @@ once on the pre-change code (`git stash`), once with `style_checks.py` wired in.
   need either a larger/adversarial sample or live traffic to see the guard actually trigger.
 
 **Not committed** — per standing rule #6, awaiting the user's explicit go-ahead.
+
+---
+
+## Human-likeness review, Step 3 — live before/after eval + scoped `_MEDIUM` ceiling tune (2026-09-28)
+
+**Eval:** `backend/tests/eval/live_human_likeness_before_after.py` (committed `8b0291b`, with its
+cases file and the baseline results `human_likeness_results_2026-09-28.json`). 39 single-turn cases
+across Samaj Dental / Himalayan Trails / Everest Pathways, real DB + real Azure. "Before" = persona
+name, style exemplars and `style_checks` all monkeypatched off; "after" = current code. Blind LLM
+judge scores each reply 1-5 on "sounds like a real human receptionist", random A/B order per case.
+
+**Script fix found on the way:** the first run crashed at case 36/39 (study-10, a booking) because
+cleanup deleted the test appointment without first deleting the `payments` row the Payments module
+now creates (`fk_payments_appointment_same_tenant`). Fixed (payments deleted before appointments),
+results are now flushed to JSON after every case, and one leaked throwaway customer from the
+crashed run was removed. `--cases a,b,c` filter added for targeted re-runs.
+
+### Results (full 39-case run)
+
+| Slice | n | Before | After | Δ |
+|---|---|---|---|---|
+| **Overall** | 39 | 3.46 | 3.92 | **+0.46** |
+| en | 19 | 3.16 | 3.79 | +0.63 |
+| ne_roman | 11 | 3.82 | 4.00 | +0.18 |
+| ne_deva | 7 | 3.86 | 3.86 | 0.00 — no change, small n; not tuned for |
+| (no language detected) | 2 | 3.00 | 5.00 | +2.00 |
+| greeting | 5 | 3.20 | 4.80 | +1.60 |
+| general_question | 6 | 3.67 | 4.33 | +0.67 |
+| pricing_question | 6 | 3.67 | 4.33 | +0.67 |
+| complaint | 4 | 4.00 | 4.25 | +0.25 |
+| booking | 5 | 3.20 | 3.40 | +0.20 |
+| service_question | 11 | 3.73 | 3.73 | 0.00 |
+| off_topic | 2 | 1.00 | 1.00 | 0.00 |
+
+Case-level: **21 improved, 7 tied, 11 regressed.** Judge reliability: 7 cases re-judged on identical
+input, max |Δ| = 1 — so ±1 per-case moves are noise; ±2/±3 are signal.
+
+### Caveats
+
+1. **Persona self-intro inflates the gain.** 10/39 "after" replies introduce the assistant by name
+   ("Hi — I'm Anjali…") and the judge rewards it heavily (study-01: 2 → 5 on the name alone). Fine
+   on a first message, but part of the +0.46 is that one trait.
+2. **The judge can't check facts.** dental-03 ("Do you take walk-ins?") scored before=5 / after=2 in
+   run 1, but Samaj Dental has **no walk-in policy on file** (checked `knowledge_chunks` /
+   `knowledge_documents` / `businesses` — only hit is "Deerwalk" in another tenant). The "before"
+   reply's "Yes — we do accept walk-ins" was a hallucination; the "after" reply's "I don't have that
+   on file" is the correct grounded answer. Not a regression; not chased further.
+3. **Most regressions are not the length ceiling.** Probing the three worst (dental-06, dental-08,
+   study-07; 3 "after" runs each, style-guard logging captured):
+   - dental-08 (pricing, 5 → 2): style guard **never fired** in 3/3 runs; replies were 33-45 words vs a
+     90 ceiling. The terse run-1 reply was ordinary LLM variance, not a trim.
+   - dental-06 (service list, ne_deva): fired 2/3 runs, drafts at **92 and 97 words (+2 / +7 over 90)**.
+   - study-07 (SOP + documents, ne_deva): fired 1/3 runs, draft at **133 words (+43)** — cut the whole
+     document checklist the customer asked for, plus the closing question.
+4. **Trim bug (not fixed, out of this step's scope):** `repair_length` drops whole trailing
+   "sentences", but a bulleted list with no `.`/`।` between lines is ONE "sentence" to
+   `_SENTENCE_SPLIT_RE`. dental-06 probe run 1: a 97-word draft (+7 over) had its entire 91-word
+   service list cut, leaving just "नमस्ते, म Priya — स्वागत छ।" (6 words). A 7-word overrun
+   deleted the whole answer. Proposed fix below; not applied.
+5. Single sample per case, one run — treat per-intent slices with n ≤ 6 as directional only.
+
+### Ceiling change (NOT committed — awaiting review)
+
+`style_checks.py`: `_MEDIUM` **90 → 100** words (ceilings are word counts, not characters).
+`_LONG` unchanged at 160 (no LONG-budget reply was trimmed in any probe). `_SHORT` unchanged at 45.
+Sizing: the observed MEDIUM overruns on a legitimately complete answer were +2 and +7 words (a full
+9-item priced service list); +10 clears both with a little margin. study-07's +43 was deliberately
+NOT sized for — covering it would put `_MEDIUM` at ~135, next to `_LONG`, and `_MEDIUM` also governs
+booking/complaint/hours/cancellation/etc. `style_checks` self-check passes.
+
+### Targeted re-run (11 regressed cases, `_MEDIUM`=100, same method)
+
+| Case | Intent | Run 1 before/after | Re-run before/after | Re-run after words |
+|---|---|---|---|---|
+| dental-03 | general_question | 5/2 | 2/4 | 48 |
+| dental-06 | service_question | 5/3 | 4/3 | 93 (kept; would've been trimmed at 90) |
+| dental-08 | pricing_question | 5/2 | 5/3 | 23 |
+| dental-13 | complaint | 4/3 | 2/4 | 49 |
+| trekking-04 | general_question | 5/4 | 2/4 | 111 |
+| trekking-06 | service_question | 4/3 | 3/5 | 67 |
+| trekking-07 | service_question | 4/3 | 4/4 | 77 |
+| trekking-09 | pricing_question | 5/4 | 4/3 | 22 |
+| study-04 | service_question | 5/3 | 4/5 | 84 |
+| study-07 | service_question | 5/3 | 4/5 | 93 (kept; would've been trimmed at 90) |
+| study-12 | complaint | 5/4 | 4/5 | 54 |
+
+Re-run mean: before 3.45, after 4.09 (+0.64); run-1 mean for the same 11 was before 4.73, after 3.09.
+**Honest read:** most of that swing is regression to the mean, not the fix — these 11 were selected
+*because* they regressed, and the "before" path (which the ceiling change can't affect) dropped
+4.73 → 3.45 on its own. Only dental-06 and study-07 directly exercised the new ceiling (both drafted
+93 words and were kept intact, question included); study-07 recovered to 5, dental-06 stayed at 3
+(judge found the full priced list "transactional"). dental-08 still comes out terse sometimes —
+generation variance, unaffected by any ceiling. No greetings were in the re-run set; `_SHORT` is
+unchanged, so short replies can't have grown from this change.
+
+### Full case-by-case (run 1, plus re-run where applicable)
+
+| Case | Business | Intent | Lang | Before | After | Δ | Re-run (before/after) |
+|---|---|---|---|---|---|---|---|
+| dental-01 | Samaj | greeting | None | 4 | 5 | +1 |  |
+| dental-02 | Samaj | greeting | ne_roman | 4 | 5 | +1 |  |
+| dental-03 | Samaj | general_question | en | 5 | 2 | -3 | 2/4 |
+| dental-04 | Samaj | general_question | ne_roman | 2 | 5 | +3 |  |
+| dental-05 | Samaj | service_question | en | 3 | 5 | +2 |  |
+| dental-06 | Samaj | service_question | ne_deva | 5 | 3 | -2 | 4/3 |
+| dental-07 | Samaj | service_question | ne_roman | 3 | 5 | +2 |  |
+| dental-08 | Samaj | pricing_question | en | 5 | 2 | -3 | 5/3 |
+| dental-09 | Samaj | pricing_question | ne_deva | 3 | 5 | +2 |  |
+| dental-10 | Samaj | booking | en | 2 | 2 | +0 |  |
+| dental-11 | Samaj | booking | ne_deva | 3 | 3 | +0 |  |
+| dental-12 | Samaj | complaint | en | 3 | 5 | +2 |  |
+| dental-13 | Samaj | complaint | ne_roman | 4 | 3 | -1 | 2/4 |
+| dental-14 | Samaj | off_topic | en | 1 | 1 | +0 |  |
+| trekking-01 | Himalayan | greeting | en | 3 | 5 | +2 |  |
+| trekking-02 | Himalayan | general_question | ne_roman | 4 | 5 | +1 |  |
+| trekking-03 | Himalayan | service_question | en | 2 | 2 | +0 |  |
+| trekking-04 | Himalayan | general_question | ne_roman | 5 | 4 | -1 | 2/4 |
+| trekking-05 | Himalayan | service_question | en | 4 | 5 | +1 |  |
+| trekking-06 | Himalayan | service_question | ne_roman | 4 | 3 | -1 | 3/5 |
+| trekking-07 | Himalayan | service_question | ne_roman | 4 | 3 | -1 | 4/4 |
+| trekking-08 | Himalayan | pricing_question | en | 4 | 5 | +1 |  |
+| trekking-09 | Himalayan | pricing_question | ne_deva | 5 | 4 | -1 | 4/3 |
+| trekking-10 | Himalayan | booking | en | 3 | 4 | +1 |  |
+| trekking-11 | Himalayan | complaint | en | 4 | 5 | +1 |  |
+| trekking-12 | Himalayan | off_topic | en | 1 | 1 | +0 |  |
+| study-01 | Everest | greeting | None | 2 | 5 | +3 |  |
+| study-02 | Everest | greeting | ne_roman | 3 | 4 | +1 |  |
+| study-03 | Everest | general_question | en | 4 | 5 | +1 |  |
+| study-04 | Everest | service_question | ne_roman | 5 | 3 | -2 | 4/5 |
+| study-05 | Everest | service_question | en | 3 | 5 | +2 |  |
+| study-06 | Everest | service_question | ne_deva | 3 | 4 | +1 |  |
+| study-07 | Everest | service_question | ne_deva | 5 | 3 | -2 | 4/5 |
+| study-08 | Everest | pricing_question | en | 2 | 5 | +3 |  |
+| study-09 | Everest | pricing_question | ne_deva | 3 | 5 | +2 |  |
+| study-10 | Everest | booking | en | 4 | 4 | +0 |  |
+| study-11 | Everest | booking | ne_roman | 4 | 4 | +0 |  |
+| study-12 | Everest | complaint | en | 5 | 4 | -1 | 4/5 |
+| study-13 | Everest | general_question | en | 2 | 5 | +3 |  |
+
+**`_MEDIUM` 90 → 100 committed as `52dc3b6`** (user-approved on its own).
+
+---
+
+## Human-likeness review, Step 4 — trim-gutting guard + fact-check on the style regenerate (2026-09-28/29)
+
+**Changes:**
+1. `style_checks.repair_length`: if a trim would drop more than half the reply's words, return the
+   reply untouched. The residual violation routes it to the orchestrator's existing regenerate-once
+   step instead of shipping a gutted answer. Root cause: a bulleted list has no `.`/`।` between lines,
+   so `_SENTENCE_SPLIT_RE` sees it as one "sentence". New `_demo` assertion reproduces the exact shape.
+2. `orchestrator._handle_turn` (found while tracing the regenerate path): the style regenerate's
+   fresh draft was never fact-checked — only the first draft is. The guard sends more replies down
+   that path, so the regenerate now runs through the same `check_response_facts` call. If it fails,
+   the already-fact-checked original draft is kept (style violation and all). A style nit never
+   justifies shipping a fabricated price/deposit. This is the same failure fact-grounding caught ~7x in
+   one 39-case eval run (fabricated 20% deposits, USD on an NPR tenant).
+
+**Reproduction** (exact 97-word dental-06 draft from the 2026-09-28 probe; `service_question` pinned to
+the 90-word ceiling in force when it happened — at the committed 100 it no longer violates at all):
+- Old `repair_length` → `'नमस्ते, म Priya — स्वागत छ।'` (6 words; whole 91-word service list lost).
+- New `repair_length` → untouched (97 words).
+
+**Regenerate-once behaviour** (real orchestrator, `classify_and_respond` wrapped to inject drafts):
+
+| Scenario | LLM calls | Path taken | Final reply |
+|---|---|---|---|
+| B: first draft = catastrophic 97w, regenerate = real LLM | 2 | regenerate → still 93w > 90 → "persisted, best-effort" | 93w, full priced list intact |
+| C: first draft = 97w, regenerate also 97w | 2 | regenerate → "persisted, best-effort" | 97w untrimmed, full list — **no loop** |
+| D: first draft = 97w, regenerate = fabricated 20% deposit | 2 | "style regenerate failed fact-grounding, keeping the fact-checked draft" | original 97w fact-checked draft |
+
+Bounded by construction: exactly one regenerate; then a modest trim if it's safe, else the untrimmed
+text. Never a third call, never a loop, never a handoff for a style nit.
+
+**Full regression:**
+- `pytest tests/` (unit + integration + security): **917 passed, 701 skipped, 0 failed** (691s). The
+  skips are the opt-in live-LLM suites.
+- Live `test_regression_suite` (all 690 cases, real Azure; run via a threaded runner with the same
+  body as `test_case`, since pytest-xdist isn't installed): **689/690 pass.**
+  - First pass at 6 workers: 645 pass, 45 fail. **All 45 were Azure 429s**: 31 raw `HTTP 429`
+    exceptions, 14 with the "trouble connecting" fallback in the replies. They were re-run at 3 workers, then
+    sequentially, and all passed except the two below. The rate-limited ones were the long replays
+    (avg 16 turns vs 2.8 suite-wide; one is 103 turns).
+  - `syn-booking-hard-3`: **fails identically on the committed code without these changes.** The case
+    asks for "Monday 9am"; the run happened Monday 2026-09-28 after 23:00 local, so the slot was
+    already past. The case is time-of-day-dependent, not a code regression.
+  - `syn-mixedlang-1`: failed once (no price in reply) → 3/3 pass with changes, 3/3 pass without.
+    One-off model variation.
+  - Side effect noted: at 6 workers the run saturated the shared Azure quota and the live server's
+    lead-scoring job logged 429s. Checked — both affected conversation ids no longer exist, i.e.
+    they were this run's own throwaway conversations, not real customers. Future live runs: ≤3 workers.
+
+**Final 39-case before/after eval** (`_MEDIUM`=100 + trim guard + retry fact-check):
+
+| Slice | n | Before | After | Δ | (baseline run Δ) |
+|---|---|---|---|---|---|
+| **Overall** | 39 | 3.77 | 3.87 | **+0.10** | +0.46 |
+| en | 19 | 3.37 | 3.74 | +0.37 | +0.63 |
+| ne_roman | 11 | 4.27 | 3.82 | −0.45 | +0.18 |
+| ne_deva | 7 | 4.14 | 4.00 | −0.14 | 0.00 |
+| greeting | 5 | 4.20 | 4.00 | −0.20 | +1.60 |
+| general_question | 5 | 3.80 | 4.40 | +0.60 | +0.67 |
+| pricing_question | 6 | 4.00 | 4.00 | 0.00 | +0.67 |
+| service_question | 12 | 3.83 | 3.83 | 0.00 | 0.00 |
+| booking | 5 | 4.00 | 3.60 | −0.40 | +0.20 |
+| complaint | 3 | 3.67 | 4.33 | +0.67 | +0.25 |
+
+Case-level: 18 improved, 9 tied, 12 regressed. Judge re-check max |Δ| = 1 (same as baseline).
+
+**Honest read of the final number:**
+- The **"after" mean is stable across runs (3.92 → 3.87)**; the shrink in Δ comes almost entirely from
+  the **"before" side rising 3.46 → 3.77**, which none of these changes can touch (style guard, persona and
+  exemplars are all off on that path). This is run-to-run variation on a single sample per case. The true
+  effect of the whole Step 1-4 bundle is somewhere around +0.1 to +0.5 and needs multiple samples per case
+  to pin down.
+- **Neither new code path fired in the final eval.** No "regenerating once" or "failed fact-grounding,
+  keeping" warnings appeared, and every "after" reply is under its ceiling (max 81 words). So this eval
+  can't show the fix's effect either way. The reproduction above is the evidence for the fix. The eval
+  only confirms the fix didn't make typical traffic worse.
+- The 12 regressions are not trim-related. Two worth tracking:
+  - Greetings (dental-02 5→3, study-02 5→2): the persona intro ("Namaste, ma Priya — hajur, k cha?")
+    *replaces* the "how can I help?" offer instead of adding to it. This is a Step 2 persona/exemplar
+    trait, not this fix.
+  - trekking-10 (booking, 5→3): the "after" run routed to the deterministic availability-slots template;
+    the "before" run gave a consultative explanation. That's intent/dispatch variance.
+- ne_roman −0.45 / ne_deva −0.14: n=11 / n=7, one sample each, and the baseline run showed these
+  positive/flat. Logged as noise, not tuned for.
+
+**Committed** as two independently revertible commits (user-approved): `c30720a` (trim guard),
+`ba6a905` (retry fact-check). The backend was force-recreated afterwards (see below).
+
+### Follow-ups logged (not fixed; scope separately)
+
+1. **Greeting regression from the Step 2 persona work** (dental-02 5→3, study-02 5→2): the persona
+   name-intro *replaces* the "how can I help?" offer instead of adding to it (e.g. "Namaste, ma Priya —
+   hajur, k cha?" with no offer of help). Small fix, own scope.
+2. **trekking-10 booking explanation → bare slot list**: "How do I reserve a spot on the Annapurna
+   Circuit?" got only the deterministic availability-slots template, with no explanation of the
+   consultation step. Intent/dispatch-side, own scope.
+
+### Status
+
+Phase 3 of the human-likeness review: current round done. The fix is proven by the direct reproduction
+and the retry-scenario table. It is not proven by the eval, which wasn't built to exercise it. Next: either the
+two follow-ups above, or close the phase and move to Phase 4 — user's call.
