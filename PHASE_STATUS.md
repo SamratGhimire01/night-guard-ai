@@ -17459,8 +17459,37 @@ Case-level: 18 improved, 9 tied, 12 regressed. Judge re-check max |Δ| = 1 (same
    Circuit?" got only the deterministic availability-slots template, with no explanation of the
    consultation step. Intent/dispatch-side, own scope.
 
+### Follow-up outcomes (2026-09-29)
+
+**1. Greeting regression — FIXED, `093c8a0`.** It wasn't the persona intro itself. There were two causes:
+- Main one: Step 1's one-question repair keeps the FIRST question, so a greeting draft like
+  "Namaste hajur, ma Anjali — k cha? … sahayog garna sakchu?" went out as just "…k cha?" (the
+  pleasantry kept, the help offer dropped). Confirmed from the style-guard log (raw_draft vs repaired).
+- Secondary: the model sometimes wrote only the intro + pleasantry, with no offer at all.
+- Fix: `style_checks` exempts `greeting` from the question limit, since rule 16 targets clarifying-question
+  pile-ups; other intents are still limited, and the `_demo` asserts both. The persona note in `intent.py` now
+  says the intro goes alongside the offer to help, never instead of it.
+- Verification:
+  - Eval re-run: dental-02 3 → 5, study-02 2 → 4 (before/after 4/5 and 5/4).
+  - All 5 persona greeting eval cases scored after=5 (mean 3.80 → 5.00).
+  - The help offer was present in 10/10 extra greeting samples.
+  - Greeting-led live regression slice: 36/36 pass. Note: no regression case has a `persona_name`, so
+    the regression suite can't exercise the prompt change, and the persona eval cases are its coverage.
+
+**2. trekking-10 — DEFERRED to Phase 4.** It's not caused by style exemplars or the persona.
+- "I'd like to reserve a spot on the Annapurna Circuit trek. How do I do that?" classifies as
+  `booking` about 90% of the time (6/6 with exemplars on, 5/6 with them off).
+- A booking classification routes through `orchestrator._propose_available_slots`, the Phase 33
+  deterministic handler. It *replaces* the model's reply with the `availability_options` slot list, which
+  drops the "reserving a trek starts with a free consultation" explanation.
+- The final round's "before"=5 was the rare `service_question` classification. One re-run hit a third
+  outcome, the "don't want to guess" escalation.
+- A real fix is template-level in the booking handler: e.g. explaining the bridge when the
+  resolved service differs from what the customer named. That touches every booking flow (most of
+  the 690 regression cases), so it's not a small change and belongs in Phase 4.
+
 ### Status
 
-Phase 3 of the human-likeness review: current round done. The fix is proven by the direct reproduction
+**Phase 3 of the human-likeness review: DONE (2026-09-29).** The fix is proven by the direct reproduction
 and the retry-scenario table. It is not proven by the eval, which wasn't built to exercise it. Next: either the
 two follow-ups above, or close the phase and move to Phase 4 — user's call.
