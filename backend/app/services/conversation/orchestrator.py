@@ -2057,7 +2057,20 @@ def _handle_turn(
                         style_exemplars=style_exemplars,
                     )
                     retry_repaired = repair_response_style(style_retry.response, intent=style_retry.intent.value)
-                    if not check_response_style(retry_repaired, intent=style_retry.intent.value):
+                    retry_fact_violations = check_response_facts(
+                        style_retry.response, currency=currency, services=service_facts,
+                        hours_by_day=hours_by_day, known_text=known_text,
+                    )
+                    if retry_fact_violations:
+                        # The regenerate is a fresh, unvalidated draft -- a style nit never
+                        # justifies shipping a fabricated price/deposit, so keep the draft that
+                        # already passed fact-grounding above, style violation and all.
+                        logger.warning(
+                            "style regenerate failed fact-grounding, keeping the fact-checked draft: "
+                            "conversation_id=%s violations=%s",
+                            conversation_id, retry_fact_violations,
+                        )
+                    elif not check_response_style(retry_repaired, intent=style_retry.intent.value):
                         classification = style_retry._replace(response=retry_repaired)
                     else:
                         # Residual violation even after a regenerate + repair (e.g. a single
