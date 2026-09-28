@@ -53,6 +53,21 @@ _NO_SERVICES_RE = re.compile(
     re.I,
 )
 
+# Phase 2 (style exemplars): a style_exemplars row's `text` deliberately embeds
+# placeholder tokens like {PRICE}/{TIME}/{NAME} in place of any real fact (see
+# StyleExemplar's docstring) -- the LLM is instructed (intent.py's "Example
+# replies" prompt section) to use these only as a tone illustration, never to
+# copy a placeholder verbatim into `response`. A literal "{PRICE}"-shaped token
+# surviving into a real reply means it leaked through unfilled -- zero
+# tolerance, same regenerate-once-then-fallback pattern as every other check
+# in this module. No legitimate reply ever contains a literal curly brace.
+_UNFILLED_SLOT_RE = re.compile(r"\{[A-Z_]+\}")
+
+
+def check_unfilled_slots(reply: str) -> list[str]:
+    return [f"reply contains an unfilled placeholder token: {m}" for m in _UNFILLED_SLOT_RE.findall(reply)]
+
+
 _WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 _CLOSED_WORDS = re.compile(r"\b(closed|band|bandha|bandh)\b", re.I)
 _OPEN_WORDS = re.compile(r"\b(open|khula|khuli)\b", re.I)
@@ -217,6 +232,7 @@ def check_response_facts(
         *check_grounded_phone_numbers(reply, known_text=known_text),
         *check_no_internal_ids(reply),
         *check_no_services_claim(reply, services=services),
+        *check_unfilled_slots(reply),
     ]
 
 
@@ -288,6 +304,11 @@ def _demo() -> None:
     assert not check_no_services_claim("Sorry, no services are currently configured.", services=[])
     # Any other real reply about the actual configured services must not misfire.
     assert not check_no_services_claim("We offer Tooth Filling and Root Canal Treatment.", services=services)
+
+    # Phase 2: an unfilled exemplar placeholder leaking into a real reply is flagged.
+    assert check_unfilled_slots("Sure -- that's {PRICE} and takes about {TIME}.")
+    # A normal reply with real curly-brace-free text must not misfire.
+    assert not check_unfilled_slots("Sure -- that's NPR 1200 and takes about 30 minutes.")
 
     print("fact_validator self-check: all assertions passed")
 

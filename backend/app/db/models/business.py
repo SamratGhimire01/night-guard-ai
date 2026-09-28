@@ -40,6 +40,26 @@ class LanguageMode(str, enum.Enum):
     ASK = "ask"
 
 
+class BusinessFormality(str, enum.Enum):
+    """Phase 2 (style exemplars): a small, fixed formality register the persona
+    card nudges the system prompt with. NEUTRAL is the default and, since
+    intent.py only appends an instruction when this differs from NEUTRAL, is
+    exactly today's unmodified behavior."""
+
+    CASUAL = "casual"
+    NEUTRAL = "neutral"
+    FORMAL = "formal"
+
+
+class EmojiPolicy(str, enum.Enum):
+    """DEFAULT keeps intent.py rule 4's existing single-emoji-in-warm-moments
+    behavior unchanged (the default for every business). NONE hard-overrides
+    it to never use emoji at all, regardless of rule 4."""
+
+    DEFAULT = "default"
+    NONE = "none"
+
+
 class ContentScope(str, enum.Enum):
     """Phase 54: whether naming another named organization/institution in a customer
     question is itself a sign of real scope drift. SINGLE_BUSINESS (the default,
@@ -162,6 +182,26 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # instruction the model could be talked out of. See PHASE_STATUS.md Phase 53 "Gap 1"
     # for the pure-Q&A-tenant UX bug this closes.
     booking_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    # Phase 2 (style exemplars): this tenant's category flavor (e.g. "dental",
+    # "trekking"), used ONLY to widen style_exemplars retrieval to shared exemplars
+    # authored for that flavor (see style_exemplar_service.retrieve) -- an open,
+    # free-text set (not a Postgres enum) so a new category never needs a migration.
+    # Null (every pre-existing business on migration) means only truly universal
+    # (business_type IS NULL) shared exemplars are eligible -- zero behavior change
+    # until an owner/admin sets this.
+    business_type: Mapped[str | None] = mapped_column(String(50))
+    # Persona card (Phase 2): all additive, all defaulted to today's exact behavior
+    # -- see intent.py._build_system_prompt for how each one is (or isn't) folded in.
+    persona_name: Mapped[str | None] = mapped_column(String(100))
+    formality: Mapped[BusinessFormality] = mapped_column(
+        Enum(BusinessFormality, name="business_formality"),
+        nullable=False, default=BusinessFormality.NEUTRAL, server_default="NEUTRAL",
+    )
+    emoji_policy: Mapped[EmojiPolicy] = mapped_column(
+        Enum(EmojiPolicy, name="business_emoji_policy"),
+        nullable=False, default=EmojiPolicy.DEFAULT, server_default="DEFAULT",
+    )
+    sign_off: Mapped[str | None] = mapped_column(String(200))
 
 
 class BusinessUser(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):

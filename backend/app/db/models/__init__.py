@@ -19,6 +19,7 @@ from app.db.models.payment import Payment, PaymentStatus
 from app.db.models.service import Service
 from app.db.models.service_knowledge import ServiceKnowledgeDocument
 from app.db.models.staff import Staff
+from app.db.models.style_exemplar import StyleExemplar
 from app.db.models.training import TrainingQuestion
 
 __all__ = [
@@ -49,5 +50,6 @@ __all__ = [
     "Service",
     "ServiceKnowledgeDocument",
     "Staff",
+    "StyleExemplar",
     "TrainingQuestion",
 ]

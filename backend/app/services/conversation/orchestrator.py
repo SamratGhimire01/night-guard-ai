@@ -29,6 +29,7 @@ from app.services import (
     knowledge_service,
     payment_service,
     service_service,
+    style_exemplar_service,
     takeover_service,
 )
 from app.services.channels import delivery
@@ -1845,14 +1846,38 @@ def _handle_turn(
         # reassigned in between, so one value serves both.
         best_similarity = max((similarity for _, _, similarity in knowledge_results), default=None)
         _t5 = time.perf_counter()
+        # Phase 2 (style exemplars): retrieved once here, before intent is known (this
+        # same call both classifies AND drafts -- see intent.py's own docstring for why a
+        # second, intent-first call was rejected), and reused unchanged by every regen
+        # call below. Reuses `query_vector` (already computed for knowledge search) --
+        # zero extra embedding cost. Safe to inject into every intent's draft regardless
+        # of tenant/turn: orchestrator.py's dispatch chain further down always overwrites
+        # response_text with a deterministic response_templates.render(...) call for every
+        # booking/cancellation/rescheduling/status/resend/hours/off_topic branch, which
+        # never reads classification.response at all -- exemplar tone can only ever reach
+        # the customer through the free-text intents where nudging tone is the point.
+        pre_call_language = _expected_response_language(conversation, content, force_language)
+        style_exemplars = style_exemplar_service.retrieve(
+            db,
+            business_id=business_id,
+            business_type=business.business_type if business else None,
+            language=pre_call_language or "en",
+            query_vector=query_vector,
+        )
+        logger.info(
+            "style exemplar retrieval: conversation_id=%s language=%s count=%d exemplars=%s",
+            conversation_id, pre_call_language or "en", len(style_exemplars),
+            [{"id": str(e.id), "intent": e.intent, "register": e.register, "text": e.text} for e in style_exemplars],
+        )
         classification = classify_and_respond(
             business=business,
             context=context,
             knowledge_results=knowledge_results,
             customer_message=content,
             services=services,
-            locked_language=_expected_response_language(conversation, content, force_language),
+            locked_language=pre_call_language,
             hours=hours,
+            style_exemplars=style_exemplars,
         )
         # Saved now, before the grounding guard below (or anything else) can
         # replace classification.response -- the stuck-loop check further down
@@ -1922,6 +1947,7 @@ def _handle_turn(
                 locked_language=expected_reply_language,
                 hours=hours,
                 flagged_claims=violations,
+                style_exemplars=style_exemplars,
             )
             retry_violations = check_response_facts(
                 retry.response, currency=currency, services=service_facts,
@@ -2028,6 +2054,7 @@ def _handle_turn(
                         locked_language=expected_reply_language,
                         hours=hours,
                         flagged_style_issues=style_violations,
+                        style_exemplars=style_exemplars,
                     )
                     retry_repaired = repair_response_style(style_retry.response, intent=style_retry.intent.value)
                     if not check_response_style(retry_repaired, intent=style_retry.intent.value):
@@ -2069,6 +2096,7 @@ def _handle_turn(
                 locked_language=expected_reply_language,
                 hours=hours,
                 language_repair_target=expected_reply_language,
+                style_exemplars=style_exemplars,
             )
             if _response_language_mismatch(language_retry.response, expected_reply_language):
                 logger.warning(

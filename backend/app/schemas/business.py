@@ -4,7 +4,7 @@ from zoneinfo import available_timezones
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from app.db.models.business import BusinessPlan, ContentScope, LanguageMode
+from app.db.models.business import BusinessFormality, BusinessPlan, ContentScope, EmojiPolicy, LanguageMode
 from app.schemas.common import safe_str
 
 # description is a Text column (unbounded in the DB) — a DoS/sanity ceiling,
@@ -67,6 +67,14 @@ class BusinessRead(BaseModel):
     content_scope: ContentScope
     # Phase 58 — writable via BusinessUpdate below (a plain owner/admin setting, not plan-gated).
     booking_enabled: bool
+    # Phase 2 (style exemplars) — this tenant's category flavor, used only to widen
+    # style_exemplars retrieval to shared exemplars authored for that flavor.
+    business_type: str | None
+    # Persona card (Phase 2) — all writable via BusinessUpdate below, all optional.
+    persona_name: str | None
+    formality: BusinessFormality
+    emoji_policy: EmojiPolicy
+    sign_off: str | None
 
 
 class BusinessUpdate(BaseModel):
@@ -97,6 +105,11 @@ class BusinessUpdate(BaseModel):
     language_mode: LanguageMode | None = None
     content_scope: ContentScope | None = None
     booking_enabled: bool | None = None
+    business_type: safe_str(50) | None = None
+    persona_name: safe_str(100) | None = None
+    formality: BusinessFormality | None = None
+    emoji_policy: EmojiPolicy | None = None
+    sign_off: safe_str(200) | None = None
 
     @field_validator("brand_color")
     @classmethod
@@ -154,6 +167,20 @@ class BusinessUpdate(BaseModel):
     def content_scope_not_null(cls, value: ContentScope | None) -> ContentScope:
         if value is None:
             raise ValueError("This field cannot be cleared to null — pass \"single_business\" or \"aggregator\".")
+        return value
+
+    @field_validator("formality")
+    @classmethod
+    def formality_not_null(cls, value: BusinessFormality | None) -> BusinessFormality:
+        if value is None:
+            raise ValueError("This field cannot be cleared to null — pass \"casual\", \"neutral\", or \"formal\".")
+        return value
+
+    @field_validator("emoji_policy")
+    @classmethod
+    def emoji_policy_not_null(cls, value: EmojiPolicy | None) -> EmojiPolicy:
+        if value is None:
+            raise ValueError("This field cannot be cleared to null — pass \"default\" or \"none\".")
         return value
 
     @field_validator("reminder_minutes_before")
