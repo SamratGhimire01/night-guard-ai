@@ -294,3 +294,65 @@ def test_cors_headers_present_on_widget_endpoints_but_not_elsewhere(business):
 
     health_resp = client.get("/api/v1/health", headers={"Origin": "https://some-random-business-website.example"})
     assert "access-control-allow-origin" not in {k.lower() for k in health_resp.headers.keys()}
+
+
+# ---------------------------------------------------------------------------
+# response_bubbles -- additive rendering hint for the widget UI (see
+# style_checks.split_into_bubbles, shared with the WhatsApp delivery-time split).
+# `response` itself must stay byte-for-byte identical whether or not bubbles fire, and
+# "cancellation" intent with no cancellation_request field is used below for the same reason
+# test_whatsapp.py's bubble tests use it: no tool dispatch, no handoff addendum, no
+# format_service_list rewrite -- classification.response passes straight through the style
+# guard untouched, so the test fully controls the text being split.
+# ---------------------------------------------------------------------------
+
+
+def _set_stub_response(monkeypatch, text: str, intent: str = "cancellation") -> None:
+    import app.services.conversation.intent as intent_module
+
+    class _StubChatWithText:
+        def chat(self, messages):
+            return jsonlib.dumps({"intent": intent, "response": text})
+
+    monkeypatch.setattr(intent_module, "get_chat_provider", lambda: _StubChatWithText())
+
+
+def test_long_reply_gets_response_bubbles_populated_matching_the_full_response(business, monkeypatch):
+    long_reply = (
+        "We can absolutely help you get that rescheduled to a time that works better for you. "
+        "Our team looks over every request personally to make sure nothing about your original booking gets lost "
+        "in the process, so please do not worry about starting over from scratch. "
+        "Once you tell us the new day and time you would like, we will confirm it back to you right away. "
+        "We really do want to make this as easy as possible for you."
+    )
+    assert len(long_reply.split()) > 40  # comfortably over the split threshold
+    _set_stub_response(monkeypatch, long_reply)
+
+    resp = client.post(f"/api/v1/widget/{business}/messages", json={"content": "Can I move my appointment?"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    assert body["response"] == long_reply, "response stays the full, untouched, validated text either way"
+    assert body["response_bubbles"] is not None
+    assert 2 <= len(body["response_bubbles"]) <= 3, f"expected 2-3 fragments, got: {body['response_bubbles']}"
+    assert " ".join(body["response_bubbles"]) == long_reply, "bubbles must reconstruct response exactly, no loss/reorder"
+    for fragment in body["response_bubbles"]:
+        assert fragment != long_reply, "each fragment must be a genuine piece, never the whole reply repeated"
+
+    with SessionLocal() as db:
+        (conversation,) = (
+            db.query(Conversation).filter(Conversation.business_id == uuid.UUID(business)).all()
+        )
+        agent_msg = db.query(Message).filter(Message.conversation_id == conversation.id).order_by(Message.created_at).all()[1]
+        assert agent_msg.content == long_reply, "persistence is exactly ONE row with the full text, unaffected by this field"
+
+
+def test_short_reply_leaves_response_bubbles_none(business, monkeypatch):
+    short_reply = "Sure, what day works best for you?"
+    _set_stub_response(monkeypatch, short_reply)
+
+    resp = client.post(f"/api/v1/widget/{business}/messages", json={"content": "Can I move my appointment?"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["response"] == short_reply
+    assert body["response_bubbles"] is None, "a short reply is never turned into pointless bubbles"

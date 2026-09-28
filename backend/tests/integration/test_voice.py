@@ -289,3 +289,35 @@ def test_business_rate_limit_blocks_excessive_voice_messages(business, monkeypat
 
     assert statuses[:2] == [200, 200]
     assert all(s == 429 for s in statuses[2:])
+
+
+def test_voice_reply_never_gets_response_bubbles_even_when_long(business, monkeypatch):
+    """WidgetVoiceMessageResponse deliberately never got the response_bubbles field (see
+    style_checks.split_into_bubbles / app/api/routes/widget.py's text-message route, which
+    DOES get it) -- confirmed here with a reply long enough that the text widget path would
+    populate it, to prove this is a real schema difference, not a coincidence of short stub
+    text everywhere else in this file."""
+    import app.services.conversation.intent as intent_module
+
+    long_reply = (
+        "We can absolutely help you get that rescheduled to a time that works better for you. "
+        "Our team looks over every request personally to make sure nothing about your original booking gets lost "
+        "in the process, so please do not worry about starting over from scratch. "
+        "Once you tell us the new day and time you would like, we will confirm it back to you right away. "
+        "We really do want to make this as easy as possible for you."
+    )
+    assert len(long_reply.split()) > 40
+
+    class _StubChatWithLongReply:
+        def chat(self, messages):
+            return jsonlib.dumps({"intent": "cancellation", "response": long_reply})
+
+    monkeypatch.setattr(intent_module, "get_chat_provider", lambda: _StubChatWithLongReply())
+    _stub_stt(monkeypatch, text="Can I move my appointment?", language="en", confidence=0.95)
+
+    resp = _post_voice(business)
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["response"] == long_reply
+    assert "response_bubbles" not in body, "voice's response schema must never grow this field"

@@ -175,6 +175,18 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
+  // Renders a text-message reply as several agent bubbles when the backend split it
+  // (response_bubbles, additive/optional -- see WidgetMessageResponse), otherwise falls back
+  // to today's single-bubble rendering exactly as before this field existed. Text-message
+  // path only -- the voice reply path never sends/checks this field.
+  function appendAgentReply(data) {
+    if (Array.isArray(data.response_bubbles) && data.response_bubbles.length > 1) {
+      for (var i = 0; i < data.response_bubbles.length; i++) appendMessage(data.response_bubbles[i], "agent");
+    } else if (data.response) {
+      appendMessage(data.response, "agent");
+    }
+  }
+
   function setTyping(visible) {
     typingEl.classList.toggle("ng-visible", visible);
     if (visible) messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -276,7 +288,7 @@
         setSessionToken(data.session_token);
         setTyping(false);
         /* response is null while a staff member owns the conversation: nothing to show for this turn */
-        if (data.response) appendMessage(data.response, "agent");
+        appendAgentReply(data);
         noteTurn(data);
       })
       .catch(function () {

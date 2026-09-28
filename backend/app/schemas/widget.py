@@ -33,6 +33,12 @@ class WidgetMessageResponse(BaseModel):
     # None (Phase 52) = a staff member owns this conversation: the message was stored, no AI reply is coming. The widget
     # shows nothing for it and picks the staff reply up through GET .../updates.
     response: str | None = None
+    # Additive, optional: the SAME text as `response`, pre-split into up to 3 fragments (see
+    # style_checks.split_into_bubbles) for a widget UI that wants to render several chat bubbles instead of one
+    # block, purely a rendering hint -- None whenever `response` is None/short, or for any client that doesn't ask
+    # for it. `response` itself is untouched either way (full text, same as before this field existed), so an old
+    # client, the dashboard's conversation log, and the regression suite all see zero change.
+    response_bubbles: list[str] | None = None
     intent: str | None = None
     # what the widget passes back to GET .../updates so it only ever receives messages newer than this reply
     agent_message_id: uuid.UUID | None = None

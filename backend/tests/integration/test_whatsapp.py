@@ -715,3 +715,158 @@ def test_proactive_send_prefers_the_phone_identity_over_a_bsuid_alias(business_w
         db.commit()
         proactive.send_to_conversation(db, conversation=conv, text="Payment received")
     assert [s["to"] for s in sent] == ["9779800000077"]
+
+
+# ---------------------------------------------------------------------------
+# Message-bubble split (WhatsApp delivery-time only) -- see
+# style_checks.split_into_bubbles / whatsapp_webhook._deliver_whatsapp_reply. "cancellation" intent with no
+# cancellation_request field is used throughout below specifically because it passes
+# classification.response straight through untouched -- no tool dispatch (needs a real
+# cancellation_request), no handoff addendum (not in handoff_service._INFO_INTENTS/COMPLAINT/
+# HUMAN_HANDOFF), no format_service_list rewrite (only SERVICE_QUESTION/PRICING_QUESTION/
+# GENERAL_QUESTION get that) -- so the text this test controls is exactly the text the style
+# guard validates and exactly the text that must reach the split, with nothing else appended.
+# ---------------------------------------------------------------------------
+
+
+def _set_stub_response(monkeypatch, text: str, intent: str = "cancellation") -> None:
+    import app.services.conversation.intent as intent_module
+
+    class _StubChatWithText:
+        def chat(self, messages):
+            return jsonlib.dumps({"intent": intent, "response": text})
+
+    monkeypatch.setattr(intent_module, "get_chat_provider", lambda: _StubChatWithText())
+
+
+def test_long_reply_is_split_into_up_to_three_real_whatsapp_bubbles(business_with_whatsapp, monkeypatch):
+    from app.services.channels.whatsapp import WhatsAppChannelAdapter
+
+    long_reply = (
+        "We can absolutely help you get that rescheduled to a time that works better for you. "
+        "Our team looks over every request personally to make sure nothing about your original booking gets lost "
+        "in the process, so please do not worry about starting over from scratch. "
+        "Once you tell us the new day and time you would like, we will confirm it back to you right away. "
+        "We really do want to make this as easy as possible for you."
+    )
+    assert len(long_reply.split()) > 40  # comfortably over the split threshold, not just brushing it
+
+    sent: list[dict] = []
+    monkeypatch.setattr(WhatsAppChannelAdapter, "send_message", lambda self, **kw: (sent.append(kw), "sent wamid=x")[1])
+    _set_stub_response(monkeypatch, long_reply)
+
+    status, body = _post_webhook(_build_payload(
+        phone_number_id=business_with_whatsapp["phone_number_id"], wa_id="15551239001",
+        message_id=f"wamid.{uuid.uuid4().hex}", text="Can I move my appointment?",
+    ))
+    assert status == 200, body
+
+    assert 2 <= len(sent) <= 3, f"expected 2-3 real bubbles (BEFORE: one block) for a reply this long, got: {sent}"
+    reconstructed = " ".join(s["text"] for s in sent)
+    assert reconstructed == long_reply, "splitting must never drop, reorder, or alter any of the validated text"
+    for s in sent:
+        assert s["text"] != long_reply, "AFTER: each bubble is a genuine fragment, never the whole reply repeated"
+
+    with SessionLocal() as db:
+        (conversation,) = db.query(Conversation).filter(Conversation.business_id == business_with_whatsapp["business_id"]).all()
+        agent_msg = db.query(Message).filter(
+            Message.conversation_id == conversation.id, Message.sender_type == MessageSenderType.AGENT
+        ).one()
+        assert agent_msg.content == long_reply, "persistence stays exactly ONE row with the FULL text -- split only at send time"
+        assert agent_msg.delivery_status == "sent"
+
+
+def test_short_reply_is_not_split(business_with_whatsapp, monkeypatch):
+    from app.services.channels.whatsapp import WhatsAppChannelAdapter
+
+    short_reply = "Sure, what day works best for you?"
+    sent: list[dict] = []
+    monkeypatch.setattr(WhatsAppChannelAdapter, "send_message", lambda self, **kw: (sent.append(kw), "sent wamid=y")[1])
+    _set_stub_response(monkeypatch, short_reply)
+
+    status, body = _post_webhook(_build_payload(
+        phone_number_id=business_with_whatsapp["phone_number_id"], wa_id="15551239002",
+        message_id=f"wamid.{uuid.uuid4().hex}", text="Can I move my appointment?",
+    ))
+    assert status == 200, body
+    assert len(sent) == 1 and sent[0]["text"] == short_reply, "a short reply is never turned into pointless bubbles"
+
+
+def test_bubble_split_runs_on_the_style_repaired_text_never_the_raw_scripted_draft(business_with_whatsapp, monkeypatch):
+    """The ground rule: split only ever happens AFTER fact_validator and the style guard have
+    already run on the full joined text. Proven here, not assumed: the raw draft below has a
+    real rule-4 banned scripted phrase as its FIRST sentence -- if splitting ran before/instead
+    of style repair, that phrase would still show up in bubble 1. It must not appear anywhere."""
+    from app.services.channels.whatsapp import WhatsAppChannelAdapter
+
+    s1 = "Thank you for reaching out to us!"  # rule 4 banned phrase -- style guard must strip this whole sentence
+    s2 = "We would be glad to help you get everything sorted for your visit."
+    s3 = "Our team looks forward to welcoming you and making sure your appointment goes smoothly from start to finish."
+    s4 = "Please let us know if there is a particular time of day that works best for your schedule."
+    s5 = "We want to make sure the whole experience feels easy and stress free for you."
+    raw_draft = f"{s1} {s2} {s3} {s4} {s5}"
+    expected_repaired = f"{s2} {s3} {s4} {s5}"
+    assert len(expected_repaired.split()) > 40  # still long enough that splitting should still trigger after repair
+
+    sent: list[dict] = []
+    monkeypatch.setattr(WhatsAppChannelAdapter, "send_message", lambda self, **kw: (sent.append(kw), "sent wamid=z")[1])
+    _set_stub_response(monkeypatch, raw_draft)
+
+    status, body = _post_webhook(_build_payload(
+        phone_number_id=business_with_whatsapp["phone_number_id"], wa_id="15551239003",
+        message_id=f"wamid.{uuid.uuid4().hex}", text="Can I move my appointment?",
+    ))
+    assert status == 200, body
+
+    assert len(sent) >= 2, "the repaired text is still over the split threshold"
+    reconstructed = " ".join(s["text"] for s in sent)
+    assert reconstructed == expected_repaired, "must split the STYLE-REPAIRED text, never the raw scripted draft"
+    assert not any("thank you for reaching out to us" in s["text"].lower() for s in sent), (
+        "a banned scripted phrase must never survive into any bubble sent to a real customer"
+    )
+
+    with SessionLocal() as db:
+        (conversation,) = db.query(Conversation).filter(Conversation.business_id == business_with_whatsapp["business_id"]).all()
+        agent_msg = db.query(Message).filter(
+            Message.conversation_id == conversation.id, Message.sender_type == MessageSenderType.AGENT
+        ).one()
+        assert agent_msg.content == expected_repaired
+
+
+def test_worst_of_n_delivery_status_is_failed_when_any_bubble_fails(business_with_whatsapp, monkeypatch):
+    """Documents the worst-of-N collapse: bubble 1 sends fine, bubble 2 genuinely fails --
+    sending stops immediately (bubble 3 is never attempted, since the reply already can't
+    arrive complete/in-order), and the ONE delivery_status column on the ONE Message row
+    reflects the worst outcome (failed), not the first bubble's success."""
+    from app.services.channels.whatsapp import WhatsAppChannelAdapter
+
+    long_reply = (
+        "We can absolutely help you get that rescheduled to a time that works better for you. "
+        "Our team looks over every request personally to make sure nothing about your original booking gets lost "
+        "in the process, so please do not worry about starting over from scratch. "
+        "Once you tell us the new day and time you would like, we will confirm it back to you right away. "
+        "We really do want to make this as easy as possible for you."
+    )
+    calls: list[dict] = []
+
+    def _flaky_send(self, **kw):
+        calls.append(kw)
+        return "sent wamid=ok" if len(calls) == 1 else "failed: HTTP 500"
+
+    monkeypatch.setattr(WhatsAppChannelAdapter, "send_message", _flaky_send)
+    _set_stub_response(monkeypatch, long_reply)
+
+    status, body = _post_webhook(_build_payload(
+        phone_number_id=business_with_whatsapp["phone_number_id"], wa_id="15551239004",
+        message_id=f"wamid.{uuid.uuid4().hex}", text="Can I move my appointment?",
+    ))
+    assert status == 200, body
+    assert len(calls) == 2, "stops sending further bubbles once one has genuinely failed"
+
+    with SessionLocal() as db:
+        (conversation,) = db.query(Conversation).filter(Conversation.business_id == business_with_whatsapp["business_id"]).all()
+        agent_msg = db.query(Message).filter(
+            Message.conversation_id == conversation.id, Message.sender_type == MessageSenderType.AGENT
+        ).one()
+        assert agent_msg.delivery_status == "failed"
+        assert agent_msg.content == long_reply, "the persisted text is unaffected by a partial delivery failure"

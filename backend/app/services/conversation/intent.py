@@ -725,6 +725,7 @@ def _build_user_prompt(
     hours: list[BusinessHours] | None = None,
     flagged_claims: list[str] | None = None,
     language_repair_target: str | None = None,
+    flagged_style_issues: list[str] | None = None,
 ) -> str:
     parts = []
 
@@ -785,6 +786,19 @@ def _build_user_prompt(
         parts.append(f"Business hours:\n{_format_hours(hours)}")
     parts.append(f"Available services:\n{_format_services(services, currency)}")
     parts.append(f"New customer message to respond to:\n{customer_message}")
+
+    # style_checks.check_response_style flagged a style-rule violation (a banned rule-4
+    # phrase, more than one question, or a reply over rule 17's length budget) that its own
+    # deterministic repair couldn't fully resolve on its own (e.g. one sentence alone already
+    # over the ceiling) -- same one-shot regenerate pattern as flagged_claims above, telling
+    # the model exactly which written rule it broke rather than repeating the same draft.
+    if flagged_style_issues:
+        parts.append(
+            "Your previous draft reply for this same message broke one of the style rules above:\n"
+            + "\n".join(f"- {issue}" for issue in flagged_style_issues) + "\n"
+            "Write a new `response` that follows those rules -- keep the same real content and meaning, "
+            "just fix the style problem(s) listed."
+        )
 
     # Tone/language phase: restated closest to the actual message being answered
     # (recency helps instruction-following on long prompts), on top of the fuller
@@ -1048,6 +1062,7 @@ def classify_and_respond(
     hours: list[BusinessHours] | None = None,
     flagged_claims: list[str] | None = None,
     language_repair_target: str | None = None,
+    flagged_style_issues: list[str] | None = None,
 ) -> ClassificationResult:
     tz = ZoneInfo(business.timezone) if business and business.timezone else ZoneInfo("UTC")
     today = datetime.now(tz).strftime("%Y-%m-%d (%A)")
@@ -1058,7 +1073,7 @@ def classify_and_respond(
             "role": "user",
             "content": _build_user_prompt(
                 context, knowledge_results, customer_message, services or [], today, tz, locked_language, currency,
-                hours, flagged_claims, language_repair_target,
+                hours, flagged_claims, language_repair_target, flagged_style_issues,
             ),
         },
     ]

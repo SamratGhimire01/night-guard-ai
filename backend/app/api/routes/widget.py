@@ -21,6 +21,7 @@ from app.schemas.widget import (
     WidgetUpdatesResponse,
 )
 from app.services.channels import widget_service
+from app.services.conversation.style_checks import split_into_bubbles
 
 router = APIRouter()
 
@@ -129,9 +130,15 @@ def post_widget_message(
         raise NotFoundError("Business not found.")
 
     session_token, orchestrated = result
+    # Additive rendering hint only -- see WidgetMessageResponse.response_bubbles' docstring.
+    # split_into_bubbles returns a single-element list for anything at/under its own length
+    # threshold or with under 2 sentences, which is exactly "nothing to split" -- None in
+    # that case rather than a redundant 1-item list, so a client can branch on truthiness.
+    bubbles = split_into_bubbles(orchestrated["response"]) if orchestrated["response"] else []
     return WidgetMessageResponse(
         session_token=session_token,
         response=orchestrated["response"],
+        response_bubbles=bubbles if len(bubbles) > 1 else None,
         intent=orchestrated["intent"].value if orchestrated["intent"] is not None else None,
         agent_message_id=orchestrated.get("agent_message_id"),
         customer_message_id=orchestrated.get("customer_message_id"),

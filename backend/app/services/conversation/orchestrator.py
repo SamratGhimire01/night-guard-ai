@@ -38,6 +38,7 @@ from app.services.conversation.contact_tool import UpdateContactInfoTool
 from app.services.conversation.fact_validator import check_response_facts
 from app.services.conversation.formatting import format_service_list
 from app.services.conversation.intent import classify_and_respond
+from app.services.conversation.style_checks import check_response_style, repair_response_style
 from app.services.conversation.response_templates import (
     describe_business_hours,
     parse_language_choice,
@@ -1992,6 +1993,56 @@ def _handle_turn(
                 f"No sufficiently relevant knowledge found for a {classification.intent.value} "
                 f"(best similarity: {found})."
             )
+
+        # Style guard (step 1 of the human-likeness review): intent.py's system prompt
+        # already SPECIFIES a banned-phrase list (rule 4), a one-question-per-turn rule
+        # (rule 16), and per-category length budgets (rule 17) -- but a prompt rule is
+        # "instructed, not guaranteed", same lesson as fact_validator/format_service_list.
+        # This makes those three specific, already-agreed rules a real guarantee. Skipped
+        # whenever fact-grounding above already replaced the response with the fixed,
+        # correct-by-construction fallback template -- same skip condition the language
+        # check below uses, and for the same reason (nothing left to check).
+        if fact_check_front_desk_reason is None:
+            style_violations = check_response_style(classification.response, intent=classification.intent.value)
+            if style_violations:
+                repaired = repair_response_style(classification.response, intent=classification.intent.value)
+                if not check_response_style(repaired, intent=classification.intent.value):
+                    logger.info(
+                        "drafted reply repaired deterministically for style: conversation_id=%s violations=%s "
+                        "raw_draft=%r repaired=%r",
+                        conversation_id, style_violations, classification.response, repaired,
+                    )
+                    classification = classification._replace(response=repaired)
+                else:
+                    logger.warning(
+                        "style repair alone didn't resolve it, regenerating once: conversation_id=%s violations=%s "
+                        "raw_draft=%r",
+                        conversation_id, style_violations, classification.response,
+                    )
+                    style_retry = classify_and_respond(
+                        business=business,
+                        context=context,
+                        knowledge_results=knowledge_results,
+                        customer_message=content,
+                        services=services,
+                        locked_language=expected_reply_language,
+                        hours=hours,
+                        flagged_style_issues=style_violations,
+                    )
+                    retry_repaired = repair_response_style(style_retry.response, intent=style_retry.intent.value)
+                    if not check_response_style(retry_repaired, intent=style_retry.intent.value):
+                        classification = style_retry._replace(response=retry_repaired)
+                    else:
+                        # Residual violation even after a regenerate + repair (e.g. a single
+                        # sentence that alone exceeds its ceiling) -- send the best-effort
+                        # repaired text rather than loop again; this is a style nit, not a
+                        # fact error, so it never warrants a human handoff.
+                        logger.warning(
+                            "style violation persisted after regenerate, sending best-effort repair anyway: "
+                            "conversation_id=%s",
+                            conversation_id,
+                        )
+                        classification = style_retry._replace(response=retry_repaired)
 
         # Tone/language phase: post-generation check -- does the drafted reply (the
         # original draft, or the fact-grounding retry above) actually match the

@@ -11,6 +11,7 @@ from app.services.channels.meta_webhook_signature import verify_signature
 from app.services import takeover_service
 from app.services.channels.base import record_non_text_message
 from app.services.channels.whatsapp import WhatsAppChannelAdapter
+from app.services.conversation.style_checks import split_into_bubbles
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +182,50 @@ def _link_bsuid_alias(db: Session, *, business_id, wa_id: str, bsuid: str | None
         logger.exception("whatsapp webhook: could not link BSUID alias (non-fatal)")
 
 
+# Message-bubble split (WhatsApp-only on the delivery side): a long reply gets SENT as up to
+# MAX_BUBBLES separate real WhatsApp messages instead of one wall of text, mimicking how a
+# human texting back would break it up. split_into_bubbles itself lives in style_checks.py,
+# shared with the widget's response_bubbles field -- one splitting decision, not a
+# WhatsApp-specific reimplementation. Voice never calls it.
+
+
+def _deliver_whatsapp_reply(text: str, *, incoming: dict, integration: Integration) -> str:
+    """The `deliver` callback for one customer turn (see orchestrator.handle_incoming_message):
+    sends `text` -- the one, already-validated reply _handle_turn produced -- as 1-3 separate
+    real WhatsApp messages via `split_into_bubbles` (style_checks.py), then stops and reports
+    failure the moment one bubble genuinely fails (no point pushing bubble 3 after bubble 2
+    never reached the customer -- the reply would arrive out of order anyway).
+
+    Worst-of-N status collapse: `delivery.status_from_detail` (in delivery.py, left completely
+    unchanged by this) buckets ONE returned string by its prefix ("sent"/"simulated"/anything
+    else -> failed). Rather than adding a multi-row delivery model to carry N independent
+    statuses, this returns a single string whose prefix already encodes the worst outcome
+    across every bubble actually sent:
+      - any real failure -> prefix "failed:" (bucketed FAILED) -- even if earlier bubbles sent,
+        the customer didn't get the full reply, which is what delivery_status means to convey.
+      - no token configured -> every bubble comes back "simulated..." uniformly (they share one
+        access_token) -> prefix "simulated" (bucketed SIMULATED).
+      - every bubble sent for real -> prefix "sent" (bucketed SENT), detail lists every wamid.
+    """
+    access_token = (integration.config or {}).get("access_token") or ""
+    bubbles = split_into_bubbles(text)
+    results: list[str] = []
+    for bubble in bubbles:
+        detail = _adapter.send_message(
+            to=incoming["wa_id"], text=bubble, phone_number_id=incoming["phone_number_id"], access_token=access_token,
+        )
+        results.append(detail)
+        if detail.startswith("failed"):
+            break
+    if len(results) == 1:
+        return results[0]
+    if any(d.startswith("failed") for d in results):
+        return f"failed: bubble {len(results)}/{len(bubbles)} of split reply failed ({results[-1]})"
+    if all(d.startswith("simulated") for d in results):
+        return f"simulated — no real WhatsApp access token configured ({len(results)} bubbles)"
+    return "sent " + ", ".join(results)
+
+
 def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
     """The real webhook-processing pipeline: for every real incoming text
     message in this payload, resolve its tenant, skip it if already processed
@@ -231,11 +276,10 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
                 content=incoming["text"],
                 external_message_id=incoming["message_id"],
                 # Delivered inside the orchestrator's per-conversation lock, and the result recorded on the message.
-                deliver=lambda text, incoming=incoming, integration=integration: _adapter.send_message(
-                    to=incoming["wa_id"],
-                    text=text,
-                    phone_number_id=incoming["phone_number_id"],
-                    access_token=(integration.config or {}).get("access_token") or "",
+                # See _deliver_whatsapp_reply: splits into up to 3 real WhatsApp messages when the reply is long,
+                # never touching the single validated Message row this result is recorded against.
+                deliver=lambda text, incoming=incoming, integration=integration: _deliver_whatsapp_reply(
+                    text, incoming=incoming, integration=integration
                 ),
             )
         except IntegrityError:

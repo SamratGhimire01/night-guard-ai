@@ -17183,3 +17183,40 @@ Backend force-recreated (per CLAUDE.md) before every live HTTP/browser check abo
 Postgres RLS (Part 1, design tradeoff, not a bug). Re-upload-creates-parallel-draft UX gap (Part 1, minor). Multi-day/group-capacity booking shape mismatch (Part 1 + Himalayan Trails, structural, honestly worked around not forced). The one retrieval-miss smoke-test observation (Himalayan Trails gear-rental question) — expected variance, not investigated further per this phase's scope.
 
 **Not committed** — per standing rule #6, awaiting the user's explicit go-ahead.
+
+## Human-likeness review, Step 1 — style_checks.py (DRAFT, not committed)
+
+New `app/services/conversation/style_checks.py`: code-enforces three rules intent.py's
+system prompt already specifies but only as prompt text — rule 4's banned scripted-phrase
+list (verbatim), rule 16's one-question-per-turn limit, rule 17's per-intent length budgets
+— same "instructed, not guaranteed" lesson as `fact_validator.py`/`formatting.py`. Repair is
+deterministic and sentence-level only (drop a whole offending sentence, never a mid-sentence/
+mid-word cut), so a hard trim can't slice a price or booking id. Wired into
+`orchestrator._handle_turn` right after the existing fact-check block, skipped whenever that
+block already replaced the response with its fixed fallback template. If deterministic repair
+can't fully resolve a violation (e.g. one sentence alone exceeds its ceiling), one regenerate
+pass runs (new optional `flagged_style_issues` param on `classify_and_respond`/
+`_build_user_prompt`, same pattern as `flagged_claims`) before sending the best-effort repair.
+
+**Verification (targeted, not the full suite — per this project's standing rule, full suite
+runs once at the end of the batch):** 24-case subset of `test_regression_suite.py` (every
+case with `expect_max_questions` or `expect_reply_not_contains`, plus a spread of booking/
+pricing/angry/mixed-language/cancel/emergency baselines), run twice against a real Azure LLM —
+once on the pre-change code (`git stash`), once with `style_checks.py` wired in.
+
+- **Pass rate: 24/24 before -> 24/24 after.** No regression, and no case flipped from fail to
+  pass either — the existing prompt-only rules already held up on this subset.
+- **The style guard never actually fired** on this run (checked via `logger` output, not just
+  exit code — no "repaired deterministically for style" / "regenerating once" log lines
+  appeared). The 2 reply-text differences observed between the before/after sample runs
+  (`syn-booking-hard-1` turn 2, `syn-angry-1` turn 1) are ordinary LLM sampling variance
+  between runs of the same code, not caused by this change — neither reply actually violated
+  a banned phrase, the 1-question limit, or its length ceiling.
+- **Honest read:** this PR is a backstop for cases the prompt doesn't already catch, not a
+  visible behavior change on typical traffic — consistent with the review finding that most
+  of "Phase 1" was already implemented as prompt instructions. Real value shows up on the
+  tail: essay-mode drift, a slipped scripted phrase, a compound double-question the model
+  produces under enough context pressure. Didn't observe one of those in this sample; would
+  need either a larger/adversarial sample or live traffic to see the guard actually trigger.
+
+**Not committed** — per standing rule #6, awaiting the user's explicit go-ahead.

@@ -76,6 +76,13 @@ register_exception_handlers(app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.dashboard_cors_origins.split(",") if o.strip()],
+    # Dev convenience: any ngrok free-tier tunnel origin, not just one hardcoded URL pinned in
+    # DASHBOARD_CORS_ORIGINS -- that URL rotates every time a local dev tunnel restarts (a real
+    # incident: it broke a real login with a bare "Login failed", no CORS error surfaced to the
+    # user). Safe here specifically because auth is a bearer token in sessionStorage, never a
+    # cookie -- a stranger's own ngrok tunnel being allowed to ask this API a question can't read
+    # or steal anything of this app's, since it never has this app's token in the first place.
+    allow_origin_regex=r"^https://[a-zA-Z0-9-]+\.ngrok-free\.(app|dev)$",
     allow_methods=["*"],
     allow_headers=["*"],
 )
