@@ -177,7 +177,14 @@ def repair_length(reply: str, *, intent: str) -> str:
     # booking id mid-word). Upgrade to a required-fact-aware trim if that's ever observed live.
     while len(sentences) > 1 and len(" ".join(sentences).split()) > ceiling:
         sentences = sentences[:-1]
-    return " ".join(sentences) if sentences else reply
+    trimmed = " ".join(sentences) if sentences else reply
+    # A bulleted list has no sentence marks between lines, so it's ONE "sentence" to the
+    # splitter -- a 7-word overrun once cut a whole 91-word service list, leaving only the
+    # greeting. If a trim would drop over half the reply, don't trim: the residual violation
+    # sends it to the caller's regenerate-once path instead of shipping a gutted answer.
+    if len(trimmed.split()) * 2 < len(reply.split()):
+        return reply
+    return trimmed
 
 
 def check_response_style(reply: str, *, intent: str) -> list[str]:
@@ -226,6 +233,13 @@ def _demo() -> None:
     one_giant_sentence = "This " + "very " * 60 + "long single sentence has no period in the middle at all"
     assert check_length(one_giant_sentence, intent="greeting")
     assert repair_length(one_giant_sentence, intent="greeting") == one_giant_sentence
+
+    # Real 2026-09-28 dental-06 shape: a short greeting sentence, then a bulleted list with no
+    # sentence marks between lines (one "sentence" to the splitter), pushing the reply just over
+    # MEDIUM. Trimming would keep only the greeting -- the guard refuses, leaving it to regenerate.
+    bulleted = "Hello, I'm Priya. Our services:\n" + "\n".join(f"- Service {i} — NPR {i}00, 30 min" for i in range(1, 16))
+    assert check_length(bulleted, intent="service_question")
+    assert repair_length(bulleted, intent="service_question") == bulleted
 
     print("style_checks self-check: all assertions passed")
 
