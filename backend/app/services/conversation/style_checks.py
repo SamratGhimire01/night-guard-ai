@@ -42,7 +42,9 @@ _BANNED_PHRASES = [
 # enforcement of the shortest possible reply) and intents whose real answer can legitimately
 # list several services/prices/appointments get the more permissive tier rather than SHORT,
 # so a correct multi-item answer is never mistaken for rambling.
-_SHORT, _MEDIUM, _LONG = 45, 90, 160
+# _MEDIUM 90 -> 100 (2026-09-28): a full 9-service list with prices (dental-06) drafted at
+# 92-97 words and got trimmed over a 2-7 word overrun; 100 clears that with margin.
+_SHORT, _MEDIUM, _LONG = 45, 100, 160
 _LENGTH_CEILINGS: dict[str, int] = {
     "greeting": _SHORT,
     "off_topic": _SHORT,
