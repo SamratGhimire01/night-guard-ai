@@ -237,7 +237,7 @@ def test_incoming_message_flows_through_the_real_shared_orchestrator(business_wi
         # Zero knowledge documents on this business, so this correctly
         # triggers Phase 19's real handoff logic — proof this is the SAME
         # real orchestrator pipeline WhatsApp/widget use, not a copy.
-        assert render("handoff_addendum", "en") in agent_msg.content
+        assert agent_msg.content == render("unconfirmed_fact_fallback", "en")
 
 
 def test_message_echo_of_our_own_send_is_ignored_not_processed(business_with_messenger):

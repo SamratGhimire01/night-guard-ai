@@ -92,12 +92,10 @@ def test_first_contact_creates_real_session_customer_and_conversation(business):
     assert len(body["session_token"]) >= 32  # real high-entropy token, not a short/sequential id
     # This business has no knowledge base at all, so the zero-retrieval
     # grounding backstop (orchestrator.py, "using honest fallback") overrides
-    # the stubbed LLM's text with this real deterministic template, plus
-    # Phase 19's real honest handoff sentence -- proof the widget path reuses
-    # the FULL real orchestrator, not a simplified copy of it.
-    assert body["response"] == render("unconfirmed_fact_fallback", "en") + (
-        " " + render("handoff_addendum", "en")
-    )
+    # the stubbed LLM's text with this real deterministic template (which
+    # already promises a follow-up, so no handoff addendum) -- proof the widget
+    # path reuses the FULL real orchestrator, not a simplified copy of it.
+    assert body["response"] == render("unconfirmed_fact_fallback", "en")
     assert body["intent"] == "general_question"
 
     with SessionLocal() as db:

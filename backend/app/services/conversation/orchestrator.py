@@ -2702,7 +2702,11 @@ def _handle_turn(
         conversation_id=conversation_id,
         intent=intent,
         best_similarity=best_similarity,
-        llm_confirmed_answered=(True if classification.needs_human_handoff is False else None),
+        # A configured-hours reply is read straight off the BusinessHours rows (describe_business_hours), so knowledge
+        # similarity says nothing about it: Phase 4 eval d-102 got the full hours list plus "let me check with our senior team".
+        llm_confirmed_answered=(
+            True if classification.needs_human_handoff is False or (intent == ConversationIntent.BUSINESS_HOURS and hours) else None
+        ),
         is_language_switch_request=is_explicit_language_switch,
         # escalation_front_desk_reason (stated emergency / stuck loop) must outrank
         # fact_check_front_desk_reason (generic zero-knowledge-match backstop): an
@@ -2713,7 +2717,15 @@ def _handle_turn(
         # silently reintroduce it.
         front_desk_reason=resend_front_desk_reason or escalation_front_desk_reason or fact_check_front_desk_reason,
     )
-    if handoff is not None:
+    # The handoff row is still created for staff, but the addendum is skipped when the reply already tells the customer
+    # the team will follow up: the honest fallback ("…have them follow up with you"), the emergency reply ("I've also flagged
+    # this conversation for our team"), a resend "connect you with our front desk", or hours not on file ("let me connect
+    # you with our team"). Phase 4 eval: these got the promise twice.
+    reply_says_team_follows_up = bool(
+        fact_check_front_desk_reason or resend_front_desk_reason or is_medical_emergency
+        or intent == ConversationIntent.BUSINESS_HOURS
+    )
+    if handoff is not None and not reply_says_team_follows_up:
         response_text = f"{response_text} {render('handoff_addendum', language)}"
 
     customer_message = Message(

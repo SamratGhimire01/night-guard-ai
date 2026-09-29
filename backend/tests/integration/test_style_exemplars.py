@@ -417,9 +417,9 @@ def test_unfilled_slot_leak_persisting_falls_back_honestly(business, monkeypatch
     assert resp.status_code == 201, resp.text
     body = resp.json()
     assert "{" not in body["response"]
-    # A real handoff is created (needs_human_handoff=True) on the persisting-violation path,
-    # which appends the standard handoff_addendum sentence -- see orchestrator.py.
-    assert body["response"] == f"{render('unconfirmed_fact_fallback', 'en')} {render('handoff_addendum', 'en')}"
+    # A real handoff is created (needs_human_handoff=True) on the persisting-violation path; the
+    # fallback already promises a follow-up, so no handoff_addendum is appended -- see orchestrator.py.
+    assert body["response"] == render("unconfirmed_fact_fallback", "en")
 
 
 def test_check_unfilled_slots_unit():

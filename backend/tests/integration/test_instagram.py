@@ -240,7 +240,7 @@ def test_incoming_message_flows_through_the_real_shared_orchestrator(business_wi
         # Zero knowledge documents on this business, so this correctly
         # triggers Phase 19's real handoff logic — proof this is the SAME
         # real orchestrator pipeline WhatsApp/Messenger/widget use.
-        assert render("handoff_addendum", "en") in agent_msg.content
+        assert agent_msg.content == render("unconfirmed_fact_fallback", "en")
 
 
 def _build_changes_shape_payload(*, ig_account_id: str, igsid: str, message_id: str, text: str) -> dict:

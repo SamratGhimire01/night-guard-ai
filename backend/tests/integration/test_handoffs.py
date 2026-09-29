@@ -368,7 +368,8 @@ def test_real_orchestrator_no_knowledge_match_creates_handoff_and_appends_honest
     # anymore; that's the guarantee this test now checks.
     assert honest_llm_text not in body["response"]
     assert "don't want to guess" in body["response"]
-    assert render("handoff_addendum", "en") in body["response"]
+    # The fallback already promises "have them follow up with you": the addendum would say it twice (Phase 4 eval).
+    assert render("handoff_addendum", "en") not in body["response"]
 
     handoffs = _open_handoffs(conversation_id)
     assert len(handoffs) == 1

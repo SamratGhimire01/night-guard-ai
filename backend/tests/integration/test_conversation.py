@@ -4683,7 +4683,8 @@ def test_fourth_resend_request_is_honest_and_creates_a_real_front_desk_handoff(t
 
     body = _say(token_a, conversation_id, "resend it again please")
     assert "already received this several times" in body and "front desk" in body, body
-    assert render("handoff_addendum", "en") in body, "the 'front desk' promise must be backed by a real handoff"
+    # the reply already says "front desk" -- no second promise appended; the real handoff row below backs it
+    assert render("handoff_addendum", "en") not in body
     assert len(fake.recipients) == 3, "the 4th request must not send anything"
     with SessionLocal() as db:
         assert db.get(Appointment, appointment_id).confirmation_resend_count == 3
@@ -5421,3 +5422,27 @@ def test_free_service_is_listed_as_free_not_a_zero_price():
     assert _format_services(services, "USD") == (
         "- Trek Booking Consultation (free, 30 min)\n- Root Canal (USD 450.00, 60 min)"
     )
+
+
+def test_handoff_addendum_only_where_the_reply_still_needs_it(two_businesses, monkeypatch):
+    """Phase 4 eval d-102: the full, DB-read opening hours came back followed by "Let me check with our senior team…" --
+    BUSINESS_HOURS went through the knowledge-similarity handoff gate, meaningless for hours kept in their own table. A
+    complaint still gets a real handoff and the addendum."""
+    from app.db.models.handoff import HumanHandoff
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    addendum = render("handoff_addendum", "en")
+    for intent, content, expect_handoff in (
+        ("business_hours", "What are your opening hours?", False),
+        ("complaint", "The dentist was really rude to me last time.", True),
+    ):
+        conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+        _stub_providers(monkeypatch, json.dumps({"intent": intent, "response": "Sorry to hear that."}))
+        reply = client.post(
+            f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a), json={"content": content}
+        ).json()["response"]
+        assert (addendum in reply) is expect_handoff, reply
+        with SessionLocal() as db:
+            count = db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).count()
+        assert count == int(expect_handoff)

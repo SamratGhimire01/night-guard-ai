@@ -43,9 +43,7 @@ _STUB_RESPONSE = "Thanks for calling!"
 # which overrides the stubbed LLM reply with this real deterministic template
 # -- never the raw stub text -- plus the real Phase 19 handoff addendum, same
 # real behavior documented in test_widget.py, not a voice-specific quirk.
-_EXPECTED_RESPONSE = (
-    render("unconfirmed_fact_fallback", "en") + " " + render("handoff_addendum", "en")
-)
+_EXPECTED_RESPONSE = render("unconfirmed_fact_fallback", "en")
 
 _FAKE_AUDIO = b"fake webm bytes, never actually decoded -- Deepgram is stubbed"
 

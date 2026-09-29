@@ -235,7 +235,7 @@ def test_incoming_message_flows_through_the_real_shared_orchestrator(business_wi
         # here correctly triggers Phase 19's real handoff logic — proof this
         # is the SAME real orchestrator pipeline the website widget uses
         # (Phase 21), not a parallel/simplified copy of it.
-        assert render("handoff_addendum", "en") in agent_msg.content
+        assert agent_msg.content == render("unconfirmed_fact_fallback", "en")
 
 
 def test_non_text_message_is_recorded_as_a_placeholder_and_status_only_webhooks_are_skipped(business_with_whatsapp):
