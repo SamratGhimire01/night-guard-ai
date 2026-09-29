@@ -1821,6 +1821,14 @@ def test_resolve_message_language_covers_common_spellings_found_in_real_transcri
     # The deliberately-excluded English loanword must still NOT trigger on
     # its own (single incidental match, and "chai" was never added).
     assert _resolve_message_language("Can I get a chai after my appointment?", "en") == "en"
+    # Phase 4 eval: these never locked (the LLM called them "ne_deva", which is discarded for Latin text), so the
+    # off-topic decline and the handoff addendum came back in English.
+    for text in (
+        "Nepal ko sabai vanda aglo jhil kun ho?",
+        "guide le ekdam rude behave garyo, yesto ta hunu bhayena ni",
+        "altitude sickness lagyo bhane k garne?",
+    ):
+        assert _resolve_message_language(text, "ne_deva") == "ne_roman", text
 
 
 def test_resolve_locked_language_ignores_one_off_drift_but_relocks_after_sustained_streak():

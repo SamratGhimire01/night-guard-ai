@@ -1101,6 +1101,12 @@ _ROMAN_NEPALI_WORDS = {
     # Nepali-only spoken contractions.
     "xa", "hunxa", "mildaina", "gardim", "gardai", "garda", "gardinu", "rakhdim",
     "bholi", "aja", "aaja", "hijo", "parsi", "aile", "hunuhuncha", "huss", "thik",
+    # Phase 4 eval: "Nepal ko sabai vanda aglo jhil kun ho?", "guide le ekdam rude behave garyo, yesto ta hunu
+    # bhayena ni" and "altitude sickness lagyo bhane k garne?" matched under 2 of the words above (and the LLM mislabels
+    # them "ne_deva", discarded below), so the conversation never locked and the off-topic reply / handoff addendum came
+    # back in English.
+    "garyo", "bhayena", "vayena", "yesto", "testo", "ekdam", "hunu", "sabai", "vanda", "bhanda", "sanga", "gareko",
+    "garera", "lagyo", "bhane", "vane",
     # Deliberately NOT added, despite appearing in the spec's own list:
     # - "chai" — collides with the English loanword "chai" (tea); the
     #   existing test test_resolve_message_language_roman_nepali_deterministic_
