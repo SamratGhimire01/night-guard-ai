@@ -73,6 +73,7 @@ class WhatsAppChannelAdapter(ChannelAdapter):
         content: str,
         external_message_id: str | None = None,
         deliver=None,
+        contact_name: str | None = None,
     ) -> dict | None:
         # external_customer_ref is the real WhatsApp wa_id (a phone number) —
         # unlike the widget's session token, this is not a secret, so it's
@@ -83,7 +84,8 @@ class WhatsAppChannelAdapter(ChannelAdapter):
             business_id=business_id,
             channel=self.channel,
             external_ref=external_customer_ref,
-            default_customer_name="WhatsApp Contact",
+            # the sender's WhatsApp profile name, the only real name we have before they tell us one
+            default_customer_name=(contact_name or "").strip() or "WhatsApp Contact",
         )
         # The exact same Phase 8 orchestrator every other channel already
         # goes through — no parallel/simplified conversation logic.

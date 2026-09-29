@@ -5360,3 +5360,40 @@ def test_booking_tool_never_runs_when_booking_is_disabled_even_if_the_llm_still_
 
         appointments = list(db.query(Appointment).filter(Appointment.business_id == business_id_a).all())
     assert appointments == [], "the real code-level gate must have blocked tool.run() -- no appointment may exist"
+
+
+def test_placeholder_customer_name_is_never_said_to_the_customer(two_businesses, monkeypatch):
+    """Phase 4 eval: 42/760 replies called the customer "Website Visitor" (the widget's placeholder name) — the
+    appointment-status and booking templates, and the LLM reading it off the prompt's Customer profile. A real customer
+    complained ("Why are you saying the website visitor?"). A placeholder is now omitted; a real name still appears."""
+    from app.db.models.customer import PLACEHOLDER_NAMES
+    from app.services.channels.base import get_or_create_conversation
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    for name, expect_in_reply in (("Website Visitor", False), ("Jamie", True)):
+        resp = client.post("/api/v1/customers", headers=_auth_header(token_a), json={"name": name})
+        conversation_id = _create_conversation(business_id_a, uuid.UUID(resp.json()["id"]))
+        stub = _stub_providers(monkeypatch, json.dumps({"intent": "appointment_status", "response": "Let me check."}))
+        reply = client.post(
+            f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a),
+            json={"content": "do I have an appointment?"},
+        ).json()["response"]
+        assert (name in reply) is expect_in_reply, reply
+        assert "Website Visitor" not in json.dumps(stub.calls)
+
+    # WhatsApp: the sender's profile name replaces a placeholder, never a name the customer gave us.
+    with SessionLocal() as db:
+        ref = f"97798{uuid.uuid4().int % 10**8:08d}"
+        conv = get_or_create_conversation(
+            db, business_id=business_id_a, channel="whatsapp", external_ref=ref, default_customer_name="WhatsApp Contact"
+        )
+        customer = db.get(Customer, conv.customer_id)
+        assert customer.name in PLACEHOLDER_NAMES and customer.known_name is None
+        get_or_create_conversation(db, business_id=business_id_a, channel="whatsapp", external_ref=ref, default_customer_name="Sita")
+        db.refresh(customer)
+        assert customer.known_name == "Sita"
+        customer.name = "Sita Sharma"  # told us her real name in the chat
+        db.commit()
+        get_or_create_conversation(db, business_id=business_id_a, channel="whatsapp", external_ref=ref, default_customer_name="Sita")
+        db.refresh(customer)
+        assert customer.name == "Sita Sharma"

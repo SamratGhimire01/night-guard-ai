@@ -1783,7 +1783,7 @@ def _handle_turn(
                     result,
                     service=service,
                     tz=tz,
-                    customer_name=customer_row.name if customer_row else None,
+                    customer_name=customer_row.known_name if customer_row else None,
                     language=force_language or conversation.detected_language,
                 )
                 _clear_booking_draft_after_attempt(conversation, result, picked_slot, tz)
@@ -2238,7 +2238,7 @@ def _handle_turn(
     # "Website Visitor" in their own booking confirmation instead of "Jamie".
     # `customer_row` reflects any update this turn already applied above, so
     # reading it fresh from there closes the gap.
-    customer_name = customer_row.name if customer_row else None
+    customer_name = customer_row.known_name if customer_row else None
 
     # Real bug found live (PHASE_STATUS.md, "§2.C confirmation ignored"): a
     # customer naming a service while it's still just a service_question

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.channel_identity import ChannelIdentity
 from app.db.models.conversation import Conversation, Message, MessageSenderType
-from app.db.models.customer import Customer
+from app.db.models.customer import PLACEHOLDER_NAMES, Customer
 from app.services.conversation.orchestrator import handle_incoming_message
 
 # Every ChannelAdapter shares this one open-conversation-per-customer-per-
@@ -51,6 +51,10 @@ def get_or_create_conversation(
         db.refresh(customer)
     else:
         customer = db.get(Customer, identity.customer_id)
+        if customer.name in PLACEHOLDER_NAMES and default_customer_name not in PLACEHOLDER_NAMES:
+            # a real name (WhatsApp profile name) has arrived for a customer we only knew as a placeholder
+            customer.name = default_customer_name
+            db.commit()
 
     conversation = db.execute(
         select(Conversation)

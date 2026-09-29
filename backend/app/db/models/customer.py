@@ -4,6 +4,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.database import Base
 from app.db.models.mixins import CreatedAtMixin, TenantMixin, UUIDPrimaryKeyMixin
 
+# What a channel names a customer it knows nothing about (see channels/base.py get_or_create_conversation). Fine for staff
+# screens, never to be said to the customer: a real customer complained at being called "Website Visitor".
+PLACEHOLDER_NAMES = frozenset({"Website Visitor", "WhatsApp Contact", "Messenger Contact", "Instagram Contact"})
+
 
 class Customer(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):
     """A tenant's end customer (e.g. a dental patient)."""
@@ -26,3 +30,8 @@ class Customer(UUIDPrimaryKeyMixin, TenantMixin, CreatedAtMixin, Base):
     # update endpoint exists yet in this codebase, see PHASE_STATUS.md) is ever
     # eligible for a real SMS send.
     sms_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+
+    @property
+    def known_name(self) -> str | None:
+        """The name to address the customer by: None while `name` is still a channel placeholder."""
+        return None if self.name in PLACEHOLDER_NAMES else self.name

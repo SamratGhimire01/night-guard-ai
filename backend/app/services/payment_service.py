@@ -267,7 +267,7 @@ def notify_payment_completed(db: Session, payment: Payment) -> None:
         text = render(
             "payment_received",
             conversation.detected_language,
-            who=f", {customer.name}" if customer and customer.name else "",
+            who=f", {customer.known_name}" if customer and customer.known_name else "",
             when=appointment.scheduled_at.astimezone(ZoneInfo(business.timezone)).strftime("%A, %B %-d at %-I:%M %p"),
             currency=payment.currency,
             amount=str(payment.amount),

@@ -552,7 +552,7 @@ Assistant: {{"intent": "pricing_question", "response": "A Root Canal is $450 and
 60 minutes. Want me to check availability?", "needs_human_handoff": false}}
 
 Example — customer volunteers their email mid-conversation; extracted, but NOT claimed as done:
-Customer profile: name=Website Visitor, email=None, phone=None, preferred_language=unspecified.
+Customer profile: name=None, email=None, phone=None, preferred_language=unspecified.
 Customer: "Oh sorry, it's Jordan, and my email is jordan@example.com."
 Assistant: {{"intent": "follow_up", "response": "Thanks, Jordan! Got it.", \
 "contact_info_update": {{"name": "Jordan", "email": "jordan@example.com", "phone": null}}, \

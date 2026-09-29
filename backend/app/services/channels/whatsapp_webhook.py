@@ -275,6 +275,7 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
                 external_customer_ref=incoming["wa_id"],
                 content=incoming["text"],
                 external_message_id=incoming["message_id"],
+                contact_name=incoming["contact_name"],
                 # Delivered inside the orchestrator's per-conversation lock, and the result recorded on the message.
                 # See _deliver_whatsapp_reply: splits into up to 3 real WhatsApp messages when the reply is long,
                 # never touching the single validated Message row this result is recorded against.
@@ -326,7 +327,7 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
                 external_ref=incoming["wa_id"],
                 placeholder=incoming["placeholder"],
                 external_message_id=incoming["message_id"],
-                default_customer_name="WhatsApp Contact",
+                default_customer_name=(incoming["contact_name"] or "").strip() or "WhatsApp Contact",
             )
         except IntegrityError:
             db.rollback()  # a redelivery of a message we already stored

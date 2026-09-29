@@ -105,14 +105,14 @@ def compose_email(
     customer_contact = ", ".join(filter(None, [customer.phone, customer.email]))
     business_contact = " · ".join(filter(None, [business.address, business.phone, business.email]))
 
-    greeting = f"Hi {customer.name}," if customer.name else "Hi,"
+    greeting = f"Hi {customer.known_name}," if customer.known_name else "Hi,"
     body = (
         f"{greeting}\n\n{headline}\n\n"
         f"Business: {business.name}\n"
         f"Service: {service.name}\n"
         f"When: {when}\n"
         f"Booking ID: {booking_id}\n"
-        f"Booked for: {customer.name}" + (f", {customer_contact}" if customer_contact else "") + "\n"
+        f"Booked for: {customer.known_name or '—'}" + (f", {customer_contact}" if customer_contact else "") + "\n"
     )
     if business_contact:
         body += f"\n{business.name} · {business_contact}\n"
@@ -162,7 +162,7 @@ def compose_email(
         business_address=business.address,
         business_phone=business.phone,
         business_email=business.email,
-        customer_name=customer.name,
+        customer_name=customer.known_name,
         customer_phone=customer.phone,
         customer_email=customer.email,
         headline=headline,

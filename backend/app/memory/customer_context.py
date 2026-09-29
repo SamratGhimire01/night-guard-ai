@@ -17,7 +17,7 @@ def get_customer_context(db: Session, *, customer_id: uuid.UUID, business_id: uu
 
     return {
         "id": str(customer.id),
-        "name": customer.name,
+        "name": customer.known_name,
         "phone": customer.phone,
         "email": customer.email,
         "preferred_language": customer.preferred_language,

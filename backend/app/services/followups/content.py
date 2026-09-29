@@ -17,7 +17,7 @@ def compose_followup_email(*, business: Business, customer: Customer, interest_m
     if len(quoted) > _QUOTE_MAX_LENGTH:
         quoted = quoted[: _QUOTE_MAX_LENGTH - 3] + "..."
 
-    greeting = f"Hi {customer.name}," if customer.name else "Hi,"
+    greeting = f"Hi {customer.known_name}," if customer.known_name else "Hi,"
     body = (
         f"{greeting}\n\n"
         f"We wanted to follow up — you recently asked us:\n\n"
@@ -31,7 +31,7 @@ def compose_followup_email(*, business: Business, customer: Customer, interest_m
         business_address=business.address,
         business_phone=business.phone,
         business_email=business.email,
-        customer_name=customer.name,
+        customer_name=customer.known_name,
         quoted_message=quoted,
     )
     return subject, body, html_body
