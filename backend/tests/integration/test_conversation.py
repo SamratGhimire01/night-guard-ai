@@ -5397,3 +5397,19 @@ def test_placeholder_customer_name_is_never_said_to_the_customer(two_businesses,
         get_or_create_conversation(db, business_id=business_id_a, channel="whatsapp", external_ref=ref, default_customer_name="Sita")
         db.refresh(customer)
         assert customer.name == "Sita Sharma"
+
+
+def test_free_service_is_listed_as_free_not_a_zero_price():
+    """Phase 4 eval: a 0-priced service was handed to the model as "USD 0.00", and it quoted that verbatim
+    ("Gear Rental Pickup को शुल्क USD 0.00 हो") instead of saying it's free."""
+    from decimal import Decimal
+
+    from app.services.conversation.intent import _format_services
+
+    services = [
+        Service(name="Trek Booking Consultation", price=Decimal("0.00"), duration_minutes=30),
+        Service(name="Root Canal", price=Decimal("450.00"), duration_minutes=60),
+    ]
+    assert _format_services(services, "USD") == (
+        "- Trek Booking Consultation (free, 30 min)\n- Root Canal (USD 450.00, 60 min)"
+    )

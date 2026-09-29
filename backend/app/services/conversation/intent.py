@@ -747,7 +747,10 @@ def _format_appointments(label: str, appointments: list[dict], tz: ZoneInfo) -> 
 def _format_services(services: list[Service], currency: str) -> str:
     if not services:
         return "No services are configured for this business yet."
-    return "\n".join(f"- {s.name} ({currency} {s.price}, {s.duration_minutes} min)" for s in services)
+    # a zero price is shown as "free": handed "USD 0.00", the model quoted it verbatim ("शुल्क USD 0.00 हो")
+    return "\n".join(
+        f"- {s.name} ({f'{currency} {s.price}' if s.price else 'free'}, {s.duration_minutes} min)" for s in services
+    )
 
 
 # Real conversation-quality spec-conformance finding (PHASE_STATUS.md): a
