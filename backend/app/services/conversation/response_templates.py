@@ -496,6 +496,15 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "ne_deva": "{service} का लागि यी समयहरू खाली छन्: {options}। कुन मिल्छ?",
         "ne_roman": "{service} ko lagi yi samaya haru khali chan: {options}. Kun milcha?",
     },
+    # trekking-10: prepended to a slot list when the customer never named the service it's for ("reserve a spot on the
+    # Annapurna Circuit" -> Trek Booking Consultation), so the bridge isn't silently dropped. Neutral "booked through"
+    # wording because the trigger is a literal name check that also fires on paraphrases ("a cleaning"), where it's
+    # redundant but still true. The tenant's description is English-only, so the Nepali variants leave it out.
+    "booking_service_bridge": {
+        "en": "That's booked through our {service}. {description}",
+        "ne_deva": "यो हाम्रो {service} मार्फत बुक हुन्छ।",
+        "ne_roman": "Yo hamro {service} marfat book huncha.",
+    },
     # Prepended to availability_options/availability_none_with_next_day/
     # availability_none_no_alts when the customer named a specific time that
     # turned out to be already taken (the pre-flight same_day_slots check in

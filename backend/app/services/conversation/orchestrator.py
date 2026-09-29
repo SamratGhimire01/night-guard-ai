@@ -579,6 +579,18 @@ _AVAILABILITY_SLOTS_COUNT = 5
 _AVAILABILITY_SEARCH_DAYS = 7
 
 
+def _service_bridge(service: Service, customer_message: str, previous_reply: str | None, language: str | None) -> str:
+    """trekking-10: one line saying which service this booking goes through, when the customer never named it
+    ("reserve a spot on the Annapurna Circuit" resolves to Trek Booking Consultation) -- otherwise the slot list
+    replaces the model's reply and the bridge is lost. Once per service: skipped if our previous reply already named
+    it. ponytail: literal name check, so paraphrases ("a cleaning") and every Devanagari message also get the
+    (redundant but true) line; an LLM "asked for something else" flag is the upgrade if that proves annoying."""
+    name = re.sub(r"\s*\(.*?\)", "", service.name).strip().lower()
+    if name in customer_message.lower() or (previous_reply and service.name in previous_reply):
+        return ""
+    return render("booking_service_bridge", language, service=service.name, description=service.description or "").strip() + " "
+
+
 def _propose_available_slots(
     db: Session,
     *,
@@ -589,6 +601,7 @@ def _propose_available_slots(
     language: str | None,
     previous_reply: str | None = None,
     requested_time_unavailable: bool = False,
+    customer_message: str = "",
 ) -> str:
     """Phase 33 — the ONLY place a "here's what's open" sentence is composed,
     same discipline as every other _format_*_result function: real,
@@ -684,7 +697,10 @@ def _propose_available_slots(
     # words twice never move the customer forward: when the reply would repeat the previous one verbatim, say so and
     # ask for the one thing missing -- which time -- instead. (The slots stay persisted above, so a digit still works.)
     pick_one = render("availability_pick_one", language, options=options)
-    return pick_one if previous_reply in (reply, pick_one) else reply
+    # endswith: the previous identical list may have carried the one-time service bridge in front of it.
+    if previous_reply in (reply, pick_one) or (previous_reply or "").endswith(" " + reply):
+        return pick_one
+    return _service_bridge(service, customer_message, previous_reply, language) + reply
 
 
 def _last_agent_reply(db: Session, conversation_id: uuid.UUID) -> str | None:
@@ -2423,6 +2439,7 @@ def _handle_turn(
             response_text = _propose_available_slots(
                 db, business_id=business_id, service=service, conversation=conversation,
                 tz=ZoneInfo(business.timezone), language=language, previous_reply=_last_agent_reply(db, conversation_id),
+                customer_message=content,
                 # The customer named this exact time -- it just failed the real
                 # availability check above, so the reply must say so rather than
                 # silently pivot straight to alternatives (real gap found in
@@ -2490,6 +2507,7 @@ def _handle_turn(
                 tz=ZoneInfo(business.timezone),
                 language=language,
                 previous_reply=_last_agent_reply(db, conversation_id),
+                customer_message=content,
             )
             logger.info(
                 "propose_available_slots: conversation_id=%s service_id=%s",

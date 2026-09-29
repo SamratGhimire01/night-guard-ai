@@ -4785,6 +4785,45 @@ def test_slot_list_is_never_repeated_verbatim_when_the_customer_names_no_time(tw
     assert "Which works for you?" not in fourth and "tell me which one" not in fourth, fourth
 
 
+def test_bridged_slot_list_still_turns_into_pick_one_on_the_repeat(two_businesses, monkeypatch):
+    """trekking-10 x the repeat guard above: when the first list carried the one-time service bridge (the customer
+    never named "Cleaning"), the second identical list must still be recognised as a repeat."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    monday = _next_monday()
+
+    def say(content: str) -> str:
+        resp = client.post(
+            f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a), json={"content": content}
+        )
+        assert resp.status_code == 201, resp.text
+        return resp.json()["response"]
+
+    _stub_providers(monkeypatch, _partial_booking_reply(service="Cleaning", date=monday.isoformat(), wants_availability=True))
+    first = say("Can you fit me in on Monday?")
+    assert first.startswith("That's booked through our Cleaning.") and "Which works for you?" in first, first
+    second = say("Monday works, does that work?")
+    assert "tell me which one" in second and "booked through" not in second, second
+
+
+def test_service_bridge_fires_only_when_the_customer_never_named_the_service():
+    from app.services.conversation.orchestrator import _service_bridge
+
+    trek = Service(name="Trek Booking Consultation", description="A free call to reserve your spot.")
+    cleaning = Service(name="Teeth Cleaning (Scaling & Polishing)", description=None)
+    ask = "I'd like to reserve a spot on the Annapurna Circuit trek. How do I do that?"
+    assert _service_bridge(trek, ask, None, "en") == (
+        "That's booked through our Trek Booking Consultation. A free call to reserve your spot. "
+    )
+    assert _service_bridge(trek, "book a trek booking consultation please", None, "en") == ""
+    assert _service_bridge(trek, ask, "Here's what's open for Trek Booking Consultation: ...", "en") == "", "once only"
+    assert _service_bridge(cleaning, "a teeth cleaning please", None, "en") == "", "parenthetical ignored"
+    assert _service_bridge(cleaning, "book me in", None, "en") == "That's booked through our Teeth Cleaning (Scaling & Polishing). "
+    assert _service_bridge(trek, "भोलि बुक गर्नु छ", None, "ne_deva") == "यो हाम्रो Trek Booking Consultation मार्फत बुक हुन्छ। "
+    assert "free call" not in _service_bridge(trek, "bholi book garnu cha", None, "ne_roman"), "no English description in Nepali"
+
+
 def test_devanagari_knowledge_search_uses_an_english_translation(monkeypatch):
     """Gap #7: the KB is English and the embedding model can't bridge Devanagari to it, so only a Devanagari message
     is translated before search; Latin text, and a failed translation, search with the original vector."""
