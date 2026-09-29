@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.conversation import Message
 from app.db.models.integration import Integration
+from app.services import companion
 from app.services.channels.base import record_non_text_message
 from app.services.channels.delivery import send_in_bubbles
 from app.services.channels.instagram import InstagramChannelAdapter
@@ -127,6 +128,31 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
             outcomes.append({"message_id": incoming["message_id"], "status": "duplicate_skipped"})
             continue
 
+        deliver = lambda text, incoming=incoming, integration=integration: send_in_bubbles(  # noqa: E731
+            text,
+            lambda bubble: _adapter.send_message(
+                igsid=incoming["sender_id"],
+                text=bubble,
+                ig_account_id=incoming["account_id"],
+                access_token=(integration.config or {}).get("access_token") or "",
+            ),
+            channel="Instagram",
+        )
+
+        if (integration.config or {}).get("persona") == "companion":
+            # Standalone casual-companion persona — bypasses the business orchestrator entirely (app/services/companion).
+            try:
+                text = companion.reply(
+                    db, business_id=business_id, channel="instagram", external_ref=incoming["sender_id"],
+                    content=incoming["text"], external_message_id=incoming["message_id"], deliver=deliver,
+                )
+            except IntegrityError:
+                db.rollback()
+                outcomes.append({"message_id": incoming["message_id"], "status": "duplicate_skipped"})
+                continue
+            outcomes.append({"message_id": incoming["message_id"], "status": "companion", "response": text})
+            continue
+
         try:
             result = _adapter.receive_message(
                 db,
@@ -135,16 +161,7 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
                 content=incoming["text"],
                 external_message_id=incoming["message_id"],
                 # Long replies go out as up to 3 DMs (delivery.send_in_bubbles); the Message row keeps the full text.
-                deliver=lambda text, incoming=incoming, integration=integration: send_in_bubbles(
-                    text,
-                    lambda bubble: _adapter.send_message(
-                        igsid=incoming["sender_id"],
-                        text=bubble,
-                        ig_account_id=incoming["account_id"],
-                        access_token=(integration.config or {}).get("access_token") or "",
-                    ),
-                    channel="Instagram",
-                ),
+                deliver=deliver,
             )
         except IntegrityError:
             # Real backstop for a genuine race between two concurrent
