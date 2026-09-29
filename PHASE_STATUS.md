@@ -17693,3 +17693,55 @@ Still open from before: trekking-10.
 
 - **Full pytest suite, not yet run** after the 5 fixes (`b564ebe`..`f0ea616`). Only the 91 targeted tests have run.
   Deliberately deferred: run it before this batch is called done.
+
+## Gap #7 + trekking-10 (2026-09-29)
+
+**Full suite first** (the 5-fix batch `b564ebe`..`f0ea616`, before these edits): **920 passed, 11 skipped, 0 failed** (10m34s).
+The earlier run had been killed by a host reboot and was restarted.
+
+**Correction:** the two items don't share a root cause. Gap #7 is retrieval; trekking-10 is template dispatch.
+
+### Gap #7: Devanagari questions miss the English KB (FIXED, `c8133f6`)
+- **Diagnosis:** the query embedding is fine. `text-embedding-3-small` just can't bridge the scripts.
+  - The same question in Devanagari scored 0.09–0.19 top-1; in English it scored 0.42–0.65, with the right document on top.
+  - The floor is 0.25, and relevant Devanagari hits overlap the irrelevant band (0.08–0.21), so lowering the floor can't fix it.
+  - Roman Nepali already matched (0.62).
+- **Fix:** `orchestrator._knowledge_query_vector` translates the message before KB search via
+  `intent.translate_for_search`, which uses the same stubbable `get_chat_provider`.
+  - Only when `_DEVANAGARI_RE` matches, so English and Roman-Nepali turns are unchanged.
+  - Any translation failure falls back to the original vector.
+  - Style-exemplar retrieval and the reply language are untouched.
+- **Cost:** +1.8–3.1 s on Devanagari turns only (measured). The reasoning-effort optimization is deferred by decision.
+- **Live result:** 7/7 Devanagari KB questions answered with KB-verbatim facts, up from 0/6 before.
+  "ABC kati din" honestly says ABC isn't in the KB (it isn't) and offers the Circuit info.
+
+### trekking-10: slot list dropped the consultation bridge (FIXED, `8d5f822`)
+- New template `booking_service_bridge` (en/ne_deva/ne_roman, approved wording), prepended by
+  `orchestrator._service_bridge` inside `_propose_available_slots`.
+- **Trigger:** the service name (bracketed part ignored) isn't in the customer's message, and our previous
+  reply didn't name it.
+- **Known false positive:** every Devanagari booking gets the line, which is redundant but true. The LLM flag is
+  the upgrade path if that proves annoying.
+- The repeat → `availability_pick_one` guard now also recognizes a repeat whose first copy carried the bridge.
+- **Live, 7 samples:** 4 gave bridge + slot list; 3 gave the pre-existing `booking_clarify` ("which service…?"),
+  where the extraction resolved no service. That clarifier also drops the explanation and is **not** fixed here.
+- The dental "teeth cleaning" request gets no bridge.
+
+**Tests:** 3 new tests in `test_conversation.py`. `test_ask_mode_does_not_ask_a_voice_turn_whose_language_is_already_known`
+now counts drafting calls only, since a Devanagari turn adds one translation call. 346 passed across the 8 touched or
+Devanagari test files. Ruff is clean. Backend force-recreated before the live pass.
+
+**Closed:** Gap #7 and trekking-10 are committed, and the backend was force-recreated afterward.
+
+### Follow-ups (logged, not fixed)
+- **Clarifier-branch bridge gap (next step).** In 3 of 7 trekking-10 live samples the reply was `booking_clarify`
+  ("which service, date, and time?") instead of the slot list, and it also drops the consultation explanation. It's
+  the same bug as trekking-10 in a different code path. The natural fix is to reuse the `booking_service_bridge`
+  line there.
+- **Trekking tenant data audit.** The fact-check caught the bot about to claim a 20% deposit that is turned off in
+  that service's config. The KB text and the service config disagree. That's bad tenant data, not a code bug.
+  Audit the trekking tenant's KB against its actual service configs (deposits, prices, durations) so the same
+  mismatch doesn't surface in other services.
+
+**Remaining open:** the clarifier-branch bridge gap, the tenant-data audit, t-128 (human-handoff routing), and the
+real human blind-read.
