@@ -90,13 +90,32 @@ def _normalize_amount(raw: str) -> float | None:
         return None
 
 
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?।;])\s+|\n+")
+
+
+def _deposit_sentences(text: str) -> list[str]:
+    return [s for s in _SENTENCE_SPLIT_RE.split(text) if any(k in s.lower() for k in _DEPOSIT_WORDS)]
+
+
+def _deposit_amounts(sentence: str) -> set[tuple[str, float | None]]:
+    return {("%", float(p)) for p in _PERCENT_RE.findall(sentence)} | {
+        (sym.rstrip("."), _normalize_amount(amt)) for sym, amt in _PRICE_RE.findall(sentence)
+    }
+
+
 def check_price_and_deposit(
-    reply: str, *, currency: str, services: list[dict], known_text: str = ""
+    reply: str, *, currency: str, services: list[dict], known_text: str = "", knowledge_text: str = ""
 ) -> list[str]:
     """`services`: each a dict with name/price/deposit_enabled/deposit_percentage. A price
     that appears verbatim in `known_text` (an approved knowledge-base doc, e.g. one
     authored in a different currency than the business's default) is trusted rather than
-    flagged -- it's not invented, it's a real value the business chose to write down."""
+    flagged -- it's not invented, it's a real value the business chose to write down.
+
+    Same for a deposit: a reply sentence about a deposit whose amounts (a percentage or a price) are all stated in a
+    deposit sentence of `knowledge_text` -- the retrieved approved-KB chunks only, never the customer's own message --
+    is trusted. Trekking tenant: the 20% deposit is on the trek package and the USD 50 security deposit on gear, while
+    the free consultation/pickup services rightly have deposit_enabled=False. A deposit claim with no amount is never
+    trusted this way."""
     violations: list[str] = []
     lower = reply.lower()
     configured_prices = {round(float(s["price"]), 2) for s in services}
@@ -123,8 +142,14 @@ def check_price_and_deposit(
         if not is_valid_deposit:
             violations.append(f"reply states price {symbol}{amount_str} matching no configured service price or deposit")
 
+    # ponytail: amount-level match, not claim-level -- a KB "20% deposit" on packages also covers a reply putting 20%
+    # on a service; a claim-level match needs parsing what the deposit is for.
+    kb_amounts = set().union(set(), *(_deposit_amounts(s) for s in _deposit_sentences(knowledge_text)))
+    unbacked = [
+        s for s in _deposit_sentences(reply) if not (_deposit_amounts(s) and _deposit_amounts(s) <= kb_amounts)
+    ]
     no_deposit_names = [s["name"].lower() for s in services if not s.get("deposit_enabled")]
-    if any(k in lower for k in _DEPOSIT_WORDS):
+    if unbacked:
         for name in no_deposit_names:
             if name and name in lower:
                 violations.append(
@@ -135,7 +160,7 @@ def check_price_and_deposit(
             round(float(s["deposit_percentage"]))
             for s in services if s.get("deposit_enabled") and s.get("deposit_percentage")
         }
-        for pct_str in _PERCENT_RE.findall(reply):
+        for pct_str in _PERCENT_RE.findall(" ".join(unbacked)):
             if int(pct_str) not in configured_pcts:
                 violations.append(
                     f"reply states a {pct_str}% deposit not matching any configured deposit percentage"
@@ -225,9 +250,12 @@ def check_response_facts(
     services: list[dict],
     hours_by_day: dict[int, bool] | None,
     known_text: str,
+    knowledge_text: str = "",
 ) -> list[str]:
     return [
-        *check_price_and_deposit(reply, currency=currency, services=services, known_text=known_text),
+        *check_price_and_deposit(
+            reply, currency=currency, services=services, known_text=known_text, knowledge_text=knowledge_text
+        ),
         *check_weekday_hours(reply, hours_by_day=hours_by_day),
         *check_grounded_phone_numbers(reply, known_text=known_text),
         *check_no_internal_ids(reply),

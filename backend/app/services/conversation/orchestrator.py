@@ -1992,7 +1992,8 @@ def _handle_turn(
         # Includes the customer's own current message: a phone/email the customer just
         # volunteered THIS turn (read back correctly in the draft) isn't in `context`
         # yet (that snapshot predates this turn) -- confirmed false positive without this.
-        known_text_parts = [chunk.content for chunk, _doc, _sim in knowledge_results] + [content]
+        knowledge_text = "\n".join(chunk.content for chunk, _doc, _sim in knowledge_results)
+        known_text_parts = [knowledge_text, content]
         if business is not None:
             known_text_parts += [business.phone or "", business.address or "", business.email or ""]
         customer_ctx = context.get("customer") or {}
@@ -2001,7 +2002,7 @@ def _handle_turn(
         fact_check_front_desk_reason = None
         violations = check_response_facts(
             classification.response, currency=currency, services=service_facts,
-            hours_by_day=hours_by_day, known_text=known_text,
+            hours_by_day=hours_by_day, known_text=known_text, knowledge_text=knowledge_text,
         )
         if violations:
             logger.warning(
@@ -2021,7 +2022,7 @@ def _handle_turn(
             )
             retry_violations = check_response_facts(
                 retry.response, currency=currency, services=service_facts,
-                hours_by_day=hours_by_day, known_text=known_text,
+                hours_by_day=hours_by_day, known_text=known_text, knowledge_text=knowledge_text,
             )
             if not retry_violations:
                 classification = retry
@@ -2137,7 +2138,7 @@ def _handle_turn(
                     retry_repaired = repair_response_style(style_retry.response, intent=style_retry.intent.value)
                     retry_fact_violations = check_response_facts(
                         style_retry.response, currency=currency, services=service_facts,
-                        hours_by_day=hours_by_day, known_text=known_text,
+                        hours_by_day=hours_by_day, known_text=known_text, knowledge_text=knowledge_text,
                     )
                     if retry_fact_violations:
                         # The regenerate is a fresh, unvalidated draft -- a style nit never

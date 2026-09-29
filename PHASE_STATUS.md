@@ -17770,3 +17770,94 @@ booking-draft). Ruff flags 2 F841s at lines 314/5466, both pre-existing and outs
 force-recreated before the live pass. Full suite not run (deferred to end of batch).
 
 **Remaining open:** the trekking tenant-data audit and the real human blind-read.
+
+## Batch close-out: trekking tenant audit, regression-log PII scan, full suite (2026-09-29)
+
+### Trekking tenant-data audit (Himalayan Trails, `ebc15cb7…`)
+- **Scope:** 3 services and 6 approved KB docs, compared field by field.
+- **Correction to the earlier "bad tenant data" note:** the 20% deposit isn't a data conflict.
+  - The KB ("How to Reserve a Trek Departure") charges it on the *trek package*.
+  - The *consultation* really is free with `deposit_enabled=false`. Both are true.
+  - The bug is in `fact_validator.check_price_and_deposit`: `known_text` exempts prices, but not the deposit-word
+    check or the `%` check.
+  - Reproduced: "…consultation; we then send a deposit link for 20%…" gets 2 violations, even though the sentence is
+    KB-verbatim.
+  - "Gear Rental Pickup … refundable USD 50 security deposit" (also KB-approved) gets 1 violation.
+  - **Code fix, not a data fix:** extend the `known_text` exemption to deposit/percentage claims. Not done yet.
+- **Actual data issues:**
+  1. Gear Rental Price List: the per-day items (2+2+1+1 = USD 6/day) come to USD 84 over 14 days, but the doc says
+     "USD 55 for a 14-day trek". The discount is never stated, so it reads as a math error. The tenant should confirm.
+  2. Trek packages (EBC USD 1,200, Annapurna Circuit 950, Langtang 650, Poon Hill 350) exist only in KB text. They
+     aren't Services, so price checks can only pass through the KB-verbatim exemption. Fine as long as that holds.
+  3. Coverage gaps the bot will get asked about: no Annapurna Base Camp (ABC) package, Upper Mustang mentioned with
+     no package, no solo-traveller answer (minimum group size is 2), and no refund rule for cancellations more than
+     14 days out.
+- No service durations or prices contradict the KB (all 3 services are free, 20–30 min).
+
+### PII scan of regression logs (`backend/data/regression/**`, `backend/tests/eval/**`)
+- **Real customer PII is committed and already pushed** to `origin` (a private GitHub repo; 578 `real_conversations`
+  files on `origin/master`).
+  - 12 real Nepali mobile numbers and about 20 email addresses, belonging to roughly 10 distinct people plus the
+    owner's own test data. Many are paired with full names ("Rabin bhattarai / 98511… / …@gmail.com").
+  - Spread over 65 files (57 tracked): 59 in `real_conversations/`, the rest in `failure_log_batches/`,
+    `batch_manifests/`, `bakeoff_results/`, and 2 eval result files.
+- **False positives excluded:** placeholder numbers (98000000xx and synthetic fixtures), public business phones, and 2
+  Luhn-valid "card" hits that are UUID fragments. No real card numbers were found.
+- **Root cause:** `backend/scripts/pull_real_conversations.py` exports message content verbatim, with no redaction.
+- **Not done, needs a decision:**
+  - (a) Redact on export: mask phones/emails in the puller, then re-export or scrub the existing files.
+  - (b) Whether to purge history with `git filter-repo` plus a force-push. This is destructive and outward-facing.
+
+### Full suite (at `f5a4823`)
+**925 passed, 701 skipped, 0 failed** (10m35s).
+- The first attempt died at about 90% (all passing up to that point) when the earlier session ended, so it was re-run
+  from scratch.
+- The skip count grew from 11 to 701, and that isn't lost coverage: the new skips are opt-in live-LLM cases in
+  `tests/eval/test_regression_suite.py`, skipped unless `RUN_LIVE_REGRESSION=1` is set.
+- 925 passed vs 920 last run, including the 2 new tests.
+
+### Deposit/percentage fact-check false positive (FIXED — closed)
+- **Fix:** `fact_validator.check_price_and_deposit` now trusts a deposit claim the approved KB states, the same way it
+  already trusted a KB-verbatim price.
+  - It works per sentence. A reply sentence mentioning a deposit is trusted when it names at least one amount (a
+    `%` or a price) and every amount appears in a deposit sentence of the KB.
+  - Only those trusted sentences are exempt from the "deposit on a deposit_enabled=False service" check and the
+    unconfigured-% check.
+- **What counts as KB:** the new `knowledge_text` kwarg holds only the retrieved approved-KB chunks. The existing
+  `known_text` also includes the customer's own message, and a customer asking "is there a 20% deposit?" must not
+  make "yes, 20%" trusted.
+  - The orchestrator passes `knowledge_text` at all 3 fact-check call sites (first draft, retry, style retry).
+- **Known ceiling (`ponytail:` comment):** the match is on amounts, not on what the deposit is for. A KB "20% deposit"
+  on packages would also cover a reply putting 20% on a service.
+- **Repro, before → after:**
+  - The trekking 20% sentence went from 2 violations to 0.
+  - The USD 50 gear security-deposit sentence went from 1 violation to 0.
+- **Still flagged:** a deposit claim with no amount, an amount the KB doesn't state (30%, USD 80), a 20% that only the
+  customer said, and the original Samaj two-sentence invented deposit.
+- **Tests:** new `tests/unit/test_fact_validator.py` (3 tests, which also run the module's `_demo()`, never run by
+  any test before). 79 targeted tests pass: the unit file, `test_style_exemplars.py`, and 49 integration tests on
+  deposit/fact-check paths. Ruff is clean.
+- **Full suite:** 924 passed, 1 failed, 3 errors, 701 skipped (11m56s).
+  - The 4 non-passes were network flakes: an LLM-provider `ConnectError` during KB ingest in
+    `test_phase29_full_surface_audit.py` (3 errors), and an SSL read timeout in
+    `test_whatsapp_embedded_signup.py` (1 failure).
+  - Neither file touches the fact-checker, and all 4 pass on re-run (4 passed, 8s).
+- Backend force-recreated afterward. Health is OK.
+- **Live, trekking tenant:** the gear-deposit question is answered with the KB's USD 50 security deposit.
+  "Reserve the Annapurna Circuit, is there a deposit?" passed 1 of 3 samples (captured drafts):
+  - The passing draft states the 20% deposit, now trusted.
+  - Draft A adds a KB paraphrase with no amount ("deposits are non-refundable within 14 days of departure…"). A
+    no-amount deposit sentence is never trusted, and the whole-reply service-name check fires.
+  - Draft B, the retry, hedges ("I don't have a deposit policy on file… confirm whether a deposit is required?").
+    This is a pre-existing false positive: the name check reads any mention of "deposit" as a claim.
+  - Both remaining failure modes are outside this fix's amount-level rule. Follow-up: trust a no-amount deposit
+    sentence that closely matches a KB deposit sentence.
+- Full-suite non-passes above are network flakes, not a regression. Accepted as-is.
+
+**Remaining open:**
+- **No-amount deposit false positive (OPEN):** trust a deposit sentence with no amount when it closely matches a KB
+  deposit sentence (Draft A), and stop the service-name check from reading a hedged "deposit" mention as a claim
+  (Draft B). Deferred, not started.
+- **Regression-log PII (OPEN):** redact-on-export in `pull_real_conversations.py`, plus a decision on the history purge.
+- **Trekking tenant data (OPEN):** the gear-rental math (USD 84 vs 55) and the coverage gaps. The tenant needs to confirm.
+- **Real human blind-read (OPEN).**
