@@ -17665,6 +17665,20 @@ wasn't run (per the batch rule).
 moving further right now. Every concrete, checkable defect found in the Phase 4 eval is fixed. The round is closed
 here; more style tuning is lower-value than the two gaps below.
 
+### The three scoring methods (Phase 4 eval + blind read)
+
+| method | n | before | after | Δ | 95% CI |
+|---|---|---|---|---|---|
+| LLM judges, 2-judge consensus | 361 pairs | 3.40 | 3.47 | +0.07 | −0.04 … +0.19 |
+| 3-judge cross-check | 235 pairs | — | — | +0.04 | −0.10 … +0.17 |
+| Blind read of the 20-pair packet, **scored by Claude (AI), not a human tester** | 20 pairs | 3.70 | 3.40 | −0.30 | — |
+
+- **Blind read preference:** after 9, before 9, tied 2.
+- **Blind read agreement with the judges:**
+  - gpt-5-mini: 70% agreement, 55% same direction.
+  - qwen: 55% agreement, 50% same direction.
+- **A real human blind read was never done.** It's still outstanding if the "not moving" claim needs to hold up later.
+
 ### New follow-ups (logged, not fixed)
 
 - **Gap #7: Devanagari pricing/service questions miss the knowledge base.** The KB is English-only, so Devanagari
@@ -17674,3 +17688,8 @@ here; more style tuning is lower-value than the two gaps below.
   for a human doesn't route correctly: the customer asks directly for what they want and doesn't get it. Worth a look.
 
 Still open from before: trekking-10.
+
+### Pending
+
+- **Full pytest suite, not yet run** after the 5 fixes (`b564ebe`..`f0ea616`). Only the 91 targeted tests have run.
+  Deliberately deferred: run it before this batch is called done.
