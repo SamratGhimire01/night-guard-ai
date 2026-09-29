@@ -17861,3 +17861,30 @@ force-recreated before the live pass. Full suite not run (deferred to end of bat
 - **Regression-log PII (OPEN):** redact-on-export in `pull_real_conversations.py`, plus a decision on the history purge.
 - **Trekking tenant data (OPEN):** the gear-rental math (USD 84 vs 55) and the coverage gaps. The tenant needs to confirm.
 - **Real human blind-read (OPEN).**
+
+## Bubble split on Instagram + Messenger (2026-09-29)
+- **Change:** WhatsApp's delivery loop moved into `delivery.send_in_bubbles`, now shared by WhatsApp, Instagram and
+  Messenger. Same `split_into_bubbles`, same max of 3 bubbles, stops at the first failed bubble, worst-of-N status.
+  `_handle_turn` still returns one string, and the Message row keeps the full text.
+- **Website chat:** `widget.js` already rendered `response_bubbles`. The internal `/test-chat` page now does too.
+  Voice is untouched.
+- **Limits check:** no per-channel ceiling needed today.
+  - Across 1,895 real agent replies, 2 were over 1000 chars unsplit (max 1321; both on WhatsApp/website). Sent on Instagram
+    before this change, they would have gone over its limit.
+  - After splitting, the largest bubble is 735 chars (942 UTF-8 bytes, a Devanagari list). All are under Instagram's
+    about 1000 and Messenger's about 2000.
+  - Not a guarantee: `split_into_bubbles` has no character cap. A single sentence or a bulleted list (no sentence
+    marks) is never split. Open item: add a hard per-channel character cap if Instagram replies ever fail on length.
+- **Verification:**
+  - Real adapters, real stored integrations, with only `urlopen` stubbed. The 1321/1176/945-char real replies went
+    out as 3 sends each on both channels. The short reply went out as 1 send.
+  - No real DM was sent, because the connected accounts reach real customers.
+  - 30 targeted tests pass, including 8 new ones (4 per channel). Full suite not run, per the user.
+- **Pre-existing, logged OPEN:** inside a bubble, a line break after a sentence end collapses to a space, since
+  sentences are rejoined with " ". No text is lost, only formatting. This affects WhatsApp too.
+
+**Follow-ups (open, not blockers):**
+- **No character cap on `split_into_bubbles`:** a single long sentence or a bulleted list is never split. Add a hard
+  per-channel cap (Instagram about 1000, Messenger about 2000) if a length rejection is ever seen live.
+- **Line break to space inside a bubble:** a line break after a sentence end becomes a space. No text is lost, only
+  formatting. This affects WhatsApp, Instagram and Messenger.

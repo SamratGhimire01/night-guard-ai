@@ -83,7 +83,7 @@ def split_sentences(text: str) -> list[str]:
 
 
 # Message-bubble split: shared by every channel that wants a long reply delivered/rendered as
-# up to this many separate messages instead of one wall of text (WhatsApp's real outbound
+# up to this many separate messages instead of one wall of text (WhatsApp/Messenger/Instagram outbound
 # sends, the widget's response_bubbles field) -- one splitting decision, reused, not
 # reimplemented per channel. Voice deliberately never calls this at all.
 MAX_BUBBLES = 3

@@ -315,7 +315,9 @@
 
       const data = await res.json();
       sessionToken = data.session_token;
-      addMessage('agent', data.response, data.intent);
+      // Same split rendering as widget.js's appendAgentReply; intent tag on the last bubble.
+      const bubbles = data.response_bubbles?.length > 1 ? data.response_bubbles : [data.response];
+      bubbles.forEach((b, i) => addMessage('agent', b, i === bubbles.length - 1 ? data.intent : undefined));
       statusEl.textContent = 'session: ' + sessionToken.slice(0, 8) + '...';
     } catch (err) {
       addMessage('system', 'Network error: ' + err.message);

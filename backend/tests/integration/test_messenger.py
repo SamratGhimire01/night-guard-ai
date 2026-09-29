@@ -477,3 +477,95 @@ def test_resend_qr_link_reaches_messenger_as_a_plain_link_through_the_real_webho
     assert sent["message"]["text"] == out["stored_reply"]
     url = re.search(r"https?://\S+", sent["message"]["text"]).group(0)
     assert qr_link_service.verify_token(url.rsplit("/qr/", 1)[1]) == out["appointment_id"]
+
+
+# ---------------------------------------------------------------------------
+# Message-bubble split at delivery time -- mirrors test_whatsapp.py's bubble tests; same shared
+# delivery.send_in_bubbles. "cancellation" with no cancellation_request passes the stubbed response through
+# untouched (see test_whatsapp.py's section comment for why).
+# ---------------------------------------------------------------------------
+
+_LONG_REPLY = (
+    "We can absolutely help you get that rescheduled to a time that works better for you. "
+    "Our team looks over every request personally to make sure nothing about your original booking gets lost "
+    "in the process, so please do not worry about starting over from scratch. "
+    "Once you tell us the new day and time you would like, we will confirm it back to you right away. "
+    "We really do want to make this as easy as possible for you."
+)
+
+
+def _set_stub_response(monkeypatch, text: str) -> None:
+    import app.services.conversation.intent as intent_module
+
+    class _StubChatWithText:
+        def chat(self, messages):
+            return jsonlib.dumps({"intent": "cancellation", "response": text})
+
+    monkeypatch.setattr(intent_module, "get_chat_provider", lambda: _StubChatWithText())
+
+
+def _agent_message(business_id) -> Message:
+    with SessionLocal() as db:
+        (conversation,) = db.query(Conversation).filter(Conversation.business_id == business_id).all()
+        return db.query(Message).filter(
+            Message.conversation_id == conversation.id, Message.sender_type == MessageSenderType.AGENT
+        ).one()
+
+
+def test_long_reply_is_split_into_up_to_three_(business_with_messenger, monkeypatch):
+    from app.services.channels.messenger import MessengerChannelAdapter
+
+    sent: list[dict] = []
+    monkeypatch.setattr(MessengerChannelAdapter, "send_message", lambda self, **kw: (sent.append(kw), "sent mid=x")[1])
+    _set_stub_response(monkeypatch, _LONG_REPLY)
+
+    status, body = _post_webhook(_build_payload(page_id=business_with_messenger["page_id"], psid=f"psid-bub-{uuid.uuid4().hex[:6]}", message_id=f"mid.{uuid.uuid4().hex}", text="Can I move my appointment?"))
+    assert status == 200, body
+
+    assert 2 <= len(sent) <= 3, f"expected 2-3 bubbles (BEFORE: one block) for a reply this long, got: {sent}"
+    assert " ".join(s["text"] for s in sent) == _LONG_REPLY, "never drop, reorder, or alter the validated text"
+    assert len({s["psid"] for s in sent}) == 1, "every bubble goes to the same customer"
+    agent_msg = _agent_message(business_with_messenger["business_id"])
+    assert agent_msg.content == _LONG_REPLY, "ONE Message row with the FULL text -- split only at send time"
+    assert agent_msg.delivery_status == "sent"
+
+
+def test_short_reply_is_not_split_on_messenger(business_with_messenger, monkeypatch):
+    from app.services.channels.messenger import MessengerChannelAdapter
+
+    short_reply = "Sure, what day works best for you?"
+    sent: list[dict] = []
+    monkeypatch.setattr(MessengerChannelAdapter, "send_message", lambda self, **kw: (sent.append(kw), "sent mid=y")[1])
+    _set_stub_response(monkeypatch, short_reply)
+
+    status, body = _post_webhook(_build_payload(page_id=business_with_messenger["page_id"], psid=f"psid-bub-{uuid.uuid4().hex[:6]}", message_id=f"mid.{uuid.uuid4().hex}", text="Can I move my appointment?"))
+    assert status == 200, body
+    assert len(sent) == 1 and sent[0]["text"] == short_reply
+
+
+def test_(business_with_messenger, monkeypatch):
+    from app.services.channels.messenger import MessengerChannelAdapter
+
+    calls: list[dict] = []
+
+    def _flaky_send(self, **kw):
+        calls.append(kw)
+        return "sent mid=ok" if len(calls) == 1 else "failed: HTTP 500"
+
+    monkeypatch.setattr(MessengerChannelAdapter, "send_message", _flaky_send)
+    _set_stub_response(monkeypatch, _LONG_REPLY)
+
+    status, body = _post_webhook(_build_payload(page_id=business_with_messenger["page_id"], psid=f"psid-bub-{uuid.uuid4().hex[:6]}", message_id=f"mid.{uuid.uuid4().hex}", text="Can I move my appointment?"))
+    assert status == 200, body
+    assert len(calls) == 2, "stops sending further bubbles once one has genuinely failed"
+    agent_msg = _agent_message(business_with_messenger["business_id"])
+    assert agent_msg.delivery_status == "failed"
+    assert agent_msg.content == _LONG_REPLY
+
+
+def test_unconfigured_token_long_reply_is_simulated_per_bubble_on_messenger(business_with_messenger, monkeypatch):
+    """No stubbed send: the real adapter's no-token fallback runs once per bubble, collapsed to "simulated"."""
+    _set_stub_response(monkeypatch, _LONG_REPLY)
+    status, body = _post_webhook(_build_payload(page_id=business_with_messenger["page_id"], psid=f"psid-bub-{uuid.uuid4().hex[:6]}", message_id=f"mid.{uuid.uuid4().hex}", text="Can I move my appointment?"))
+    assert status == 200, body
+    assert _agent_message(business_with_messenger["business_id"]).delivery_status == "simulated"

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.db.models.conversation import Message
 from app.db.models.integration import Integration
 from app.services.channels.base import record_non_text_message
+from app.services.channels.delivery import send_in_bubbles
 from app.services.channels.instagram import InstagramChannelAdapter
 from app.services.channels.meta_messaging_webhook import extract_incoming_non_text_messages
 from app.services.channels.meta_messaging_webhook import (
@@ -133,11 +134,16 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
                 external_customer_ref=incoming["sender_id"],
                 content=incoming["text"],
                 external_message_id=incoming["message_id"],
-                deliver=lambda text, incoming=incoming, integration=integration: _adapter.send_message(
-                    igsid=incoming["sender_id"],
-                    text=text,
-                    ig_account_id=incoming["account_id"],
-                    access_token=(integration.config or {}).get("access_token") or "",
+                # Long replies go out as up to 3 DMs (delivery.send_in_bubbles); the Message row keeps the full text.
+                deliver=lambda text, incoming=incoming, integration=integration: send_in_bubbles(
+                    text,
+                    lambda bubble: _adapter.send_message(
+                        igsid=incoming["sender_id"],
+                        text=bubble,
+                        ig_account_id=incoming["account_id"],
+                        access_token=(integration.config or {}).get("access_token") or "",
+                    ),
+                    channel="Instagram",
                 ),
             )
         except IntegrityError:
