@@ -1166,3 +1166,17 @@ def classify_and_respond(
     ]
     raw = get_chat_provider().chat(messages)
     return _parse_response(raw, customer_message)
+
+
+def translate_for_search(text: str) -> str:
+    """Gap #7: English rendering of a Devanagari customer message, used ONLY as the knowledge-search query (the KB is
+    English and text-embedding-3-small barely matches Devanagari to English: 0.09-0.19 vs 0.42-0.65 top-1, measured on
+    the real tenants). Never shown to the customer and never fed to classify_and_respond."""
+    return get_chat_provider().chat([
+        {
+            "role": "system",
+            "content": "Translate the customer's message into English for use as a search query. Keep names of "
+            "places, treks, countries and services. Output only the translation.",
+        },
+        {"role": "user", "content": text},
+    ]).strip()

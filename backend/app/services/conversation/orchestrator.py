@@ -38,7 +38,7 @@ from app.services.conversation import booking_tool  # noqa: F401  registers the 
 from app.services.conversation.contact_tool import UpdateContactInfoTool
 from app.services.conversation.fact_validator import check_response_facts
 from app.services.conversation.formatting import format_service_list
-from app.services.conversation.intent import classify_and_respond
+from app.services.conversation.intent import classify_and_respond, translate_for_search
 from app.services.conversation.style_checks import check_response_style, repair_response_style
 from app.services.conversation.response_templates import (
     describe_business_hours,
@@ -1048,6 +1048,22 @@ _VALID_LANGUAGES = {v.value for v in ConversationLanguage}
 # judgment, so that anchoring risk remains a documented, known limitation.
 _DEVANAGARI_RE = re.compile(r"[ऀ-ॿ]")
 
+
+def _knowledge_query_vector(content: str, query_vector: list[float]) -> list[float]:
+    """Gap #7: a Devanagari message is translated to English before knowledge search (the KB is English and the
+    embedding model can't bridge the scripts -- see intent.translate_for_search). Latin-script messages, and any
+    translation failure, search with the original vector exactly as before. Style-exemplar retrieval keeps using the
+    original-language `query_vector`; the reply language is untouched (the model already answers Nepali from English)."""
+    if not _DEVANAGARI_RE.search(content):
+        return query_vector
+    try:
+        english = translate_for_search(content)
+        if english:
+            return get_embedding_provider().embed([english])[0]
+    except Exception:  # noqa: BLE001 -- best-effort: a failed translation must never cost the customer their reply
+        logger.warning("knowledge query translation failed, searching the original text", exc_info=True)
+    return query_vector
+
 # Urgent fix (real bug found live, PHASE_STATUS.md): a customer's first
 # message being a short, generic, cross-language-ambiguous greeting ("hlo",
 # "hi", "hey"...) was getting a confident message_language self-report from
@@ -1844,7 +1860,8 @@ def _handle_turn(
         _t4 = time.perf_counter()
         knowledge_results = knowledge_service.filter_for_llm(
             knowledge_service.search_chunks(
-                db, business_id=business_id, query_vector=query_vector, top_k=KNOWLEDGE_TOP_K
+                db, business_id=business_id, query_vector=_knowledge_query_vector(content, query_vector),
+                top_k=KNOWLEDGE_TOP_K,
             )
         )
         # Computed once here and reused both by the grounding guard below and by

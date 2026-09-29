@@ -4785,6 +4785,40 @@ def test_slot_list_is_never_repeated_verbatim_when_the_customer_names_no_time(tw
     assert "Which works for you?" not in fourth and "tell me which one" not in fourth, fourth
 
 
+def test_devanagari_knowledge_search_uses_an_english_translation(monkeypatch):
+    """Gap #7: the KB is English and the embedding model can't bridge Devanagari to it, so only a Devanagari message
+    is translated before search; Latin text, and a failed translation, search with the original vector."""
+    from app.services.conversation import intent as intent_module
+    from app.services.conversation import orchestrator as orchestrator_module
+
+    calls = []
+
+    class _Chat:
+        def chat(self, messages):
+            calls.append(messages[-1]["content"])
+            return "How much is the Everest Base Camp trek?"
+
+    class _Embed:
+        def embed(self, texts):
+            return [[float(len(t))] for t in texts]
+
+    monkeypatch.setattr(intent_module, "get_chat_provider", lambda: _Chat())
+    monkeypatch.setattr(orchestrator_module, "get_embedding_provider", lambda: _Embed())
+    original = [0.5]
+    assert orchestrator_module._knowledge_query_vector("EBC ko kati parcha?", original) is original
+    assert calls == [], "Latin script must never pay for a translation"
+    assert orchestrator_module._knowledge_query_vector("एभरेस्ट बेस क्याम्प ट्रेकको कति पर्छ?", original) == [
+        float(len("How much is the Everest Base Camp trek?"))
+    ]
+
+    class _Down:
+        def chat(self, messages):
+            raise RuntimeError("provider down")
+
+    monkeypatch.setattr(intent_module, "get_chat_provider", lambda: _Down())
+    assert orchestrator_module._knowledge_query_vector("कति पर्छ?", original) is original
+
+
 def test_pick_one_template_exists_in_every_language():
     from app.services.conversation.response_templates import render
 
@@ -5072,7 +5106,10 @@ def test_ask_mode_does_not_ask_a_voice_turn_whose_language_is_already_known(two_
             content="नमस्ते",
             force_language="ne_roman",
         )
-    assert result["response"] == "Namaste!" and len(stub.calls) == 1
+    # Exactly one reply-drafting call (the language question costs none). A Devanagari turn also makes one
+    # knowledge-search translation call (Gap #7), which isn't a reply, so it's excluded here.
+    drafting = [c for c in stub.calls if not c[0]["content"].startswith("Translate the customer's message")]
+    assert result["response"] == "Namaste!" and len(drafting) == 1
 
 
 def test_parse_language_choice_only_accepts_a_short_single_language_answer():
