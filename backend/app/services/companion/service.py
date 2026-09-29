@@ -30,7 +30,7 @@ SYSTEM_PROMPT = "\n\n".join((_DIR / f).read_text(encoding="utf-8") for f in ("pe
 # ponytail: last-N window + per-person notes; no retrieval over older messages, add it if notes prove too lossy
 _HISTORY_LIMIT = 120  # chat texts are short (~15 tokens each), so ~2k tokens of raw history on top of the notes
 # Seconds before a reply goes out, so it feels like a person picking up her phone — not an instant bot.
-_REPLY_DELAYS = (3, 8, 15, 25)
+_REPLY_DELAYS = (3,)
 _NOTES_EVERY = 6
 _LEARN_EVERY = timedelta(hours=24)
 _FALLBACK = "sorry, network le dukha diyo 😅 feri bhana ta?"
