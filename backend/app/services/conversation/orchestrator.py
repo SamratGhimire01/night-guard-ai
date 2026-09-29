@@ -169,7 +169,11 @@ def _service_named_in(services: list[Service], text: str) -> Service | None:
 
 
 def _fill_missing_booking_service(
-    services: list[Service], booking_request: dict, content: str, offered_service_id: uuid.UUID | None
+    services: list[Service],
+    booking_request: dict,
+    content: str,
+    offered_service_id: uuid.UUID | None,
+    this_turn_pick: Service | None = None,
 ) -> dict:
     """Backstop for a booking-intent turn whose `booking_request["service"]` came back
     empty/unresolvable. Two independent fallbacks, tried in order:
@@ -186,8 +190,11 @@ def _fill_missing_booking_service(
        "which service" as if nothing had ever been proposed. Exactly the same
        "customer said yes to what I offered" case `_offered_slot_pick` already
        resolves for date/time, just for the service slot.
+    3. Failing both, the one service THIS turn's reply singled out (`this_turn_pick`). trekking-10 clarifier branch:
+       "reserve a spot on the Annapurna Circuit" -> the model explains it goes through the Trek Booking Consultation but
+       leaves `booking_request.service` null, and the "which service, date and time?" clarifier dropped that answer.
 
-    Leaves `booking_request` untouched if neither fallback resolves a real service."""
+    Leaves `booking_request` untouched if no fallback resolves a real service."""
     named_service = _service_named_in(services, content)
     if named_service is not None:
         return {**booking_request, "service": named_service.name}
@@ -195,6 +202,8 @@ def _fill_missing_booking_service(
         offered_service = next((s for s in services if s.id == offered_service_id), None)
         if offered_service is not None:
             return {**booking_request, "service": offered_service.name}
+    if this_turn_pick is not None:
+        return {**booking_request, "service": this_turn_pick.name}
     return booking_request
 
 
@@ -784,6 +793,28 @@ def _is_medical_emergency(text: str) -> bool:
     if _EMERGENCY_STRONG_RE.search(text):
         return True
     return bool(_EMERGENCY_URGENCY_RE.search(text) and _EMERGENCY_WANTS_TO_BE_SEEN_RE.search(text))
+
+
+# "talk to staff / a real person / someone from the team" in English, Roman Nepali and Devanagari. The doctor/guide
+# is deliberately not a person here: "doctor sanga kura garne" is a consultation booking, not a handoff.
+_HUMAN_NOUNS_EN = (
+    r"(?:a |an |the |your |some )?(?:real |actual |live )?"
+    r"(?:person|human|staff|agent|representative|rep|someone|somebody|team member|team|manager|receptionist|"
+    r"operator|front desk)"
+)
+_HUMAN_REQUEST_RE = re.compile(
+    rf"\b(?:talk|speak|chat)\s+(?:directly\s+)?(?:to|with)\s+{_HUMAN_NOUNS_EN}\b"
+    rf"|\b(?:get|connect|transfer|put)\s+me\s+(?:through\s+)?(?:to\s+|with\s+)?{_HUMAN_NOUNS_EN}\b"
+    r"|\b(?:staff|manche|manchhe|manxe|manis|human|person|kasai|kosai|team|manager)\s*(?:sanga|sang|sita)\s+"
+    r"(?:direct\s+|sidhai\s+|sidhae\s+)?(?:kura|bolna|bolne|kurakani|contact|connect)"
+    r"|(?:स्टाफ|कर्मचारी|मान्छे|मानिस|व्यक्ति|कसै|टिम|म्यानेजर)\s*(?:सँग|संग|सित)\s*(?:सिधै\s*|सीधै\s*|प्रत्यक्ष\s*)?"
+    r"(?:कुरा|बोल्न|सम्पर्क)",
+    re.I,
+)
+
+
+def _is_explicit_human_request(text: str) -> bool:
+    return bool(_HUMAN_REQUEST_RE.search(text))
 
 
 _BARE_DIGIT_RE = re.compile(r"^[1-9]$")
@@ -2009,6 +2040,14 @@ def _handle_turn(
                     "Drafted reply repeated an unconfirmed price/policy/hours/contact claim twice in a row."
                 )
 
+        # t-128: an explicit ask for a person sometimes came back general_question, and with no KB match the guard
+        # below then answered "I don't want to guess". The model's own draft is kept; only the routing is corrected.
+        if (
+            classification.intent not in (ConversationIntent.HUMAN_HANDOFF, ConversationIntent.COMPLAINT)
+            and _is_explicit_human_request(content)
+        ):
+            classification = classification._replace(intent=ConversationIntent.HUMAN_HANDOFF)
+
         # Free-text grounding guard: fact_validator above only catches specific
         # regex-detectable fabrications (price/phone/hours patterns); this
         # closes the gap for a GENERAL_QUESTION/SERVICE_QUESTION/
@@ -2306,7 +2345,11 @@ def _handle_turn(
         # the model left the service out, or wrote a name that is not exactly a real one ("Teeth Cleaning" for "Teeth Cleaning
         # (Scaling & Polishing)"): either way the draft would stay service-less, so use the service the customer literally named
         booking_request = _fill_missing_booking_service(
-            services, booking_request, content, conversation.booking_draft_offered_service_id
+            services, booking_request, content, conversation.booking_draft_offered_service_id,
+            this_turn_pick=(
+                _resolve_service_by_name(services, classification.proposed_service or "")
+                or _service_named_in(services, classification.response)
+            ),
         )
     reschedule_request = classification.reschedule_request
     if business is not None:
@@ -2317,6 +2360,7 @@ def _handle_turn(
             )
         if reschedule_request is not None:
             reschedule_request = _verify_weekday_date(reschedule_request, content, today_local)
+    service_known_before_this_turn = conversation.booking_draft_service_id is not None
     draft_switches = _merge_booking_draft(
         conversation, services, booking_request,
         offered_slots=offered_last_turn, tz=ZoneInfo(business.timezone) if business is not None else None,
@@ -2525,6 +2569,10 @@ def _handle_turn(
             # also read-only, zero-commitment.
             missing = _booking_draft_missing(conversation, service, scheduled_at)
             response_text = render_missing_slots(missing, language)
+            if service is not None and not service_known_before_this_turn:
+                # trekking-10 clarifier branch: same one-time bridge as the slot list, so "which date and time?" doesn't
+                # silently replace the model's explanation of which service this booking goes through.
+                response_text = _service_bridge(service, content, _last_agent_reply(db, conversation_id), language) + response_text
     elif contact_changes and has_contact and business is not None and _has_partial_booking_draft(conversation):
         # Phase 25a gap, found live: contact info can arrive on a turn the
         # LLM classifies as something OTHER than "booking" (real transcript,

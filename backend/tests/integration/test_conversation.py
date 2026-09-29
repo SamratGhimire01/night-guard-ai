@@ -4039,6 +4039,29 @@ def test_stated_medical_emergency_gets_an_urgent_override_and_a_real_handoff(two
         assert "emergency" in handoffs[0].reason.lower()
 
 
+def test_explicit_ask_for_a_person_routes_to_handoff_even_when_the_llm_says_general_question(two_businesses, monkeypatch):
+    """t-128 (Phase 4 eval): "kunai staff sanga direct kura garna milcha?" came back general_question, and with no KB
+    match the grounding guard answered "I don't want to guess". An explicit ask for a person is always a handoff."""
+    from app.db.models.handoff import HumanHandoff
+    from app.services.conversation.orchestrator import _is_explicit_human_request
+
+    for ask in ("can I talk to staff directly?", "get me a human", "Can I speak with a real person?",
+                "kunai staff sanga direct kura garna milcha?", "म स्टाफसँग कुरा गर्न सक्छु?"):
+        assert _is_explicit_human_request(ask), ask
+    for other in ("can I talk to the doctor about my tooth?", "doctor sanga kura garne appointment chahiyo",
+                  "Are you a real person?", "tell me about your staff"):
+        assert not _is_explicit_human_request(other), other
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    _stub_providers(monkeypatch, json.dumps({"intent": "general_question", "response": "Sure, I'll pass that on."}))
+    body = _say(token_a, conversation_id, "can I talk to staff directly?")
+    assert "guess" not in body.lower() and "Sure, I'll pass that on." in body, body
+    with SessionLocal() as db:
+        handoff = db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).one()
+        assert "explicitly asked" in handoff.reason
+
+
 def test_stuck_in_a_repeating_confirmation_loop_gets_a_real_handoff(two_businesses, monkeypatch):
     """Root-cause fix for a confirmed missed_escalation bug (same read-through, conversation
     7f72b8f1): a customer stuck in a non-progressing booking-confirmation loop -- the agent
@@ -4805,6 +4828,24 @@ def test_bridged_slot_list_still_turns_into_pick_one_on_the_repeat(two_businesse
     assert first.startswith("That's booked through our Cleaning.") and "Which works for you?" in first, first
     second = say("Monday works, does that work?")
     assert "tell me which one" in second and "booked through" not in second, second
+
+
+def test_clarifier_keeps_the_service_bridge_when_only_the_reply_named_the_service(two_businesses, monkeypatch):
+    """trekking-10 clarifier branch: the model explained which service the booking goes through but left
+    booking_request.service null, so "which service, date and time?" replaced (and lost) that explanation. The service
+    the reply singled out is used, the bridge line kept, and only the date/time asked for -- once, not every turn."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    null_request = {"service": None, "date": None, "time": None, "wants_availability": False}
+    _stub_providers(monkeypatch, json.dumps({
+        "intent": "booking", "response": "That goes through our Cleaning — when suits you?", "booking_request": null_request,
+    }))
+    first = _say(token_a, conversation_id, "I'd like to reserve a spot, how do I do that?")
+    assert first.startswith("That's booked through our Cleaning.") and "which service" not in first, first
+    assert "date" in first and "time" in first, first
+    second = _say(token_a, conversation_id, "not sure yet, maybe next week")
+    assert "booked through" not in second, second
 
 
 def test_service_bridge_fires_only_when_the_customer_never_named_the_service():

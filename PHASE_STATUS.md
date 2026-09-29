@@ -17745,3 +17745,28 @@ Devanagari test files. Ruff is clean. Backend force-recreated before the live pa
 
 **Remaining open:** the clarifier-branch bridge gap, the tenant-data audit, t-128 (human-handoff routing), and the
 real human blind-read.
+
+## Clarifier-branch bridge gap + t-128 (2026-09-29)
+
+### Clarifier-branch bridge gap (FIXED, uncommitted)
+- `_fill_missing_booking_service` gets a third fallback, `this_turn_pick`: the service named in the model's
+  `proposed_service`, else the one its own reply names. Previously the model could explain "that goes through the Trek
+  Booking Consultation" while leaving `booking_request.service` null, and the explanation was then lost.
+- If the clarifier still fires once the service is resolved this turn (date/time missing), it now prepends the same
+  one-time `_service_bridge` line, so "which date and time?" no longer replaces the explanation.
+- **Live, 5 samples** (trekking, "reserve a spot on the Annapurna Circuit"): 4 gave bridge + slot list and 1 gave the
+  model's own consultation explanation. None gave the bare "which service, date and time?" clarifier (it was 3/7 before).
+
+### t-128: explicit ask for a person routed as general_question (FIXED, uncommitted)
+- Intent prompt rule 8 now defines `human_handoff`, including the Roman-Nepali example, and says that asking for
+  the doctor/guide as a service is not a handoff.
+- Deterministic backstop `_is_explicit_human_request`: an EN / Roman-Nepali / Devanagari regex that re-routes a
+  non-handoff, non-complaint turn to HUMAN_HANDOFF. The model's draft reply is kept, and only the routing changes.
+- **Live, 4 phrasings** (Samaj Dental; EN ×2, Roman Nepali, Devanagari): 4/4 created a HumanHandoff
+  ("Customer explicitly asked…"), and none gave "I don't want to guess".
+
+**Tests:** 2 new tests in `test_conversation.py`. 34 targeted tests pass (handoff, clarifier, bridge,
+booking-draft). Ruff flags 2 F841s at lines 314/5466, both pre-existing and outside this diff. Backend
+force-recreated before the live pass. Full suite not run (deferred to end of batch).
+
+**Remaining open:** the trekking tenant-data audit and the real human blind-read.
