@@ -1,0 +1,21 @@
+item,score_a,score_b,prefer (A/B/=),notes
+1,3,4,B,B's clarifying question then answer feels more conversational than A's info-dump
+2,5,2,A,A proactively recommends; B just interrogates
+3,5,4,A,"A's personal ""I'm Priya"" edges out B's more corporate ""Welcome to..."""
+4,3,4,B,A's Latin-script name mid-Devanagari sentence reads oddly
+5,3,4,B,"B gives concrete daily rates, more useful; both have the tacked-on handoff bug"
+6,4,1,A,"B has the ""$0.00"" bug"
+7,3,4,B,A's raw phone number reads robotic
+8,5,2,A,B tacks an unnecessary handoff onto a complete answer
+9,4,4,=,"both natural, close call"
+10,4,4,A,A's self-intro edges it slightly
+11,4,3,A,A gives an actionable next step; B is textbook-y
+12,4,4,=,"same info, B slightly more explicit"
+13,4,4,B,B's Nepali-roman matches the customer's mixed phrasing better
+14,4,5,B,B's extra detail earns its length given how detailed the question was
+15,4,2,A,B's handoff sentence doesn't fit this case at all
+16,4,2,A,"B asks a question AND hands off, contradictory"
+17,4,4,A,near-identical
+18,4,3,A,"B volunteers deposit info unprompted, less natural"
+19,2,4,B,"A has the ""Priya to प्रिय"" name-garbling bug"
+20,4,1,A,"B has the ""$0.00"" bug again"

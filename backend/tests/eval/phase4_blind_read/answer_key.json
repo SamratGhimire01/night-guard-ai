@@ -1,0 +1,382 @@
+[
+ {
+  "item": 1,
+  "case_id": "s-116",
+  "sample": 0,
+  "a_is": "after",
+  "language": "ne_roman",
+  "intent": "general_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 4,
+    "B": 5
+   },
+   "groq/qwen3.8-27b": {
+    "A": 2,
+    "B": 5
+   }
+  }
+ },
+ {
+  "item": 2,
+  "case_id": "d-111",
+  "sample": 0,
+  "a_is": "after",
+  "language": "en",
+  "intent": "service_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 5,
+    "B": 1
+   },
+   "groq/qwen3.8-27b": {
+    "A": 5,
+    "B": 1
+   }
+  }
+ },
+ {
+  "item": 3,
+  "case_id": "dental-01",
+  "sample": 0,
+  "a_is": "after",
+  "language": null,
+  "intent": "greeting",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 5,
+    "B": 4
+   },
+   "groq/qwen3.8-27b": {
+    "A": 4,
+    "B": 2
+   }
+  }
+ },
+ {
+  "item": 4,
+  "case_id": "d-132",
+  "sample": 1,
+  "a_is": "after",
+  "language": "ne_deva",
+  "intent": "greeting",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 5,
+    "B": 4
+   },
+   "groq/qwen3.8-27b": {
+    "A": 5,
+    "B": 2
+   }
+  }
+ },
+ {
+  "item": 5,
+  "case_id": "trekking-07",
+  "sample": 1,
+  "a_is": "after",
+  "language": "ne_roman",
+  "intent": "service_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 3,
+    "B": 4
+   },
+   "groq/qwen3.8-27b": {
+    "A": 4,
+    "B": 4
+   }
+  }
+ },
+ {
+  "item": 6,
+  "case_id": "t-135",
+  "sample": 1,
+  "a_is": "before",
+  "language": "ne_deva",
+  "intent": "pricing_question",
+  "source": "scripted",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 5,
+    "B": 3
+   },
+   "groq/qwen3.8-27b": {
+    "A": 5,
+    "B": 1
+   }
+  }
+ },
+ {
+  "item": 7,
+  "case_id": "s-113",
+  "sample": 1,
+  "a_is": "before",
+  "language": "en",
+  "intent": "general_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 2,
+    "B": 4
+   },
+   "groq/qwen3.8-27b": {
+    "A": 2,
+    "B": 5
+   }
+  }
+ },
+ {
+  "item": 8,
+  "case_id": "d-102",
+  "sample": 0,
+  "a_is": "before",
+  "language": "en",
+  "intent": "business_hours",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 5,
+    "B": 3
+   },
+   "groq/qwen3.8-27b": {
+    "A": 3,
+    "B": 1
+   }
+  }
+ },
+ {
+  "item": 9,
+  "case_id": "trekking-06",
+  "sample": 0,
+  "a_is": "before",
+  "language": "ne_roman",
+  "intent": "service_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 4,
+    "B": 5
+   },
+   "groq/qwen3.8-27b": {
+    "A": 3,
+    "B": 4
+   }
+  }
+ },
+ {
+  "item": 10,
+  "case_id": "trekking-05",
+  "sample": 1,
+  "a_is": "after",
+  "language": "en",
+  "intent": "service_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 5,
+    "B": 4
+   },
+   "groq/qwen3.8-27b": {
+    "A": 4,
+    "B": 2
+   }
+  }
+ },
+ {
+  "item": 11,
+  "case_id": "study-04",
+  "sample": 0,
+  "a_is": "before",
+  "language": "ne_roman",
+  "intent": "service_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 4,
+    "B": 3
+   },
+   "groq/qwen3.8-27b": {
+    "A": 1,
+    "B": 4
+   }
+  }
+ },
+ {
+  "item": 12,
+  "case_id": "study-10",
+  "sample": 0,
+  "a_is": "before",
+  "language": "en",
+  "intent": "booking",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 5,
+    "B": 3
+   },
+   "groq/qwen3.8-27b": {
+    "A": 4,
+    "B": 5
+   }
+  }
+ },
+ {
+  "item": 13,
+  "case_id": "t-147",
+  "sample": 1,
+  "a_is": "before",
+  "language": "mixed",
+  "intent": "service_question",
+  "source": "scripted",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 4,
+    "B": 5
+   },
+   "groq/qwen3.8-27b": {
+    "A": 3,
+    "B": 5
+   }
+  }
+ },
+ {
+  "item": 14,
+  "case_id": "d-104",
+  "sample": 0,
+  "a_is": "after",
+  "language": "en",
+  "intent": "location",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 5,
+    "B": 5
+   },
+   "groq/qwen3.8-27b": {
+    "A": 2,
+    "B": 4
+   }
+  }
+ },
+ {
+  "item": 15,
+  "case_id": "d-128",
+  "sample": 0,
+  "a_is": "after",
+  "language": "ne_roman",
+  "intent": "general_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 5,
+    "B": 4
+   },
+   "groq/qwen3.8-27b": {
+    "A": 1,
+    "B": 4
+   }
+  }
+ },
+ {
+  "item": 16,
+  "case_id": "trekking-10",
+  "sample": 0,
+  "a_is": "after",
+  "language": "en",
+  "intent": "service_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 4,
+    "B": 5
+   },
+   "groq/qwen3.8-27b": {
+    "A": 2,
+    "B": 2
+   }
+  }
+ },
+ {
+  "item": 17,
+  "case_id": "study-09",
+  "sample": 1,
+  "a_is": "after",
+  "language": "ne_deva",
+  "intent": "pricing_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 4,
+    "B": 5
+   },
+   "groq/qwen3.8-27b": {
+    "A": 4,
+    "B": 2
+   }
+  }
+ },
+ {
+  "item": 18,
+  "case_id": "d-120",
+  "sample": 0,
+  "a_is": "after",
+  "language": "ne_roman",
+  "intent": "pricing_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 4,
+    "B": 5
+   },
+   "groq/qwen3.8-27b": {
+    "A": 4,
+    "B": 2
+   }
+  }
+ },
+ {
+  "item": 19,
+  "case_id": "d-133",
+  "sample": 1,
+  "a_is": "after",
+  "language": "ne_deva",
+  "intent": "general_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 3,
+    "B": 5
+   },
+   "groq/qwen3.8-27b": {
+    "A": 2,
+    "B": 5
+   }
+  }
+ },
+ {
+  "item": 20,
+  "case_id": "trekking-09",
+  "sample": 0,
+  "a_is": "before",
+  "language": "ne_deva",
+  "intent": "pricing_question",
+  "source": "real",
+  "judges": {
+   "azure/gpt-5-mini": {
+    "A": 4,
+    "B": 3
+   },
+   "groq/qwen3.8-27b": {
+    "A": 4,
+    "B": 1
+   }
+  }
+ }
+]
