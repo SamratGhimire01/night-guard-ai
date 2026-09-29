@@ -17493,3 +17493,184 @@ Case-level: 18 improved, 9 tied, 12 regressed. Judge re-check max |Δ| = 1 (same
 **Phase 3 of the human-likeness review: DONE (2026-09-29).** The fix is proven by the direct reproduction
 and the retry-scenario table. It is not proven by the eval, which wasn't built to exercise it. Next: either the
 two follow-ups above, or close the phase and move to Phase 4 — user's call.
+
+## Phase 4 (overnight) — large-scale multi-judge eval + blind human-read packet (2026-09-29)
+
+**Eval-only. No app code changed, nothing committed.** trekking-10 and every other follow-up are untouched.
+New untracked files, all under `backend/tests/eval/`:
+- `phase4_cases.py`: 190 cases (the 39 Phase 3 cases + 151 new; 136 real messages from our logs, 54 scripted)
+- `live_phase4_multijudge.py`: resumable runner with gen/judge/report/packet/human stages
+- `phase4_results_2026-09-29.json`: every reply plus every judge score and reason
+- `phase4_results_2026-09-29_report_2judges.md`: the primary report
+- `phase4_results_2026-09-29_report_3judges.md`: the 3-judge cross-check
+- `phase4_blind_read/`: `packet.md`, `scoresheet.csv`, `answer_key.json`
+
+### Setup
+- **Coverage:** 190 cases across the 3 tenants (dental 67 / trekking 61 / study 62).
+  - Intended languages: en 61, ne_roman ~60, ne_deva ~57, mixed ~12. Phase 3 had 11 ne_roman and 7 ne_deva.
+  - Intents: all 13 customer-facing ones, ≥9 cases each. follow_up/unknown are skipped because they only happen mid-conversation.
+- **2 samples per case per arm**, i.e. 760 generations. "Before" uses the same 3 monkeypatches as Phase 3, applied
+  once per batch from the main thread (a per-call `patch` isn't thread-safe). Arms alternate in chunks of 30 so
+  time-of-day drift can't pile up in one arm.
+- **Judges.** OpenAI and Anthropic keys are empty; xAI is out of credits.
+  - azure/gpt-5-mini: the bot's own model, so self-preference is possible.
+  - groq/gpt-oss-120b.
+  - groq/qwen3.8-27b: different vendor and model family.
+  - Each judge sees its own random A/B order. It uses the Phase 3 judge prompt unchanged.
+- **Operational notes:**
+  - At 3 generation workers, a 429 burst turned 100/760 replies into the "trouble connecting" fallback. My first
+    fallback check missed these (the handoff addendum defeats an exact match). They were purged and regenerated at
+    **2 workers: 0 failures**. Future runs should use 2 workers.
+  - Groq free-tier limits cut the judging short. gpt-oss hit its 200K tokens/day cap (its reasoning tokens) after
+    255/412 calls. Qwen needs `max_tokens` capped (1000 output tokens/min) and slowed to ~0.3 calls/min near the end,
+    so the last ~10 study cases (s-140..s-149) have no Qwen score. Both are resumable with `--stages judge`.
+  - The backend container restarted on its own at ~06:37 (not triggered by this run). It killed a judge pass, which
+    resumed from the checkpoint.
+
+### Primary result — 2 judges (gpt-5-mini + qwen), 361 pairs / 181 cases
+
+| | before | after | Δ | 95% CI (bootstrap over cases) |
+|---|---|---|---|---|
+| **consensus** | 3.40 | 3.47 | **+0.07** | −0.04 … +0.19 |
+| gpt-5-mini | 3.68 | 3.63 | −0.05 | −0.17 … +0.08 |
+| qwen3.8-27b | 3.12 | 3.31 | +0.19 | +0.05 … +0.32 |
+
+- Case-level: 63 improved / 65 tied / 53 regressed.
+- 108/361 pairs (30%) are **byte-identical** in both arms. These are deterministic templates the Phase 1-3 pipeline
+  never touches. Over the 253 pairs that differ, Δ = +0.11.
+
+**Cross-check — 3 judges, 235 pairs / 119 cases** (the subset gpt-oss reached): consensus Δ **+0.04** (−0.10 … +0.17).
+Per judge: gpt-5-mini −0.06, gpt-oss −0.01, qwen +0.18.
+
+### Inter-judge agreement (how much to trust the number)
+
+| pair | reply score within ±1 | exact | Pearson r | Δ same direction |
+|---|---|---|---|---|
+| gpt-5-mini vs gpt-oss | 88% | 37% | 0.68 | 79% |
+| gpt-5-mini vs qwen | 81–82% | 36–37% | 0.54–0.56 | 73–75% |
+| gpt-oss vs qwen | 84% | 40% | 0.52 | 74% |
+
+- **Agreement:** all 3 judges are within ±1 on 71% of replies. They agree on the direction of Δ for 64% of pairs.
+- **Self-consistency** (identical input, re-judged): gpt-5-mini 64% exact, max diff 2; gpt-oss 75% exact, max diff 2;
+  qwen 40% exact, **max diff 3**.
+- **Generation noise:** sample 0 vs sample 1 of the same case agree on the direction of Δ only 56–59% of the time
+  (mean |Δ0−Δ1| ≈ 0.8–1.0). Reply-to-reply sampling noise is as big as judge noise. The multi-sample design exists for this.
+- **Read:** judges agree well on *absolute* quality (±1 on ~80%+ of replies). They agree poorly on a *small
+  delta*.
+  - The overall effect is **between about −0.1 and +0.2, with zero inside every CI**. The Phase 3 single-judge
+    +0.10 was in the same range, but this run can't separate it from zero.
+  - Most of the headline disagreement comes from qwen. It's the most positive judge and the least self-consistent,
+    and in the smoke test it misread a Devanagari reply: it claimed "नमस्ते हजुर" lacked the honorific हजुर.
+  - Weigh Nepali-language slices from qwen lightly.
+
+### Breakdown (2-judge consensus unless noted)
+
+| slice | n | Δ | 95% CI | note |
+|---|---|---|---|---|
+| en | 126 | **+0.26** | +0.07 … +0.45 | clear win; all 3 judges positive |
+| ne_roman | 122 | −0.02 | −0.20 … +0.15 | 3-judge: −0.10 (gpt-5-mini −0.16, gpt-oss −0.22, qwen +0.09) |
+| ne_deva | 101 | −0.05 | −0.27 … +0.15 | 3-judge: −0.17 (two judges −0.22, qwen −0.08) |
+| dental / trekking / study | 134 / 122 / 105 | +0.06 / +0.06 / +0.11 | all CIs span 0 | |
+| greeting | 26 | **+0.87** | +0.37 … +1.31 | persona intro + help offer; all judges agree |
+| human_handoff | 16 | **+0.47** | +0.03 … +0.88 | |
+| service_question | 69 | **+0.39** | +0.12 … +0.67 | mostly qwen (+0.70 vs gpt-5-mini +0.09) |
+| resend_confirmation | 15 | +0.30 | −0.10 … +0.70 | |
+| location | 22 | +0.20 | −0.23 … +0.64 | |
+| **pricing_question** | 43 | **−0.37** | −0.69 … −0.05 | **all 3 judges ≈ −0.35**: the most solid regression |
+| cancellation | 19 | −0.37 | −0.82 … +0.11 | |
+| complaint | 23 | −0.26 | −0.70 … +0.17 | gpt-5-mini −0.61, qwen +0.09 |
+| general_question | 20 | −0.23 | −0.90 … +0.42 | |
+| booking | 38 | −0.07 | −0.16 … 0.00 | mostly deterministic slot templates |
+| appointment_status / off_topic / business_hours | 15 / 18 / 18 | 0.00 | — | **absolute scores 1.47 / 2.03 / 2.11**: the lowest in the set |
+
+**Bottom line:** Phase 1-3 is a real win for English, greetings, handoff and service questions. For Nepali (both
+scripts) it's flat to slightly negative. It's a consistent loss on pricing questions. The biggest human-likeness gap
+isn't in the Phase 1-3 pipeline at all: it's the deterministic templates.
+
+### Biggest remaining gaps (verified against the raw JSON; full transcripts in the report files)
+
+1. **Deterministic templates read as the most bot-like, and the pipeline can't reach them.**
+   - appointment_status (1.47): *"You don't have any appointments on file with us right now, Website Visitor."*
+   - off_topic (2.03).
+   - business_hours (2.11): a bare list.
+2. **"Website Visitor" used as the customer's name: 42/760 replies.** A real customer already complained about
+   exactly this ("Why are you saying the website visitor?", case dental-12).
+3. **Persona name in Devanagari written प्रिय ("dear") instead of प्रिया (Priya): 5 of 10 Devanagari intros.**
+   Judges mark those down (d-132 5→2.5, d-133 5→2.5). This is the one Phase-2-caused defect found.
+4. **Free services quoted as "USD 0.00" / "NPR 0.00": 15 replies.**
+   - Example, t-135: *"Gear Rental Pickup को शुल्क USD 0.00 हो"*.
+   - Likely the core of the pricing_question regression on trekking. "Before" escalated these, "after" answered with
+     the literal zero.
+5. **English templates on Nepali messages.**
+   - The off-topic reply comes back in English for ne_roman/ne_deva questions: 8 cases.
+   - The English handoff addendum *"Let me check with our senior team…"* is tacked onto Nepali replies: 7 cases.
+6. **Handoff addendum appended to complete answers.** For example, d-102 lists the full opening hours *and then*
+   says "let me check with our senior team". It appears in ~90 replies in each arm and scored 4 → 2 when present.
+7. **"I don't want to guess" escalation on simple requests.** For example, t-128 "can I talk to staff directly?"
+   (5 → 2) and trekking-09 guide pricing.
+
+### Blind human-read packet
+
+`backend/tests/eval/phase4_blind_read/packet.md`: **20 before/after pairs** of the same customer message.
+- **Content:** 18 real customer messages; dental 8 / trekking 7 / study 5; en 7 / ne_roman 6 / ne_deva 5 / mixed 1 /
+  undetected 1.
+- **Blinding:** A/B order is randomized per item and the item order is shuffled, with no pipeline labels.
+- **Selection:** byte-identical pairs are excluded. Within each language, the pairs picked are those where the
+  judges disagreed most or the Δ was largest, i.e. where a human verdict is most informative.
+- **Your step:** fill in `scoresheet.csv`, then run
+  `docker exec -w /app night_guard_ai-backend-1 python -m tests.eval.live_phase4_multijudge --judges azure/gpt-5-mini,groq/qwen3.8-27b --stages human`.
+  This prints your before/after means, your preference split, and your agreement with each judge.
+  `answer_key.json` holds the unblinding; don't open it first.
+
+### Status
+Phase 4 overnight measurement: **DONE** (partial third judge, see the operational notes). Nothing committed. Candidate
+fixes, not started and each its own scope:
+- Devanagari persona spelling (प्रिया).
+- The "Website Visitor" name fallback.
+- A 0-price wording for free services.
+- Localizing the off-topic and handoff-addendum templates.
+- Suppressing the addendum on fully answered replies.
+- trekking-10 (still deferred).
+
+The blind read should come before any of them.
+
+## Phase 4 — fix pass on the concrete eval defects (2026-09-29)
+
+Five fixes, one commit each (`b564ebe`..`f0ea616`). The 91 targeted tests on the touched files pass. The full suite
+wasn't run (per the batch rule).
+
+1. **Persona name in Devanagari** (`b564ebe`, `intent.py _persona_name_note`). The prompt now says the persona name
+   is a proper noun: write it exactly as configured, in Latin letters, in every language and script.
+   - **Decision:** "Priya" in Latin script inside Devanagari sentences, rather than asking for प्रिया. Asking for the
+     Devanagari spelling brought in the doubling प्रिया bug, and the Latin name can't be misspelled as प्रिय ("dear").
+   - The cost is known: one blind-read note says a Latin name mid-Devanagari "reads oddly".
+   - **Proper fix, later:** a separate Devanagari persona-name field on Business, so the tenant supplies the correct
+     spelling instead of the model transliterating it.
+2. **"Website Visitor" as the customer's name** (`4747f76`). `Customer.known_name` returns None for the channel
+   placeholders (`PLACEHOLDER_NAMES`). Every customer-facing path uses it: the prompt profile, the booking and
+   appointment-status templates, the confirmation and follow-up emails, and the payment notice.
+   - WhatsApp now uses the sender's profile name. It replaces a placeholder, but never a name the customer gave us.
+3. **Free services quoted as "USD 0.00"** (`6d6024f`, `intent.py _format_services`). A zero price is listed to the
+   model as "free".
+4. **English templates on Roman-Nepali messages** (`2477a65`). 16 common Roman-Nepali words were added to
+   `_ROMAN_NEPALI_WORDS` (garyo, bhayena, yesto, sabai, vanda, lagyo, bhane, …). The eval messages now lock to
+   ne_roman, so the off-topic decline and the handoff addendum come back in Nepali.
+5. **Duplicate handoff addendum** (`f0ea616`, orchestrator). The addendum is skipped when the reply already promises a
+   follow-up: the honest fallback, the emergency reply, the resend-limit reply, and the business-hours replies.
+   - Configured business hours count as answered, so d-102's full hours list no longer escalates.
+   - The HumanHandoff row is still created for staff. A complaint still gets both the row and the addendum.
+   - The 7 channel/fallback tests that expected `fallback + addendum` now expect the fallback alone.
+
+**Where this leaves the round:** three independent scoring methods agree that the aggregate "sounds human" score isn't
+moving further right now. Every concrete, checkable defect found in the Phase 4 eval is fixed. The round is closed
+here; more style tuning is lower-value than the two gaps below.
+
+### New follow-ups (logged, not fixed)
+
+- **Gap #7: Devanagari pricing/service questions miss the knowledge base.** The KB is English-only, so Devanagari
+  questions don't match it. They fall through to the honest "I don't know" instead of a real answer. The root cause is
+  the same as trekking-10, so the two may be worth solving together.
+- **t-128: "can I talk to staff directly?" is classified as general_question, not human_handoff.** An explicit ask
+  for a human doesn't route correctly: the customer asks directly for what they want and doesn't get it. Worth a look.
+
+Still open from before: trekking-10.
