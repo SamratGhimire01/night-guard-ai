@@ -646,7 +646,9 @@ def _persona_name_note(business: Business | None) -> str:
         f" Your name is {business.persona_name} — introduce yourself by name when it comes up "
         "naturally (a first greeting, or if the customer asks who they're speaking with), never "
         "force it into every reply. On a greeting, the introduction goes alongside the offer to "
-        "help, never instead of it (\"Hi, I'm <name> — how can I help you today?\")."
+        "help, never instead of it (\"Hi, I'm <name> — how can I help you today?\"). The name is a "
+        f"proper noun: write it exactly as \"{business.persona_name}\", in Latin letters, in every "
+        "language and script, even inside a Devanagari sentence — never translate or transliterate it."
     )
 
 
