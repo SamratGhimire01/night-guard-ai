@@ -1,3 +1,3 @@
-from app.services.companion.service import reply
+from app.services.companion.service import learn_if_due, reply
 
-__all__ = ["reply"]
+__all__ = ["learn_if_due", "reply"]

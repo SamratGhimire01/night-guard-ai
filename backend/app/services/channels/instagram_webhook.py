@@ -128,13 +128,15 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
             outcomes.append({"message_id": incoming["message_id"], "status": "duplicate_skipped"})
             continue
 
-        deliver = lambda text, incoming=incoming, integration=integration: send_in_bubbles(  # noqa: E731
+        # Token read now, not at send time: the companion sends from a delayed timer after this DB session is closed.
+        access_token = (integration.config or {}).get("access_token") or ""
+        deliver = lambda text, incoming=incoming, access_token=access_token: send_in_bubbles(  # noqa: E731
             text,
             lambda bubble: _adapter.send_message(
                 igsid=incoming["sender_id"],
                 text=bubble,
                 ig_account_id=incoming["account_id"],
-                access_token=(integration.config or {}).get("access_token") or "",
+                access_token=access_token,
             ),
             channel="Instagram",
         )
@@ -145,6 +147,7 @@ def process_webhook_payload(db: Session, payload: dict) -> list[dict]:
                 text = companion.reply(
                     db, business_id=business_id, channel="instagram", external_ref=incoming["sender_id"],
                     content=incoming["text"], external_message_id=incoming["message_id"], deliver=deliver,
+                    learned=(integration.config or {}).get("learned", ""),
                 )
             except IntegrityError:
                 db.rollback()

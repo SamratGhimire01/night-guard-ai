@@ -3,7 +3,7 @@ import logging
 
 from app.core.config import settings
 from app.db.database import SessionLocal
-from app.services import lead_service, no_show_service, reminder_service
+from app.services import companion, lead_service, no_show_service, reminder_service
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,17 @@ async def _tick() -> None:
             logger.info("lead scheduler tick: scored %d conversation(s)", scored)
     except Exception:
         logger.exception("lead scheduler tick failed")
+    try:
+        learned = await asyncio.to_thread(_companion_learn_sync)  # LLM call, off the event loop like lead scoring
+        if learned:
+            logger.info("companion scheduler tick: refreshed lessons for %d persona(s)", learned)
+    except Exception:
+        logger.exception("companion learning tick failed")
+
+
+def _companion_learn_sync() -> int:
+    with SessionLocal() as db:
+        return companion.learn_if_due(db)
 
 
 async def run_forever() -> None:

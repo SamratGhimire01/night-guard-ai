@@ -26,6 +26,8 @@ ngrok_url_for_port() {
 
 echo "==> Backend + database (Docker)..."
 (cd "$PROJECT_DIR" && docker compose up -d)
+# `up -d` leaves an already-running backend on its old code (no --reload, see CLAUDE.md) -- always load the latest.
+(cd "$PROJECT_DIR" && docker compose up -d --force-recreate backend)
 
 if ! pgrep -f "ngrok http --url=$BACKEND_NGROK_URL" > /dev/null; then
     echo "==> Backend ngrok tunnel ($BACKEND_NGROK_URL -> :8010)..."
