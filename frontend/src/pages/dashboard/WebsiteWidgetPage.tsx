@@ -532,7 +532,7 @@ export default function WebsiteWidgetPage() {
             <iframe title="Website chat preview" srcDoc={doc} sandbox="allow-scripts allow-forms" />
           </div>
           <Text size="xs" c="dimmed" mt="xs" ta="center">
-            This is the real chat. Messages you send here go to your assistant and appear in your Inbox.
+            This chat is live: messages you send here go to your assistant and appear in your Inbox.
           </Text>
         </div>
       </div>

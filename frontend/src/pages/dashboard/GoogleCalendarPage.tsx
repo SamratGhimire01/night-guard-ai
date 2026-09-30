@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useOutletContext, useSearchParams } from 'react-router-dom'
-import { Alert, Badge, Button, Group, Paper, Skeleton, Stack, Text, Title } from '@mantine/core'
+import { Link, useOutletContext, useSearchParams } from 'react-router-dom'
+import { Alert, Anchor, Badge, Button, Group, Paper, Skeleton, Stack, Text, Title } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { apiFetch, ApiError } from '../../api/client'
 import type { BusinessRead, GoogleCalendarAuthorizationURL, GoogleCalendarStatus, PlanRead } from '../../api/types'
@@ -81,15 +81,16 @@ export default function GoogleCalendarPage() {
     <Stack gap="md" maw={560}>
       <Title order={2}>Google Calendar</Title>
       <Text c="dimmed" size="sm">
-        Connect your real Google Calendar so Night Guard treats your existing busy time as unavailable when
-        proposing appointment slots, and reflects every booking, cancellation, and reschedule back into your
-        calendar automatically.
+        Connect your Google Calendar so the assistant never offers a time you're already busy, and every booking,
+        cancellation and change shows up in your calendar automatically.
       </Text>
 
       {!isPremium && (
         <Alert color="grape" title="Upgrade to Premium" variant="light">
-          Google Calendar sync is a Premium-plan feature. Ask an owner on your team to upgrade the business's plan
-          to connect a calendar.
+          Google Calendar sync is part of the Premium plan.{' '}
+          <Anchor component={Link} to="/dashboard/settings?tab=plan">
+            See plans and request an upgrade
+          </Anchor>
         </Alert>
       )}
 
@@ -140,9 +141,8 @@ export default function GoogleCalendarPage() {
       )}
 
       <Text size="xs" c="dimmed">
-        Availability checks are pull-based — Night Guard queries Google Calendar fresh each time it proposes slots.
-        Editing an event directly in Google Calendar does not push a real-time update to Night Guard; it's picked
-        up the next time availability is checked.
+        Night Guard checks your calendar every time it offers times to a customer, so changes you make in Google
+        Calendar are picked up automatically.
       </Text>
     </Stack>
   )

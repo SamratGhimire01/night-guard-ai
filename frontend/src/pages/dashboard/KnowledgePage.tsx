@@ -294,8 +294,8 @@ export default function KnowledgePage() {
         <form onSubmit={ingestForm.onSubmit(handleIngestUrl)}>
           <Stack gap="sm">
             <Text c="dimmed" size="sm">
-              Fetches the page, strips navigation/footer clutter, and adds the real content — live immediately, same
-              as a manual entry or file upload.
+              Night Guard reads the page (and, if you choose, the pages it links to on your site), keeps the useful
+              text, and your assistant can use it straight away.
             </Text>
             <TextInput
               label="Page URL"

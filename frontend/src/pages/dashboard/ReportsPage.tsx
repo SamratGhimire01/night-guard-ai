@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { Link, useOutletContext } from 'react-router-dom'
 import {
   Alert,
+  Anchor,
   Badge,
   Button,
   Center,
@@ -437,9 +438,11 @@ function YearlyReportPanel() {
       <Stack gap="md">
         {yearPicker}
         <Alert color="grape" title="Upgrade to Premium" variant="light">
-          Yearly reports are a Premium-plan feature. {upgradeMessage} Ask an owner on your team to upgrade the
-          business's plan to unlock month-by-month trends, year-over-year comparisons, and a real yearly Excel
-          export.
+          Yearly reports are part of the Premium plan. Premium adds month-by-month trends, year-over-year
+          comparisons and a yearly Excel export.{' '}
+          <Anchor component={Link} to="/dashboard/settings?tab=plan">
+            See plans and request an upgrade
+          </Anchor>
         </Alert>
       </Stack>
     )

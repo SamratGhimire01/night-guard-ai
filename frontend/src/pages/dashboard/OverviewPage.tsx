@@ -19,6 +19,7 @@ import PageHeader from '../../components/PageHeader'
 import StatCard from '../../components/StatCard'
 import StatusBadge from '../../components/StatusBadge'
 import TableSkeleton from '../../components/TableSkeleton'
+import { friendlyDateTime } from '../../lib/dates'
 
 type DashboardContext = { business: BusinessRead | null }
 
@@ -213,7 +214,7 @@ export default function OverviewPage() {
             <EmptyState
               icon={<IconHeadset {...ICON} />}
               title="No open handoffs"
-              hint="Nothing is waiting on a real person right now."
+              hint="No customer is waiting for your team right now."
             />
           </Paper>
         ) : (
@@ -225,7 +226,7 @@ export default function OverviewPage() {
                     {h.customer_name}
                   </Text>
                   <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
-                    {new Date(h.created_at).toLocaleString()}
+                    {friendlyDateTime(h.created_at)}
                   </Text>
                 </Group>
                 <Text size="sm" c="dimmed" mt={2}>
