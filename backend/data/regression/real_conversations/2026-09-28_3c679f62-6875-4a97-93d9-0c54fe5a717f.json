@@ -1,0 +1,149 @@
+{
+  "conversation_id": "3c679f62-6875-4a97-93d9-0c54fe5a717f",
+  "business_id": "ebc15cb7-2f66-4471-9f13-e0699dcdcd86",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "ne_roman",
+  "created_at": "2026-09-28T12:33:37.382689",
+  "customer": {
+    "id": "b7fa352e-f882-424f-8e1f-fa9b2d2d5ed2",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "Namaste, trek season kahile best huncha, monsoon ma jana milxa?",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-28T12:33:44.728504"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Namaste hajur! Trek ko best season Spring (March\u2013May) ra Autumn (September\u2013November) huncha \u2014 yo bela ma weather clear ra stable hunchha. Monsoon (June\u2013August) ma heavy rain ra leeches aune hunale Everest ra Annapurna routes recommend gardaina; tara Upper Mustang jasto rain-shadow region monsoon ma pani trekkable huncha. Trek ko lagi plan garna help chahanu huncha bhane Trek Booking Consultation book garna saknu huncha.",
+      "detected_intent": null,
+      "created_at": "2026-09-28T12:33:44.753884"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "ebc15cb7-2f66-4471-9f13-e0699dcdcd86",
+    "name": "Himalayan Trails Trekking Co.",
+    "timezone": "Asia/Kathmandu",
+    "currency": "USD",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "single_business",
+    "payment_collection_enabled": false,
+    "payment_providers": [],
+    "services": [
+      {
+        "id": "194599b1-6d21-4bc7-82b9-7b61d525bf9c",
+        "name": "Trek Booking Consultation",
+        "description": "A free call to pick your trek, confirm a departure date, and reserve your spot.",
+        "price": 0.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "1ccf0cb5-2749-473d-8e2e-6ec1899b1a0d",
+        "name": "Gear Rental Pickup",
+        "description": "Come in to try on and pick up rented trekking gear (down jacket, sleeping bag, trekking poles, etc).",
+        "price": 0.0,
+        "duration_minutes": 20,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "2a9f4b7e-a4f4-46c0-a5d7-79e25a32ffcb",
+        "name": "Private Guide Booking Consultation",
+        "description": "A short meeting to arrange a private guide or porter for your trek dates.",
+        "price": 0.0,
+        "duration_minutes": 30,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [
+      {
+        "id": "a5daa6e1-34fd-4c51-854b-aff796185457",
+        "title": "How to Reserve a Trek Departure",
+        "content": "To reserve a spot on any trek departure, book a free Trek Booking Consultation through chat or our office. During the call we confirm your chosen trek, departure date, and group size, and send a deposit link for 20% of the total package price to hold your spot. The remaining balance is due 7 days before departure. Departures run on fixed dates during peak season (March-May, September-November) and on request during the off-season."
+      },
+      {
+        "id": "9343e9b7-c992-4de5-a9d6-37922973c099",
+        "title": "Seasonal Information",
+        "content": "The best trekking seasons in Nepal are Spring (March-May) and Autumn (September-November), with clear skies and stable weather. Winter (December-February) is cold but still possible for lower-altitude treks like Poon Hill and Langtang. The Monsoon season (June-August) brings heavy rain and leeches on lower trails and is not recommended for the Everest or Annapurna routes, though the Upper Mustang region (in the rain shadow) remains trekkable."
+      },
+      {
+        "id": "9a79f84d-bd3a-4891-9fb8-c2ebd16f3050",
+        "title": "Gear Rental Price List",
+        "content": "We rent trekking gear by the day: down jacket USD 2/day, -20C sleeping bag USD 2/day, trekking poles (pair) USD 1/day, duffel bag USD 1/day, gaiters USD 1/day. A full 14-day gear set (jacket, sleeping bag, poles, duffel bag) costs USD 55 for a 14-day trek. A refundable security deposit of USD 50 is collected at pickup and returned when gear is returned in good condition."
+      },
+      {
+        "id": "b3c3352d-ae5e-4db1-a0e7-e1b24fff1e9e",
+        "title": "Trek Packages Overview",
+        "content": "Everest Base Camp Trek: 14 days, Difficulty: Strenuous, Price: USD 1,200 per person, Group size: 2-12 people, max altitude 5,364m (Kala Patthar). Annapurna Circuit Trek: 12 days, Difficulty: Moderate, Price: USD 950 per person, Group size: 2-14 people, max altitude 5,416m (Thorong La Pass). Langtang Valley Trek: 7 days, Difficulty: Easy-Moderate, Price: USD 650 per person, Group size: 2-14 people, max altitude 4,984m (Tserko Ri). Poon Hill Trek: 4 days, Difficulty: Easy, Price: USD 350 per person, Group size: 2-16 people, great for beginners and families. All prices include a licensed guide, porter, teahouse accommodation, and three meals a day on trek."
+      },
+      {
+        "id": "f33507a5-e0ce-4493-9b9d-aa17982f080a",
+        "title": "Guide and Porter Booking",
+        "content": "A licensed English-speaking guide costs USD 25/day and a porter (carries up to 15kg) costs USD 18/day, both including their food, accommodation, and insurance while on trek. Private guides/porters can be booked independently of a group package for custom itineraries. Book a Private Guide Booking Consultation to arrange dates and confirm availability, especially during peak season when guides book up early."
+      },
+      {
+        "id": "26d4528c-ed80-47a2-a0ba-7bd4e4381aa5",
+        "title": "Cancellation and Weather Policy",
+        "content": "Deposits are non-refundable within 14 days of departure but can be transferred to a later departure date once, free of charge. If a flight to Lukla (for Everest region treks) is cancelled due to weather, we rebook the next available flight at no extra cost; we are not liable for weather-related itinerary changes but will always find the safest alternative route or schedule."
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "08:00:00",
+        "close_time": "19:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "08:00:00",
+        "close_time": "19:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "08:00:00",
+        "close_time": "19:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "08:00:00",
+        "close_time": "19:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "08:00:00",
+        "close_time": "19:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "08:00:00",
+        "close_time": "19:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": false,
+        "open_time": "08:00:00",
+        "close_time": "19:00:00"
+      }
+    ]
+  }
+}

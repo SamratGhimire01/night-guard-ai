@@ -1203,6 +1203,54 @@
       "content": "[Customer sent an image]",
       "detected_intent": null,
       "created_at": "2026-09-23T15:06:13.513133"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Yi",
+      "detected_intent": "follow_up",
+      "created_at": "2026-09-27T16:43:03.189508"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Namaste hajur \u2014 ke yo message image sanga sambandhit ho? Ke ma kehi madat garna sakchu?",
+      "detected_intent": null,
+      "created_at": "2026-09-27T16:43:03.201398"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Tapai ko company ko name k ho",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-27T16:43:37.875367"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Hamro naam Samaj Dental Clinic ho \u2014 New Baneshwor, Kathmandu ma avasthit.",
+      "detected_intent": null,
+      "created_at": "2026-09-27T16:43:37.890353"
+    },
+    {
+      "sender_type": "customer",
+      "content": "K ho avasthit vaneko",
+      "detected_intent": "general_question",
+      "created_at": "2026-09-27T16:44:21.914066"
+    },
+    {
+      "sender_type": "agent",
+      "content": "\"Avasthit\" bhaneko normally \"located\" ho \u2014 kun thau ma cha bhanne kura bujhauchha. Kati bela yo shabda le \"condition\" (sthaiti/awasta) ko artha pani dincha. Ke tapaile location ko bare ma sodhnu bhayo (jasto \u2014 hamro clinic New Baneshwor, Kathmandu ma avasthit cha) ni ki kunai awasta ko bare ma bujhna khojnu bhayo?",
+      "detected_intent": null,
+      "created_at": "2026-09-27T16:44:21.927341"
+    },
+    {
+      "sender_type": "customer",
+      "content": "Who is the president of nepal",
+      "detected_intent": "off_topic",
+      "created_at": "2026-09-27T16:45:54.657502"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Ma yaha Samaj Dental Clinic sanga related kura haru ma matra madat garna chu \u2014 jasto appointment, service haru, time, aadi. Tyo sambandhi kehi sodhnu huncha?",
+      "detected_intent": null,
+      "created_at": "2026-09-27T16:45:54.665789"
     }
   ],
   "booking_draft": {

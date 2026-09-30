@@ -1,0 +1,205 @@
+{
+  "conversation_id": "b115e48a-15a2-4009-8569-d837e11247bf",
+  "business_id": "5f61d5d1-87fb-4447-8698-39008f33a4e9",
+  "channel": "website",
+  "status": "open",
+  "detected_language": "ne_roman",
+  "created_at": "2026-09-27T16:26:12.807774",
+  "customer": {
+    "id": "4eafba4b-ffcf-4820-b2f4-6a4d05126649",
+    "preferred_language": null
+  },
+  "messages": [
+    {
+      "sender_type": "customer",
+      "content": "k k servie the tapai saga",
+      "detected_intent": "service_question",
+      "created_at": "2026-09-27T16:26:17.390298"
+    },
+    {
+      "sender_type": "agent",
+      "content": "Hajur, hami yehan yei services dinchhau:\n- Initial Counseling Session \u2014 NPR 0, 45 min\n- Document Evaluation \u2014 NPR 2,500, 30 min\n- University Application Review \u2014 NPR 4,000, 60 min\n- Visa Interview Preparation \u2014 NPR 3,000, 45 min\nKun service bare arko detail chahanu huncha?",
+      "detected_intent": null,
+      "created_at": "2026-09-27T16:26:17.404616"
+    }
+  ],
+  "booking_draft": {
+    "service_id": null,
+    "date": null,
+    "time": null
+  },
+  "appointments_for_this_customer": [],
+  "business": {
+    "id": "5f61d5d1-87fb-4447-8698-39008f33a4e9",
+    "name": "Everest Pathways Consultancy",
+    "timezone": "Asia/Kathmandu",
+    "currency": "NPR",
+    "languages": null,
+    "language_mode": "automatic",
+    "tone": null,
+    "content_scope": "aggregator",
+    "payment_collection_enabled": true,
+    "payment_providers": [
+      "esewa"
+    ],
+    "services": [
+      {
+        "id": "be00027a-3e60-4f89-9ddb-b3e5f41aea37",
+        "name": "Document Evaluation",
+        "description": "We review your transcripts, SOP, and recommendation letters and give written feedback.",
+        "price": 2500.0,
+        "duration_minutes": 30,
+        "deposit_enabled": true,
+        "deposit_percentage": 2
+      },
+      {
+        "id": "65912516-8386-40fd-9a6a-6f184e431493",
+        "name": "Initial Counseling Session",
+        "description": "A free first meeting to discuss your study-abroad goals, target countries, and budget.",
+        "price": 0.0,
+        "duration_minutes": 45,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "f204bdef-7f43-41d5-8aff-d7f51166d860",
+        "name": "University Application Review",
+        "description": "A detailed review of your shortlisted universities and a completed application package.",
+        "price": 4000.0,
+        "duration_minutes": 60,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      },
+      {
+        "id": "1124d1f0-8ba7-40ec-8790-32ed002571f0",
+        "name": "Visa Interview Preparation",
+        "description": "Mock interview and document checklist review before your visa appointment.",
+        "price": 3000.0,
+        "duration_minutes": 45,
+        "deposit_enabled": false,
+        "deposit_percentage": null
+      }
+    ],
+    "knowledge_documents": [
+      {
+        "id": "b6dfa252-d4f8-4380-8f65-2532bf0e00ba",
+        "title": "Popular Study Destinations",
+        "content": "We help students apply to universities in the USA, UK, Australia, Canada, and Germany. The USA is popular for its research universities and STEM OPT extension. The UK offers 1-year master's programs and a 2-year post-study Graduate Route visa. Australia and Canada are popular for their pathway to permanent residency after graduation. Germany is popular for low-cost public universities, especially for engineering."
+      },
+      {
+        "id": "90a25bf2-5a7c-40b4-a0b8-6b8912f605ae",
+        "title": "Writing a Strong Statement of Purpose (SOP)",
+        "content": "Your SOP should clearly answer three things: why this specific program and university, why now (the academic or career background that leads here), and what you plan to do after graduating. Admissions and visa officers read hundreds of these, so keep it specific and evidence-based -- mention actual courses, professors, or projects, not generic praise for the country or school -- rather than a template anyone could have written. We provide a first-draft review and up to two rounds of revision as part of our University Application Review service."
+      },
+      {
+        "id": "94a2f10a-48b2-46ad-8c44-8700f70452f5",
+        "title": "IELTS and TOEFL Requirements",
+        "content": "Most universities in the USA, UK, Australia, and Canada require an IELTS score of 6.0-7.0 overall (no band below 5.5) or a TOEFL iBT score of 79-100, depending on the program. Some universities also accept PTE Academic (50-65) or Duolingo English Test (100-120). We offer guidance on which test suits your target universities and can refer you to local test-prep centers."
+      },
+      {
+        "id": "4c9354b3-3058-4109-91ac-5b02019a5a16",
+        "title": "University-Matching Process",
+        "content": "Our university-matching process starts with your academic transcripts, standardized test scores, budget, and preferred field of study. We shortlist 5-8 universities across 'reach', 'match', and 'safety' categories based on your profile, then help you draft a statement of purpose tailored to each. We work with partner universities in Australia and the UK where application fees may be waived."
+      },
+      {
+        "id": "1dda97dd-5560-48ae-bb35-fec8f3b1a47e",
+        "title": "Scholarships and Financial Aid",
+        "content": "We help students identify merit-based and need-based scholarships, including university-specific scholarships (e.g. university entrance scholarships covering 10-50% of tuition), government scholarships (such as Australia Awards, Chevening for the UK, and DAAD for Germany), and external scholarships. We also advise on education loans from Nepali banks and the collateral/co-signer requirements they usually need."
+      },
+      {
+        "id": "72f9df41-c900-4327-b1e7-1504c7cfbc76",
+        "title": "Visa Process Overview",
+        "content": "After receiving your university offer letter, the visa process typically involves: proof of funds (a bank balance certificate covering one year of tuition + living costs), a valid passport, academic documents, and in most cases a visa interview. The UK Student visa, US F-1 visa, Canada Study Permit, and Australia Subclass 500 visa each have different processing times, from 3 weeks (UK) up to 8-12 weeks (USA, during peak season). We prepare you for the interview and help you organize your document checklist."
+      },
+      {
+        "id": "3cac8588-2bc7-41b1-ae6f-0e0f12e43b44",
+        "title": "Fees and Refund Policy",
+        "content": "Our Document Evaluation and University Application Review fees are due at the time of booking. If you cancel a paid session more than 24 hours in advance, we offer a full refund; cancellations within 24 hours are non-refundable but can be rescheduled once at no extra cost. The Initial Counseling Session is always free, with no cancellation fee."
+      },
+      {
+        "id": "52a0977f-86b4-4171-91b0-eda48cd24d23",
+        "title": "Document Checklist for Your Application",
+        "content": "A typical study-abroad application needs: academic transcripts and certificates (translated/notarized if not in English), a valid passport, English test scores (IELTS/TOEFL/PTE/Duolingo), a Statement of Purpose (SOP), 2-3 letters of recommendation, a CV/resume, financial documents (bank statements, a sponsor letter, or an education loan sanction letter), and passport-size photos. Once you have an offer letter, you'll also need proof of funds for the visa (bank balance certificate, GIC, or loan document, depending on the country) and, for some countries, a medical exam or police clearance certificate. We review every document before submission and flag anything likely to cause a delay or rejection."
+      },
+      {
+        "id": "70b0e6c2-a81c-4f96-8721-fc441b1dd16b",
+        "title": "Visa Financial Requirements by Country",
+        "content": "Requirements change and vary by individual case, so always confirm the current figure with us or the official visa website before applying -- this is a general guide, not your exact number:\n- Australia (Subclass 500): roughly AUD 29,710 in genuine, traceable funds for 12 months of costs (tuition, living, travel), from an accepted source such as savings, an education loan, or a scholarship.\n- UK (Student visa): maintenance funds of about GBP 1,171/month outside London or GBP 1,529/month in London, covering up to 9 months, held for 28 consecutive days before applying, plus any remaining tuition -- these rates are scheduled to rise from 30 November 2026.\n- Canada (Study Permit): about CAD 23,448 for one year's living costs (from 1 September 2026) on top of tuition and return travel, shown via a bank account, a GIC, an education loan, or a sponsor letter.\n- USA (F-1): no single fixed government figure -- your I-20 states the estimated annual cost, and you must show funds covering it, plus the separate $350 SEVIS fee paid before your visa interview."
+      },
+      {
+        "id": "a4863df2-d2c4-4ec9-a736-b491bd008431",
+        "title": "Post-Study Work Options by Country",
+        "content": "These rules change often, so confirm the current policy for your specific program before deciding:\n- UK: the Graduate Route currently allows about 2 years of post-study work, set to shorten to 18 months for applications submitted after January 2027.\n- Canada: Post-Graduation Work Permit (PGWP) length depends on your program and school, and eligibility has tightened in recent years for some programs -- confirm your program still qualifies before enrolling.\n- Australia: post-study work rights depend on your visa subclass and, since recent reforms, your qualification level and region of study.\n- USA: F-1 graduates can work for 12 months on OPT, extended by 24 months (36 months total) for an eligible STEM degree with an E-Verify-registered employer."
+      },
+      {
+        "id": "f8f0377f-3f18-4d08-bdcd-cf0a08052a2b",
+        "title": "Visa Interview Preparation",
+        "content": "Most visa interviews focus on three questions: can you afford this, will you study seriously, and do you intend to meet the visa's conditions afterward (including returning home, where that applies). Be ready to explain your choice of course and university specifically -- not \"it's a good country\" -- your funding source in real detail, and your post-graduation plan. Short, confident, direct answers read as more genuine than a long rehearsed script. We run a mock interview session before your real one as part of our visa preparation service."
+      },
+      {
+        "id": "458f24b8-be28-4ea9-9b9e-7ded3d7167ab",
+        "title": "When to Start: A Realistic Application Timeline",
+        "content": "For a typical intake, start 9-12 months ahead. 9-12 months before: finalize your shortlist and take (or retake) your English test. 8-10 months before: submit university applications. 4-6 months before: accept your offer and begin the visa financial paperwork -- some funds, like the UK's, must be held for a minimum period before you apply. 2-3 months before: submit your visa application and prepare for the interview if one is required. Popular intakes and scholarship deadlines fill up faster, so starting earlier gives you more options, not just more time."
+      },
+      {
+        "id": "1f37fc7a-9919-4844-bccb-d93b2c9683ac",
+        "title": "Total Cost of Studying Abroad, by Country",
+        "content": "Combined tuition + living costs vary widely by country and city; these are typical yearly ranges for international students -- always budget with a margin, and confirm current figures with us before committing to a country:\n- Australia: tuition AUD 22,000-45,000/year (up to AUD 85,000 for medicine); living costs AUD 29,710-40,000/year (higher in Sydney or Melbourne); total roughly AUD 55,000-90,000/year.\n- UK: tuition GBP 15,000-35,000/year for most programs (Oxford, Cambridge, and Medicine cost much more); living costs GBP 12,000-18,000/year depending on city; total roughly GBP 27,000-55,000/year.\n- Canada: tuition averages about CAD 41,746/year for undergraduate and CAD 24,000/year for graduate programs; living costs CAD 15,000-30,000/year; total roughly CAD 35,000-70,000/year.\n- USA: tuition ranges from $10,000/year at community colleges to $65,000+/year at private universities, with most public universities charging international students $25,000-45,000/year; living costs (room, board, insurance) roughly $12,000-25,000/year; total roughly $35,000-90,000+/year.\n- Germany: many public universities charge only a small per-semester administrative fee (roughly EUR 150-350), not full tuition; living costs about EUR 850-1,000/month (EUR 10,000-12,000/year). Germany is by far the most affordable of the countries we work with."
+      },
+      {
+        "id": "95291c83-d644-49eb-a9eb-c154365fb77d",
+        "title": "One-Time and Recurring Costs Beyond Tuition",
+        "content": "Beyond tuition, budget for these one-time and recurring costs before and during your first year -- fees change often, so confirm the current amount with us or the official source before paying:\n- English test: IELTS in Nepal costs about NPR 36,000 (IELTS for UKVI is slightly higher, around NPR 36,400); TOEFL fees vary by country, roughly $170-270.\n- Visa application fee: Australia AUD 2,500 (increased July 2026), plus AUD 1,190 per adult dependant or AUD 390 per child dependant; UK GBP 524; Canada CAD 150 plus CAD 85 for biometrics; USA $185 visa fee (MRV, paid at Nabil Bank in Nepal) plus a separate $350 SEVIS fee, about $535 total.\n- University application fees: typically $50-150 per university applied to -- we work with some partner universities in Australia and the UK where this fee may be waived.\n- Mandatory health insurance: the UK's Immigration Health Surcharge is GBP 776/year for students, paid upfront with your visa application; Australia's OSHC (Overseas Student Health Cover) is about AUD 500-700/year, paid separately and renewed annually; Canada and the USA both require health coverage, with the cost depending on your province or school's plan.\n- Flights and settling-in costs: airfares change constantly with season and airline, so check current fares closer to your travel date rather than budgeting an old number; also set aside money for airport pickup, temporary accommodation, and groceries/essentials for your first week."
+      },
+      {
+        "id": "b8cb55de-ecf5-4d2e-a69f-cac508bf0649",
+        "title": "How to Reach Our Office (Putalisadak, Kathmandu)",
+        "content": "Our office is in Putalisadak, Kathmandu -- a central area near Ratna Park (the city's main bus hub), close to Narayanhiti Palace Museum and Basantapur Durbar Square. Call us at +977-1-4123456 when you're nearby and we'll guide you to the exact building.\n- From Thimi/Bhaktapur: take a Ratna Park-bound bus or microbus along the Araniko Highway (about NPR 30-35, 20-30 minutes), then it's a short walk or quick taxi from Ratna Park to Putalisadak.\n- From Lalitpur/Patan: cross the Bagmati River via the Thapathali or Tripureshwor bridge and head toward Ratna Park/Putalisadak -- about 20-30 minutes by taxi depending on traffic.\n- From New Baneshwor/Koteshwor: head west along the main road through Baneshwor chowk toward Putalisadak -- about 15-25 minutes by taxi depending on traffic.\n- From Tribhuvan International Airport: the Sajha Yatayat public bus to Ratna Park runs from a stop between the International Terminal and the roundabout (about NPR 20, 30-60 minutes); a taxi is faster (about 15-25 minutes) and available right outside the arrivals hall.\n- From anywhere in the valley: a ride-hailing app (Pathao, InDrive, Tootle) will take you door to door -- just enter \"Putalisadak, Kathmandu\" as the destination.\nTraffic in Kathmandu varies a lot by time of day, so these are typical times, not guarantees -- call ahead if you're running late or can't find the exact building."
+      }
+    ],
+    "hours": [
+      {
+        "day_of_week": 0,
+        "closed": false,
+        "open_time": "10:00:00",
+        "close_time": "18:00:00"
+      },
+      {
+        "day_of_week": 1,
+        "closed": false,
+        "open_time": "10:00:00",
+        "close_time": "18:00:00"
+      },
+      {
+        "day_of_week": 2,
+        "closed": false,
+        "open_time": "10:00:00",
+        "close_time": "18:00:00"
+      },
+      {
+        "day_of_week": 3,
+        "closed": false,
+        "open_time": "10:00:00",
+        "close_time": "18:00:00"
+      },
+      {
+        "day_of_week": 4,
+        "closed": false,
+        "open_time": "10:00:00",
+        "close_time": "18:00:00"
+      },
+      {
+        "day_of_week": 5,
+        "closed": false,
+        "open_time": "10:00:00",
+        "close_time": "18:00:00"
+      },
+      {
+        "day_of_week": 6,
+        "closed": true,
+        "open_time": null,
+        "close_time": null
+      }
+    ]
+  }
+}
