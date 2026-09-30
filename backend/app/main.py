@@ -25,6 +25,7 @@ from app.api.routes import (
     reports,
     services,
     staff,
+    team,
     training,
     voice,
     webhooks,
@@ -97,6 +98,7 @@ app.include_router(customers.router, prefix="/api/v1", tags=["customers"])
 app.include_router(business.router, prefix="/api/v1", tags=["business"])
 app.include_router(services.router, prefix="/api/v1", tags=["services"])
 app.include_router(staff.router, prefix="/api/v1", tags=["staff"])
+app.include_router(team.router, prefix="/api/v1", tags=["team"])
 app.include_router(knowledge.router, prefix="/api/v1", tags=["knowledge"])
 app.include_router(conversations.router, prefix="/api/v1", tags=["conversations"])
 app.include_router(appointments.router, prefix="/api/v1", tags=["appointments"])

@@ -26,6 +26,8 @@ interface AuthContextValue {
   register: (payload: RegisterRequest) => Promise<RegisterResponse>
   logout: () => void
   clearSessionMessage: () => void
+  /** Starts a session from a token the API already issued (password reset, invite, password change). */
+  startSession: (token: string) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -82,11 +84,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearSessionMessage = useCallback(() => setSessionMessage(null), [])
 
+  const startSession = useCallback((next: string) => {
+    sessionStorage.setItem(STORAGE_KEY, next)
+    setToken(next)
+    setSessionMessage(null)
+  }, [])
+
   const role = useMemo(() => (token ? decodeRole(token) : null), [token])
 
   const value = useMemo(
-    () => ({ token, role, sessionMessage, login, register, logout: () => logout(null), clearSessionMessage }),
-    [token, role, sessionMessage, login, register, logout, clearSessionMessage],
+    () => ({ token, role, sessionMessage, login, register, logout: () => logout(null), clearSessionMessage, startSession }),
+    [token, role, sessionMessage, login, register, logout, clearSessionMessage, startSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

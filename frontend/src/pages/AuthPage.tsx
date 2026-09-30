@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Alert, Box, Button, PasswordInput, SegmentedControl, Stack, Text, TextInput, Title } from '@mantine/core'
+import { Alert, Anchor, Box, Button, PasswordInput, SegmentedControl, Stack, Text, TextInput, Title } from '@mantine/core'
 import { IconMoonStars } from '@tabler/icons-react'
 import { useForm } from '@mantine/form'
 import { useAuth } from '../auth/AuthContext'
-import { ApiError } from '../api/client'
+import { apiFetch, ApiError } from '../api/client'
 
 const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
@@ -17,6 +17,22 @@ export default function AuthPage() {
   )
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [forgot, setForgot] = useState(false)
+  const [resetSentTo, setResetSentTo] = useState<string | null>(null)
+  const forgotForm = useForm({ initialValues: { email: '' } })
+
+  async function handleForgot(values: { email: string }) {
+    setError(null)
+    setSubmitting(true)
+    try {
+      await apiFetch('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email: values.email.trim() }) })
+      setResetSentTo(values.email.trim())
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const loginForm = useForm({
     initialValues: { email: '', password: '' },
@@ -68,13 +84,13 @@ export default function AuthPage() {
               <IconMoonStars size={30} stroke={1.8} />
             </span>
             <Title order={2} style={{ letterSpacing: '-0.02em' }}>
-              {mode === 'login' ? 'Welcome back' : 'Create your account'}
+              {forgot ? 'Reset your password' : mode === 'login' ? 'Welcome back' : 'Create your account'}
             </Title>
             <Text c="dimmed" size="md">
-              {mode === 'login' ? 'Log in to your Night Guard AI dashboard.' : 'Set up your business in under a minute.'}
+              {forgot ? 'It only takes a minute.' : mode === 'login' ? 'Log in to your Night Guard AI dashboard.' : 'Set up your business in under a minute.'}
             </Text>
           </Stack>
-          <SegmentedControl
+          {!forgot && <SegmentedControl
             fullWidth
             value={mode}
             onChange={(value) => {
@@ -86,7 +102,7 @@ export default function AuthPage() {
               { label: 'Log in', value: 'login' },
               { label: 'New account', value: 'register' },
             ]}
-          />
+          />}
 
           {sessionMessage && (
             <Alert color="yellow" variant="light">
@@ -99,7 +115,33 @@ export default function AuthPage() {
             </Alert>
           )}
 
-          {mode === 'login' ? (
+          {forgot ? (
+            resetSentTo ? (
+              <Stack gap="md">
+                <Alert color="green" title="Check your email">
+                  If {resetSentTo} has an account, we've sent a link to choose a new password. It works for one hour.
+                </Alert>
+                <Button variant="default" fullWidth size="lg" radius="xl" onClick={() => { setForgot(false); setResetSentTo(null) }}>
+                  Back to log in
+                </Button>
+              </Stack>
+            ) : (
+              <form onSubmit={forgotForm.onSubmit(handleForgot)}>
+                <Stack gap="md">
+                  <Text size="sm" c="dimmed">
+                    Enter the email you log in with and we'll send you a link to choose a new password.
+                  </Text>
+                  <TextInput label="Email" type="email" placeholder="you@business.com" autoComplete="email" required {...forgotForm.getInputProps('email')} />
+                  <Button type="submit" loading={submitting} fullWidth size="lg" radius="xl">
+                    Send reset link
+                  </Button>
+                  <Anchor component="button" type="button" size="sm" onClick={() => setForgot(false)}>
+                    Back to log in
+                  </Anchor>
+                </Stack>
+              </form>
+            )
+          ) : mode === 'login' ? (
             <form onSubmit={loginForm.onSubmit(handleLogin)}>
               <Stack gap="md">
                 <TextInput label="Email" type="email" placeholder="you@business.com" autoComplete="email" required {...loginForm.getInputProps('email')} />
@@ -107,6 +149,9 @@ export default function AuthPage() {
                 <Button type="submit" loading={submitting} fullWidth mt="xs" size="lg" radius="xl">
                   Log in
                 </Button>
+                <Anchor component="button" type="button" size="sm" ta="center" onClick={() => { setForgot(true); setError(null) }}>
+                  Forgot your password?
+                </Anchor>
               </Stack>
             </form>
           ) : (

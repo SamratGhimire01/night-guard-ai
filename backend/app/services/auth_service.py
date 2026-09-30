@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, UnauthorizedError
@@ -40,7 +40,7 @@ def currency_for_timezone(timezone: str) -> str:
 def register_business(db: Session, payload: RegisterRequest) -> BusinessUser:
     """Creates a Business + its first BusinessUser (role=owner) in one transaction."""
     existing = db.execute(
-        select(BusinessUser).where(BusinessUser.email == payload.email)
+        select(BusinessUser).where(func.lower(BusinessUser.email) == payload.email.strip().lower())
     ).scalar_one_or_none()
     if existing is not None:
         raise ConflictError("This email is already registered.")
@@ -53,7 +53,7 @@ def register_business(db: Session, payload: RegisterRequest) -> BusinessUser:
 
     user = BusinessUser(
         business_id=business.id,
-        email=payload.email,
+        email=payload.email.strip().lower(),
         hashed_password=hash_password(payload.password),
         role=BusinessUserRole.OWNER,
     )
@@ -64,7 +64,9 @@ def register_business(db: Session, payload: RegisterRequest) -> BusinessUser:
 
 
 def authenticate(db: Session, email: str, password: str) -> BusinessUser:
-    user = db.execute(select(BusinessUser).where(BusinessUser.email == email)).scalar_one_or_none()
+    user = db.execute(
+        select(BusinessUser).where(func.lower(BusinessUser.email) == email.strip().lower())
+    ).scalar_one_or_none()
     if user is None or not verify_password(password, user.hashed_password):
         raise UnauthorizedError("Invalid email or password.")
     return user

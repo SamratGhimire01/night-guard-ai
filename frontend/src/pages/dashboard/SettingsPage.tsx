@@ -30,6 +30,7 @@ import {
   IconPhotoUp,
   IconRobot,
   IconTrash,
+  IconUsers,
 } from '@tabler/icons-react'
 import { useAuth } from '../../auth/AuthContext'
 import { apiAssetUrl, apiFetch, ApiError } from '../../api/client'
@@ -45,6 +46,7 @@ import type {
   UpgradeRequestResult,
 } from '../../api/types'
 import PageHeader from '../../components/PageHeader'
+import AccountTab from './settings/AccountTab'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const URL_RE = /^https?:\/\/[^\s.]+\.[^\s]+$/i
@@ -310,7 +312,7 @@ export default function SettingsPage() {
   const [plan, setPlan] = useState<PlanRead | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
   const [params, setParams] = useSearchParams()
-  const tab = ['profile', 'assistant', 'bookings', 'plan'].includes(params.get('tab') ?? '') ? params.get('tab')! : 'profile'
+  const tab = ['profile', 'assistant', 'bookings', 'plan', 'account'].includes(params.get('tab') ?? '') ? params.get('tab')! : 'profile'
   const [requesting, setRequesting] = useState(false)
 
   useEffect(() => {
@@ -426,6 +428,9 @@ export default function SettingsPage() {
           </Tabs.Tab>
           <Tabs.Tab value="plan" leftSection={<IconCrown size={18} />}>
             Plan
+          </Tabs.Tab>
+          <Tabs.Tab value="account" leftSection={<IconUsers size={18} />}>
+            Account &amp; team
           </Tabs.Tab>
         </Tabs.List>
 
@@ -670,6 +675,10 @@ export default function SettingsPage() {
               <SaveBar dirty={bookingForm.isDirty()} saving={saving === 'bookings'} canWrite={canWrite} onDiscard={() => bookingForm.reset()} />
             </Stack>
           </form>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="account">
+          <AccountTab />
         </Tabs.Panel>
 
         <Tabs.Panel value="plan">

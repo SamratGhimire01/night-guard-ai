@@ -1,5 +1,7 @@
 import re
 import uuid
+from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, field_validator
 
@@ -61,3 +63,55 @@ class CurrentUserResponse(BaseModel):
     business_id: uuid.UUID
     email: EmailStr
     role: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: safe_str(2000)
+    new_password: safe_str(_PASSWORD_MAX_LENGTH)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, value: str) -> str:
+        return _validate_password_strength(value)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: safe_str(_PASSWORD_MAX_LENGTH)
+    new_password: safe_str(_PASSWORD_MAX_LENGTH)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, value: str) -> str:
+        return _validate_password_strength(value)
+
+
+class TeamMemberRead(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    email: str
+    role: str
+    created_at: datetime
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def role_value(cls, value) -> str:
+        return getattr(value, "value", value)
+
+
+class TeamInviteRequest(BaseModel):
+    email: EmailStr
+    role: Literal["admin", "staff"]
+
+
+class TeamInviteResult(BaseModel):
+    member: TeamMemberRead
+    invite_link: str  # also emailed; shown to the owner so they can pass it on if email isn't set up
+
+
+class TeamRoleUpdate(BaseModel):
+    role: Literal["admin", "staff"]

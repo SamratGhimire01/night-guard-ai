@@ -6,6 +6,7 @@ import { AuthProvider } from './auth/AuthContext'
 import RequireAuth from './auth/RequireAuth'
 import LandingPage from './pages/LandingPage'
 import AuthPage from './pages/AuthPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import DashboardLayout from './pages/dashboard/DashboardLayout'
 import AppointmentsPage from './pages/dashboard/AppointmentsPage'
 import ServicesPage from './pages/dashboard/ServicesPage'
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<AuthPage />} />
             <Route path="/register" element={<AuthPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             <Route element={<RequireAuth />}>
               <Route path="/dashboard" element={<DashboardLayout />}>

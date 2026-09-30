@@ -510,3 +510,22 @@ export interface UpgradeRequestResult {
   requested_at: string
   team_notified: boolean
 }
+
+export interface CurrentUser {
+  user_id: string
+  business_id: string
+  email: string
+  role: 'owner' | 'admin' | 'staff'
+}
+
+export interface TeamMember {
+  id: string
+  email: string
+  role: 'owner' | 'admin' | 'staff'
+  created_at: string
+}
+
+export interface TeamInviteResult {
+  member: TeamMember
+  invite_link: string
+}
