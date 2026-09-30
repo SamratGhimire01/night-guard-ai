@@ -23,12 +23,11 @@ import {
   IconBook2,
   IconCalendarEvent,
   IconCalendarRepeat,
+  IconAddressBook,
   IconChartBar,
-  IconChartLine,
   IconClock,
   IconCreditCard,
   IconDental,
-  IconHeadset,
   IconInbox,
   IconLayoutDashboard,
   IconLogout,
@@ -50,7 +49,7 @@ import { usePolling } from './inbox/usePolling'
 import StatusBadge from '../../components/StatusBadge'
 
 type NavIcon = ComponentType<{ size?: number; stroke?: number }>
-type NavItem = { label: string; to: string; icon: NavIcon; tint: string; ownerAdminOnly?: boolean }
+type NavItem = { label: string; to: string; icon: NavIcon; tint: string; ownerAdminOnly?: boolean; alsoActiveOn?: string[] }
 
 // Grouped the way people think about their day, each item with its own colour tile (macOS System Settings style),
 // so a page can be found by colour and shape as well as by reading its name.
@@ -61,7 +60,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { label: 'Overview', to: '/dashboard', icon: IconLayoutDashboard, tint: 'linear-gradient(135deg,#8B5CF6,#6D28D9)' },
       { label: 'Inbox', to: '/dashboard/inbox', icon: IconInbox, tint: 'linear-gradient(135deg,#38BDF8,#2563EB)' },
       { label: 'Appointments', to: '/dashboard/appointments', icon: IconCalendarEvent, tint: 'linear-gradient(135deg,#F472B6,#DB2777)' },
-      { label: 'Human Handoffs', to: '/dashboard/handoffs', icon: IconHeadset, tint: 'linear-gradient(135deg,#FDBA74,#EA580C)' },
+      { label: 'Customers', to: '/dashboard/customers', icon: IconAddressBook, tint: 'linear-gradient(135deg,#FDBA74,#EA580C)' },
       { label: 'Check-in Scanner', to: '/dashboard/checkin', icon: IconQrcode, tint: 'linear-gradient(135deg,#2DD4BF,#0D9488)' },
     ],
   },
@@ -85,8 +84,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Insights',
     items: [
-      { label: 'Reports', to: '/dashboard/reports', icon: IconChartBar, tint: 'linear-gradient(135deg,#93C5FD,#1D4ED8)' },
-      { label: 'Analytics', to: '/dashboard/analytics', icon: IconChartLine, tint: 'linear-gradient(135deg,#FDA4AF,#E11D48)', ownerAdminOnly: true },
+      { label: 'Reports & trends', to: '/dashboard/reports', icon: IconChartBar, tint: 'linear-gradient(135deg,#93C5FD,#1D4ED8)', alsoActiveOn: ['/dashboard/analytics'] },
     ],
   },
   {
@@ -217,7 +215,12 @@ export default function DashboardLayout() {
     navigate('/login')
   }
 
-  const isActive = (to: string) => (to === '/dashboard' ? pathname === to : pathname.startsWith(to))
+  const isActive = (item: NavItem) =>
+    item.to === '/dashboard'
+      ? pathname === item.to
+      : pathname.startsWith(item.to) ||
+        (item.alsoActiveOn ?? []).some((p) => pathname.startsWith(p)) ||
+        (item.to === '/dashboard/inbox' && pathname.startsWith('/dashboard/handoffs'))
   const initials = (business?.name ?? '')
     .split(/\s+/)
     .filter(Boolean)
@@ -314,7 +317,7 @@ export default function DashboardLayout() {
                       <NavEntry
                         key={item.to}
                         item={item}
-                        active={isActive(item.to)}
+                        active={isActive(item)}
                         badge={item.to === '/dashboard/inbox' ? waiting : undefined}
                         onClick={close}
                       />
@@ -330,7 +333,7 @@ export default function DashboardLayout() {
           <Box hiddenFrom="xs" mb="xs" px={4}>
             <ThemeSwitch />
           </Box>
-          <NavEntry item={SETTINGS_ITEM} active={isActive(SETTINGS_ITEM.to)} onClick={close} />
+          <NavEntry item={SETTINGS_ITEM} active={isActive(SETTINGS_ITEM)} onClick={close} />
         </AppShell.Section>
       </AppShell.Navbar>
 

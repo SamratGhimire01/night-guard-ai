@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
+import InsightsSwitch from '../../components/InsightsSwitch'
+import PageHeader from '../../components/PageHeader'
 import {
   Alert,
   Anchor,
@@ -15,7 +17,6 @@ import {
   Stack,
   Tabs,
   Text,
-  Title,
 } from '@mantine/core'
 import { BarChart, PieChart } from '@mantine/charts'
 import { notifications } from '@mantine/notifications'
@@ -507,7 +508,8 @@ export default function ReportsPage() {
 
   return (
     <Stack gap="md">
-      <Title order={2}>Reports</Title>
+      <InsightsSwitch />
+      <PageHeader title="Reports" description="Your bookings, cancellations and income for a day, a month or a year. Download any report as Excel." />
       <Tabs defaultValue="daily">
         <Tabs.List>
           <Tabs.Tab value="daily">Daily</Tabs.Tab>

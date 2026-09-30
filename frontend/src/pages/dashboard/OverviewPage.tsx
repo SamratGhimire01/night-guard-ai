@@ -107,7 +107,7 @@ export default function OverviewPage() {
               color="teal"
             />
             <StatCard
-              label="Open handoffs"
+              label="Waiting for your team"
               value={openHandoffs.length >= 200 ? '200+' : openHandoffs.length}
               icon={<IconHeadset {...ICON} />}
               color="orange"
@@ -205,7 +205,7 @@ export default function OverviewPage() {
       </div>
 
       <div>
-        <SectionHeader title="Recent open handoffs" to="/dashboard/handoffs" linkLabel="See all handoffs" />
+        <SectionHeader title="Customers waiting for your team" to="/dashboard/inbox" linkLabel="Open the Inbox" />
         {openHandoffs === null ? (
           <Stack gap="xs">
             {[0, 1, 2].map((i) => (
@@ -216,7 +216,7 @@ export default function OverviewPage() {
           <Paper>
             <EmptyState
               icon={<IconHeadset {...ICON} />}
-              title="No open handoffs"
+              title="Nobody is waiting"
               hint="No customer is waiting for your team right now."
             />
           </Paper>

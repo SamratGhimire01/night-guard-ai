@@ -25,6 +25,7 @@ import GoogleCalendarPage from './pages/dashboard/GoogleCalendarPage'
 import ChannelsPage from './pages/dashboard/ChannelsPage'
 import PaymentsPage from './pages/dashboard/PaymentsPage'
 import CheckInPage from './pages/dashboard/CheckInPage'
+import CustomersPage from './pages/dashboard/CustomersPage'
 import SettingsPage from './pages/dashboard/SettingsPage'
 
 import '@mantine/core/styles.css'
@@ -49,6 +50,7 @@ export default function App() {
               <Route path="/dashboard" element={<DashboardLayout />}>
                 <Route index element={<OverviewPage />} />
                 <Route path="appointments" element={<AppointmentsPage />} />
+                <Route path="customers" element={<CustomersPage />} />
                 <Route path="services" element={<ServicesPage />} />
                 <Route path="staff" element={<StaffPage />} />
                 <Route path="hours" element={<HoursPage />} />
