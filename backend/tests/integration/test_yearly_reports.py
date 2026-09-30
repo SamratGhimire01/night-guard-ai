@@ -52,6 +52,19 @@ def _day_in_current_month(offset: int) -> date:
     return candidate
 
 
+def _future_slot(offset_days: int, hour: int) -> datetime:
+    """A bookable time `offset_days` from today at `hour` UTC, inside the current month (these tests check this
+    month's and this year's reports). On the last day of a month that lands today, possibly already past, which the
+    booking API rightly refuses; then it moves to a quarter hour at least 30 minutes ahead, spaced by `hour` so two
+    bookings never overlap."""
+    now = datetime.now(ZoneInfo("UTC"))
+    when = datetime.combine(_day_in_current_month(offset_days), datetime.min.time()).replace(hour=hour, tzinfo=ZoneInfo("UTC"))
+    if when <= now + timedelta(minutes=30):
+        base = now + timedelta(minutes=30 + (hour % 4) * 45)
+        when = base.replace(minute=(base.minute // 15) * 15, second=0, microsecond=0) + timedelta(minutes=15)
+    return when
+
+
 @pytest.fixture
 def two_businesses():
     email_a = _unique_email("yrpt-a-owner")
@@ -224,12 +237,12 @@ def test_yearly_report_staff_forbidden_regardless_of_plan(
 def test_yearly_report_matches_real_db_after_upgrade(business_ready, two_businesses, superadmin_token):
     token, service_id = business_ready["token"], business_ready["service_id"]
     _upgrade_to_premium(superadmin_token, two_businesses["business_id_a"])
-    year = _this_year()
 
     customer1 = _create_customer(token, phone="+15556660001")
     customer2 = _create_customer(token, phone="+15556660002")
-    when1 = datetime.combine(_day_in_current_month(1), datetime.min.time()).replace(hour=9, tzinfo=ZoneInfo("UTC"))
-    when2 = datetime.combine(_day_in_current_month(2), datetime.min.time()).replace(hour=10, tzinfo=ZoneInfo("UTC"))
+    when1 = _future_slot(1, 9)
+    when2 = _future_slot(2, 10)
+    year = when1.year
     appt1 = _book(token, service_id, uuid.UUID(customer1["id"]), when1)
     _book(token, service_id, uuid.UUID(customer2["id"]), when2)
     client.patch(f"/api/v1/appointments/{appt1['id']}/cancel", headers=_auth_header(token))
@@ -292,7 +305,7 @@ def test_yearly_report_cross_tenant_isolation(business_ready, two_businesses, su
     _open_all_week(token_b)
     service_b = _create_service(token_b, name="B Service", price="75.00")
     customer_b = _create_customer(token_b, phone="+15557770001")
-    when = datetime.combine(_day_in_current_month(1), datetime.min.time()).replace(hour=14, tzinfo=ZoneInfo("UTC"))
+    when = _future_slot(1, 14)
     appt_b = _book(token_b, service_b, uuid.UUID(customer_b["id"]), when)
 
     report_a = client.get(f"/api/v1/reports/yearly?year={year}", headers=_auth_header(token_a)).json()
@@ -377,10 +390,10 @@ def test_year_over_year_comparison_with_real_prior_year_data():
 def test_yearly_excel_export_matches_json(business_ready, two_businesses, superadmin_token):
     token, service_id = business_ready["token"], business_ready["service_id"]
     _upgrade_to_premium(superadmin_token, two_businesses["business_id_a"])
-    year = _this_year()
 
     customer = _create_customer(token, phone="+15558880001")
-    when = datetime.combine(_day_in_current_month(1), datetime.min.time()).replace(hour=13, tzinfo=ZoneInfo("UTC"))
+    when = _future_slot(1, 13)
+    year = when.year
     _book(token, service_id, uuid.UUID(customer["id"]), when)
 
     report = client.get(f"/api/v1/reports/yearly?year={year}", headers=_auth_header(token)).json()
@@ -406,12 +419,12 @@ def test_yearly_excel_export_matches_json(business_ready, two_businesses, supera
 
 def test_daily_and_monthly_revenue_estimate_matches_real_service_price(business_ready):
     token, service_id = business_ready["token"], business_ready["service_id"]
-    day = _day_in_current_month(1)
 
     customer1 = _create_customer(token, phone="+15559990001")
     customer2 = _create_customer(token, phone="+15559990002")
-    when1 = datetime.combine(day, datetime.min.time()).replace(hour=9, tzinfo=ZoneInfo("UTC"))
-    when2 = datetime.combine(day, datetime.min.time()).replace(hour=11, tzinfo=ZoneInfo("UTC"))
+    when1 = _future_slot(1, 9)
+    when2 = _future_slot(1, 11)
+    day = when1.date()
     appt1 = _book(token, service_id, uuid.UUID(customer1["id"]), when1)
     _book(token, service_id, uuid.UUID(customer2["id"]), when2)
     client.patch(f"/api/v1/appointments/{appt1['id']}/cancel", headers=_auth_header(token))

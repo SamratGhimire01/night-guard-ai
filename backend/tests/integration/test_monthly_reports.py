@@ -37,16 +37,23 @@ def _auth_header(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _day_in_current_month(offset: int) -> date:
-    """A real date guaranteed to stay within the current calendar month
-    (business timezone UTC in most tests here) regardless of when the test
-    suite runs — clamps to the last day of the month rather than spilling
-    into the next one."""
+def _test_month_start() -> date:
+    """The month these tests book into and report on: this month while at least 12 future days remain in it,
+    otherwise next month. Every booking must be in the future (the booking API refuses the past), and some tests need
+    up to 10 distinct days in one month; near the end of a month (e.g. on the 30th) this month can't provide them."""
     today = date.today()
-    candidate = today + timedelta(days=offset)
-    if candidate.month != today.month or candidate.year != today.year:
-        last_day = calendar.monthrange(today.year, today.month)[1]
-        candidate = today.replace(day=last_day)
+    last_day = calendar.monthrange(today.year, today.month)[1]
+    if today.day + 11 <= last_day:
+        return today
+    return (today.replace(day=1) + timedelta(days=32)).replace(day=1)
+
+
+def _day_in_current_month(offset: int) -> date:
+    """A real future date `offset` days into the test month (see _test_month_start), never spilling out of it."""
+    start = _test_month_start()
+    candidate = start + timedelta(days=offset)
+    if candidate.month != start.month:
+        candidate = start.replace(day=calendar.monthrange(start.year, start.month)[1])
     return candidate
 
 
@@ -146,8 +153,31 @@ def business_ready(two_businesses):
 
 
 def _this_year_month() -> tuple[int, int]:
+    start = _test_month_start()
+    return start.year, start.month
+
+def _current_year_month() -> tuple[int, int]:
+    """For tests that check what was *created* this month (customers, conversations, requested appointments): those
+    rows get today's timestamp, so the report has to be for the current month."""
     today = date.today()
     return today.year, today.month
+
+
+def _future_slot(offset_days: int, hour: int) -> datetime:
+    """A bookable future time `offset_days` from today at `hour` UTC, kept inside the current month. On the month's
+    last days that lands today, possibly already past, so it moves to a quarter hour at least 30 minutes ahead, spaced
+    by `hour` so bookings never overlap."""
+    today = date.today()
+    day = today + timedelta(days=offset_days)
+    if day.month != today.month:
+        day = today
+    now = datetime.now(ZoneInfo("UTC"))
+    when = datetime.combine(day, datetime.min.time()).replace(hour=hour, tzinfo=ZoneInfo("UTC"))
+    if when <= now + timedelta(minutes=30):
+        base = now + timedelta(minutes=30 + (hour % 4) * 45)
+        when = base.replace(minute=(base.minute // 15) * 15, second=0, microsecond=0) + timedelta(minutes=15)
+    return when
+
 
 
 # --- real counts cross-checked against raw DB queries -----------------------------------
@@ -155,12 +185,12 @@ def _this_year_month() -> tuple[int, int]:
 
 def test_monthly_report_counts_match_real_db_state(business_ready):
     token, service_id = business_ready["token"], business_ready["service_id"]
-    year, month = _this_year_month()
+    year, month = _current_year_month()
 
     customer1 = _create_customer(token, phone="+15552220001")
     customer2 = _create_customer(token, phone="+15552220002")
-    when1 = datetime.combine(_day_in_current_month(1), datetime.min.time()).replace(hour=9, tzinfo=ZoneInfo("UTC"))
-    when2 = datetime.combine(_day_in_current_month(2), datetime.min.time()).replace(hour=10, tzinfo=ZoneInfo("UTC"))
+    when1 = _future_slot(1, 9)
+    when2 = _future_slot(2, 10)
     appt1 = _book(token, service_id, uuid.UUID(customer1["id"]), when1)
     _appt2 = _book(token, service_id, uuid.UUID(customer2["id"]), when2)
     client.patch(f"/api/v1/appointments/{appt1['id']}/cancel", headers=_auth_header(token))
@@ -216,13 +246,13 @@ def test_zero_activity_month_is_honest(business_ready):
 
 def test_booking_conversion_definition_and_value(business_ready):
     token, service_id = business_ready["token"], business_ready["service_id"]
-    year, month = _this_year_month()
+    year, month = _current_year_month()
 
     for i in range(4):
         cust = _create_customer(token, phone=f"+1555333000{i}")
         _create_conversation(business_ready["business_id"], uuid.UUID(cust["id"]))
     booking_customer = _create_customer(token, phone="+15553330099")
-    when = datetime.combine(_day_in_current_month(3), datetime.min.time()).replace(hour=11, tzinfo=ZoneInfo("UTC"))
+    when = _future_slot(3, 11)
     _book(token, service_id, uuid.UUID(booking_customer["id"]), when)
 
     report = client.get(f"/api/v1/reports/monthly?year={year}&month={month}", headers=_auth_header(token)).json()
@@ -319,8 +349,8 @@ def test_monthly_report_cross_tenant_isolation(two_businesses):
     _open_all_week(token_b)
     service_a = _create_service(token_a)
     service_b = _create_service(token_b)
-    year, month = _this_year_month()
-    when = datetime.combine(_day_in_current_month(8), datetime.min.time()).replace(hour=10, tzinfo=ZoneInfo("UTC"))
+    year, month = _current_year_month()
+    when = _future_slot(8, 10)
 
     cust_a = _create_customer(token_a, phone="+15557770001")
     cust_b = _create_customer(token_b, phone="+15557770002")
@@ -408,9 +438,9 @@ def test_staff_forbidden_from_all_monthly_report_endpoints(staff_token):
 
 def test_monthly_excel_export_has_correct_sheets_and_data(business_ready):
     token, service_id = business_ready["token"], business_ready["service_id"]
-    year, month = _this_year_month()
+    year, month = _current_year_month()
     cust = _create_customer(token, phone="+15558880001")
-    when = datetime.combine(_day_in_current_month(9), datetime.min.time()).replace(hour=13, tzinfo=ZoneInfo("UTC"))
+    when = _future_slot(9, 13)
     _book(token, service_id, uuid.UUID(cust["id"]), when)
 
     resp = client.get(f"/api/v1/reports/monthly/excel?year={year}&month={month}", headers=_auth_header(token))
