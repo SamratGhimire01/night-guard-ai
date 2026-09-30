@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
+from app.core.config import settings as app_settings
 from app.core.exceptions import NotFoundError, TooManyRequestsError
 from app.core.rate_limit import (
     widget_business_rate_limiter,
@@ -31,6 +32,12 @@ _TEST_CHAT_PATH = Path(__file__).resolve().parents[2] / "static" / "test-chat.ht
 _WIDGET_DEMO_PATH = Path(__file__).resolve().parents[2] / "static" / "widget-demo.html"
 
 
+def _dev_only() -> None:
+    """The test pages below are development tools: in production they simply don't exist."""
+    if app_settings.environment == "production":
+        raise NotFoundError("Not found.")
+
+
 @router.get("/widget.js", include_in_schema=False)
 def get_widget_script() -> FileResponse:
     """Served at the site root (not under /api/v1) so a business's own
@@ -45,6 +52,7 @@ def get_widget_script() -> FileResponse:
 def get_test_chat_page() -> FileResponse:
     """Dev/test-only chat UI for hitting the real widget endpoint by hand.
     Not for production exposure -- see comment at top of test-chat.html."""
+    _dev_only()
     return FileResponse(_TEST_CHAT_PATH, media_type="text/html")
 
 
@@ -56,6 +64,7 @@ def get_widget_demo_page() -> FileResponse:
     preview is a sandboxed srcDoc iframe that cannot be granted microphone
     access. Not for production exposure -- see comment at top of
     widget-demo.html."""
+    _dev_only()
     return FileResponse(_WIDGET_DEMO_PATH, media_type="text/html")
 
 
