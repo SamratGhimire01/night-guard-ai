@@ -6,6 +6,7 @@ any authenticated role read), and 422 validation for bad payloads.
 """
 
 import uuid
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -417,3 +418,48 @@ def test_new_business_gets_the_currency_of_its_time_zone(timezone, currency):
         with SessionLocal() as db:
             db.delete(db.get(Business, business_id))
             db.commit()
+
+
+# ---------------------------------------------------------------- old time zone names from browsers ----------------
+
+
+def _register(timezone: str) -> tuple[uuid.UUID, str]:
+    resp = client.post(
+        "/api/v1/auth/register",
+        json={"business_name": "Zone Test", "timezone": timezone, "email": _unique_email("zone"), "password": "correcthorse1"},
+    )
+    assert resp.status_code == 201, resp.text
+    return uuid.UUID(resp.json()["business_id"]), resp.json()["email"]
+
+
+def _drop(business_id: uuid.UUID) -> None:
+    with SessionLocal() as db:
+        db.delete(db.get(Business, business_id))
+        db.commit()
+
+
+@pytest.mark.parametrize(
+    ("reported", "stored", "currency"),
+    [("Asia/Katmandu", "Asia/Kathmandu", "NPR"), ("Asia/Calcutta", "Asia/Kolkata", "INR"), ("Mars/Colony_One", "UTC", "USD")],
+)
+def test_sign_up_stores_a_time_zone_the_server_can_use(reported, stored, currency):
+    # Chrome reports Nepal as "Asia/Katmandu"; stored as-is it broke open slots, reminders and reports for the business
+    business_id, _ = _register(reported)
+    try:
+        with SessionLocal() as db:
+            business = db.get(Business, business_id)
+            assert (business.timezone, business.currency) == (stored, currency)
+            ZoneInfo(business.timezone)
+    finally:
+        _drop(business_id)
+
+
+def test_settings_accepts_an_old_time_zone_name_and_saves_the_current_one():
+    business_id, email = _register("UTC")
+    try:
+        token = client.post("/api/v1/auth/login", json={"email": email, "password": "correcthorse1"}).json()["access_token"]
+        resp = client.patch("/api/v1/business/me", json={"timezone": "Asia/Katmandu"}, headers=_auth_header(token))
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["timezone"] == "Asia/Kathmandu"
+    finally:
+        _drop(business_id)

@@ -111,7 +111,8 @@ def notify_new_booking(db: Session, *, appointment: Appointment) -> None:
 
 
 def send_upgrade_request(*, business_name: str, business_id: uuid.UUID, requested_by: str, contact_email: str | None) -> bool:
-    """Tells the platform team an owner wants Premium. Returns whether the email went out."""
+    """Tells the platform team an owner wants Premium. The email goes out in the background so a slow or unreachable
+    mail server never holds up the owner's click; returns whether it was queued (False when no address is set)."""
     to = settings.platform_support_email or settings.gmail_address
     if not to:
         logger.warning("upgrade request from %s not emailed: no PLATFORM_SUPPORT_EMAIL or GMAIL_ADDRESS set", business_id)
@@ -121,4 +122,5 @@ def send_upgrade_request(*, business_name: str, business_id: uuid.UUID, requeste
         f"Business ID: {business_id}\nRequested by: {requested_by}\nBusiness email: {contact_email or 'not set'}\n\n"
         "Upgrade them with PATCH /api/v1/admin/businesses/{id}/plan once payment is arranged."
     )
-    return _send(to=[to], subject=f"Upgrade request: {business_name}", body=body)
+    _in_background(to=[to], subject=f"Upgrade request: {business_name}", body=body)
+    return True

@@ -1,10 +1,10 @@
 import re
 import uuid
 from datetime import datetime
-from zoneinfo import available_timezones
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
+from app.core.timezones import AVAILABLE_TIMEZONES, canonical_timezone
 from app.db.models.business import BusinessFormality, BusinessPlan, ContentScope, EmojiPolicy, LanguageMode
 from app.schemas.common import safe_str
 
@@ -14,7 +14,7 @@ _MAX_DESCRIPTION_CHARS = 10_000
 
 _HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-_AVAILABLE_TIMEZONES = available_timezones()
+_AVAILABLE_TIMEZONES = AVAILABLE_TIMEZONES
 
 # The dashboard's Business Profile currency picker (Settings page) only ever
 # offers these — kept as a curated allowlist, not the full ~180-code ISO 4217
@@ -134,9 +134,12 @@ class BusinessUpdate(BaseModel):
     @field_validator("timezone")
     @classmethod
     def valid_timezone(cls, value: str | None) -> str | None:
-        if value is not None and value not in _AVAILABLE_TIMEZONES:
+        if value is None:
+            return None
+        canonical = canonical_timezone(value)
+        if canonical is None:
             raise ValueError("Must be a real IANA timezone, e.g. America/New_York.")
-        return value
+        return canonical
 
     @field_validator("currency")
     @classmethod

@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, field_validator
 
+from app.core.timezones import canonical_timezone
 from app.schemas.common import safe_str
 
 _PASSWORD_MIN_LENGTH = 8
@@ -38,6 +39,13 @@ class RegisterRequest(BaseModel):
     @classmethod
     def password_strength(cls, value: str) -> str:
         return _validate_password_strength(value)
+
+    @field_validator("timezone")
+    @classmethod
+    def known_timezone(cls, value: str) -> str:
+        # The browser's zone, under its current name. Signing up never fails over it: a zone this server doesn't know
+        # becomes UTC and the owner can pick the right one in Settings.
+        return canonical_timezone(value) or "UTC"
 
 
 class RegisterResponse(BaseModel):

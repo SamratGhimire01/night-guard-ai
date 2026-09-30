@@ -35,4 +35,4 @@ class AdminBusinessRead(BaseModel):
 
 class UpgradeRequestResult(BaseModel):
     requested_at: datetime
-    team_notified: bool  # False when the support email could not be sent; the request is still recorded
+    team_notified: bool  # False when no support email is configured; the request is still recorded

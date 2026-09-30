@@ -1,6 +1,5 @@
 import uuid
 
-import asyncio
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, File, UploadFile
@@ -69,20 +68,21 @@ def get_setup_status(current_user: BusinessUser = Depends(get_current_user), db:
 
 
 @router.post("/business/plan/upgrade-request", response_model=UpgradeRequestResult)
-async def request_plan_upgrade(
+def request_plan_upgrade(
     current_user: BusinessUser = Depends(require_role(["owner", "admin"])),
     db: Session = Depends(get_db),
 ) -> UpgradeRequestResult:
     """An owner asks to move to Premium. Recorded on the business (so the platform team sees it in the admin list) and
-    emailed to the platform's support address. The email is best effort: the request stands even if it can't be sent."""
+    emailed to the platform's support address in the background. The email is best effort: the request stands even if
+    it can't be sent."""
     business = business_service.get_business(db, business_id=current_user.business_id)
     if business.plan == BusinessPlan.PREMIUM:
         raise ConflictError("This business is already on Premium.")
     business.upgrade_requested_at = datetime.now(UTC)
     db.commit()
-    notified = await asyncio.to_thread(
-        owner_alert_service.send_upgrade_request, business_name=business.name, business_id=business.id,
-        requested_by=current_user.email, contact_email=business.email,
+    notified = owner_alert_service.send_upgrade_request(
+        business_name=business.name, business_id=business.id, requested_by=current_user.email,
+        contact_email=business.email,
     )
     return UpgradeRequestResult(requested_at=business.upgrade_requested_at, team_notified=notified)
 
