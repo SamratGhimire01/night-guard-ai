@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Alert, Badge, Button, Card, Group, Skeleton, Stack, Switch, Table, Text, Title, Tooltip } from '@mantine/core'
+import { Badge, Button, Card, Group, Skeleton, Stack, Switch, Table, Text, Title, Tooltip } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import PageHeader from '../../components/PageHeader'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch, ApiError } from '../../api/client'
 import type { BusinessRead } from '../../api/types'
@@ -69,58 +70,57 @@ export default function FollowUpsPage() {
   }
 
   return (
-    <Stack gap="lg" maw={640}>
-      <Title order={2}>Follow-ups</Title>
-      <Text c="dimmed" size="sm">
-        When on, a customer who showed real interest (asked about pricing or a service) and then went quiet gets one
-        automatic follow-up email, at most once per conversation.
-      </Text>
+    <Stack gap="lg" maw={720}>
+      <PageHeader
+        title="Follow-ups"
+        description="Win back customers who were interested but went quiet. Night Guard sends them one friendly email, so you don't have to remember to."
+      />
 
-      <Alert color="yellow" variant="light">
-        This is a <strong>manual trigger</strong>, not an automatic schedule — there's no background job running
-        this on its own yet. Turning follow-ups on only controls whether a run (yours, below) is allowed to send
-        anything; it doesn't start a timer.
-      </Alert>
-
-      <Card withBorder radius="md" p="md">
-        <Group justify="space-between">
+      <Card p="lg">
+        <Group justify="space-between" wrap="nowrap" align="flex-start" gap="lg">
           <div>
-            <Text fw={600} size="sm">
-              Follow-ups
-            </Text>
-            <Text size="xs" c="dimmed">
-              {business.follow_ups_enabled ? 'On — a run below can send emails.' : 'Off — a run below sends nothing.'}
+            <Text fw={700}>Send follow-ups automatically</Text>
+            <Text size="sm" c="dimmed" mt={4}>
+              {business.follow_ups_enabled
+                ? 'On. Every 15 minutes Night Guard looks for customers who asked about a service or price and then did not reply for a day, and sends each one a single email.'
+                : 'Off. Turn this on and customers who showed interest but went quiet get one friendly email.'}
             </Text>
           </div>
           {canWrite ? (
-            <Switch checked={business.follow_ups_enabled} onChange={(e) => toggle(e.currentTarget.checked)} />
+            <Switch
+              size="lg"
+              aria-label="Send follow-ups automatically"
+              checked={business.follow_ups_enabled}
+              onChange={(e) => toggle(e.currentTarget.checked)}
+            />
           ) : (
-            <Tooltip label="Owners and admins only">
-              <Switch checked={business.follow_ups_enabled} disabled />
+            <Tooltip label="Only owners and admins can change this">
+              <Switch size="lg" checked={business.follow_ups_enabled} disabled />
             </Tooltip>
           )}
         </Group>
       </Card>
 
-      <Card withBorder radius="md" p="md">
-        <Group justify="space-between" align="center">
-          <div>
-            <Text fw={600} size="sm">
-              Run follow-ups now
-            </Text>
-            <Text size="xs" c="dimmed">
-              Checks every open conversation for real, qualifying inactivity and sends real emails immediately.
+      <Card p="lg">
+        <Group justify="space-between" align="center" wrap="wrap" gap="md">
+          <div style={{ flex: '1 1 260px' }}>
+            <Text fw={700}>Check now</Text>
+            <Text size="sm" c="dimmed" mt={4}>
+              Don't want to wait for the next automatic check? Send any follow-ups that are due right away. Nobody ever
+              gets more than one.
             </Text>
           </div>
           {canWrite ? (
-            <Tooltip label={business.follow_ups_enabled ? '' : 'Follow-ups are off — turn them on first.'} disabled={business.follow_ups_enabled}>
-              <Button onClick={runNow} loading={running} disabled={!business.follow_ups_enabled}>
-                Run now
+            <Tooltip label="Turn follow-ups on first" disabled={business.follow_ups_enabled}>
+              <Button variant="default" onClick={runNow} loading={running} disabled={!business.follow_ups_enabled}>
+                Check now
               </Button>
             </Tooltip>
           ) : (
-            <Tooltip label="Owners and admins only">
-              <Button disabled>Run now</Button>
+            <Tooltip label="Only owners and admins can do this">
+              <Button variant="default" disabled>
+                Check now
+              </Button>
             </Tooltip>
           )}
         </Group>
@@ -129,11 +129,11 @@ export default function FollowUpsPage() {
       {lastRun && (
         <Card withBorder radius="md" p="md">
           <Text fw={600} size="sm" mb="xs">
-            Last run — {lastRun.processed} processed
+            Last check: {lastRun.processed} {lastRun.processed === 1 ? 'conversation' : 'conversations'} looked at
           </Text>
           {lastRun.processed === 0 ? (
             <Text size="sm" c="dimmed">
-              No conversations currently qualify.
+              Nobody needs a follow-up right now.
             </Text>
           ) : (
             <Table.ScrollContainer minWidth={500}>

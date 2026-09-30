@@ -182,6 +182,8 @@ class Settings(BaseSettings):
     # a short value only for a real, timed live-verification run (never left
     # short in committed config).
     reminder_poll_interval_seconds: int = 60
+    # How often the background scheduler looks for quiet leads to follow up (businesses that turned follow-ups on).
+    followup_run_interval_seconds: int = 900
 
     # Phase 52: how long the AI stays silent in a conversation after a staff member last replied/claimed it (sliding: each
     # staff reply restarts it). 2 hours in production; override to a few seconds only for a real, timed live-verification
