@@ -49,6 +49,22 @@ def create_appointment(
     return AppointmentRead.model_validate(appointment)
 
 
+@router.get("/appointments/available-slots")
+def list_available_slots(
+    service_id: uuid.UUID,
+    on: date,
+    staff_id: uuid.UUID | None = Query(default=None),
+    current_user: BusinessUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Open start times for one service on one day, from the same calculation the assistant uses in chat (business
+    hours, holidays, existing bookings, never in the past), so a booking added from the dashboard can't double-book."""
+    slots = booking_service.get_available_slots(
+        db, business_id=current_user.business_id, service_id=service_id, staff_id=staff_id, date_from=on, date_to=on
+    )
+    return {"slots": [slot.isoformat() for slot in slots]}
+
+
 @router.get("/appointments", response_model=list[AppointmentListItem])
 def list_appointments(
     customer_id: uuid.UUID | None = Query(default=None),

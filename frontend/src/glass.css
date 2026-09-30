@@ -895,3 +895,25 @@ body::before {
   color: var(--mantine-primary-color-filled);
   flex-shrink: 0;
 }
+
+/* Time choices when adding an appointment. */
+.ng-slot {
+  text-align: center;
+  padding: 10px 6px;
+  border-radius: var(--mantine-radius-md);
+  border: 1.5px solid var(--ng-hairline);
+  background: var(--mantine-color-default);
+  font-weight: 600;
+  font-size: 15px;
+  transition: border-color 140ms var(--ng-ease), background-color 140ms var(--ng-ease);
+}
+
+.ng-slot:hover {
+  border-color: var(--mantine-primary-color-filled);
+}
+
+.ng-slot[data-active] {
+  background: var(--ng-grad);
+  border-color: transparent;
+  color: #fff;
+}
