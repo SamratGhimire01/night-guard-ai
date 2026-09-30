@@ -127,7 +127,23 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     )
 
 
+AI_UNAVAILABLE_MESSAGE = "The AI service is busy right now, so nothing was saved. Please try again in a minute."
+
+
+async def llm_provider_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    # The chat degrades gracefully on its own (orchestrator); this is for the screens that can't, such as saving a
+    # knowledge document or asking the Training Room. A clear 503 instead of a crash, and nothing half-saved.
+    logger.warning("AI provider unavailable on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"error": {"type": "ai_unavailable", "message": AI_UNAVAILABLE_MESSAGE}},
+    )
+
+
 def register_exception_handlers(app) -> None:
+    from app.llm.base import LLMProviderError
+
     app.add_exception_handler(NightGuardError, night_guard_exception_handler)
+    app.add_exception_handler(LLMProviderError, llm_provider_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)

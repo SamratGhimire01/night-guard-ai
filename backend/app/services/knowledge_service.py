@@ -44,15 +44,17 @@ def create_document(
         source=source,
         status=status,
     )
+    # Embed first, save second: if the AI provider is down, LLMProviderError propagates before anything is written,
+    # so there is never an "approved" document the assistant can't find.
+    chunks = _embedded_chunks(content) if status == KnowledgeDocumentStatus.APPROVED else []
     if status == KnowledgeDocumentStatus.APPROVED:
         document.approved_by = approved_by
         document.approved_at = datetime.now(UTC)
     db.add(document)
+    db.flush()
+    _add_chunks(db, document, chunks)
     db.commit()
     db.refresh(document)
-    if status == KnowledgeDocumentStatus.APPROVED:
-        _regenerate_chunks(db, document)
-        db.refresh(document)
     return document
 
 
@@ -66,21 +68,17 @@ def get_document(
     ).scalar_one_or_none()
 
 
-def _regenerate_chunks(db: Session, document: KnowledgeDocument) -> None:
-    """Invalidates any existing chunks and, only if the document is currently
-    approved, re-chunks + re-embeds its content. Only approved documents may
-    ever have retrievable chunks — this is what enforces that at write time,
-    rather than relying solely on a status filter at query time."""
-    db.execute(delete(KnowledgeChunk).where(KnowledgeChunk.knowledge_document_id == document.id))
+def _embedded_chunks(content: str) -> list[tuple[str, list[float]]]:
+    """Chunks and embeds `content` without touching the database. Raises LLMProviderError if the provider is down."""
+    pieces = chunk_text(content)
+    if not pieces:
+        return []
+    return list(zip(pieces, get_embedding_provider().embed(pieces), strict=True))
 
-    if document.status == KnowledgeDocumentStatus.APPROVED:
-        pieces = chunk_text(document.content)
-        if pieces:
-            vectors = get_embedding_provider().embed(pieces)
-            for piece, vector in zip(pieces, vectors, strict=True):
-                db.add(KnowledgeChunk(knowledge_document_id=document.id, content=piece, embedding=vector))
 
-    db.commit()
+def _add_chunks(db: Session, document: KnowledgeDocument, chunks: list[tuple[str, list[float]]]) -> None:
+    for piece, vector in chunks:
+        db.add(KnowledgeChunk(knowledge_document_id=document.id, content=piece, embedding=vector))
 
 
 def update_document(
@@ -99,6 +97,18 @@ def update_document(
     new_status = data.pop("status", None)
     content_changed = "content" in data
 
+    # Re-index on approval, on re-approval-after-edit, on any content edit, and on leaving approved (archive) --
+    # skipped for a title-only edit so no embedding call is spent for nothing. Only approved documents ever have
+    # retrievable chunks. Embeddings are computed before anything changes, so a provider failure leaves the document
+    # exactly as it was.
+    reindex = content_changed or new_status is not None
+    final_status = new_status if new_status is not None else document.status
+    chunks = (
+        _embedded_chunks(data.get("content", document.content))
+        if reindex and final_status == KnowledgeDocumentStatus.APPROVED
+        else []
+    )
+
     if content_changed:
         # Lightweight versioning: bump the counter on every content edit. No separate
         # history/snapshot table — Phase 5 scope is "structured, versioned, gated by
@@ -114,17 +124,11 @@ def update_document(
             document.approved_by = current_user_id
             document.approved_at = datetime.now(UTC)
 
+    if reindex:
+        db.execute(delete(KnowledgeChunk).where(KnowledgeChunk.knowledge_document_id == document.id))
+        _add_chunks(db, document, chunks)
     db.commit()
     db.refresh(document)
-
-    # Re-chunk on approval, on re-approval-after-edit, on any content edit to an
-    # already-approved doc, and on leaving approved (archive) — skipped entirely
-    # for a no-op status/title-only edit, so we don't burn an embedding call for
-    # nothing.
-    if content_changed or new_status is not None:
-        _regenerate_chunks(db, document)
-        db.refresh(document)
-
     return document
 
 

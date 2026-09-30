@@ -31,6 +31,7 @@ from app.api.routes import (
     widget,
 )
 from app.core.config import settings
+from app.core.error_middleware import CatchUnhandledErrorsMiddleware
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.widget_cors import WidgetCORSMiddleware
@@ -64,6 +65,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 register_exception_handlers(app)
+# Innermost of the three: an unexpected error becomes a JSON 500 that still gets CORS headers (see the module).
+app.add_middleware(CatchUnhandledErrorsMiddleware)
 # Order matters: Starlette makes the LAST-added middleware the OUTERMOST one, so it
 # sees a request first. WidgetCORSMiddleware must be outermost — it fully owns CORS
 # for widget paths (including handling their OPTIONS preflight itself with a
