@@ -393,3 +393,27 @@ def test_invalid_payloads_return_422_not_500(two_businesses, path, method, body)
     token_a = two_businesses["token_a"]
     resp = getattr(client, method)(path, json=body, headers=_auth_header(token_a))
     assert resp.status_code == 422, resp.text
+
+
+# ---------------------------------------------------------------- currency from time zone at sign-up ---------------
+
+
+@pytest.mark.parametrize(
+    ("timezone", "currency"),
+    [("Asia/Kathmandu", "NPR"), ("Asia/Kolkata", "INR"), ("Europe/Berlin", "EUR"), ("Australia/Sydney", "AUD"), ("UTC", "USD")],
+)
+def test_new_business_gets_the_currency_of_its_time_zone(timezone, currency):
+    email = _unique_email("currency")
+    resp = client.post(
+        "/api/v1/auth/register",
+        json={"business_name": "Currency Test", "timezone": timezone, "email": email, "password": "correcthorse1"},
+    )
+    assert resp.status_code == 201, resp.text
+    business_id = uuid.UUID(resp.json()["business_id"])
+    try:
+        with SessionLocal() as db:
+            assert db.get(Business, business_id).currency == currency
+    finally:
+        with SessionLocal() as db:
+            db.delete(db.get(Business, business_id))
+            db.commit()
