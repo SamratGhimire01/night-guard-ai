@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     # Empty by default: the provider treats missing credentials as a real,
     # non-retryable send failure rather than crashing at import time.
     gmail_address: str = ""
+    # Where dashboard upgrade requests go. Blank = the platform Gmail address above.
+    platform_support_email: str = ""
     gmail_app_password: str = ""
 
     # Twilio SMS (app/services/notifications/sms_provider.py). Empty by default:

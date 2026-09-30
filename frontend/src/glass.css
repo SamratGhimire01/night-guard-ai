@@ -849,3 +849,7 @@ body::before {
 .ng-avatar .mantine-Avatar-image {
   background: #fff;
 }
+
+.ng-upgrade {
+  background: var(--ng-grad-soft) !important;
+}

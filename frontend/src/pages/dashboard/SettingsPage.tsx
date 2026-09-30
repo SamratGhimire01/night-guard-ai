@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Badge,
   Button,
@@ -41,6 +42,7 @@ import type {
   Formality,
   LanguageMode,
   PlanRead,
+  UpgradeRequestResult,
 } from '../../api/types'
 import PageHeader from '../../components/PageHeader'
 
@@ -102,6 +104,7 @@ type BookingValues = {
   booking_enabled: boolean
   reminder_enabled: boolean
   reminder_minutes_before: number
+  owner_alerts_enabled: boolean
 }
 
 const REMINDER_PRESETS = [
@@ -141,6 +144,7 @@ function bookingFrom(b: BusinessRead): BookingValues {
     booking_enabled: b.booking_enabled,
     reminder_enabled: b.reminder_enabled,
     reminder_minutes_before: b.reminder_minutes_before,
+    owner_alerts_enabled: b.owner_alerts_enabled,
   }
 }
 
@@ -305,6 +309,9 @@ export default function SettingsPage() {
   const [refData, setRefData] = useState<BusinessReferenceData | null>(null)
   const [plan, setPlan] = useState<PlanRead | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
+  const [params, setParams] = useSearchParams()
+  const tab = ['profile', 'assistant', 'bookings', 'plan'].includes(params.get('tab') ?? '') ? params.get('tab')! : 'profile'
+  const [requesting, setRequesting] = useState(false)
 
   useEffect(() => {
     apiFetch<BusinessRead>('/business/me').then(setBusiness)
@@ -324,7 +331,7 @@ export default function SettingsPage() {
   })
   const assistantForm = useForm<AssistantValues>({ initialValues: assistantFrom({} as BusinessRead) })
   const bookingForm = useForm<BookingValues>({
-    initialValues: { booking_enabled: true, reminder_enabled: false, reminder_minutes_before: 60 },
+    initialValues: { booking_enabled: true, reminder_enabled: false, reminder_minutes_before: 60, owner_alerts_enabled: true },
     validate: {
       reminder_minutes_before: (v, values) =>
         !values.reminder_enabled || (v >= 5 && v <= 1440) ? null : 'Choose between 5 minutes and 1 day (1440 minutes).',
@@ -361,6 +368,24 @@ export default function SettingsPage() {
     }
   }
 
+  async function requestUpgrade() {
+    setRequesting(true)
+    try {
+      const result = await apiFetch<UpgradeRequestResult>('/business/plan/upgrade-request', { method: 'POST' })
+      setBusiness((b) => (b ? { ...b, upgrade_requested_at: result.requested_at } : b))
+      notifications.show({
+        color: 'green',
+        message: result.team_notified
+          ? 'Request sent. Our team will contact you soon.'
+          : 'Request saved. Our team will see it and contact you.',
+      })
+    } catch (err) {
+      notifications.show({ color: 'red', message: err instanceof ApiError ? err.message : 'Could not send the request. Please try again.' })
+    } finally {
+      setRequesting(false)
+    }
+  }
+
   if (!business || !refData) {
     return (
       <Stack gap="lg">
@@ -388,7 +413,7 @@ export default function SettingsPage() {
     <Stack gap="lg">
       <PageHeader title="Settings" description="Your business details, how your assistant talks, and your plan." />
 
-      <Tabs defaultValue="profile" keepMounted={false}>
+      <Tabs value={tab} onChange={(v) => setParams(v && v !== 'profile' ? { tab: v } : {}, { replace: true })} keepMounted={false}>
         <Tabs.List mb="lg">
           <Tabs.Tab value="profile" leftSection={<IconBuildingStore size={18} />}>
             Business profile
@@ -629,6 +654,19 @@ export default function SettingsPage() {
                 )}
               </Section>
 
+              <Section
+                title="Alerts for you"
+                description="Sent to the email of every owner and admin login."
+              >
+                <Switch
+                  size="lg"
+                  label="Email me when a customer needs a person or books in chat"
+                  description="So you can reply quickly without keeping the dashboard open."
+                  disabled={!canWrite}
+                  {...bookingForm.getInputProps('owner_alerts_enabled', { type: 'checkbox' })}
+                />
+              </Section>
+
               <SaveBar dirty={bookingForm.isDirty()} saving={saving === 'bookings'} canWrite={canWrite} onDiscard={() => bookingForm.reset()} />
             </Stack>
           </form>
@@ -659,10 +697,39 @@ export default function SettingsPage() {
                   </div>
                 )}
                 {plan.plan !== 'premium' && (
-                  <Text size="sm" c="dimmed">
-                    Premium adds online deposits (eSewa and Khalti), Google Calendar sync, SMS, voice messages and yearly
-                    reports. To upgrade, contact the Night Guard AI team.
-                  </Text>
+                  <Paper p="lg" radius="lg" className="ng-upgrade">
+                    <Stack gap="sm">
+                      <Text fw={700} size="lg">
+                        Premium adds
+                      </Text>
+                      <List size="sm" spacing={4}>
+                        <List.Item>Online deposits through eSewa and Khalti</List.Item>
+                        <List.Item>Google Calendar sync</List.Item>
+                        <List.Item>SMS confirmations and reminders</List.Item>
+                        <List.Item>Yearly reports with year-over-year comparison</List.Item>
+                      </List>
+                      {business.upgrade_requested_at ? (
+                        <Text size="sm" fw={600}>
+                          You asked to upgrade on {new Date(business.upgrade_requested_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}.
+                          Our team will contact you at {business.email || 'your login email'} to set it up.
+                        </Text>
+                      ) : (
+                        <Text size="sm" c="dimmed">
+                          Ask for Premium and our team will contact you to set up payment.
+                        </Text>
+                      )}
+                      {canWrite && (
+                        <Button
+                          style={{ alignSelf: 'flex-start' }}
+                          loading={requesting}
+                          variant={business.upgrade_requested_at ? 'default' : 'filled'}
+                          onClick={requestUpgrade}
+                        >
+                          {business.upgrade_requested_at ? 'Send the request again' : 'Request Premium'}
+                        </Button>
+                      )}
+                    </Stack>
+                  </Paper>
                 )}
               </Stack>
             ) : (

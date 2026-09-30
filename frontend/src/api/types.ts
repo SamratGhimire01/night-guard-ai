@@ -56,6 +56,8 @@ export interface BusinessRead {
   formality: Formality
   emoji_policy: EmojiPolicy
   sign_off: string | null
+  upgrade_requested_at: string | null
+  owner_alerts_enabled: boolean
 }
 
 export type Formality = 'casual' | 'neutral' | 'formal'
@@ -120,6 +122,7 @@ export interface BusinessUpdate {
   formality?: Formality
   emoji_policy?: EmojiPolicy
   sign_off?: string | null
+  owner_alerts_enabled?: boolean
 }
 
 export interface PlanRead {
@@ -501,4 +504,9 @@ export interface InboxMessage {
   delivery_detail: string | null
   sent_by_user_id: string | null
   sent_by_email: string | null
+}
+
+export interface UpgradeRequestResult {
+  requested_at: string
+  team_notified: boolean
 }

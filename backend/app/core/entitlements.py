@@ -18,22 +18,22 @@ _PLAN_RANK: dict[BusinessPlan, int] = {
     BusinessPlan.PREMIUM: 1,
 }
 
-# Real, honest feature descriptions for GET /business/plan (requirement #5) —
-# a plain dict, not a DB table: there is no real per-plan config to store yet
-# (see BusinessPlan's own docstring). Deliberately does NOT list anything not
-# actually built — no premium feature exists in this codebase yet, so PREMIUM
-# only honestly promises priority access to what's coming, never a specific
-# capability that doesn't exist today.
+# What each plan includes, shown on the dashboard's Plan tab (GET /business/plan). List only what is built and gated:
+# Premium = require_plan(PREMIUM) on Google Calendar, payments and yearly reports, plus SMS.
 PLAN_FEATURES: dict[BusinessPlan, list[str]] = {
     BusinessPlan.FREE: [
-        "AI-powered customer conversations (booking, rescheduling, cancellation, Q&A)",
-        "Automated email notifications and reminders",
+        "AI assistant on WhatsApp, Messenger, Instagram and your website",
+        "Bookings, rescheduling and cancellations in chat",
+        "Email confirmations, reminders and follow-ups",
+        "Inbox with human takeover",
         "Daily and monthly reports",
     ],
     BusinessPlan.PREMIUM: [
         "Everything in Free",
-        "Priority access to upcoming premium features (Google Calendar sync, "
-        "online payments, voice booking, yearly analytics reports) as they ship",
+        "Online deposits through eSewa and Khalti",
+        "Google Calendar sync",
+        "SMS confirmations and reminders",
+        "Yearly reports with year-over-year comparison",
     ],
 }
 

@@ -1,12 +1,15 @@
 import uuid
 
+import asyncio
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db, require_role
 from app.core.entitlements import PLAN_FEATURES
-from app.core.exceptions import NotFoundError
-from app.db.models.business import BusinessUser
+from app.core.exceptions import ConflictError, NotFoundError
+from app.db.models.business import BusinessPlan, BusinessUser
 from app.schemas.business import _AVAILABLE_TIMEZONES, SUPPORTED_CURRENCIES, BusinessRead, BusinessUpdate
 from app.schemas.business_hours import (
     BusinessHoursUpdate,
@@ -14,9 +17,9 @@ from app.schemas.business_hours import (
     HolidayExceptionCreate,
     HolidayExceptionRead,
 )
-from app.schemas.plan import PlanRead
+from app.schemas.plan import PlanRead, UpgradeRequestResult
 from app.schemas.widget import WidgetSettings
-from app.services import branding_service, business_hours_service, business_service
+from app.services import branding_service, business_hours_service, business_service, owner_alert_service
 
 router = APIRouter()
 
@@ -57,6 +60,25 @@ def get_my_plan(
     deliverable for now."""
     business = business_service.get_business(db, business_id=current_user.business_id)
     return PlanRead(business_id=business.id, plan=business.plan, features=PLAN_FEATURES[business.plan])
+
+
+@router.post("/business/plan/upgrade-request", response_model=UpgradeRequestResult)
+async def request_plan_upgrade(
+    current_user: BusinessUser = Depends(require_role(["owner", "admin"])),
+    db: Session = Depends(get_db),
+) -> UpgradeRequestResult:
+    """An owner asks to move to Premium. Recorded on the business (so the platform team sees it in the admin list) and
+    emailed to the platform's support address. The email is best effort: the request stands even if it can't be sent."""
+    business = business_service.get_business(db, business_id=current_user.business_id)
+    if business.plan == BusinessPlan.PREMIUM:
+        raise ConflictError("This business is already on Premium.")
+    business.upgrade_requested_at = datetime.now(UTC)
+    db.commit()
+    notified = await asyncio.to_thread(
+        owner_alert_service.send_upgrade_request, business_name=business.name, business_id=business.id,
+        requested_by=current_user.email, contact_email=business.email,
+    )
+    return UpgradeRequestResult(requested_at=business.upgrade_requested_at, team_notified=notified)
 
 
 @router.patch("/business/me", response_model=BusinessRead)

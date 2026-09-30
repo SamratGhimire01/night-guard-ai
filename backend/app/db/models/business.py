@@ -1,7 +1,7 @@
 import enum
-from datetime import date, time
+from datetime import date, datetime, time
 
-from sqlalchemy import Boolean, CheckConstraint, Date, Enum, LargeBinary, String, Text, Time, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, Enum, LargeBinary, String, Text, Time, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -136,6 +136,10 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     logo_content_type: Mapped[str | None] = mapped_column(String(32))
     # Website chat widget look and copy (see app/schemas/widget.py WidgetSettings for the keys and their defaults).
     widget_settings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default="{}")
+    # When an owner last asked to move to Premium from the dashboard (the platform team follows up).
+    upgrade_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Email the owner/admins when a customer needs a person or books (app/services/owner_alert_service.py).
+    owner_alerts_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     # Phase 44: real eSewa/Khalti payment collection — a Premium-gated toggle,
     # off by default (same "never on by default" discipline as sms_enabled/
     # follow_ups_enabled above). Only writable via the dedicated, plan-gated

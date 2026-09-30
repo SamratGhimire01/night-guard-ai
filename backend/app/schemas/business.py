@@ -1,5 +1,6 @@
 import re
 import uuid
+from datetime import datetime
 from zoneinfo import available_timezones
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
@@ -75,6 +76,8 @@ class BusinessRead(BaseModel):
     formality: BusinessFormality
     emoji_policy: EmojiPolicy
     sign_off: str | None
+    upgrade_requested_at: datetime | None = None
+    owner_alerts_enabled: bool = True
 
 
 class BusinessUpdate(BaseModel):
@@ -110,6 +113,7 @@ class BusinessUpdate(BaseModel):
     formality: BusinessFormality | None = None
     emoji_policy: EmojiPolicy | None = None
     sign_off: safe_str(200) | None = None
+    owner_alerts_enabled: bool | None = None
 
     @field_validator("brand_color")
     @classmethod
@@ -148,7 +152,7 @@ class BusinessUpdate(BaseModel):
             raise ValueError("This field is required and cannot be cleared to null.")
         return value
 
-    @field_validator("sms_enabled", "follow_ups_enabled", "reminder_enabled", "booking_enabled")
+    @field_validator("sms_enabled", "follow_ups_enabled", "reminder_enabled", "booking_enabled", "owner_alerts_enabled")
     @classmethod
     def bool_toggle_not_null(cls, value: bool | None) -> bool:
         if value is None:
