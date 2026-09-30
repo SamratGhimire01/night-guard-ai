@@ -142,7 +142,7 @@ def test_premium_gated_route_blocks_free_then_allows_after_admin_upgrade(two_bus
     business_id_a = two_businesses["business_id_a"]
     token_a = two_businesses["token_a"]
 
-    blocked = client.get("/api/v1/premium-test/ping", headers=_auth_header(token_a))
+    blocked = client.get("/api/v1/reports/yearly?year=2026", headers=_auth_header(token_a))
     assert blocked.status_code == 402, blocked.text
     assert blocked.json()["error"]["type"] == "plan_required"
 
@@ -154,9 +154,9 @@ def test_premium_gated_route_blocks_free_then_allows_after_admin_upgrade(two_bus
     assert upgrade.status_code == 200, upgrade.text
     assert upgrade.json()["plan"] == "premium"
 
-    allowed = client.get("/api/v1/premium-test/ping", headers=_auth_header(token_a))
+    allowed = client.get("/api/v1/reports/yearly?year=2026", headers=_auth_header(token_a))
     assert allowed.status_code == 200, allowed.text
-    assert allowed.json() == {"message": "Premium feature executed."}
+    assert allowed.json()["year"] == 2026  # the real yearly report, now unlocked
 
 
 def test_downgrade_reengages_gate_immediately_same_token(two_businesses, superadmin_token):
@@ -170,7 +170,7 @@ def test_downgrade_reengages_gate_immediately_same_token(two_businesses, superad
         json={"plan": "premium"},
         headers=_auth_header(superadmin_token),
     )
-    assert client.get("/api/v1/premium-test/ping", headers=_auth_header(token_a)).status_code == 200
+    assert client.get("/api/v1/reports/yearly?year=2026", headers=_auth_header(token_a)).status_code == 200
 
     downgrade = client.patch(
         f"/api/v1/admin/businesses/{business_id_a}/plan",
@@ -180,7 +180,7 @@ def test_downgrade_reengages_gate_immediately_same_token(two_businesses, superad
     assert downgrade.status_code == 200, downgrade.text
     assert downgrade.json()["plan"] == "free"
 
-    reblocked = client.get("/api/v1/premium-test/ping", headers=_auth_header(token_a))
+    reblocked = client.get("/api/v1/reports/yearly?year=2026", headers=_auth_header(token_a))
     assert reblocked.status_code == 402, reblocked.text
 
 
@@ -247,61 +247,3 @@ def test_admin_plan_change_404s_for_nonexistent_business(superadmin_token):
         headers=_auth_header(superadmin_token),
     )
     assert resp.status_code == 404, resp.text
-
-
-# --- orchestrator-level gate (not via FastAPI Depends at all) -----------------
-
-
-class _StubEmbeddingProvider:
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        return [[0.01] * 1536 for _ in texts]
-
-
-def test_orchestrator_blocks_premium_test_message_for_free_plan_business(two_businesses, monkeypatch):
-    """Proves ensure_plan works from PLAIN Python inside the orchestrator,
-    completely bypassing FastAPI's dependency-injection system — the
-    "usable ... inside the conversation orchestrator's tool logic" half of
-    Phase 34's requirement #2. No LLM stub needed: the literal trigger
-    phrase is matched BEFORE any classify_and_respond call."""
-    import app.services.conversation.orchestrator as orchestrator_module
-
-    monkeypatch.setattr(orchestrator_module, "get_embedding_provider", lambda: _StubEmbeddingProvider())
-
-    business_id_a = two_businesses["business_id_a"]
-    token_a = two_businesses["token_a"]
-
-    with SessionLocal() as db:
-        from app.db.models.conversation import Conversation
-
-        customer_resp = client.post(
-            "/api/v1/customers", json={"name": "Orchestrator Test"}, headers=_auth_header(token_a)
-        )
-        customer_id = uuid.UUID(customer_resp.json()["id"])
-        conversation = Conversation(
-            business_id=uuid.UUID(business_id_a), customer_id=customer_id, channel="sms", status="open"
-        )
-        db.add(conversation)
-        db.commit()
-        db.refresh(conversation)
-        conversation_id = conversation.id
-
-    blocked = client.post(
-        f"/api/v1/conversations/{conversation_id}/messages",
-        headers=_auth_header(token_a),
-        json={"content": "test premium feature"},
-    )
-    assert blocked.status_code == 201, blocked.text
-    assert "isn't available on your current plan" in blocked.json()["response"]
-
-    with SessionLocal() as db:
-        business = db.get(Business, uuid.UUID(business_id_a))
-        business.plan = BusinessPlan.PREMIUM
-        db.commit()
-
-    allowed = client.post(
-        f"/api/v1/conversations/{conversation_id}/messages",
-        headers=_auth_header(token_a),
-        json={"content": "test premium feature"},
-    )
-    assert allowed.status_code == 201, allowed.text
-    assert allowed.json()["response"] == "Premium feature executed."

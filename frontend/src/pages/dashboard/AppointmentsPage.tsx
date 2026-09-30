@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ActionIcon, Button, Group, Modal, Paper, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { IconCalendarEvent, IconCalendarTime, IconCheck, IconX } from '@tabler/icons-react'
+import { IconCalendarEvent, IconCalendarTime, IconCheck, IconPlus, IconX } from '@tabler/icons-react'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch, ApiError } from '../../api/client'
 import type { AppointmentListItem, AppointmentStatus, BusinessRead } from '../../api/types'
@@ -9,6 +9,7 @@ import { EmptyRow } from '../../components/EmptyState'
 import PageHeader from '../../components/PageHeader'
 import StatusBadge from '../../components/StatusBadge'
 import TableSkeleton from '../../components/TableSkeleton'
+import AddAppointmentModal from './AddAppointmentModal'
 
 const CANCELLABLE: AppointmentStatus[] = ['pending', 'confirmed']
 const PAGE_SIZE = 20
@@ -61,6 +62,7 @@ export default function AppointmentsPage() {
   const canWrite = role === 'owner' || role === 'admin'
 
   const [appointments, setAppointments] = useState<AppointmentListItem[] | null>(null)
+  const [adding, setAdding] = useState(false)
   const [timezone, setTimezone] = useState('UTC')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [dateFrom, setDateFrom] = useState('')
@@ -144,7 +146,16 @@ export default function AppointmentsPage() {
 
   return (
     <Stack gap="md">
-      <PageHeader title="Appointments" description="Every booking across your channels. Times are in your business's timezone." />
+      <PageHeader
+        title="Appointments"
+        description="Every booking across your channels. Times are in your business's time zone."
+        actions={
+          <Button leftSection={<IconPlus size={18} />} onClick={() => setAdding(true)}>
+            Add appointment
+          </Button>
+        }
+      />
+      <AddAppointmentModal opened={adding} onClose={() => setAdding(false)} onCreated={load} timezone={timezone} />
 
       <Group gap="sm" wrap="wrap">
         <Select

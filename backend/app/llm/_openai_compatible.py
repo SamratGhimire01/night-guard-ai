@@ -15,6 +15,8 @@ import time
 
 import httpx
 
+from app.llm.base import LLMProviderError
+
 logger = logging.getLogger(__name__)
 
 MAX_ATTEMPTS = 4
@@ -77,5 +79,5 @@ def post(*, provider: str, base_url: str, api_key: str, path: str, body: dict) -
     # never str(last_transport_error) (can also embed it) -- only the
     # exception's class name/status code, same discipline as azure_openai.py.
     if last_response is None:
-        raise RuntimeError(f"LLM provider request failed: {type(last_transport_error).__name__}") from None
-    raise RuntimeError(f"LLM provider request failed with HTTP {last_response.status_code}") from None
+        raise LLMProviderError(f"LLM provider request failed: {type(last_transport_error).__name__}") from None
+    raise LLMProviderError(f"LLM provider request failed with HTTP {last_response.status_code}") from None

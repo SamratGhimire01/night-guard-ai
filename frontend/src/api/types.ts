@@ -51,6 +51,34 @@ export interface BusinessRead {
   language_mode: LanguageMode
   content_scope: ContentScope
   booking_enabled: boolean
+  business_type: string | null
+  persona_name: string | null
+  formality: Formality
+  emoji_policy: EmojiPolicy
+  sign_off: string | null
+  upgrade_requested_at: string | null
+  owner_alerts_enabled: boolean
+}
+
+export type Formality = 'casual' | 'neutral' | 'formal'
+export type EmojiPolicy = 'default' | 'none'
+
+export type LauncherIcon = 'chat' | 'sparkles' | 'headset' | 'question' | 'calendar' | 'logo'
+
+// How the website chat widget looks and what it says first (GET/PUT /business/widget-settings).
+export interface WidgetSettings {
+  display_name: string
+  subtitle: string
+  welcome_message: string
+  suggested_questions: string[]
+  input_placeholder: string
+  launcher_icon: LauncherIcon
+  launcher_label: string
+  position: 'right' | 'left'
+  theme: 'light' | 'dark'
+  show_popup: boolean
+  popup_delay_seconds: number
+  show_branding: boolean
 }
 
 export interface PaymentSettingsUpdate {
@@ -89,6 +117,12 @@ export interface BusinessUpdate {
   language_mode?: LanguageMode
   content_scope?: ContentScope
   booking_enabled?: boolean
+  business_type?: string | null
+  persona_name?: string | null
+  formality?: Formality
+  emoji_policy?: EmojiPolicy
+  sign_off?: string | null
+  owner_alerts_enabled?: boolean
 }
 
 export interface PlanRead {
@@ -470,4 +504,28 @@ export interface InboxMessage {
   delivery_detail: string | null
   sent_by_user_id: string | null
   sent_by_email: string | null
+}
+
+export interface UpgradeRequestResult {
+  requested_at: string
+  team_notified: boolean
+}
+
+export interface CurrentUser {
+  user_id: string
+  business_id: string
+  email: string
+  role: 'owner' | 'admin' | 'staff'
+}
+
+export interface TeamMember {
+  id: string
+  email: string
+  role: 'owner' | 'admin' | 'staff'
+  created_at: string
+}
+
+export interface TeamInviteResult {
+  member: TeamMember
+  invite_link: string
 }

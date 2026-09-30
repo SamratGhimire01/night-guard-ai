@@ -16,6 +16,7 @@ import {
 import { notifications } from '@mantine/notifications'
 import { useAuth } from '../../auth/AuthContext'
 import { apiFetch, ApiError } from '../../api/client'
+import { friendlyDateTime } from '../../lib/dates'
 
 interface KnowledgeChunkUsed {
   chunk_id: string
@@ -139,8 +140,8 @@ export default function TrainingRoomPage() {
     <Stack gap="lg">
       <Title order={2}>AI Training Room</Title>
       <Text c="dimmed" size="sm">
-        Ask a real test question the way a customer would. See the exact answer the AI would give and which
-        knowledge chunks it used, then mark it correct or submit a correction.
+        Ask a question the way a customer would and see exactly how your assistant answers and where the answer
+        came from. If it's wrong, correct it and the assistant learns the right answer.
       </Text>
 
       <Card withBorder radius="md" p="md">
@@ -299,7 +300,7 @@ export default function TrainingRoomPage() {
                   </Text>
                 )}
                 <Text size="xs" c="dimmed" mt={6}>
-                  {new Date(h.created_at).toLocaleString()}
+                  {friendlyDateTime(h.created_at)}
                 </Text>
               </Card>
             ))}

@@ -79,7 +79,7 @@ export default function MessageBubble({ message, onRetry }: Props) {
           py={8}
           radius="lg"
           withBorder={!staff}
-          bg={staff ? 'var(--mantine-primary-color-filled)' : mine ? 'var(--mantine-color-default-hover)' : undefined}
+          className={staff ? 'ng-bubble-staff' : mine ? 'ng-bubble-ai' : undefined}
           c={staff ? 'white' : undefined}
         >
           <Text size="sm" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }} fs={isPlaceholder(message) ? 'italic' : undefined}>

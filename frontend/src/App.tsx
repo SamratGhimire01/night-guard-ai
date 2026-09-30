@@ -6,6 +6,7 @@ import { AuthProvider } from './auth/AuthContext'
 import RequireAuth from './auth/RequireAuth'
 import LandingPage from './pages/LandingPage'
 import AuthPage from './pages/AuthPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import DashboardLayout from './pages/dashboard/DashboardLayout'
 import AppointmentsPage from './pages/dashboard/AppointmentsPage'
 import ServicesPage from './pages/dashboard/ServicesPage'
@@ -24,15 +25,18 @@ import GoogleCalendarPage from './pages/dashboard/GoogleCalendarPage'
 import ChannelsPage from './pages/dashboard/ChannelsPage'
 import PaymentsPage from './pages/dashboard/PaymentsPage'
 import CheckInPage from './pages/dashboard/CheckInPage'
+import CustomersPage from './pages/dashboard/CustomersPage'
 import SettingsPage from './pages/dashboard/SettingsPage'
 
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
 import '@mantine/charts/styles.css'
+// After Mantine's styles, so the glass layer wins at equal specificity.
+import './glass.css'
 
 export default function App() {
   return (
-    <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver} defaultColorScheme="dark">
+    <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver} defaultColorScheme="light">
       <Notifications />
       <BrowserRouter>
         <AuthProvider>
@@ -40,11 +44,13 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<AuthPage />} />
             <Route path="/register" element={<AuthPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             <Route element={<RequireAuth />}>
               <Route path="/dashboard" element={<DashboardLayout />}>
                 <Route index element={<OverviewPage />} />
                 <Route path="appointments" element={<AppointmentsPage />} />
+                <Route path="customers" element={<CustomersPage />} />
                 <Route path="services" element={<ServicesPage />} />
                 <Route path="staff" element={<StaffPage />} />
                 <Route path="hours" element={<HoursPage />} />

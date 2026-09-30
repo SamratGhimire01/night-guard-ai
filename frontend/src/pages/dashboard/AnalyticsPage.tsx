@@ -6,6 +6,7 @@ import { IconAlertTriangle, IconCalendarStats, IconClockHour4, IconCoinOff, Icon
 import { apiFetch, ApiError } from '../../api/client'
 import { useAuth } from '../../auth/AuthContext'
 import type { BusinessRead } from '../../api/types'
+import InsightsSwitch from '../../components/InsightsSwitch'
 import PageHeader from '../../components/PageHeader'
 import StatCard from '../../components/StatCard'
 import StatusBadge from '../../components/StatusBadge'
@@ -211,8 +212,10 @@ export default function AnalyticsPage() {
   }, [data])
 
   const header = (
+    <>
+    <InsightsSwitch />
     <PageHeader
-      title="Analytics"
+      title="Trends"
       description={`How your bookings are trending and when people book. Times are in ${timezone}.`}
       actions={
         allowed && (
@@ -231,6 +234,7 @@ export default function AnalyticsPage() {
         )
       }
     />
+    </>
   )
 
   if (!allowed) {

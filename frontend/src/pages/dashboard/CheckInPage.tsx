@@ -4,6 +4,7 @@ import { Alert, Badge, Button, NumberInput, Paper, Stack, Text, Title } from '@m
 import { notifications } from '@mantine/notifications'
 import { apiFetch, ApiError } from '../../api/client'
 import type { AppointmentRead, CheckinResponse, PaymentRead } from '../../api/types'
+import { friendlyDateTime } from '../../lib/dates'
 
 export default function CheckInPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -175,8 +176,8 @@ export default function CheckInPage() {
     <Stack gap="md" maw={560}>
       <Title order={2}>Check-in Scanner</Title>
       <Text c="dimmed" size="sm">
-        Point the camera at the patient's QR code (from their confirmation email) to mark them as arrived. Real check-in
-        only — nobody can check in with just a photo of the code without also being logged in here as staff.
+        When a customer arrives, point the camera at the QR code in their confirmation email to mark them as arrived.
+        Only your logged-in team can check people in.
       </Text>
 
       {cameraError && (
@@ -248,14 +249,14 @@ export default function CheckInPage() {
               {result.customer_name} — {result.service_name}
             </Text>
             <Text size="sm" c="dimmed">
-              Scheduled: {new Date(result.scheduled_at).toLocaleString()}
+              Scheduled: {friendlyDateTime(result.scheduled_at)}
             </Text>
             <Text size="xs" c="dimmed">
-              Checked in at: {new Date(result.checked_in_at).toLocaleString()}
+              Checked in at: {friendlyDateTime(result.checked_in_at)}
             </Text>
             {completedAt && (
               <Text size="xs" c="dimmed">
-                Marked complete at: {new Date(completedAt).toLocaleString()}
+                Marked complete at: {friendlyDateTime(completedAt)}
               </Text>
             )}
             {!completedAt && (
@@ -265,7 +266,7 @@ export default function CheckInPage() {
             )}
 
             {result.pending_payment && (
-              <Paper withBorder p="sm" radius="md" bg="var(--mantine-color-gray-0)">
+              <Paper withBorder p="sm" radius="md">
                 <Stack gap="xs">
                   <Text size="sm" fw={600}>
                     Remaining balance
@@ -278,7 +279,7 @@ export default function CheckInPage() {
                   {result.pending_payment.collected_in_person_at ? (
                     <Text size="sm" c="green">
                       Recorded: {result.pending_payment.currency} {result.pending_payment.collected_in_person_amount}{' '}
-                      collected at {new Date(result.pending_payment.collected_in_person_at).toLocaleString()}
+                      collected at {friendlyDateTime(result.pending_payment.collected_in_person_at)}
                     </Text>
                   ) : (
                     // Deliberately a Stack (input above, full-width button

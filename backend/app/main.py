@@ -20,23 +20,29 @@ from app.api.routes import (
     internal_metrics,
     knowledge,
     payments,
-    premium_test,
     qr_view,
     reports,
     services,
     staff,
+    team,
     training,
     voice,
     webhooks,
     widget,
 )
 from app.core.config import settings
+from app.core.error_middleware import CatchUnhandledErrorsMiddleware
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
+from app.core.production_checks import enforce as enforce_production_config
+from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.widget_cors import WidgetCORSMiddleware
 from app.services import scheduler
 
 configure_logging(settings.log_level)
+# ENVIRONMENT=production: refuse to start with an unsafe configuration, warn about risky choices (see the module).
+enforce_production_config(settings)
+_production = settings.environment == "production"
 
 
 @asynccontextmanager
@@ -61,9 +67,19 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title=settings.app_name, lifespan=lifespan)
+# The interactive API docs describe every route; useful in development, not something to publish in production.
+app = FastAPI(
+    title=settings.app_name,
+    lifespan=lifespan,
+    docs_url=None if _production else "/docs",
+    redoc_url=None if _production else "/redoc",
+    openapi_url=None if _production else "/openapi.json",
+)
 
 register_exception_handlers(app)
+# Innermost of the three: an unexpected error becomes a JSON 500 that still gets CORS headers (see the module).
+app.add_middleware(CatchUnhandledErrorsMiddleware)
+app.add_middleware(SecurityHeadersMiddleware, hsts=_production)
 # Order matters: Starlette makes the LAST-added middleware the OUTERMOST one, so it
 # sees a request first. WidgetCORSMiddleware must be outermost — it fully owns CORS
 # for widget paths (including handling their OPTIONS preflight itself with a
@@ -82,7 +98,7 @@ app.add_middleware(
     # user). Safe here specifically because auth is a bearer token in sessionStorage, never a
     # cookie -- a stranger's own ngrok tunnel being allowed to ask this API a question can't read
     # or steal anything of this app's, since it never has this app's token in the first place.
-    allow_origin_regex=r"^https://[a-zA-Z0-9-]+\.ngrok-free\.(app|dev)$",
+    allow_origin_regex=None if _production else r"^https://[a-zA-Z0-9-]+\.ngrok-free\.(app|dev)$",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -94,6 +110,7 @@ app.include_router(customers.router, prefix="/api/v1", tags=["customers"])
 app.include_router(business.router, prefix="/api/v1", tags=["business"])
 app.include_router(services.router, prefix="/api/v1", tags=["services"])
 app.include_router(staff.router, prefix="/api/v1", tags=["staff"])
+app.include_router(team.router, prefix="/api/v1", tags=["team"])
 app.include_router(knowledge.router, prefix="/api/v1", tags=["knowledge"])
 app.include_router(conversations.router, prefix="/api/v1", tags=["conversations"])
 app.include_router(appointments.router, prefix="/api/v1", tags=["appointments"])
@@ -107,7 +124,6 @@ app.include_router(google_calendar.router, prefix="/api/v1", tags=["google-calen
 app.include_router(training.router, prefix="/api/v1", tags=["training"])
 app.include_router(internal_metrics.router, prefix="/api/v1", tags=["internal"])
 app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
-app.include_router(premium_test.router, prefix="/api/v1", tags=["premium-test"])
 app.include_router(widget.router, tags=["widget"])
 app.include_router(qr_view.router, tags=["qr"])
 app.include_router(voice.router, tags=["voice"])

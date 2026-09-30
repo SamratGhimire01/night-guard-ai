@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { Link, useOutletContext } from 'react-router-dom'
+import InsightsSwitch from '../../components/InsightsSwitch'
+import PageHeader from '../../components/PageHeader'
 import {
   Alert,
+  Anchor,
   Badge,
   Button,
   Center,
@@ -14,7 +17,6 @@ import {
   Stack,
   Tabs,
   Text,
-  Title,
 } from '@mantine/core'
 import { BarChart, PieChart } from '@mantine/charts'
 import { notifications } from '@mantine/notifications'
@@ -196,9 +198,10 @@ function DailyReportPanel({ business }: { business: BusinessRead | null }) {
       <Group justify="space-between" wrap="wrap">
         <input
           type="date"
+          aria-label="Report date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          style={{ padding: 6, fontSize: 14, border: '1px solid #ced4da', borderRadius: 4 }}
+          className="ng-native-input"
         />
         <Button variant="light" onClick={handleDownload}>
           Download Excel
@@ -307,9 +310,10 @@ function MonthlyReportPanel() {
       <Group justify="space-between" wrap="wrap">
         <input
           type="month"
+          aria-label="Report month"
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          style={{ padding: 6, fontSize: 14, border: '1px solid #ced4da', borderRadius: 4 }}
+          className="ng-native-input"
         />
         <Button variant="light" onClick={handleDownload}>
           Download Excel
@@ -435,9 +439,11 @@ function YearlyReportPanel() {
       <Stack gap="md">
         {yearPicker}
         <Alert color="grape" title="Upgrade to Premium" variant="light">
-          Yearly reports are a Premium-plan feature. {upgradeMessage} Ask an owner on your team to upgrade the
-          business's plan to unlock month-by-month trends, year-over-year comparisons, and a real yearly Excel
-          export.
+          Yearly reports are part of the Premium plan. Premium adds month-by-month trends, year-over-year
+          comparisons and a yearly Excel export.{' '}
+          <Anchor component={Link} to="/dashboard/settings?tab=plan">
+            See plans and request an upgrade
+          </Anchor>
         </Alert>
       </Stack>
     )
@@ -502,7 +508,8 @@ export default function ReportsPage() {
 
   return (
     <Stack gap="md">
-      <Title order={2}>Reports</Title>
+      <InsightsSwitch />
+      <PageHeader title="Reports" description="Your bookings, cancellations and income for a day, a month or a year. Download any report as Excel." />
       <Tabs defaultValue="daily">
         <Tabs.List>
           <Tabs.Tab value="daily">Daily</Tabs.Tab>

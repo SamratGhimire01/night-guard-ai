@@ -16,9 +16,11 @@ import { apiFetch } from '../../api/client'
 import type { AppointmentListItem, BusinessRead, HandoffListItem, MonthlyReport } from '../../api/types'
 import EmptyState from '../../components/EmptyState'
 import PageHeader from '../../components/PageHeader'
+import SetupChecklist from '../../components/SetupChecklist'
 import StatCard from '../../components/StatCard'
 import StatusBadge from '../../components/StatusBadge'
 import TableSkeleton from '../../components/TableSkeleton'
+import { friendlyDateTime } from '../../lib/dates'
 
 type DashboardContext = { business: BusinessRead | null }
 
@@ -89,6 +91,8 @@ export default function OverviewPage() {
     <Stack gap="xl">
       <PageHeader title="Overview" description="Today's activity and this month at a glance." />
 
+      <SetupChecklist />
+
       <div>
         <SectionHeader title="Today" />
         {todayAppts === null || openHandoffs === null ? (
@@ -103,7 +107,7 @@ export default function OverviewPage() {
               color="teal"
             />
             <StatCard
-              label="Open handoffs"
+              label="Waiting for your team"
               value={openHandoffs.length >= 200 ? '200+' : openHandoffs.length}
               icon={<IconHeadset {...ICON} />}
               color="orange"
@@ -201,7 +205,7 @@ export default function OverviewPage() {
       </div>
 
       <div>
-        <SectionHeader title="Recent open handoffs" to="/dashboard/handoffs" linkLabel="See all handoffs" />
+        <SectionHeader title="Customers waiting for your team" to="/dashboard/inbox" linkLabel="Open the Inbox" />
         {openHandoffs === null ? (
           <Stack gap="xs">
             {[0, 1, 2].map((i) => (
@@ -212,8 +216,8 @@ export default function OverviewPage() {
           <Paper>
             <EmptyState
               icon={<IconHeadset {...ICON} />}
-              title="No open handoffs"
-              hint="Nothing is waiting on a real person right now."
+              title="Nobody is waiting"
+              hint="No customer is waiting for your team right now."
             />
           </Paper>
         ) : (
@@ -225,7 +229,7 @@ export default function OverviewPage() {
                     {h.customer_name}
                   </Text>
                   <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
-                    {new Date(h.created_at).toLocaleString()}
+                    {friendlyDateTime(h.created_at)}
                   </Text>
                 </Group>
                 <Text size="sm" c="dimmed" mt={2}>

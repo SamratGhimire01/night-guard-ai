@@ -48,3 +48,10 @@ logs/
 
 # --- LibreOffice lock files ---
 .~lock*
+
+# --- Real customer data: never commit ---
+# Raw conversation exports (scripts/pull_real_conversations.py) contain customers' names, phone numbers and emails.
+backend/data/regression/real_conversations/
+backend/data/regression/real_conversations_scan.json
+# Whole-repo archives
+*.zip

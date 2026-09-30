@@ -4,7 +4,7 @@ import time
 import httpx
 
 from app.core.config import settings
-from app.llm.base import ChatProvider, EmbeddingProvider
+from app.llm.base import ChatProvider, EmbeddingProvider, LLMProviderError
 
 logger = logging.getLogger(__name__)
 
@@ -98,10 +98,10 @@ def _post(path: str, body: dict) -> dict:
     # discipline applies to `last_transport_error`: its class name only
     # (e.g. "ConnectError"), never `str(exc)`, which can itself embed the URL.
     if last_response is None:
-        raise RuntimeError(
+        raise LLMProviderError(
             f"LLM provider request failed: {type(last_transport_error).__name__}"
         ) from None
-    raise RuntimeError(f"LLM provider request failed with HTTP {last_response.status_code}") from None
+    raise LLMProviderError(f"LLM provider request failed with HTTP {last_response.status_code}") from None
 
 
 class AzureEmbeddingProvider(EmbeddingProvider):

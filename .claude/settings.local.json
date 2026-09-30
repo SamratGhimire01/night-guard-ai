@@ -20,7 +20,14 @@
       "Bash(npm run *)",
       "Bash(echo \"BUILD EXIT: $?\")",
       "Read(//tmp/**)",
-      "Bash(mv /tmp/sikshyanepal-dev-next-backup .next)"
+      "Bash(mv /tmp/sikshyanepal-dev-next-backup .next)",
+      "Bash(python3 -)",
+      "Bash(timeout 110 node shoot.cjs before light 1440 /dashboard)",
+      "Bash(sed -i \"s/bypass: 'localhost,127.0.0.1'/bypass: '<-loopback>'/\" shoot.cjs)",
+      "Bash(timeout 115 node shoot.cjs before light 1440 /dashboard /login)",
+      "Bash(timeout 500 node audit.cjs audit)",
+      "Bash(VITE_API_BASE_URL=http://localhost:8010/api/v1 npx vite build --outDir /tmp/claude-0/ngreal --emptyOutDir)",
+      "Bash(timeout 220 node e2e-new.cjs)"
     ]
   }
 }

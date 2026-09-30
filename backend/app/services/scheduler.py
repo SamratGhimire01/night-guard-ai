@@ -1,9 +1,11 @@
 import asyncio
 import logging
+import time
 
 from app.core.config import settings
 from app.db.database import SessionLocal
 from app.services import companion, lead_service, no_show_service, reminder_service
+from app.services.followups import followup_service
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +52,36 @@ async def _tick() -> None:
     except Exception:
         logger.exception("lead scheduler tick failed")
     try:
+        followed_up = await _followups_if_due()
+        if followed_up:
+            logger.info("follow-up scheduler tick: sent %d follow-up(s)", followed_up)
+    except Exception:
+        logger.exception("follow-up scheduler tick failed")
+    try:
         learned = await asyncio.to_thread(_companion_learn_sync)  # LLM call, off the event loop like lead scoring
         if learned:
             logger.info("companion scheduler tick: refreshed lessons for %d persona(s)", learned)
     except Exception:
         logger.exception("companion learning tick failed")
+
+
+_last_followup_run = 0.0
+
+
+async def _followups_if_due(now: float | None = None) -> int:
+    """Follow-ups for every business that turned them on, at most every followup_run_interval_seconds. Sending email
+    blocks (SMTP), so it runs off the event loop like the other network-bound jobs."""
+    global _last_followup_run
+    now = time.monotonic() if now is None else now
+    if _last_followup_run and now - _last_followup_run < settings.followup_run_interval_seconds:
+        return 0
+    _last_followup_run = now
+    return await asyncio.to_thread(_followups_sync)
+
+
+def _followups_sync() -> int:
+    with SessionLocal() as db:
+        return followup_service.run_due_followups(db)
 
 
 def _companion_learn_sync() -> int:

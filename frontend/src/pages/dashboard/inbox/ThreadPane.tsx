@@ -238,6 +238,9 @@ export default function ThreadPane({ conversationId, onBack, onChanged }: Props)
       {/* messages */}
       <div
         ref={scroller}
+        tabIndex={0}
+        role="log"
+        aria-label="Messages"
         onScroll={(e) => {
           const el = e.currentTarget
           stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80

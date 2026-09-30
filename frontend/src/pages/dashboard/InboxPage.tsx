@@ -16,7 +16,7 @@ type Tab = 'needs_reply' | 'handoffs' | 'leads' | 'all'
 const EMPTY_HINT: Record<Tab, string> = {
   needs_reply: 'Nobody is waiting for a person right now. Conversations the AI escalates, or that you take over, show up here when the customer writes.',
   handoffs: 'No conversation has an open handoff.',
-  leads: "No high-intent leads right now. The AI scores conversations in the background as customers show real buying signals (price, availability, wanting to book) — check back shortly.",
+  leads: "No high-intent leads right now. Customers who ask about prices, availability or booking show up here, so you can follow up while they're interested.",
   all: 'When customers message you on WhatsApp, Messenger, Instagram or your website, the conversations appear here.',
 }
 
@@ -83,7 +83,7 @@ export default function InboxPage() {
                 onChange={(e) => setSearch(e.currentTarget.value)}
               />
               <Select
-                w={130}
+                w={160}
                 placeholder="All channels"
                 aria-label="Filter by channel"
                 clearable

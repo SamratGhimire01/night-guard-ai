@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.entitlements import ensure_plan
 from app.core.exceptions import ForbiddenError, UnauthorizedError
-from app.core.security import decode_access_token
+from app.core.security import decode_access_token, password_fingerprint
 from app.db.database import get_db
 from app.db.models.business import Business, BusinessPlan, BusinessUser
 
@@ -41,6 +41,9 @@ def get_current_user(
     except jwt.PyJWTError:
         raise UnauthorizedError("Invalid token.")
 
+    # Only access tokens log you in: a password-reset/invite link or an OAuth state token carries a purpose.
+    if "purpose" in payload:
+        raise UnauthorizedError("Invalid token.")
     try:
         user_id = uuid.UUID(payload["sub"])
     except (KeyError, ValueError):
@@ -49,6 +52,9 @@ def get_current_user(
     user = db.get(BusinessUser, user_id)
     if user is None:
         raise UnauthorizedError("User for this token no longer exists.")
+    # Tokens carry a fingerprint of the password they were issued under: a password change signs out other sessions.
+    if "pv" in payload and payload["pv"] != password_fingerprint(user.hashed_password):
+        raise UnauthorizedError("Your password was changed. Please log in again.")
     return user
 
 

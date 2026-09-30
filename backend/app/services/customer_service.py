@@ -1,8 +1,12 @@
+import csv
+import io
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.db.models.appointment import Appointment
+from app.db.models.conversation import Conversation, Message
 from app.db.models.customer import Customer
 from app.schemas.customer import CustomerCreate, CustomerUpdate
 
@@ -49,3 +53,77 @@ def delete_customer(db: Session, *, business_id: uuid.UUID, customer_id: uuid.UU
     db.delete(customer)
     db.commit()
     return True
+
+
+def list_customers(db: Session, *, business_id: uuid.UUID, q: str | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
+    """Everyone who has contacted the business, newest contact first, with how they reached it and what came of it.
+    `q` matches name, phone or email (case-insensitive)."""
+    conversations = (
+        select(
+            Conversation.customer_id.label("customer_id"),
+            func.count(func.distinct(Conversation.id)).label("conversations"),
+            func.max(Message.created_at).label("last_contact_at"),
+            func.min(Conversation.channel).label("channel"),
+        )
+        .select_from(Conversation)
+        .outerjoin(Message, Message.conversation_id == Conversation.id)
+        .where(Conversation.business_id == business_id)
+        .group_by(Conversation.customer_id)
+        .subquery()
+    )
+    appointments = (
+        select(Appointment.customer_id.label("customer_id"), func.count().label("appointments"))
+        .where(Appointment.business_id == business_id)
+        .group_by(Appointment.customer_id)
+        .subquery()
+    )
+    stmt = (
+        select(Customer, conversations.c.conversations, conversations.c.last_contact_at, conversations.c.channel, appointments.c.appointments)
+        .outerjoin(conversations, conversations.c.customer_id == Customer.id)
+        .outerjoin(appointments, appointments.c.customer_id == Customer.id)
+        .where(Customer.business_id == business_id)
+    )
+    if q and q.strip():
+        like = f"%{q.strip().lower()}%"
+        stmt = stmt.where(
+            or_(func.lower(Customer.name).like(like), func.lower(Customer.email).like(like), Customer.phone.like(f"%{q.strip()}%"))
+        )
+    stmt = stmt.order_by(func.coalesce(conversations.c.last_contact_at, Customer.created_at).desc()).limit(limit).offset(offset)
+    rows = []
+    for customer, n_conversations, last_contact_at, channel, n_appointments in db.execute(stmt).all():
+        rows.append({
+            "id": customer.id,
+            "name": customer.known_name,
+            "phone": customer.phone,
+            "email": customer.email,
+            "channel": channel,
+            "conversations": n_conversations or 0,
+            "appointments": n_appointments or 0,
+            "first_seen_at": customer.created_at,
+            "last_contact_at": last_contact_at or customer.created_at,
+        })
+    return rows
+
+
+def _csv_safe(value) -> str:
+    """Stops a spreadsheet from running a customer-supplied value as a formula (CSV injection)."""
+    text = "" if value is None else str(value)
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+def customers_csv(db: Session, *, business_id: uuid.UUID) -> str:
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["Name", "Phone", "Email", "First contacted on", "Conversations", "Appointments", "First seen", "Last contact"])
+    offset = 0
+    while True:
+        batch = list_customers(db, business_id=business_id, limit=500, offset=offset)
+        for r in batch:
+            writer.writerow([
+                _csv_safe(r["name"] or ""), _csv_safe(r["phone"]), _csv_safe(r["email"]), r["channel"] or "",
+                r["conversations"], r["appointments"], r["first_seen_at"].isoformat(), r["last_contact_at"].isoformat(),
+            ])
+        if len(batch) < 500:
+            break
+        offset += 500
+    return "﻿" + out.getvalue()  # BOM: Excel then opens Nepali (and any non-Latin) names correctly

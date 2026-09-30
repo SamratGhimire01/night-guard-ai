@@ -1,0 +1,919 @@
+/*
+ * Night Guard glass design layer. Loaded after Mantine's own styles (see App.tsx), so it restyles every Mantine
+ * component app-wide without touching page logic.
+ *
+ * Canvas: a soft pastel light field (sky blue, lavender, pink, peach), frosted translucent surfaces on top.
+ * Every colour below is a token, redefined for dark mode, so both schemes stay legible.
+ */
+
+:root {
+  --ng-canvas-1: #a8d6ff;
+  --ng-canvas-2: #dcc6ff;
+  --ng-canvas-3: #ffb9dd;
+  --ng-canvas-4: #ffcdb9;
+
+  --ng-glass: rgba(255, 255, 255, 0.6);
+  --ng-glass-strong: rgba(255, 255, 255, 0.8);
+  --ng-glass-solid: rgba(252, 250, 255, 0.96);
+  --ng-glass-nested: rgba(255, 255, 255, 0.55);
+  --ng-glass-edge: rgba(255, 255, 255, 0.9);
+  --ng-hairline: rgba(110, 80, 160, 0.14);
+  --ng-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --ng-shadow: 0 1px 2px rgba(40, 20, 80, 0.05), 0 10px 30px -12px rgba(70, 35, 130, 0.22);
+  --ng-shadow-hover: 0 2px 4px rgba(40, 20, 80, 0.06), 0 22px 44px -16px rgba(70, 35, 130, 0.32);
+  --ng-blur: blur(22px) saturate(170%);
+
+  --ng-grad: linear-gradient(135deg, #7e3bdb 0%, #b04ad6 48%, #e0468f 100%);
+  --ng-grad-soft: linear-gradient(135deg, rgba(126, 59, 219, 0.14), rgba(224, 70, 143, 0.14));
+  --ng-glow: 0 10px 24px -10px rgba(176, 74, 214, 0.65);
+  --ng-seg-active: #ffffff;
+  --ng-row-hover: rgba(126, 59, 219, 0.06);
+  --ng-focus: rgba(126, 59, 219, 0.55);
+  --ng-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+:root[data-mantine-color-scheme='dark'] {
+  --ng-canvas-1: #1b3a73;
+  --ng-canvas-2: #3b1f73;
+  --ng-canvas-3: #6b1d5c;
+  --ng-canvas-4: #5a2a3a;
+
+  --ng-glass: rgba(34, 28, 58, 0.55);
+  --ng-glass-strong: rgba(26, 21, 46, 0.78);
+  --ng-glass-solid: rgba(26, 21, 46, 0.97);
+  --ng-glass-nested: rgba(255, 255, 255, 0.05);
+  --ng-glass-edge: rgba(255, 255, 255, 0.1);
+  --ng-hairline: rgba(255, 255, 255, 0.1);
+  --ng-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --ng-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px -12px rgba(0, 0, 0, 0.55);
+  --ng-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.35), 0 24px 48px -16px rgba(0, 0, 0, 0.65);
+  --ng-grad: linear-gradient(135deg, #8a4df0 0%, #b04ad6 48%, #e0468f 100%);
+  --ng-grad-soft: linear-gradient(135deg, rgba(145, 80, 239, 0.22), rgba(224, 70, 143, 0.2));
+  --ng-glow: 0 10px 26px -10px rgba(176, 74, 214, 0.8);
+  --ng-seg-active: rgba(255, 255, 255, 0.16);
+  --ng-row-hover: rgba(255, 255, 255, 0.05);
+  --ng-focus: rgba(190, 148, 255, 0.7);
+}
+
+/* ---------- Canvas ---------- */
+
+html {
+  background-color: var(--mantine-color-body);
+}
+
+/* Transparent so the fixed light field below (painted on the root) shows through. */
+body {
+  background: transparent !important;
+  font-feature-settings: 'ss01', 'cv11';
+  text-rendering: optimizeLegibility;
+}
+
+/* The pastel light field, fixed behind everything; it drifts very slowly so the glass feels alive. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -12%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 38% at 8% 6%, var(--ng-canvas-1) 0%, transparent 70%),
+    radial-gradient(40% 40% at 92% 4%, var(--ng-canvas-3) 0%, transparent 70%),
+    radial-gradient(46% 44% at 96% 96%, var(--ng-canvas-4) 0%, transparent 70%),
+    radial-gradient(44% 44% at 6% 94%, var(--ng-canvas-2) 0%, transparent 70%),
+    radial-gradient(40% 40% at 50% 50%, var(--ng-canvas-2) 0%, transparent 75%);
+  animation: ng-drift 38s ease-in-out infinite alternate;
+}
+
+@keyframes ng-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(2%, -1.5%, 0) scale(1.04); }
+  100% { transform: translate3d(-1.5%, 2%, 0) scale(1.02); }
+}
+
+/* ---------- Glass surfaces ---------- */
+
+.mantine-Paper-root,
+.mantine-Card-root {
+  background: var(--ng-glass);
+  -webkit-backdrop-filter: var(--ng-blur);
+  backdrop-filter: var(--ng-blur);
+  border-color: var(--ng-glass-edge) !important;
+  box-shadow: var(--ng-highlight), var(--ng-shadow);
+}
+
+/* A card inside a card is a soft inset, not a second frosted pane. */
+.mantine-Paper-root .mantine-Paper-root,
+.mantine-Paper-root .mantine-Card-root {
+  background: var(--ng-glass-nested);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  border-color: var(--ng-hairline) !important;
+}
+
+/* Menus, dropdowns, popovers: nearly opaque so their text is always easy to read. */
+.mantine-Popover-dropdown,
+.mantine-Menu-dropdown,
+.mantine-Combobox-dropdown {
+  background: var(--ng-glass-solid) !important;
+  -webkit-backdrop-filter: var(--ng-blur);
+  backdrop-filter: var(--ng-blur);
+  border: 1px solid var(--ng-hairline) !important;
+  box-shadow: var(--mantine-shadow-lg) !important;
+}
+
+.mantine-Combobox-option,
+.mantine-Menu-item {
+  border-radius: var(--mantine-radius-sm);
+  padding-block: 9px;
+}
+
+.mantine-Combobox-option[data-combobox-selected] {
+  background: var(--ng-grad);
+}
+
+/* ---------- App shell: macOS-style window chrome ---------- */
+
+.mantine-AppShell-header,
+.mantine-AppShell-navbar {
+  background: var(--ng-glass-strong);
+  -webkit-backdrop-filter: var(--ng-blur);
+  backdrop-filter: var(--ng-blur);
+  border-color: var(--ng-hairline) !important;
+}
+
+.mantine-AppShell-main {
+  background: transparent;
+}
+
+/* ---------- Buttons ---------- */
+
+.mantine-Button-root,
+.mantine-ActionIcon-root {
+  transition:
+    transform 160ms var(--ng-ease),
+    box-shadow 200ms var(--ng-ease),
+    background-color 160ms var(--ng-ease),
+    filter 160ms var(--ng-ease);
+}
+
+.mantine-Button-root {
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+
+.mantine-Button-root:not([data-disabled]):not(:disabled):active,
+.mantine-ActionIcon-root:not([data-disabled]):not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* Filled buttons get a glassy top sheen; the primary one gets the brand gradient and a soft glow. */
+.mantine-Button-root[data-variant='filled'] {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 60%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 16px -8px rgba(40, 20, 80, 0.45);
+}
+
+.mantine-Button-root.ng-btn-primary:not([data-disabled]):not(:disabled) {
+  background: var(--ng-grad);
+  border: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), var(--ng-glow);
+}
+
+.mantine-Button-root.ng-btn-primary:not([data-disabled]):not(:disabled):hover {
+  filter: brightness(1.06) saturate(1.05);
+  transform: translateY(-1px);
+}
+
+.mantine-Button-root[data-variant='default'] {
+  background: var(--ng-glass-strong);
+  border-color: var(--ng-hairline);
+  -webkit-backdrop-filter: var(--ng-blur);
+  backdrop-filter: var(--ng-blur);
+  box-shadow: var(--ng-highlight), 0 1px 2px rgba(40, 20, 80, 0.06);
+}
+
+.mantine-Button-root[data-variant='default']:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.mantine-Button-root[data-disabled],
+.mantine-Button-root:disabled {
+  opacity: 0.6;
+}
+
+/* A disabled icon button should recede, not show as a grey box. */
+.mantine-ActionIcon-root[data-disabled] {
+  background: transparent !important;
+  opacity: 0.35;
+}
+
+/* ---------- Form fields ---------- */
+
+.mantine-Input-input {
+  border-color: var(--ng-hairline);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: border-color 160ms var(--ng-ease), box-shadow 200ms var(--ng-ease), background-color 160ms;
+}
+
+.mantine-Input-input:hover:not(:disabled):not([data-disabled]) {
+  background: var(--mantine-color-default-hover);
+}
+
+.mantine-Input-input:focus,
+.mantine-Input-input:focus-within {
+  border-color: var(--mantine-primary-color-filled);
+  box-shadow: 0 0 0 4px rgba(126, 59, 219, 0.16);
+}
+
+.mantine-InputWrapper-label {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.mantine-InputWrapper-description {
+  color: var(--mantine-color-dimmed);
+}
+
+/* ---------- Segmented controls and tabs: macOS segmented look ---------- */
+
+.mantine-SegmentedControl-root {
+  background: var(--mantine-color-default);
+  border: 1px solid var(--ng-hairline);
+  padding: 4px;
+  -webkit-backdrop-filter: var(--ng-blur);
+  backdrop-filter: var(--ng-blur);
+}
+
+.mantine-SegmentedControl-indicator {
+  background: var(--ng-seg-active);
+  box-shadow: 0 1px 2px rgba(40, 20, 80, 0.1), 0 4px 12px -4px rgba(70, 35, 130, 0.25);
+}
+
+.mantine-SegmentedControl-label {
+  font-weight: 600;
+  color: var(--mantine-color-dimmed);
+}
+
+.mantine-SegmentedControl-label[data-active] {
+  color: var(--mantine-color-text);
+}
+
+.mantine-Tabs-list {
+  gap: 4px;
+  padding: 4px;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 999px;
+  background: var(--mantine-color-default);
+  border: 1px solid var(--ng-hairline);
+  -webkit-backdrop-filter: var(--ng-blur);
+  backdrop-filter: var(--ng-blur);
+}
+
+.mantine-Tabs-list::before {
+  display: none;
+}
+
+.mantine-Tabs-tab {
+  font-weight: 600;
+  font-size: var(--mantine-font-size-sm);
+  padding: 9px 16px;
+  color: var(--mantine-color-dimmed);
+  transition: background-color 180ms var(--ng-ease), color 180ms var(--ng-ease), box-shadow 180ms var(--ng-ease);
+}
+
+.mantine-Tabs-tab:hover:not([data-active]) {
+  background: var(--ng-row-hover);
+  color: var(--mantine-color-text);
+}
+
+.mantine-Tabs-list .mantine-Tabs-tab[data-active],
+.mantine-Tabs-list .mantine-Tabs-tab[data-active]:hover {
+  background: var(--ng-seg-active);
+  color: var(--mantine-color-text);
+  box-shadow: 0 1px 2px rgba(40, 20, 80, 0.1), 0 4px 12px -4px rgba(70, 35, 130, 0.25);
+}
+
+.mantine-Tabs-panel {
+  animation: ng-fade 260ms var(--ng-ease) both;
+}
+
+/* ---------- Tables ---------- */
+
+.mantine-Table-table {
+  --table-border-color: var(--ng-hairline);
+}
+
+.mantine-Table-th {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mantine-color-dimmed);
+  white-space: nowrap;
+}
+
+.mantine-Table-thead {
+  background: var(--ng-glass-nested);
+}
+
+.mantine-Table-tr {
+  transition: background-color 140ms var(--ng-ease);
+}
+
+.mantine-Table-table[data-hover] .mantine-Table-tbody .mantine-Table-tr:hover {
+  background-color: var(--ng-row-hover);
+}
+
+/* ---------- Badges ---------- */
+
+/* Mantine's badge text (~11px caps) is hard to read; these are larger, sentence-case pills. */
+.mantine-Badge-root[data-size='xs'] { --badge-fz: 11.5px !important; --badge-height: 20px !important; }
+.mantine-Badge-root[data-size='sm'] { --badge-fz: 12px !important; --badge-height: 22px !important; }
+.mantine-Badge-root[data-size='md'] { --badge-fz: 13px !important; --badge-height: 25px !important; --badge-padding-x: 11px !important; }
+.mantine-Badge-root[data-size='lg'] { --badge-fz: 14px !important; --badge-height: 28px !important; }
+
+.mantine-Badge-root {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-weight: 700;
+}
+
+/* ---------- Dialogs and toasts ---------- */
+
+.mantine-Modal-content,
+.mantine-Drawer-content {
+  background: var(--ng-glass-solid);
+  -webkit-backdrop-filter: var(--ng-blur);
+  backdrop-filter: var(--ng-blur);
+  border: 1px solid var(--ng-glass-edge);
+  box-shadow: var(--mantine-shadow-xl);
+}
+
+.mantine-Modal-header,
+.mantine-Drawer-header {
+  background: transparent;
+}
+
+.mantine-Modal-title,
+.mantine-Drawer-title {
+  font-weight: 800;
+  font-size: var(--mantine-font-size-lg);
+}
+
+.mantine-Notification-root {
+  background: var(--ng-glass-solid);
+  -webkit-backdrop-filter: var(--ng-blur);
+  backdrop-filter: var(--ng-blur);
+  border: 1px solid var(--ng-hairline);
+  box-shadow: var(--mantine-shadow-lg);
+}
+
+.mantine-Tooltip-tooltip {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mantine-Alert-root {
+  border: 1px solid var(--ng-hairline);
+}
+
+/* ---------- Shared pieces (components/*) ---------- */
+
+/* Cards that respond to the pointer: a small, calm lift. */
+.ng-lift {
+  transition: transform 260ms var(--ng-ease), box-shadow 260ms var(--ng-ease);
+}
+
+.ng-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--ng-highlight), var(--ng-shadow-hover);
+}
+
+/* Colour tile behind an icon, like macOS System Settings. */
+.ng-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  border-radius: 9px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 6px -2px rgba(40, 20, 80, 0.35);
+}
+
+.ng-gradient-text {
+  background: var(--ng-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Page transition: each screen rises in gently. */
+.ng-page {
+  animation: ng-rise 420ms var(--ng-ease) both;
+}
+
+@keyframes ng-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes ng-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ng-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(4deg); }
+}
+
+/* Chat bubbles: staff replies wear the brand gradient. */
+.ng-bubble-staff {
+  background: var(--ng-grad) !important;
+  border: 0 !important;
+  box-shadow: var(--ng-glow) !important;
+}
+
+/* ---------- Focus: always clearly visible for keyboard users ---------- */
+
+:where(a, button, input, textarea, select, [role='button'], [tabindex]):focus-visible {
+  outline: 3px solid var(--ng-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Scrollbars ---------- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(110, 80, 160, 0.3) transparent;
+}
+
+:root[data-mantine-color-scheme='dark'] * {
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+/* ---------- Motion preferences ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* ---------- Sidebar (DashboardLayout) ---------- */
+
+.ng-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--ng-grad);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), var(--ng-glow);
+}
+
+.ng-business-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--mantine-radius-lg);
+  background: var(--ng-glass-nested);
+  border: 1px solid var(--ng-glass-edge);
+  box-shadow: var(--ng-highlight), 0 6px 18px -12px rgba(70, 35, 130, 0.35);
+}
+
+.ng-avatar .mantine-Avatar-placeholder {
+  background: var(--ng-grad);
+  color: #fff;
+  font-weight: 800;
+}
+
+.ng-nav-group {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mantine-color-dimmed);
+  padding: 0 12px 6px;
+}
+
+.ng-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 7px 10px;
+  border-radius: 14px;
+  color: var(--mantine-color-text);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 180ms var(--ng-ease), color 180ms var(--ng-ease), transform 180ms var(--ng-ease),
+    box-shadow 220ms var(--ng-ease);
+}
+
+.ng-nav-item:hover:not([data-active]) {
+  background: var(--ng-row-hover);
+  transform: translateX(2px);
+}
+
+.ng-nav-item[data-active] {
+  background: var(--ng-grad);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), var(--ng-glow);
+}
+
+.ng-nav-item[data-active] .ng-nav-tile {
+  background: rgba(255, 255, 255, 0.22) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.ng-nav-tile {
+  width: 30px;
+  height: 30px;
+}
+
+.ng-nav-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ng-nav-item[data-active] .ng-nav-badge {
+  background: #fff;
+  color: #c2410c;
+}
+
+.ng-sidebar-foot {
+  border-top: 1px solid var(--ng-hairline);
+}
+
+/* The Light/Dark switch lives in the header on wide screens; on phones it would crowd the menu button. */
+@media (max-width: 30em) {
+  .ng-theme-switch {
+    display: none;
+  }
+}
+
+/* ---------- Empty states ---------- */
+
+.ng-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  margin-bottom: 4px;
+  border-radius: 20px;
+  color: var(--mantine-primary-color-filled);
+  background: var(--ng-grad-soft);
+  border: 1px solid var(--ng-glass-edge);
+  box-shadow: var(--ng-highlight);
+  animation: ng-float 6s ease-in-out infinite;
+}
+
+/* ---------- Landing + sign-in stage ---------- */
+
+.ng-auth-stage {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  overflow: hidden;
+}
+
+.ng-auth-card {
+  position: relative;
+  z-index: 1;
+  padding: clamp(24px, 5vw, 44px);
+  border-radius: 32px;
+  background: var(--ng-glass);
+  -webkit-backdrop-filter: var(--ng-blur);
+  backdrop-filter: var(--ng-blur);
+  border: 1px solid var(--ng-glass-edge);
+  box-shadow: var(--ng-highlight), var(--mantine-shadow-xl);
+}
+
+.ng-chip {
+  padding: 8px 14px 8px 8px;
+  border-radius: 999px;
+  background: var(--ng-glass-nested);
+  border: 1px solid var(--ng-glass-edge);
+  box-shadow: var(--ng-highlight);
+}
+
+/* Soft glossy shapes floating behind the card, in the spirit of the 3D objects in glass UI kits. */
+.ng-orb {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  animation: ng-float 9s ease-in-out infinite;
+}
+
+.ng-orb-a {
+  width: 180px;
+  height: 180px;
+  top: 9%;
+  left: max(4%, calc(50% - 420px));
+  border-radius: 38% 62% 55% 45% / 45% 40% 60% 55%;
+  background: radial-gradient(circle at 30% 25%, #f5d0fe 0%, #c084fc 35%, #7e22ce 100%);
+  box-shadow: 0 30px 60px -20px rgba(126, 34, 206, 0.55);
+  opacity: 0.85;
+}
+
+.ng-orb-b {
+  width: 120px;
+  height: 120px;
+  bottom: 10%;
+  right: max(4%, calc(50% - 400px));
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #ffe4f1 0%, #f472b6 40%, #be185d 100%);
+  box-shadow: 0 26px 50px -18px rgba(190, 24, 93, 0.5);
+  animation-delay: -3s;
+  opacity: 0.85;
+}
+
+.ng-orb-c {
+  width: 70px;
+  height: 70px;
+  top: 16%;
+  right: max(8%, calc(50% - 330px));
+  border-radius: 22px;
+  transform: rotate(18deg);
+  background: radial-gradient(circle at 30% 25%, #e0f2fe 0%, #7dd3fc 45%, #2563eb 100%);
+  box-shadow: 0 20px 40px -16px rgba(37, 99, 235, 0.5);
+  animation-delay: -6s;
+  animation-duration: 11s;
+  opacity: 0.8;
+}
+
+@media (max-width: 36em) {
+  .ng-orb-a { width: 110px; height: 110px; top: 3%; left: -20px; }
+  .ng-orb-b { width: 80px; height: 80px; bottom: 3%; right: -10px; }
+  .ng-orb-c { display: none; }
+}
+
+/* AI replies: a faint brand tint so the customer's words and the assistant's read apart at a glance. */
+.ng-bubble-ai {
+  background: var(--ng-grad-soft) !important;
+}
+
+/* Plain <input type="date"> fields (Reports) dressed like the Mantine fields around them. */
+.ng-native-input {
+  font: inherit;
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mantine-color-text);
+  padding: 9px 12px;
+  min-height: 42px;
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid var(--ng-hairline);
+  background: var(--mantine-color-default);
+  color-scheme: light;
+}
+
+:root[data-mantine-color-scheme='dark'] .ng-native-input {
+  color-scheme: dark;
+}
+
+.ng-native-input:focus {
+  outline: none;
+  border-color: var(--mantine-primary-color-filled);
+  box-shadow: 0 0 0 4px rgba(126, 59, 219, 0.16);
+}
+
+.mantine-Anchor-root {
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+}
+
+/* On phones the sidebar slides over the page, so it needs to be nearly opaque to stay readable. */
+@media (max-width: 48em) {
+  .mantine-AppShell-navbar {
+    background: var(--ng-glass-solid);
+  }
+}
+
+/* ---------- Settings ---------- */
+
+/* Floats at the bottom of the screen while a settings tab has unsaved changes. */
+.ng-savebar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 5;
+  background: var(--ng-glass-solid) !important;
+  box-shadow: var(--mantine-shadow-lg) !important;
+  animation: ng-rise 240ms var(--ng-ease) both;
+}
+
+.ng-logo-drop {
+  padding: 16px;
+  border-radius: var(--mantine-radius-lg);
+  border: 2px dashed var(--ng-hairline);
+  background: var(--ng-glass-nested);
+  transition: border-color 160ms var(--ng-ease), background-color 160ms var(--ng-ease);
+}
+
+.ng-logo-drop[data-dragging] {
+  border-color: var(--mantine-primary-color-filled);
+  background: var(--ng-grad-soft);
+}
+
+.ng-logo-preview {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ng-grad);
+  color: #fff;
+  font-size: 32px;
+  font-weight: 800;
+  box-shadow: var(--ng-highlight), var(--ng-shadow);
+}
+
+.ng-logo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #fff;
+}
+
+/* ---------- Website chat customizer ---------- */
+
+.ng-widget-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 440px);
+  gap: 24px;
+  align-items: start;
+}
+
+.ng-widget-preview-col {
+  position: sticky;
+  top: 96px;
+  min-width: 0;
+}
+
+@media (max-width: 75em) {
+  .ng-widget-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ng-widget-preview-col {
+    position: static;
+  }
+}
+
+.ng-preview-frame {
+  height: 680px;
+  margin-inline: auto;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid var(--ng-glass-edge);
+  box-shadow: var(--ng-highlight), var(--mantine-shadow-lg);
+  background: #f4f5f8;
+  transition: max-width 320ms var(--ng-ease);
+  max-width: 100%;
+}
+
+.ng-preview-frame[data-device='phone'] {
+  max-width: 390px;
+  border: 10px solid #1d1530;
+  border-radius: 40px;
+}
+
+.ng-preview-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.ng-icon-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 4px;
+  border-radius: var(--mantine-radius-md);
+  border: 2px solid transparent;
+  background: var(--ng-glass-nested);
+  transition: border-color 160ms var(--ng-ease), transform 160ms var(--ng-ease);
+}
+
+.ng-icon-choice:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.ng-icon-choice[data-active] {
+  border-color: var(--mantine-primary-color-filled);
+  background: var(--ng-grad-soft);
+}
+
+.ng-icon-choice:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ng-icon-choice-dot {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.35);
+}
+
+.ng-inline-note {
+  padding: 12px 16px;
+  border-radius: var(--mantine-radius-md);
+  background: var(--ng-grad-soft);
+}
+
+.ng-code {
+  background: var(--ng-glass-nested) !important;
+}
+
+.ng-avatar .mantine-Avatar-image {
+  background: #fff;
+}
+
+.ng-upgrade {
+  background: var(--ng-grad-soft) !important;
+}
+
+/* ---------- Setup checklist (Overview) ---------- */
+
+.ng-setup {
+  background: linear-gradient(135deg, rgba(126, 59, 219, 0.1), rgba(224, 70, 143, 0.08)), var(--ng-glass) !important;
+}
+
+.ng-setup-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: var(--mantine-radius-md);
+  color: var(--mantine-color-text);
+  text-decoration: none;
+  transition: background-color 160ms var(--ng-ease), transform 160ms var(--ng-ease);
+}
+
+.ng-setup-step:hover {
+  background: var(--ng-row-hover);
+  transform: translateX(2px);
+}
+
+.ng-setup-step[data-next] {
+  background: var(--ng-glass-strong);
+  box-shadow: var(--ng-highlight), 0 4px 14px -8px rgba(70, 35, 130, 0.35);
+}
+
+.ng-setup-icon {
+  color: var(--mantine-color-dimmed);
+  flex-shrink: 0;
+}
+
+.ng-setup-icon-done {
+  color: var(--mantine-color-teal-6);
+  flex-shrink: 0;
+}
+
+.ng-setup-arrow {
+  color: var(--mantine-primary-color-filled);
+  flex-shrink: 0;
+}
+
+/* Time choices when adding an appointment. */
+.ng-slot {
+  text-align: center;
+  padding: 10px 6px;
+  border-radius: var(--mantine-radius-md);
+  border: 1.5px solid var(--ng-hairline);
+  background: var(--mantine-color-default);
+  font-weight: 600;
+  font-size: 15px;
+  transition: border-color 140ms var(--ng-ease), background-color 140ms var(--ng-ease);
+}
+
+.ng-slot:hover {
+  border-color: var(--mantine-primary-color-filled);
+}
+
+.ng-slot[data-active] {
+  background: var(--ng-grad);
+  border-color: transparent;
+  color: #fff;
+}

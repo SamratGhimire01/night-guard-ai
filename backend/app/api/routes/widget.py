@@ -2,10 +2,11 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
+from app.core.config import settings as app_settings
 from app.core.exceptions import NotFoundError, TooManyRequestsError
 from app.core.rate_limit import (
     widget_business_rate_limiter,
@@ -20,6 +21,7 @@ from app.schemas.widget import (
     WidgetUpdate,
     WidgetUpdatesResponse,
 )
+from app.services import branding_service
 from app.services.channels import widget_service
 from app.services.conversation.style_checks import split_into_bubbles
 
@@ -28,6 +30,12 @@ router = APIRouter()
 _WIDGET_JS_PATH = Path(__file__).resolve().parents[2] / "static" / "widget.js"
 _TEST_CHAT_PATH = Path(__file__).resolve().parents[2] / "static" / "test-chat.html"
 _WIDGET_DEMO_PATH = Path(__file__).resolve().parents[2] / "static" / "widget-demo.html"
+
+
+def _dev_only() -> None:
+    """The test pages below are development tools: in production they simply don't exist."""
+    if app_settings.environment == "production":
+        raise NotFoundError("Not found.")
 
 
 @router.get("/widget.js", include_in_schema=False)
@@ -44,6 +52,7 @@ def get_widget_script() -> FileResponse:
 def get_test_chat_page() -> FileResponse:
     """Dev/test-only chat UI for hitting the real widget endpoint by hand.
     Not for production exposure -- see comment at top of test-chat.html."""
+    _dev_only()
     return FileResponse(_TEST_CHAT_PATH, media_type="text/html")
 
 
@@ -55,11 +64,12 @@ def get_widget_demo_page() -> FileResponse:
     preview is a sandboxed srcDoc iframe that cannot be granted microphone
     access. Not for production exposure -- see comment at top of
     widget-demo.html."""
+    _dev_only()
     return FileResponse(_WIDGET_DEMO_PATH, media_type="text/html")
 
 
 @router.get("/api/v1/widget/{business_id}/config", response_model=WidgetConfigResponse)
-def get_widget_config(business_id: uuid.UUID, db: Session = Depends(get_db)) -> WidgetConfigResponse:
+def get_widget_config(business_id: uuid.UUID, request: Request, db: Session = Depends(get_db)) -> WidgetConfigResponse:
     """Public — same trust tier as `POST .../messages` above (see that
     route's docstring for the business_id-enumeration reasoning, which
     applies identically here): the widget script fetches this BEFORE
@@ -70,7 +80,30 @@ def get_widget_config(business_id: uuid.UUID, db: Session = Depends(get_db)) -> 
     business = widget_service.get_widget_config(db, business_id=business_id)
     if business is None:
         raise NotFoundError("Business not found.")
-    return WidgetConfigResponse(name=business.name, brand_color=business.brand_color, logo_url=business.logo_url)
+    branding_service.note_widget_origin(db, business=business, origin=request.headers.get("origin"))
+    settings = branding_service.get_widget_settings(business)
+    return WidgetConfigResponse(
+        **settings.model_dump(), name=business.name, brand_color=business.brand_color, logo_url=business.logo_url
+    )
+
+
+@router.get("/api/v1/widget/{business_id}/logo", include_in_schema=False)
+def get_widget_logo(business_id: uuid.UUID, db: Session = Depends(get_db)) -> Response:
+    """Public, like the config above: the business's uploaded logo, as shown in its own website widget. The bytes were
+    type-checked at upload (PNG/JPEG/WebP only), and nosniff stops a browser from reinterpreting them."""
+    business = widget_service.get_widget_config(db, business_id=business_id)
+    if business is None or business.logo_image is None:
+        raise NotFoundError("No logo uploaded.")
+    return Response(
+        content=business.logo_image,
+        media_type=business.logo_content_type,
+        headers={
+            "Cache-Control": "public, max-age=86400",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'",
+            "Cross-Origin-Resource-Policy": "cross-origin",
+        },
+    )
 
 
 @router.post("/api/v1/widget/{business_id}/messages", response_model=WidgetMessageResponse)

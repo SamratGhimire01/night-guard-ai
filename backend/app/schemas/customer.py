@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
@@ -64,3 +65,15 @@ class CustomerRead(BaseModel):
     email: str | None
     preferred_language: str | None
     sms_opt_in: bool
+
+
+class CustomerListItem(BaseModel):
+    id: uuid.UUID
+    name: str | None  # None until the customer has told us their name
+    phone: str | None
+    email: str | None
+    channel: str | None
+    conversations: int
+    appointments: int
+    first_seen_at: datetime
+    last_contact_at: datetime

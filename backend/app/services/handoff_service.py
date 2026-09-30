@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models.conversation import Conversation
+from app.db.models.customer import Customer
 from app.db.models.handoff import HumanHandoff
 from app.schemas.conversation import ConversationIntent
 
@@ -196,7 +197,23 @@ def maybe_create_handoff(
 
     db.refresh(handoff)
     logger.info("human_handoff created: conversation_id=%s reason=%s", conversation_id, reason)
+    _alert_owner(db, handoff)
     return handoff
+
+
+def _alert_owner(db: Session, handoff: HumanHandoff) -> None:
+    """Emails the owner/admins about a NEW handoff (never blocks or breaks the customer's turn)."""
+    from app.services import owner_alert_service
+
+    conversation = db.get(Conversation, handoff.conversation_id)
+    customer = db.get(Customer, conversation.customer_id) if conversation else None
+    owner_alert_service.notify_handoff(
+        db,
+        business_id=handoff.business_id,
+        conversation_id=handoff.conversation_id,
+        reason=handoff.reason,
+        customer_name=(customer.known_name if customer else None) or "A customer",
+    )
 
 
 def list_handoffs(

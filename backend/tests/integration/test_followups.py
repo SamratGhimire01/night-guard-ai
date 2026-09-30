@@ -482,3 +482,81 @@ def test_orchestrator_persists_real_detected_intent(two_businesses, monkeypatch)
             .one()
         )
         assert customer_msg.detected_intent == "pricing_question"
+
+
+# ---------------------------------------------------------------- automatic runs (background scheduler) -------------
+
+
+def test_scheduler_runs_followups_only_for_businesses_that_turned_them_on(monkeypatch):
+    from app.services.followups import followup_service
+
+    ids = []
+    with SessionLocal() as db:
+        for enabled in (True, False):
+            b = Business(name=f"auto-followup-{enabled}", timezone="UTC", follow_ups_enabled=enabled)
+            db.add(b)
+            db.commit()
+            ids.append((b.id, enabled))
+    called = []
+    monkeypatch.setattr(
+        followup_service,
+        "run_followups",
+        lambda db, *, business_id, **kw: called.append(business_id) or [{"status": "sent"}, {"status": "skipped"}],
+    )
+    try:
+        with SessionLocal() as db:
+            sent = followup_service.run_due_followups(db)
+        enabled_id, disabled_id = ids[0][0], ids[1][0]
+        assert enabled_id in called
+        assert disabled_id not in called
+        assert sent >= 1
+    finally:
+        with SessionLocal() as db:
+            for business_id, _ in ids:
+                db.delete(db.get(Business, business_id))
+            db.commit()
+
+
+def test_one_business_failing_does_not_stop_the_others(monkeypatch):
+    from app.services.followups import followup_service
+
+    ids = []
+    with SessionLocal() as db:
+        for i in range(2):
+            b = Business(name=f"auto-followup-fail-{i}", timezone="UTC", follow_ups_enabled=True)
+            db.add(b)
+            db.commit()
+            ids.append(b.id)
+    reached = []
+
+    def fake(db, *, business_id, **kw):
+        if business_id == ids[0]:
+            raise RuntimeError("smtp down")
+        reached.append(business_id)
+        return []
+
+    monkeypatch.setattr(followup_service, "run_followups", fake)
+    try:
+        with SessionLocal() as db:
+            followup_service.run_due_followups(db)
+        assert ids[1] in reached
+    finally:
+        with SessionLocal() as db:
+            for business_id in ids:
+                db.delete(db.get(Business, business_id))
+            db.commit()
+
+
+def test_scheduler_runs_followups_at_most_once_per_interval(monkeypatch):
+    import asyncio
+
+    from app.services import scheduler
+
+    runs = []
+    monkeypatch.setattr(scheduler, "_followups_sync", lambda: runs.append(1) or 0)
+    monkeypatch.setattr(scheduler, "_last_followup_run", 0.0)
+    interval = scheduler.settings.followup_run_interval_seconds
+    asyncio.run(scheduler._followups_if_due(now=1000.0))
+    asyncio.run(scheduler._followups_if_due(now=1000.0 + interval - 1))
+    asyncio.run(scheduler._followups_if_due(now=1000.0 + interval + 1))
+    assert len(runs) == 2

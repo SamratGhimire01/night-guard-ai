@@ -208,12 +208,8 @@ def _process_candidate(
 def run_followups(
     db: Session, *, business_id: uuid.UUID, inactivity_hours: int = DEFAULT_INACTIVITY_HOURS
 ) -> list[dict]:
-    """Real, callable action — not a scheduled job. No scheduler/cron
-    infrastructure exists anywhere in this codebase yet (the identical honest
-    boundary Phase 13 drew for dispatch_queued_notifications and Phase 16 drew
-    for the daily report): real automatic "run this every hour" scheduling is
-    a later infrastructure phase. This function does the real detection + real
-    send, right now, for one business, when called."""
+    """Detects and sends follow-ups for one business, right now. Called automatically by the background scheduler
+    for every business with follow-ups on (run_due_followups below), and on demand from the dashboard's "Run now"."""
     business = db.get(Business, business_id)
     if business is None:
         return []
@@ -222,3 +218,19 @@ def run_followups(
         _process_candidate(db, business=business, candidate=candidate, inactivity_hours=inactivity_hours)
         for candidate in candidates
     ]
+
+
+def run_due_followups(db: Session) -> int:
+    """One scheduler pass: runs follow-ups for every business that turned them on. Returns how many were sent. Safe to
+    call often: each conversation gets at most one follow-up, ever (see identify_followup_candidates)."""
+    business_ids = db.execute(select(Business.id).where(Business.follow_ups_enabled.is_(True))).scalars().all()
+    sent = 0
+    for business_id in business_ids:
+        try:
+            results = run_followups(db, business_id=business_id)
+        except Exception:  # one business's failure must never stop the others
+            logger.exception("follow-up run failed for business %s", business_id)
+            db.rollback()
+            continue
+        sent += sum(1 for r in results if r.get("status") == "sent")
+    return sent

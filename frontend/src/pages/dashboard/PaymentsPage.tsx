@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { Link, useOutletContext } from 'react-router-dom'
 import { Alert, Anchor, Button, Paper, Stack, Switch, Table, Title } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { IconAlertTriangle, IconCreditCard, IconExternalLink, IconSparkles } from '@tabler/icons-react'
@@ -74,20 +74,25 @@ export default function PaymentsPage() {
     <Stack gap="md">
       <PageHeader
         title="Payments"
-        description="Collect a real deposit through eSewa or Khalti after a booking is confirmed — configured per-service under Services (a service with no deposit configured is always paid in person, unaffected by this setting)."
+        description="Take a deposit through eSewa or Khalti when a customer books. You choose which services need a deposit under Services; all other services are paid in person."
       />
 
       {!isPremium && (
         <Alert color="violet" title="Upgrade to Premium" variant="light" icon={<IconSparkles size={18} stroke={1.75} />}>
-          Online payment collection is a Premium-plan feature. Ask an owner on your team to upgrade the business's
-          plan to enable it.
+          Online deposits are part of the Premium plan.{' '}
+          <Anchor component={Link} to="/dashboard/settings?tab=plan">
+            See plans and request an upgrade
+          </Anchor>
         </Alert>
       )}
 
       {nonNpr && (
-        <Alert color="yellow" title="NPR currency required" variant="light" icon={<IconAlertTriangle size={18} stroke={1.75} />}>
-          eSewa and Khalti only process NPR. Switch this business's currency to NPR under Settings before enabling
-          payment collection.
+        <Alert color="yellow" title="Your currency needs to be NPR" variant="light" icon={<IconAlertTriangle size={18} stroke={1.75} />}>
+          eSewa and Khalti only accept Nepalese Rupees.{' '}
+          <Anchor component={Link} to="/dashboard/settings">
+            Change your currency to NPR in Settings
+          </Anchor>{' '}
+          to use online deposits.
         </Alert>
       )}
 
@@ -95,7 +100,7 @@ export default function PaymentsPage() {
         <Stack gap="sm">
           <Title order={4}>Online deposits</Title>
           <Switch
-            label="Collect a real deposit online"
+            label="Collect a deposit online"
             checked={enabled}
             disabled={!canWrite || !isPremium || nonNpr}
             onChange={(e) => setEnabled(e.currentTarget.checked)}

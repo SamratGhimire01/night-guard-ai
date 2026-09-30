@@ -13,7 +13,7 @@ from app.db.models.customer import Customer
 from app.db.models.notification import Notification, NotificationStatus
 from app.db.models.payment import PaymentStatus
 from app.schemas.conversation import ConversationIntent
-from app.services import booking_service, payment_service, qr_link_service, service_service
+from app.services import booking_service, owner_alert_service, payment_service, qr_link_service, service_service
 from app.services.notifications import dispatch_notification
 from app.services.conversation.tools import TOOL_REGISTRY, ConversationTool
 
@@ -97,6 +97,7 @@ class BookAppointmentTool(ConversationTool):
                 ),
             }
 
+        owner_alert_service.notify_new_booking(db, appointment=appointment)
         return {
             "success": True,
             "appointment": {
@@ -219,7 +220,7 @@ class BookAppointmentTool(ConversationTool):
         share one Appointment row, see booking_service._cluster_group_people)
         and, when requested, all-or-nothing atomicity. Never trusts the LLM's
         claim that any of these slots are free."""
-        return booking_service.create_group_appointments(
+        result = booking_service.create_group_appointments(
             db,
             business_id=business_id,
             customer_id=customer_id,
@@ -227,6 +228,12 @@ class BookAppointmentTool(ConversationTool):
             all_or_nothing=all_or_nothing,
             source_channel=source_channel,
         )
+        for booking in result.get("bookings", []):
+            if booking.get("success") and booking.get("appointment"):
+                appointment = db.get(Appointment, uuid.UUID(str(booking["appointment"]["id"])))
+                if appointment is not None:
+                    owner_alert_service.notify_new_booking(db, appointment=appointment)
+        return result
 
     def _alternatives(
         self,

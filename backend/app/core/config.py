@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     # Empty by default: the provider treats missing credentials as a real,
     # non-retryable send failure rather than crashing at import time.
     gmail_address: str = ""
+    # Where dashboard upgrade requests go. Blank = the platform Gmail address above.
+    platform_support_email: str = ""
     gmail_app_password: str = ""
 
     # Twilio SMS (app/services/notifications/sms_provider.py). Empty by default:
@@ -182,6 +184,8 @@ class Settings(BaseSettings):
     # a short value only for a real, timed live-verification run (never left
     # short in committed config).
     reminder_poll_interval_seconds: int = 60
+    # How often the background scheduler looks for quiet leads to follow up (businesses that turned follow-ups on).
+    followup_run_interval_seconds: int = 900
 
     # Phase 52: how long the AI stays silent in a conversation after a staff member last replied/claimed it (sliding: each
     # staff reply restarts it). 2 hours in production; override to a few seconds only for a real, timed live-verification

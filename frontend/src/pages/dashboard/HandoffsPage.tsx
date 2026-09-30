@@ -9,6 +9,7 @@ import { EmptyRow } from '../../components/EmptyState'
 import PageHeader from '../../components/PageHeader'
 import StatusBadge from '../../components/StatusBadge'
 import TableSkeleton from '../../components/TableSkeleton'
+import { friendlyDateTime } from '../../lib/dates'
 
 const PAGE_SIZE = 50
 
@@ -46,7 +47,7 @@ export default function HandoffsPage() {
     <Stack gap="md">
       <PageHeader
         title="Human Handoffs"
-        description="Conversations the AI escalated to a real person — a customer asked for one, or the AI couldn't confidently help."
+        description="Customers who asked for a person, or questions the assistant wasn't sure about. Reply from the Inbox and mark them done here."
       />
 
       <SegmentedControl
@@ -94,7 +95,7 @@ export default function HandoffsPage() {
                       <Text size="sm">{h.reason}</Text>
                     </Table.Td>
                     <Table.Td style={{ whiteSpace: 'nowrap' }}>
-                      {new Date(h.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                      {friendlyDateTime(h.created_at)}
                     </Table.Td>
                     <Table.Td>
                       <StatusBadge status={h.status} />

@@ -1,12 +1,14 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db, require_role
 from app.core.entitlements import PLAN_FEATURES
-from app.core.exceptions import NotFoundError
-from app.db.models.business import BusinessUser
+from app.core.exceptions import ConflictError, NotFoundError
+from app.db.models.business import BusinessPlan, BusinessUser
 from app.schemas.business import _AVAILABLE_TIMEZONES, SUPPORTED_CURRENCIES, BusinessRead, BusinessUpdate
 from app.schemas.business_hours import (
     BusinessHoursUpdate,
@@ -14,8 +16,9 @@ from app.schemas.business_hours import (
     HolidayExceptionCreate,
     HolidayExceptionRead,
 )
-from app.schemas.plan import PlanRead
-from app.services import business_hours_service, business_service
+from app.schemas.plan import PlanRead, UpgradeRequestResult
+from app.schemas.widget import WidgetSettings
+from app.services import branding_service, business_hours_service, business_service, owner_alert_service, setup_service
 
 router = APIRouter()
 
@@ -58,6 +61,32 @@ def get_my_plan(
     return PlanRead(business_id=business.id, plan=business.plan, features=PLAN_FEATURES[business.plan])
 
 
+@router.get("/business/setup-status")
+def get_setup_status(current_user: BusinessUser = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    """The Overview's "Get set up" checklist, worked out from the business's real data."""
+    return setup_service.setup_status(db, business_id=current_user.business_id)
+
+
+@router.post("/business/plan/upgrade-request", response_model=UpgradeRequestResult)
+def request_plan_upgrade(
+    current_user: BusinessUser = Depends(require_role(["owner", "admin"])),
+    db: Session = Depends(get_db),
+) -> UpgradeRequestResult:
+    """An owner asks to move to Premium. Recorded on the business (so the platform team sees it in the admin list) and
+    emailed to the platform's support address in the background. The email is best effort: the request stands even if
+    it can't be sent."""
+    business = business_service.get_business(db, business_id=current_user.business_id)
+    if business.plan == BusinessPlan.PREMIUM:
+        raise ConflictError("This business is already on Premium.")
+    business.upgrade_requested_at = datetime.now(UTC)
+    db.commit()
+    notified = owner_alert_service.send_upgrade_request(
+        business_name=business.name, business_id=business.id, requested_by=current_user.email,
+        contact_email=business.email,
+    )
+    return UpgradeRequestResult(requested_at=business.upgrade_requested_at, team_notified=notified)
+
+
 @router.patch("/business/me", response_model=BusinessRead)
 def update_my_business(
     payload: BusinessUpdate,
@@ -66,6 +95,45 @@ def update_my_business(
 ) -> BusinessRead:
     business = business_service.update_business(db, business_id=current_user.business_id, payload=payload)
     return BusinessRead.model_validate(business)
+
+
+@router.post("/business/logo", response_model=BusinessRead)
+async def upload_my_logo(
+    file: UploadFile = File(...),
+    current_user: BusinessUser = Depends(require_role(["owner", "admin"])),
+    db: Session = Depends(get_db),
+) -> BusinessRead:
+    """Upload the business logo (PNG, JPG or WebP, up to 1 MB). It replaces any logo URL typed in earlier and is shown
+    in the website chat widget and the dashboard."""
+    raw = await file.read(branding_service.MAX_LOGO_BYTES + 1)
+    business = branding_service.set_logo(db, business_id=current_user.business_id, raw=raw)
+    return BusinessRead.model_validate(business)
+
+
+@router.delete("/business/logo", response_model=BusinessRead)
+def delete_my_logo(
+    current_user: BusinessUser = Depends(require_role(["owner", "admin"])),
+    db: Session = Depends(get_db),
+) -> BusinessRead:
+    business = branding_service.clear_logo(db, business_id=current_user.business_id)
+    return BusinessRead.model_validate(business)
+
+
+@router.get("/business/widget-settings", response_model=WidgetSettings)
+def get_my_widget_settings(
+    current_user: BusinessUser = Depends(get_current_user), db: Session = Depends(get_db)
+) -> WidgetSettings:
+    business = business_service.get_business(db, business_id=current_user.business_id)
+    return branding_service.get_widget_settings(business)
+
+
+@router.put("/business/widget-settings", response_model=WidgetSettings)
+def update_my_widget_settings(
+    payload: WidgetSettings,
+    current_user: BusinessUser = Depends(require_role(["owner", "admin"])),
+    db: Session = Depends(get_db),
+) -> WidgetSettings:
+    return branding_service.update_widget_settings(db, business_id=current_user.business_id, payload=payload)
 
 
 @router.get("/business/hours")

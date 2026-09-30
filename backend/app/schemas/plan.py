@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -30,3 +31,8 @@ class AdminBusinessRead(BaseModel):
     id: uuid.UUID
     name: str
     plan: BusinessPlan
+
+
+class UpgradeRequestResult(BaseModel):
+    requested_at: datetime
+    team_notified: bool  # False when no support email is configured; the request is still recorded

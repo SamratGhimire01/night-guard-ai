@@ -74,6 +74,8 @@ class RateLimiter:
 
 
 login_rate_limiter = RateLimiter()
+# "Forgot password" per email address: stops anyone flooding a real person's inbox with reset links.
+password_reset_rate_limiter = RateLimiter(max_attempts=5, window_seconds=3600)
 widget_ip_rate_limiter = RateLimiter(max_attempts=WIDGET_IP_MAX_ATTEMPTS, window_seconds=WIDGET_WINDOW_SECONDS)
 widget_session_rate_limiter = RateLimiter(
     max_attempts=WIDGET_SESSION_MAX_ATTEMPTS, window_seconds=WIDGET_WINDOW_SECONDS
