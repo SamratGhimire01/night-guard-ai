@@ -196,9 +196,10 @@ function DailyReportPanel({ business }: { business: BusinessRead | null }) {
       <Group justify="space-between" wrap="wrap">
         <input
           type="date"
+          aria-label="Report date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          style={{ padding: 6, fontSize: 14, border: '1px solid #ced4da', borderRadius: 4 }}
+          className="ng-native-input"
         />
         <Button variant="light" onClick={handleDownload}>
           Download Excel
@@ -307,9 +308,10 @@ function MonthlyReportPanel() {
       <Group justify="space-between" wrap="wrap">
         <input
           type="month"
+          aria-label="Report month"
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          style={{ padding: 6, fontSize: 14, border: '1px solid #ced4da', borderRadius: 4 }}
+          className="ng-native-input"
         />
         <Button variant="light" onClick={handleDownload}>
           Download Excel

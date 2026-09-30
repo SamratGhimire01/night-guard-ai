@@ -265,7 +265,7 @@ export default function CheckInPage() {
             )}
 
             {result.pending_payment && (
-              <Paper withBorder p="sm" radius="md" bg="var(--mantine-color-gray-0)">
+              <Paper withBorder p="sm" radius="md">
                 <Stack gap="xs">
                   <Text size="sm" fw={600}>
                     Remaining balance

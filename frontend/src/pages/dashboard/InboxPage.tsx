@@ -83,7 +83,7 @@ export default function InboxPage() {
                 onChange={(e) => setSearch(e.currentTarget.value)}
               />
               <Select
-                w={130}
+                w={160}
                 placeholder="All channels"
                 aria-label="Filter by channel"
                 clearable

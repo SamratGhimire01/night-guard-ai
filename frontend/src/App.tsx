@@ -29,10 +29,12 @@ import SettingsPage from './pages/dashboard/SettingsPage'
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
 import '@mantine/charts/styles.css'
+// After Mantine's styles, so the glass layer wins at equal specificity.
+import './glass.css'
 
 export default function App() {
   return (
-    <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver} defaultColorScheme="dark">
+    <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver} defaultColorScheme="light">
       <Notifications />
       <BrowserRouter>
         <AuthProvider>

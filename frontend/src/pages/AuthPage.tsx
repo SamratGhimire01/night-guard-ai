@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Alert, Box, Button, Paper, PasswordInput, SegmentedControl, Stack, TextInput, Title } from '@mantine/core'
+import { Alert, Box, Button, PasswordInput, SegmentedControl, Stack, Text, TextInput, Title } from '@mantine/core'
+import { IconMoonStars } from '@tabler/icons-react'
 import { useForm } from '@mantine/form'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
@@ -56,12 +57,23 @@ export default function AuthPage() {
   }
 
   return (
-    <Box style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--mantine-color-body)' }}>
-      <Paper withBorder shadow="sm" radius="md" p="xl" w={380}>
-        <Stack gap="md">
-          <Title order={3} ta="center">
-            Night Guard AI
-          </Title>
+    <Box className="ng-auth-stage">
+      <span className="ng-orb ng-orb-a" aria-hidden />
+      <span className="ng-orb ng-orb-b" aria-hidden />
+      <span className="ng-orb ng-orb-c" aria-hidden />
+      <Box className="ng-auth-card ng-page" w="100%" maw={440}>
+        <Stack gap="lg">
+          <Stack gap={10} align="center" ta="center">
+            <span className="ng-tile ng-logo" style={{ width: 56, height: 56, borderRadius: 18 }}>
+              <IconMoonStars size={30} stroke={1.8} />
+            </span>
+            <Title order={2} style={{ letterSpacing: '-0.02em' }}>
+              {mode === 'login' ? 'Welcome back' : 'Create your account'}
+            </Title>
+            <Text c="dimmed" size="md">
+              {mode === 'login' ? 'Log in to your Night Guard AI dashboard.' : 'Set up your business in under a minute.'}
+            </Text>
+          </Stack>
           <SegmentedControl
             fullWidth
             value={mode}
@@ -71,8 +83,8 @@ export default function AuthPage() {
               clearSessionMessage()
             }}
             data={[
-              { label: 'Login', value: 'login' },
-              { label: 'Register', value: 'register' },
+              { label: 'Log in', value: 'login' },
+              { label: 'New account', value: 'register' },
             ]}
           />
 
@@ -89,17 +101,17 @@ export default function AuthPage() {
 
           {mode === 'login' ? (
             <form onSubmit={loginForm.onSubmit(handleLogin)}>
-              <Stack gap="sm">
-                <TextInput label="Email" type="email" required {...loginForm.getInputProps('email')} />
-                <PasswordInput label="Password" required {...loginForm.getInputProps('password')} />
-                <Button type="submit" loading={submitting} fullWidth mt="xs">
+              <Stack gap="md">
+                <TextInput label="Email" type="email" placeholder="you@business.com" autoComplete="email" required {...loginForm.getInputProps('email')} />
+                <PasswordInput label="Password" autoComplete="current-password" required {...loginForm.getInputProps('password')} />
+                <Button type="submit" loading={submitting} fullWidth mt="xs" size="lg" radius="xl">
                   Log in
                 </Button>
               </Stack>
             </form>
           ) : (
             <form onSubmit={registerForm.onSubmit(handleRegister)}>
-              <Stack gap="sm">
+              <Stack gap="md">
                 <TextInput label="Business name" required {...registerForm.getInputProps('business_name')} />
                 <TextInput label="Timezone" required {...registerForm.getInputProps('timezone')} />
                 <TextInput label="Email" type="email" required {...registerForm.getInputProps('email')} />
@@ -109,14 +121,14 @@ export default function AuthPage() {
                   description="At least 8 characters, with a letter and a digit."
                   {...registerForm.getInputProps('password')}
                 />
-                <Button type="submit" loading={submitting} fullWidth mt="xs">
+                <Button type="submit" loading={submitting} fullWidth mt="xs" size="lg" radius="xl">
                   Create business account
                 </Button>
               </Stack>
             </form>
           )}
         </Stack>
-      </Paper>
+      </Box>
     </Box>
   )
 }

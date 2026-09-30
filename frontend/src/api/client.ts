@@ -61,6 +61,12 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   return res.json() as Promise<T>
 }
 
+/** Turns a URL the API hands out (absolute, or a path like "/api/v1/widget/{id}/logo") into one the browser can load. */
+export function apiAssetUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  return new URL(url, new URL(API_BASE_URL, window.location.href)).href
+}
+
 /** Downloads a real file response (e.g. a report's .xlsx) — apiFetch always
  * does res.json(), which would corrupt binary content, so this is a small,
  * separate fetch that reuses the same auth/401 handling and saves the real
