@@ -60,7 +60,7 @@ def get_widget_demo_page() -> FileResponse:
 
 
 @router.get("/api/v1/widget/{business_id}/config", response_model=WidgetConfigResponse)
-def get_widget_config(business_id: uuid.UUID, db: Session = Depends(get_db)) -> WidgetConfigResponse:
+def get_widget_config(business_id: uuid.UUID, request: Request, db: Session = Depends(get_db)) -> WidgetConfigResponse:
     """Public — same trust tier as `POST .../messages` above (see that
     route's docstring for the business_id-enumeration reasoning, which
     applies identically here): the widget script fetches this BEFORE
@@ -71,6 +71,7 @@ def get_widget_config(business_id: uuid.UUID, db: Session = Depends(get_db)) -> 
     business = widget_service.get_widget_config(db, business_id=business_id)
     if business is None:
         raise NotFoundError("Business not found.")
+    branding_service.note_widget_origin(db, business=business, origin=request.headers.get("origin"))
     settings = branding_service.get_widget_settings(business)
     return WidgetConfigResponse(
         **settings.model_dump(), name=business.name, brand_color=business.brand_color, logo_url=business.logo_url

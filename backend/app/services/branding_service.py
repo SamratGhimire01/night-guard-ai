@@ -7,10 +7,13 @@ could carry script, and it would be served from our own origin."""
 
 import hashlib
 import uuid
+from datetime import UTC, datetime
+from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
+from app.core.config import settings
 from app.core.exceptions import PayloadTooLargeError, UnsupportedMediaTypeError
 from app.db.models.business import Business
 from app.schemas.widget import WidgetSettings
@@ -71,3 +74,18 @@ def update_widget_settings(db: Session, *, business_id: uuid.UUID, payload: Widg
     db.commit()
     db.refresh(business)
     return get_widget_settings(business)
+
+
+def note_widget_origin(db: Session, *, business: Business, origin: str | None) -> None:
+    """Records the first real website the chat loads on. The dashboard preview runs in a sandboxed frame (origin
+    "null") and the dashboard itself is excluded, so only a genuine embed counts. Written once, never again."""
+    if business.widget_installed_at is not None or not origin or origin == "null":
+        return
+    dashboard_origins = {o.strip().rstrip("/") for o in settings.dashboard_cors_origins.split(",") if o.strip()}
+    dashboard_origins.add(settings.dashboard_base_url.rstrip("/"))
+    parsed = urlparse(origin)
+    if origin.rstrip("/") in dashboard_origins or parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return
+    business.widget_installed_at = datetime.now(UTC)
+    business.widget_installed_origin = origin[:255]
+    db.commit()

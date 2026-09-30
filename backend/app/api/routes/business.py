@@ -19,7 +19,7 @@ from app.schemas.business_hours import (
 )
 from app.schemas.plan import PlanRead, UpgradeRequestResult
 from app.schemas.widget import WidgetSettings
-from app.services import branding_service, business_hours_service, business_service, owner_alert_service
+from app.services import branding_service, business_hours_service, business_service, owner_alert_service, setup_service
 
 router = APIRouter()
 
@@ -60,6 +60,12 @@ def get_my_plan(
     deliverable for now."""
     business = business_service.get_business(db, business_id=current_user.business_id)
     return PlanRead(business_id=business.id, plan=business.plan, features=PLAN_FEATURES[business.plan])
+
+
+@router.get("/business/setup-status")
+def get_setup_status(current_user: BusinessUser = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    """The Overview's "Get set up" checklist, worked out from the business's real data."""
+    return setup_service.setup_status(db, business_id=current_user.business_id)
 
 
 @router.post("/business/plan/upgrade-request", response_model=UpgradeRequestResult)

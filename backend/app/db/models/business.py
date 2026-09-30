@@ -140,6 +140,9 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     upgrade_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Email the owner/admins when a customer needs a person or books (app/services/owner_alert_service.py).
     owner_alerts_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    # First time the website chat loaded on a real site (not the dashboard preview): ticks "Add chat to your website".
+    widget_installed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    widget_installed_origin: Mapped[str | None] = mapped_column(String(255))
     # Phase 44: real eSewa/Khalti payment collection — a Premium-gated toggle,
     # off by default (same "never on by default" discipline as sms_enabled/
     # follow_ups_enabled above). Only writable via the dedicated, plan-gated

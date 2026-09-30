@@ -853,3 +853,45 @@ body::before {
 .ng-upgrade {
   background: var(--ng-grad-soft) !important;
 }
+
+/* ---------- Setup checklist (Overview) ---------- */
+
+.ng-setup {
+  background: linear-gradient(135deg, rgba(126, 59, 219, 0.1), rgba(224, 70, 143, 0.08)), var(--ng-glass) !important;
+}
+
+.ng-setup-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: var(--mantine-radius-md);
+  color: var(--mantine-color-text);
+  text-decoration: none;
+  transition: background-color 160ms var(--ng-ease), transform 160ms var(--ng-ease);
+}
+
+.ng-setup-step:hover {
+  background: var(--ng-row-hover);
+  transform: translateX(2px);
+}
+
+.ng-setup-step[data-next] {
+  background: var(--ng-glass-strong);
+  box-shadow: var(--ng-highlight), 0 4px 14px -8px rgba(70, 35, 130, 0.35);
+}
+
+.ng-setup-icon {
+  color: var(--mantine-color-dimmed);
+  flex-shrink: 0;
+}
+
+.ng-setup-icon-done {
+  color: var(--mantine-color-teal-6);
+  flex-shrink: 0;
+}
+
+.ng-setup-arrow {
+  color: var(--mantine-primary-color-filled);
+  flex-shrink: 0;
+}

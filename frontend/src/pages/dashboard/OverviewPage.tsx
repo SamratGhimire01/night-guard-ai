@@ -16,6 +16,7 @@ import { apiFetch } from '../../api/client'
 import type { AppointmentListItem, BusinessRead, HandoffListItem, MonthlyReport } from '../../api/types'
 import EmptyState from '../../components/EmptyState'
 import PageHeader from '../../components/PageHeader'
+import SetupChecklist from '../../components/SetupChecklist'
 import StatCard from '../../components/StatCard'
 import StatusBadge from '../../components/StatusBadge'
 import TableSkeleton from '../../components/TableSkeleton'
@@ -89,6 +90,8 @@ export default function OverviewPage() {
   return (
     <Stack gap="xl">
       <PageHeader title="Overview" description="Today's activity and this month at a glance." />
+
+      <SetupChecklist />
 
       <div>
         <SectionHeader title="Today" />
