@@ -1,8 +1,8 @@
 import enum
 from datetime import date, time
 
-from sqlalchemy import Boolean, CheckConstraint, Date, Enum, String, Text, Time, UniqueConstraint
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import Boolean, CheckConstraint, Date, Enum, LargeBinary, String, Text, Time, UniqueConstraint
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -130,6 +130,12 @@ class Business(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # the exact same look after migration.
     brand_color: Mapped[str] = mapped_column(String(7), nullable=False, default="#2563eb", server_default="#2563eb")
     logo_url: Mapped[str | None] = mapped_column(String(500))
+    # An uploaded logo lives in the row itself (small, capped at upload) rather than on disk, so it survives container
+    # rebuilds with no volume to manage. When set, logo_url points at the public GET /api/v1/widget/{id}/logo route.
+    logo_image: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)
+    logo_content_type: Mapped[str | None] = mapped_column(String(32))
+    # Website chat widget look and copy (see app/schemas/widget.py WidgetSettings for the keys and their defaults).
+    widget_settings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default="{}")
     # Phase 44: real eSewa/Khalti payment collection — a Premium-gated toggle,
     # off by default (same "never on by default" discipline as sms_enabled/
     # follow_ups_enabled above). Only writable via the dedicated, plan-gated

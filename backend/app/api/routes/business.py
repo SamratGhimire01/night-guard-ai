@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db, require_role
@@ -15,7 +15,8 @@ from app.schemas.business_hours import (
     HolidayExceptionRead,
 )
 from app.schemas.plan import PlanRead
-from app.services import business_hours_service, business_service
+from app.schemas.widget import WidgetSettings
+from app.services import branding_service, business_hours_service, business_service
 
 router = APIRouter()
 
@@ -66,6 +67,45 @@ def update_my_business(
 ) -> BusinessRead:
     business = business_service.update_business(db, business_id=current_user.business_id, payload=payload)
     return BusinessRead.model_validate(business)
+
+
+@router.post("/business/logo", response_model=BusinessRead)
+async def upload_my_logo(
+    file: UploadFile = File(...),
+    current_user: BusinessUser = Depends(require_role(["owner", "admin"])),
+    db: Session = Depends(get_db),
+) -> BusinessRead:
+    """Upload the business logo (PNG, JPG or WebP, up to 1 MB). It replaces any logo URL typed in earlier and is shown
+    in the website chat widget and the dashboard."""
+    raw = await file.read(branding_service.MAX_LOGO_BYTES + 1)
+    business = branding_service.set_logo(db, business_id=current_user.business_id, raw=raw)
+    return BusinessRead.model_validate(business)
+
+
+@router.delete("/business/logo", response_model=BusinessRead)
+def delete_my_logo(
+    current_user: BusinessUser = Depends(require_role(["owner", "admin"])),
+    db: Session = Depends(get_db),
+) -> BusinessRead:
+    business = branding_service.clear_logo(db, business_id=current_user.business_id)
+    return BusinessRead.model_validate(business)
+
+
+@router.get("/business/widget-settings", response_model=WidgetSettings)
+def get_my_widget_settings(
+    current_user: BusinessUser = Depends(get_current_user), db: Session = Depends(get_db)
+) -> WidgetSettings:
+    business = business_service.get_business(db, business_id=current_user.business_id)
+    return branding_service.get_widget_settings(business)
+
+
+@router.put("/business/widget-settings", response_model=WidgetSettings)
+def update_my_widget_settings(
+    payload: WidgetSettings,
+    current_user: BusinessUser = Depends(require_role(["owner", "admin"])),
+    db: Session = Depends(get_db),
+) -> WidgetSettings:
+    return branding_service.update_widget_settings(db, business_id=current_user.business_id, payload=payload)
 
 
 @router.get("/business/hours")

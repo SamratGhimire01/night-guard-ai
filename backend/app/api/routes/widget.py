@@ -2,7 +2,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
@@ -20,6 +20,7 @@ from app.schemas.widget import (
     WidgetUpdate,
     WidgetUpdatesResponse,
 )
+from app.services import branding_service
 from app.services.channels import widget_service
 from app.services.conversation.style_checks import split_into_bubbles
 
@@ -70,7 +71,29 @@ def get_widget_config(business_id: uuid.UUID, db: Session = Depends(get_db)) -> 
     business = widget_service.get_widget_config(db, business_id=business_id)
     if business is None:
         raise NotFoundError("Business not found.")
-    return WidgetConfigResponse(name=business.name, brand_color=business.brand_color, logo_url=business.logo_url)
+    settings = branding_service.get_widget_settings(business)
+    return WidgetConfigResponse(
+        **settings.model_dump(), name=business.name, brand_color=business.brand_color, logo_url=business.logo_url
+    )
+
+
+@router.get("/api/v1/widget/{business_id}/logo", include_in_schema=False)
+def get_widget_logo(business_id: uuid.UUID, db: Session = Depends(get_db)) -> Response:
+    """Public, like the config above: the business's uploaded logo, as shown in its own website widget. The bytes were
+    type-checked at upload (PNG/JPEG/WebP only), and nosniff stops a browser from reinterpreting them."""
+    business = widget_service.get_widget_config(db, business_id=business_id)
+    if business is None or business.logo_image is None:
+        raise NotFoundError("No logo uploaded.")
+    return Response(
+        content=business.logo_image,
+        media_type=business.logo_content_type,
+        headers={
+            "Cache-Control": "public, max-age=86400",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'",
+            "Cross-Origin-Resource-Policy": "cross-origin",
+        },
+    )
 
 
 @router.post("/api/v1/widget/{business_id}/messages", response_model=WidgetMessageResponse)

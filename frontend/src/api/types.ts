@@ -51,6 +51,32 @@ export interface BusinessRead {
   language_mode: LanguageMode
   content_scope: ContentScope
   booking_enabled: boolean
+  business_type: string | null
+  persona_name: string | null
+  formality: Formality
+  emoji_policy: EmojiPolicy
+  sign_off: string | null
+}
+
+export type Formality = 'casual' | 'neutral' | 'formal'
+export type EmojiPolicy = 'default' | 'none'
+
+export type LauncherIcon = 'chat' | 'sparkles' | 'headset' | 'question' | 'calendar' | 'logo'
+
+// How the website chat widget looks and what it says first (GET/PUT /business/widget-settings).
+export interface WidgetSettings {
+  display_name: string
+  subtitle: string
+  welcome_message: string
+  suggested_questions: string[]
+  input_placeholder: string
+  launcher_icon: LauncherIcon
+  launcher_label: string
+  position: 'right' | 'left'
+  theme: 'light' | 'dark'
+  show_popup: boolean
+  popup_delay_seconds: number
+  show_branding: boolean
 }
 
 export interface PaymentSettingsUpdate {
@@ -89,6 +115,11 @@ export interface BusinessUpdate {
   language_mode?: LanguageMode
   content_scope?: ContentScope
   booking_enabled?: boolean
+  business_type?: string | null
+  persona_name?: string | null
+  formality?: Formality
+  emoji_policy?: EmojiPolicy
+  sign_off?: string | null
 }
 
 export interface PlanRead {
