@@ -523,11 +523,14 @@ def _confirmation_extras(confirmation: dict | None, customer_name: str | None, l
     # None when backend_base_url was refused (see qr_link_service.build_url) -- the
     # booking itself already succeeded, so this omits the QR line rather than ever
     # formatting a None into customer-facing text.
+    # The QR link and email note go out as a second message (blank line, see style_checks.split_into_bubbles): one
+    # message with all of it read as a monologue (simulator 2026-10-01).
+    follow_up = []
     if confirmation["checkin_qr_url"]:
-        lines.append(render("booking_checkin_qr", language, url=confirmation["checkin_qr_url"]))
+        follow_up.append(render("booking_checkin_qr", language, url=confirmation["checkin_qr_url"]))
     if confirmation["email_to"]:
-        lines.append(render("booking_email_note", language, email=confirmation["email_to"]))
-    return "\n" + "\n".join(lines)
+        follow_up.append(render("booking_email_note", language, email=confirmation["email_to"]))
+    return "".join(f"\n{line}" for line in lines) + ("\n\n" + "\n".join(follow_up) if follow_up else "")
 
 
 def _format_booking_result(

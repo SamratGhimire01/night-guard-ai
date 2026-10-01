@@ -95,6 +95,18 @@ def test_message_without_confirmation_data_is_unchanged(lang):
     assert _fmt(None, lang).startswith(plain)
 
 
+@pytest.mark.parametrize("lang", LANGS)
+def test_qr_link_and_email_note_are_a_second_message(lang):
+    """Simulator 2026-10-01: the whole confirmation in one message read as a monologue. The QR link and email note come
+    after a blank line, which every channel sends as a separate message."""
+    from app.services.conversation.style_checks import split_into_bubbles
+
+    first, second = split_into_bubbles(_fmt(None, lang))
+    assert "Ram" in first and "/qr/" not in first and "r***@example.com" not in first
+    assert second.startswith(("Check-in", "चेक-इन", "चेकइन")) or "/qr/" in second.splitlines()[0]
+    assert "r***@example.com" in second
+
+
 def test_deposit_message_keeps_both_qrs_and_stays_reserved_not_confirmed():
     text = _fmt(_PAY, "en")
     assert "https://pay.example/pay-qr/abc" in text and "https://app.example/qr/TOKEN.123.SIG" in text

@@ -110,7 +110,15 @@ def split_into_bubbles(text: str) -> list[str]:
     bug word-balancing hit here: greedily accumulating until a word-count target is crossed can
     dump every sentence into a single trailing bubble when the first sentence is much shorter
     than the target on its own.
+
+    A blank line is the composer's own message break (a booking confirmation sends its check-in QR link and email note
+    as a second message): split there first, at any length; the last bubble keeps whatever is past MAX_BUBBLES.
     """
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text.strip()) if p.strip()]
+    if len(paragraphs) > MAX_BUBBLES:
+        paragraphs[MAX_BUBBLES - 1 :] = ["\n\n".join(paragraphs[MAX_BUBBLES - 1 :])]
+    if len(paragraphs) > 1:
+        return paragraphs
     if len(text.split()) <= BUBBLE_SPLIT_WORD_THRESHOLD:
         return [text]
     sentences = split_sentences(text)
