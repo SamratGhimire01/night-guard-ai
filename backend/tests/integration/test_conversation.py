@@ -5615,3 +5615,20 @@ def test_template_reply_keeps_the_drafts_price_answer():
     assert _keep_draft_price(slots, "It's NPR 300.", services) == slots
     assert _keep_draft_price("Price NPR 300. " + slots, draft, services) == "Price NPR 300. " + slots
     assert _keep_draft_price(slots, None, services) == slots
+
+
+def test_contact_updated_sentence_follows_the_reply_language_before_any_lock(two_businesses, monkeypatch):
+    """Simulator 2026-10-01 no_reask: "namaste, ma Sita Gurung, 9801112233. ..." -- the lock was still empty, so the
+    contact sentence rendered in English after a Nepali reply."""
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+    _stub_providers(monkeypatch, json.dumps({
+        "intent": "service_question", "response": "Namaste Sita ji, Physio Session ko barema bhannus na.",
+        "message_language": "ne_deva", "contact_info_update": {"name": "Sita Gurung", "email": None, "phone": "9801112233"},
+    }))
+    reply = client.post(
+        f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a),
+        json={"content": "namaste, ma Sita Gurung, 9801112233. Physio Session ko barema bujhna thiyo"},
+    ).json()["response"]
+    assert "Tapaiko contact details update garidiye." in reply, reply
+    assert "I've updated your contact info" not in reply, reply

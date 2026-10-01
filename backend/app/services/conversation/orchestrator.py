@@ -2361,7 +2361,9 @@ def _handle_turn(
         contact_result = UpdateContactInfoTool().run(
             db, business_id=business_id, customer_id=conversation.customer_id, fields=contact_changes
         )
-        contact_sentence = _format_contact_update_result(contact_result, language)
+        # The reply's language, not just the lock: on a first message the lock can still be empty while the reply is
+        # Nepali, and the sentence went out in English (simulator 2026-10-01, no_reask).
+        contact_sentence = _format_contact_update_result(contact_result, language or expected_reply_language)
         logger.info(
             "update_contact_info: conversation_id=%s fields=%s resends=%d",
             conversation_id,
