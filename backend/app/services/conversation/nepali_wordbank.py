@@ -150,6 +150,11 @@ SWAPS: list[tuple[str, str, str]] = [
     (r"pathaunuhos", "pathaunus", "bookish"),
     (r"herunuhos|hernuhos", "hernus", "bookish"),
     (r"([a-z]+)nuhos", r"\1nus", "bookish"),
+    # --- Hindi medical words, from the native review (2026-10-01) ------------------------------------------------------
+    (r"dard", "dukhai", "hindi"),
+    (r"rakta?", "ragat", "hindi"),
+    (r"khoon", "ragat", "hindi"),
+    (r"kabhi[- ]kabhi", "kahile kahi", "hindi"),
     # --- plain spelling errors seen in real replies -------------------------------------------------------------------
     (r"bhena", "bhayena", "error"),
     (r"aera", "aaera", "error"),
@@ -176,6 +181,14 @@ FLAG_ONLY: list[tuple[str, str]] = [
     (r"aadi", "bookish"),
     (r"awastha|avastha", "bookish"),
     (r"adhyavadhik|adyavadhik", "bookish"),
+    # From the native review (2026-10-01): wrong in every context, but the right rewrite depends on the sentence.
+    (r"bukha|bukhar", "hindi"),  # fever is "jwaro"; "bukha" can also be a misspelt "bhok" (hunger)
+    (r"tez|tej", "hindi"),  # "tez dukha" -> "kada dukhai"; "tej" is also a name
+    (r"sunera man chhuttiyo|sunera man chhutiyo", "error"),  # literal "sorry to hear that" -> "aha, garo bhayecha"
+    (r"suni raheina|suni rahena", "error"),
+    (r"configured bhayeko|configured chaina|configure bhayeko", "bookish"),  # system words -> "record ma bhetiyena"
+    (r"sacchai ko manche|sachchai ko manche", "bookish"),  # -> "hamro staff"
+    (r"guess garna chahanna|guess garna chahanna", "bookish"),
 ]
 
 # (?:...) matters: without it the word boundaries bind to the first and last alternative only, and "aunuhos" would
@@ -205,6 +218,7 @@ _TO_X.update({
     "bhaihalyo": "vaihalyo", "bhanera": "vanera", "bhannus": "vannus", "bhane": "vane", "bhayena": "vayena",
     "bhaena": "vayena", "ahile": "aile", "kahile": "kaile", "ke": "k", "chaina": "xaina",
     "bhanchu": "vanxu", "bhanidinus": "vanidinus", "bhaneko": "vaneko", "bhaye": "vaye", "bhayeko": "vayeko",
+    "bhanne": "vanne", "bhannu": "vannu",
 })
 # "bh" -> "v" stays consistent inside a converted word: bhaihalcha -> vaihalxa, not bhaihalxa.
 _TO_X = {k: ("v" + v[2:] if v.startswith("bh") else v) for k, v in _TO_X.items()}
@@ -238,10 +252,21 @@ def _keep_case(original: str, replacement: str) -> str:
     return replacement
 
 
+# The reverse map, so a reply always ends up in ONE style (a native reviewer flagged "Thik xa ... bhanne ... garchan"
+# mixes as awkward). First ch-spelling wins for a shared x form (xa <- cha, not chha). "k" is never expanded to
+# "ke": a bare "k" is also the letter in "k help garum?".
+_TO_CH: dict[str, str] = {}
+for _ch_word, _x_word in _TO_X.items():
+    if _x_word != "k":
+        _TO_CH.setdefault(_x_word, _ch_word)
+_CH_RE = re.compile(r"\b(" + "|".join(sorted(map(re.escape, _TO_CH), key=len, reverse=True)) + r")\b", re.IGNORECASE)
+
+
 def mirror_spelling(text: str, style: str) -> str:
-    if style != "x":
-        return text
-    return _X_RE.sub(lambda m: _keep_case(m.group(0), _TO_X[m.group(0).lower()]), text)
+    """Whole reply in the customer's style: "x" (xa/vayo/hunxa) or "ch" (cha/bhayo/huncha, also the default)."""
+    if style == "x":
+        return _X_RE.sub(lambda m: _keep_case(m.group(0), _TO_X[m.group(0).lower()]), text)
+    return _CH_RE.sub(lambda m: _keep_case(m.group(0), _TO_CH[m.group(0).lower()]), text)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -330,5 +355,10 @@ def prompt_word_guide() -> str:
         "and never textbook/office words (kripaya, prapta, madhyam, janakari, sahayog, upalabdha, aagami, vyakti, "
         "samasya, maaf garnuhos, sakinu huncha, chahanu huncha, bujhna chahanchu) — say sorry, info, help, "
         "available, aune, jana, problem, milcha?, chahiyo? instead. Mirror the customer's spelling: if they write "
-        "xa/vayo/hunxa/voli, write xa/vayo/hunxa/voli; if they write cha/bhayo, write that."
+        "xa/vayo/hunxa/voli, write xa/vayo/hunxa/voli; if they write cha/bhayo, write that — never mix both in one "
+        "message. When a customer mentions pain or illness (any business): dukhai, ragat, jwaro, sunnieko, kada "
+        "dukhai (never dard, rakt, khoon, bukha, tez). "
+        "Sympathy the way people say it: \"Aha, garo bhayecha!\" — never word-for-word English (\"sunera man "
+        "chhuttiyo\"). Never system words (configured, record update gare, sacchai ko manche): say \"record ma "
+        "bhetiyena\", \"hamro staff le contact garnuhuncha\"."
     )

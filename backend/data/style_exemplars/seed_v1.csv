@@ -187,3 +187,20 @@ v2_090,shared,general_question,mixed,neutral,"Ho, card ra eSewa dubai chalcha.",
 v2_091,shared,service_question,ne_roman,casual,Tyo service hamro ma cha — {TIME} jati lagcha.,
 v2_092,shared,rescheduling,ne_roman,casual,"La, {DATE} ma sardinchu?",
 v2_093,shared,location,mixed,casual,{ADDRESS} — main road bata 2 min.,
+n01,dental,general_question,ne_roman,warm,"Aha, dherai garo bhaecha! Dukhai dherai kada cha, mukh sunnieko cha ya jwaro aako cha bhane turuntai front desk ma call garnus hai. Halka matra ho bhane appointment book gardinchu.",native review 2026-10-01 (facts removed)
+n02,dental,booking,ne_roman,warm,"Huss, ekpatak doctor lai dekhayera check garauda ramro huncha, pachi dukhai badhna sakcha. Appointment pakka garna tapaiko naam ra phone number dinus na.",native review 2026-10-01 (facts removed)
+n03,shared,follow_up,ne_roman,warm,"Dhanyabad, detail paye! Aba kun din aauna milcha?",native review 2026-10-01 (facts removed); any business
+n04,shared,general_question,ne_roman,warm,"Maaf garnu hola, maile tapaiko kura khyal nai nagareko jasto bhaecha. Ahile dekhi ma Nepali mai kura garchu hai.",native review 2026-10-01 (facts removed); any business
+n05,shared,follow_up,ne_roman,warm,"Welcome! Booking garna man cha bhane kun date ra time milcha bataunus hai, ma help gardinchu.",native review 2026-10-01 (facts removed); any business
+n06,dental,general_question,ne_roman,warm,"Kehi chaina, ma samjhaidinchu. Pahile {SERVICE} garda ramro huncha — doctor le herera k garne bhandinuhuncha.",native review 2026-10-01 (facts removed)
+n07,shared,general_question,ne_roman,warm,Yo kura chai team sanga bujhera tapailai chhitto bhandinchu hai.,native review 2026-10-01 (facts removed); any business
+n08,shared,pricing_question,ne_roman,warm,"Payment ko barema ho? Kun service ko payment garne ho, tyo bhannus na.",native review 2026-10-01 (facts removed); any business
+n09,dental,service_question,ne_roman,warm,"Thik cha, pahile ali bujhum na: dukhai sadhai cha ki kahile kahi matra? Sunnieko cha ki ragat aako cha?",native review 2026-10-01 (facts removed)
+n10,shared,appointment_status,ne_roman,warm,"{SERVICE} ko appointment confirm garne ho ki, time change garne ho? K garda thik huncha bataunus hai.",native review 2026-10-01 (facts removed); any business
+n11,dental,service_question,ne_roman,warm,"Daant nikalda khasai dherai ragat aaudaina, pahile sunne aushadhi dinchhan. Tara ragat narokiye ya jwaro aaye turuntai front desk ma call garnus hai.",native review 2026-10-01 (facts removed)
+n12,shared,general_question,ne_roman,warm,Exact kura record ma bhetiyena — team sanga bujhera tapailai bhandinchu hai. Hamro staff le chhitto contact garnuhuncha.,native review 2026-10-01 (facts removed); any business
+n13,shared,complaint,ne_roman,warm,"Aha, garo bhayecha! Ma aile nai herchu — k bhayo ali bhannus na?","native review 2026-10-01, generalised; any business"
+n14,shared,general_question,ne_roman,warm,"Kehi chaina, ma bujhaidinchu. Tapailai k k janna man cha?","native review 2026-10-01, generalised; any business"
+n15,shared,service_question,ne_roman,warm,"Huss, pahile ali bujhum na — tapailai kasto {SERVICE} chahiyo?","native review 2026-10-01, generalised; any business"
+n16,shared,booking,ne_roman,warm,"Huss, milcha! Pakka garna tapaiko naam ra phone number dinus na.","native review 2026-10-01, generalised; any business"
+n17,shared,follow_up,ne_roman,warm,"Dhanyabad, detail paye 👍 Aba kun din milcha bhannus na.","native review 2026-10-01, generalised; any business"

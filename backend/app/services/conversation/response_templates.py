@@ -52,6 +52,9 @@ def _key(language: str | None) -> str:
 # never sent twice in one chat. Every wording of one template in one language carries the same {placeholders}. The
 # FIRST wording is the default (used on first need, and by every caller with no conversation history); the later ones
 # are deliberately shorter -- a second ask reads like a person nudging, not a form re-printing itself.
+# booking_unavailable_*: the booking system's own reason ("Requested time is not available (outside business hours, on
+# a closed date, ...)") is internal English and never goes in front of a customer -- a native reviewer flagged it
+# leaking into Nepali replies. The alternatives list says everything the customer needs.
 TEMPLATES: dict[str, dict[str, str | list[str]]] = {
     "booking_success": {
         "en": [
@@ -72,32 +75,32 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
     },
     "booking_unavailable_with_alts": {
         "en": [
-            "That time isn't available anymore{who} — {message}. Here are some other openings for {service}: {options}. Would any of those work?",
-            "That time just got taken{who} — {message}. For {service} I can do {options}. Any of those work?",
-            "Sorry{who}, that one's gone — {message}. Still open for {service}: {options}. Which suits you?",
+            "That time isn't available anymore{who}. Here are some other openings for {service}: {options}. Would any of those work?",
+            "That time isn't free{who}. For {service} I can do {options}. Any of those work?",
+            "Sorry{who}, that one's gone. Still open for {service}: {options}. Which suits you?",
         ],
         "ne_deva": [
-            "त्यो समय भर्खरै बुक भयो{who} — {message}। {service} को लागि यी समय खाली छन्: {options}। कुनै मिल्छ?",
-            "सरी{who}, त्यो समय गइसक्यो — {message}। {service} को लागि अझै खाली: {options}। कुन चाहिँ मिल्छ?",
+            "त्यो समय चाहिँ खाली रहेनछ{who}। {service} को लागि यी समय खाली छन्: {options}। कुन चाहिँ मिल्छ?",
+            "सरी{who}, त्यो समय गइसक्यो। {service} को लागि अझै खाली: {options}। कुन चाहिँ मिल्छ?",
         ],
         "ne_roman": [
-            "Tyo time bharkhar book bhaisakyo{who} — {message}. {service} ko lagi yo time haru khali cha: {options}. Kunai milcha?",
-            "Sorry{who}, tyo time gaisakyo — {message}. {service} ko lagi aile khali: {options}. Kun chai milcha?",
+            "Tyo time chai khali chaina raicha{who}. {service} ko lagi yo time haru khali cha: {options}. Tapailai kun chai milcha?",
+            "Sorry{who}, tyo time gaisakyo. {service} ko lagi aile khali: {options}. Kun chai milcha?",
         ],
     },
     "booking_unavailable_no_alts": {
         "en": [
-            "That time isn't available anymore{who} — {message}. I don't see any other openings for {service} in the next week — would you like me to connect you with our team instead?",
-            "That time's not available anymore{who} — {message}. I don't see another opening for {service} this week — want me to get the team to sort out a time with you?",
-            "Sorry{who}, that slot's gone — {message}, and {service} is full for the next week. Should I ask the team to find you a time?",
+            "That time isn't available anymore{who}. I don't see any other openings for {service} in the next week — would you like me to connect you with our team instead?",
+            "That time's not available anymore{who}. I don't see another opening for {service} this week — want me to get the team to sort out a time with you?",
+            "Sorry{who}, that slot's gone, and {service} is full for the next week. Should I ask the team to find you a time?",
         ],
         "ne_deva": [
-            "त्यो समय अब खाली छैन{who} — {message}। यो हप्ता {service} को अर्को खाली समय देखिँदैन — टिमलाई तपाईंसँग समय मिलाउन भनिदिऊँ?",
-            "सरी{who}, त्यो समय गइसक्यो — {message}, र अर्को एक हप्ता {service} भरिएको छ। टिमलाई समय खोज्न भनूँ?",
+            "त्यो समय अब खाली छैन{who}। यो हप्ता {service} को अर्को खाली समय देखिँदैन — टिमलाई तपाईंसँग समय मिलाउन भनिदिऊँ?",
+            "सरी{who}, त्यो समय गइसक्यो, र अर्को एक हप्ता {service} भरिएको छ। टिमलाई समय खोज्न भनूँ?",
         ],
         "ne_roman": [
-            "Tyo time aile khali chaina{who} — {message}. Yo hapta {service} ko arko khali time dekhina — team lai tapai sanga time milauna bhanidiu?",
-            "Sorry{who}, tyo slot gaisakyo — {message}, ani arko ek hapta {service} full cha. Team lai time khojna bhanum?",
+            "Tyo time aile khali chaina{who}. Yo hapta {service} ko arko khali time dekhina — team lai tapai sanga time milauna bhanidiu?",
+            "Sorry{who}, tyo slot gaisakyo, ani arko ek hapta {service} full cha. Team lai time khojna bhanum?",
         ],
     },
     "group_intro_success": {
@@ -691,8 +694,8 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
             "अड्कल गर्नुभन्दा टिमसँग सोधेर भन्छु — उहाँहरूले तपाईंलाई खबर गर्नुहुन्छ।",
         ],
         "ne_roman": [
-            "Tyo ma guess garna chahanna — team bata sahi kura bujhera tapailai khabar garna lagauchu.",
-            "Guess garnu bhanda team sanga sodhera bhanchu — uniharu le tapailai khabar garnu huncha.",
+            "Yo kura chai team sanga bujhera tapailai chhitto bhandinchu hai.",
+            "Exact kura record ma bhetiyena — team sanga bujhera tapailai bhandinchu hai.",
         ],
     },
 }

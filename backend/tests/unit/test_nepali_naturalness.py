@@ -243,3 +243,38 @@ def test_a_greeting_keeps_its_help_question():
     assert finalize_reply(greeting, language="en", previous_replies=previous, customer_texts=[], protected=[],
                           intent="greeting")[0] == greeting
     assert _finalize(greeting, previous=previous) == greeting
+
+
+# --- from the native review (2026-10-01) ---------------------------------------------------------------------------
+
+
+def test_hindi_health_words_become_nepali():
+    from app.services.conversation.nepali_wordbank import polish_reply
+
+    fixed, _ = polish_reply("Anesthesia le dard hudaina, rakt ra khoon kabhi-kabhi aaucha.")
+    assert fixed == "Anesthesia le dukhai hudaina, ragat ra ragat kahile kahi aaucha."
+
+
+def test_phrases_that_need_a_human_rewrite_are_flagged_not_swapped():
+    from app.services.conversation.nepali_wordbank import find_issues
+
+    for phrase in ("Sunera man chhuttiyo", "bukha cha?", "record ma configured bhayeko chaina", "sacchai ko manche"):
+        assert find_issues(phrase), phrase
+
+
+def test_one_reply_is_never_written_in_two_spelling_styles():
+    from app.services.conversation.nepali_wordbank import mirror_spelling
+
+    mixed = "Thik xa — garo vayo vane bujhxu. Booking garna man cha bhane milxa."
+    assert mirror_spelling(mixed, "ch") == "Thik cha — garo bhayo bhane bujhchu. Booking garna man cha bhane milcha."
+    assert mirror_spelling(mixed, "x") == "Thik xa — garo vayo vane bujhxu. Booking garna man xa vane milxa."
+    assert mirror_spelling("K help garum?", "ch") == "K help garum?"  # a bare "k" is never expanded
+
+
+def test_slot_unavailable_replies_never_carry_the_internal_reason():
+    from app.services.conversation.response_templates import TEMPLATES
+
+    for name in ("booking_unavailable_with_alts", "booking_unavailable_no_alts"):
+        for wordings in TEMPLATES[name].values():
+            for text in wordings if isinstance(wordings, list) else [wordings]:
+                assert "{message}" not in text

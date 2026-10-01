@@ -132,6 +132,38 @@ PAIRS: list[dict] = [
     {"id": "robot-2", "defect": "robotic", "lint": False, "customer": "ok thanks",
      "good": "Hunchha, aaunus hai 😊",
      "bad": "Tapaiko sandesh ko lagi dhanyabad. Tapaiko anurodh safal bhayo."},
+    # --- other kinds of business: the assistant serves every business, not only clinics -------------------------
+    {"id": "trek-1", "defect": "hindi", "lint": True, "business": "trekking", "customer": "ABC trek ko permit kati parcha?",
+     "good": "ABC ko lagi ACAP permit ra TIMS duita chahincha — dubai hami nai milaidinchau.",
+     "bad": "ABC ke liye ACAP permit ra TIMS chahincha, hum milaidinchau."},
+    {"id": "trek-2", "defect": "cold", "lint": False, "business": "trekking",
+     "customer": "last time guide le dherai hairan banayo, feri tei guide pathaunu hunna hai",
+     "good": "Aghi ko trip ma tyasto bhayeko ma sorry. Yo choti arkai anubhavi guide pathaunchau — kun date ko trek ho?",
+     "bad": "Kun date ko trek ho?"},
+    {"id": "study-1", "defect": "bookish", "lint": True, "business": "study_abroad",
+     "customer": "Japan ko lagi k k document chahinchha?",
+     "good": "Japan ko lagi passport, academic certificate ra bank statement chahincha. Ekpatak counselling ma aaunus, sabai milaidinchau.",
+     "bad": "Japan ko lagi kripaya passport, academic certificate ra bank statement ko janakari pradan garnuhos."},
+    {"id": "study-2", "defect": "unhelpful", "lint": False, "business": "study_abroad", "customer": "IELTS kati chahinchha Australia ko lagi?",
+     "good": "Dherai jaso university ma overall 6.0 dekhi 6.5 chahincha — course herera exact bhandinchu.",
+     "bad": "Australia padhna dherai ramro thau ho, dherai students janchan."},
+    {"id": "food-1", "defect": "english_date", "lint": True, "business": "organic_food", "customer": "delivery kaile aaucha?",
+     "good": "Tapaiko order Bihibar (Oct 8) diuso samma aaipugcha.",
+     "bad": "Tapaiko order Thursday, October 8 at 2:00 PM ma aaipugcha."},
+    {"id": "food-2", "defect": "robotic", "lint": False, "business": "organic_food", "customer": "mahuri ko 1 kg kati ho?",
+     "good": "Mahuri 1 kg ko 1200 rupaiya ho. Pathaidiu?",
+     "bad": "Tapaiko sodhpuchh ko lagi dhanyabad. Hamro product suchi anusar mahuri 1 kg ko mulya 1200 rupaiya rahekocha."},
+    {"id": "salon-1", "defect": "timi", "lint": True, "business": "salon", "customer": "aaja haircut milcha?",
+     "good": "Milcha, aaja 4 baje ra 5 baje khali cha — kun time aaune?",
+     "bad": "Milcha, timi aaja 4 baje aau."},
+    {"id": "salon-2", "defect": "asks_twice", "lint": False, "business": "salon", "customer": "5 baje, naam Rita",
+     "history": [{"role": "customer", "text": "bholi facial garna milcha?"},
+                 {"role": "assistant", "text": "Milcha, bholi 3 baje ra 5 baje khali cha. Kun time ra tapaiko naam?"}],
+     "good": "La Rita ji, bholi 5 baje facial pakka bhayo 😊",
+     "bad": "Huss! Kun time ma aaune ra tapaiko naam k ho?"},
+    {"id": "food-3", "defect": "stock_ending", "lint": True, "business": "restaurant", "customer": "aaja table book garna milcha?",
+     "good": "Milcha, kati jana ra kati baje?",
+     "bad": "Milcha, kati jana ra kati baje? Aru kehi chahiyo bhane bhannus."},
     {"id": "en-1", "defect": "robotic", "lint": False, "customer": "can I bring my kid along?",
      "good": "Of course — kids are welcome. If they need a check-up too, I can book them in.",
      "bad": "Thank you for reaching out to us. I would be happy to assist you. Children are permitted on the premises."},
@@ -145,13 +177,51 @@ _ENTRY_RE = re.compile(
 )
 REVIEW_SHEET = Path(__file__).resolve().parents[4] / "docs" / "nepali_voice" / "native_review_sheet.md"
 
+# The filled-in sheet (2026-10-01) uses "### N" blocks with bold labels, a verdict word (OK / GOOD / GREAT /
+# ACCEPTABLE vs NEEDS IMPROVEMENT / BAD / UNACCEPTABLE) and, for most, "How a native receptionist would text: "...".
+_BLOCK_RE = re.compile(r"^#{2,3} (?P<n>\d+)\s*$(?P<body>.*?)(?=^#{2,3} \d+\s*$|\Z)", re.DOTALL | re.MULTILINE)
+_FIELD_RE = {
+    "customer": re.compile(r"Customer:\**\s*(.*)"),
+    "before": re.compile(r"Before:\**\s*(.*)"),
+    "after": re.compile(r"After:\**\s*(.*?)(?=^\*\s*\**Your verdict|\Z)", re.DOTALL | re.MULTILINE),
+    "verdict": re.compile(r"Your verdict:\**\s*(.*)"),
+    "rewrite": re.compile(r'would text:\*?\s*"(.*?)"\s*$', re.DOTALL | re.MULTILINE),
+}
+_OK_WORDS = ("ok", "good", "great", "acceptable", "thik", "okay")
+
+
+def _clean(text: str) -> str:
+    """Drop the sheet's markdown bold; keep line breaks (a service list is a list, not a run-on line)."""
+    lines = [re.sub(r"[ \t]+", " ", ln).strip() for ln in text.replace("**", "").splitlines()]
+    return "\n".join(ln for ln in lines if ln).strip(" *")
+
+
+def _parse_block(n: str, body: str) -> dict | None:
+    found = {k: r.search(body) for k, r in _FIELD_RE.items()}
+    if not (found["customer"] and found["after"] and found["verdict"]):
+        return None
+    verdict = _clean(found["verdict"].group(1))
+    if not verdict:
+        return None
+    ok = verdict.lower().lstrip("*( ").startswith(_OK_WORDS)
+    rewrite = _clean(found["rewrite"].group(1)) if found["rewrite"] else None
+    return {
+        "id": f"native-{n}", "customer": _clean(found["customer"].group(1)),
+        "before": _clean(found["before"].group(1)) if found["before"] else "",
+        "after": _clean(found["after"].group(1)), "verdict": verdict, "ok": ok,
+        "rewrite": None if ok else rewrite,
+    }
+
 
 def native_labels(path: Path = REVIEW_SHEET) -> list[dict]:
-    """Filled-in entries of the native review sheet: {"customer", "before", "after", "verdict", "ok", "rewrite"}."""
+    """Filled-in entries of the native review sheet: {"id", "customer", "before", "after", "verdict", "ok",
+    "rewrite"}. `ok` = the native speaker accepted our reply; `rewrite` = how they would write it instead (only kept
+    when the reply was not OK). Reads both the template layout and the filled-in "### N" layout."""
     if not path.exists():
         return []
+    text = path.read_text(encoding="utf-8")
     out = []
-    for m in _ENTRY_RE.finditer(path.read_text(encoding="utf-8")):
+    for m in _ENTRY_RE.finditer(text):  # template layout
         verdict = m["verdict"].strip()
         if not verdict:
             continue
@@ -160,6 +230,12 @@ def native_labels(path: Path = REVIEW_SHEET) -> list[dict]:
             "id": f"native-{m['n']}", "customer": m["customer"].strip(), "before": m["before"].strip(),
             "after": m["after"].strip(), "verdict": verdict, "ok": ok, "rewrite": None if ok else verdict,
         })
+    if out:
+        return out
+    for m in _BLOCK_RE.finditer(text):  # filled-in layout
+        entry = _parse_block(m["n"], m["body"])
+        if entry:
+            out.append(entry)
     return out
 
 
@@ -167,5 +243,5 @@ def native_pairs(path: Path = REVIEW_SHEET) -> list[dict]:
     """A native rewrite of our reply is, by definition, better than our reply."""
     return [
         {"id": e["id"], "defect": "native", "lint": False, "customer": e["customer"], "good": e["rewrite"], "bad": e["after"]}
-        for e in native_labels(path) if e["rewrite"]
+        for e in native_labels(path) if e["rewrite"] and e["rewrite"] != e["after"]
     ]

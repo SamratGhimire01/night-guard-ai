@@ -40,7 +40,11 @@ _EXTRA_BOOKISH_RE = re.compile(
     re.IGNORECASE,
 )
 # The customer asked for an explanation: a longer answer is the right answer, not a monologue.
-_EXPLAIN_RE = re.compile(r"\b(what is|what's|what are|what does|means?|explain|why|kina|k ho|ke ho|bhaneko k|vaneko k)\b", re.IGNORECASE)
+_EXPLAIN_RE = re.compile(
+    r"\b(what is|what's|what are|what does|means?|explain|why|kina|k ho|ke ho|bhaneko k|vaneko k|k k|ke ke|kun kun|"
+    r"what services|which services?|list|barema|bare ma|janna)\b",
+    re.IGNORECASE,
+)
 _GREETING_RE = re.compile(r"^\W*(hi+|hello+|hlo+|helo|hey|namaste|namaskar|k (cha|xa)|hajur)\W*$", re.IGNORECASE)
 _TIMI_RE = re.compile(r"\b(timi|timro|timra|timilai|timle|timile|timisanga)\b", re.IGNORECASE)
 _EN_DATE_RE = re.compile(
@@ -104,6 +108,12 @@ def lint(reply: str, customer: str, history: list[dict] | None = None, *, locked
             out.append(Finding("bookish", "language", 2 if len(bookish) > 2 else 3, ", ".join(bookish)))
         if errors:
             out.append(Finding("spelling", "correct", 3, ", ".join(errors)))
+        # An English sentence inside a Nepali reply (an internal system message leaking, e.g. "requested time is not
+        # available (outside business hours, on a closed date, ...)"). English NOUNS are normal in code-mixed Nepali;
+        # a run of English function words is not.
+        en_function = [w for w in _LATIN_WORD.findall(reply.lower()) if w in _EN_FUNCTION]
+        if len(en_function) >= 5:
+            out.append(Finding("english_leak", "language", 3, " ".join(en_function[:6])))
         if _EN_DATE_RE.search(reply):
             out.append(Finding("english_date", "language", 3, _EN_DATE_RE.search(reply).group(0)))
         timi = _TIMI_RE.findall(reply)
