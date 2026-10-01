@@ -128,3 +128,15 @@ def test_mentioning_a_language_is_not_a_switch_request():
         assert _explicit_switch_request(text) is None, text
     assert _explicit_switch_request("English ma kura garam") == "en"
     assert _explicit_switch_request("नेपालीमा भन्नुस्") == "ne_deva"
+
+
+def test_latin_greeting_never_locks_or_replies_devanagari(chat_session):
+    """Simulator 2026-10-01: "namaste" and "namaste dai" were answered in Devanagari. The stub mislabels them ne_deva,
+    as the real model did; neither the lock nor the reply language the model is told to use may be ne_deva."""
+    from app.services.conversation.orchestrator import _expected_response_language
+
+    for greeting in ("namaste", "namaste dai"):
+        rows = chat_session([(greeting, "ne_deva")])
+        assert rows[0][1] != "ne_deva", rows
+        assert _expected_response_language(Conversation(), greeting, None, None, "ne_deva") == "ne_roman"
+    assert _expected_response_language(Conversation(), "hi", None, None, None) is None

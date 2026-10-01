@@ -1392,7 +1392,15 @@ def _expected_response_language(
         return language_switch_request
     if conversation.detected_language:
         return conversation.detected_language
-    return _resolve_message_language(content, llm_reported_message_language)
+    resolved = _resolve_message_language(content, llm_reported_message_language)
+    if resolved is None and not _DEVANAGARI_RE.search(content) and any(
+        w.lower() in _ROMAN_NEPALI_WORDS for w in _WORD_RE.findall(content)
+    ):
+        # Simulator 2026-10-01: "namaste" / "namaste dai" (one Nepali word, below the 2-word lock bar) left the reply
+        # language open and the model answered in Devanagari. A Nepali word in Latin letters gets a Latin-letter reply;
+        # the lock itself still waits for a clear signal.
+        return ConversationLanguage.NE_ROMAN.value
+    return resolved
 
 
 def _response_language_mismatch(response_text: str, expected: str) -> bool:
@@ -2322,6 +2330,13 @@ def _handle_turn(
         # to passive drift) overrides the lock immediately, this same turn —
         # see _resolve_locked_language's docstring.
         switch_request = classification.language_switch_request or _explicit_switch_request(content)
+        if (
+            switch_request == ConversationLanguage.NE_DEVA.value
+            and not _DEVANAGARI_RE.search(content)
+            and "devanagari" not in content.lower()
+        ):
+            # "nepali ma bhannus" typed in Latin letters asks for Nepali, not for the Devanagari script.
+            switch_request = ConversationLanguage.NE_ROMAN.value
         is_explicit_language_switch = switch_request in _VALID_LANGUAGES
         language = _resolve_locked_language(conversation, message_language, switch_request)
 
