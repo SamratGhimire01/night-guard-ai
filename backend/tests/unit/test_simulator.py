@@ -123,7 +123,7 @@ def test_summary_report_and_compare():
     before["summary"] = sim.summarize(before["records"])
     assert before["summary"]["buckets"]["all"]["pct"] == 75.0
     assert before["summary"]["clean_conversations"]["pct"] == 50.0
-    assert before["summary"]["defects"] == {"lint:hindi": 1}
+    assert before["summary"]["defects"]["lint:hindi"] == 1
     text = sim.report(before)
     assert "Replies OK: 75.0%" in text and "| price | 50.0% | 2 |" in text
     after = {"started": "t", "judges": "", "records": [_record("dental", "price", [True, True])]}
@@ -137,3 +137,44 @@ def test_engine_errors_are_counted_not_scored():
     rec["turns"].append({"customer": "c", "error": "LLMProviderError: down"})
     s = sim.summarize([rec])
     assert s["errors"] == 1 and s["buckets"]["all"]["n"] == 1 and s["clean_conversations"]["n"] == 0
+
+
+def _run_with(turns_by_key):
+    """{"scen/biz": [(ok, intent, reply), ...]} -> a run dict."""
+    records = []
+    for key, turns in turns_by_key.items():
+        scenario, business = key.split("/")
+        records.append({"scenario": scenario, "situation": "x", "lang": "ne_roman", "business": business,
+                        "business_type": None,
+                        "turns": [{"customer": "c", "reply": reply, "ok": ok, "intent": intent, "lint": [],
+                                   "checks": [], "checklist_no": [] if ok else ["not_template"]}
+                                  for ok, intent, reply in turns]})
+    run = {"started": "t", "judges": "j", "records": records}
+    run["summary"] = sim.summarize(records)
+    return run
+
+
+def test_source_buckets_split_template_from_llm_replies():
+    run = _run_with({"a/dental": [(False, "off_topic", "tpl"), (True, "pricing_question", "llm")]})
+    b = run["summary"]["buckets"]
+    assert b["source:template"]["pct"] == 0.0 and b["source:llm"]["pct"] == 100.0
+    assert run["summary"]["defects"]["judge:not_template@template"] == 1
+    assert "By where the reply came from" in sim.report(run)
+
+
+def test_paired_compare_counts_flips_and_sign_test():
+    before = _run_with({f"s{i}/b": [(False, "greeting", "x")] for i in range(10)})
+    after = _run_with({f"s{i}/b": [(True, "greeting", "y")] for i in range(10)})
+    fixed, broken, same = sim.paired(before, after)
+    assert (len(fixed), len(broken), same) == (10, 0, 0)
+    text = sim.compare(before, after)
+    assert "bad → OK: **10**" in text and "a real difference" in text
+    assert "could be noise" in sim._sign_test(3, 2)
+    assert sim._sign_test(0, 0) == "no reply changed verdict"
+
+
+def test_analyze_groups_a_defect_by_source_and_intent():
+    run = _run_with({"a/dental": [(False, "off_topic", "Tyo kura ma ta help garna sakdina"),
+                                  (False, "off_topic", "again"), (True, "greeting", "hi")]})
+    text = sim.analyze(run)
+    assert "2 of 3 replies" in text and "| template | off_topic | 2 | 2 |" in text

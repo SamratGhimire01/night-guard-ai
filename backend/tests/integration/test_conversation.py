@@ -1683,7 +1683,7 @@ def test_language_lock_set_from_first_message_and_used_in_deterministic_sentence
     )
     assert resp.status_code == 201, resp.text
     # ne_roman off_topic template, never the English one, never the LLM's own stubbed text.
-    assert "help garna sakdina" in resp.json()["response"]
+    assert resp.json()["response"].startswith("Tyo chai exact thaha bhayena")
     assert "irrelevant stubbed text" not in resp.json()["response"]
 
     with SessionLocal() as db:
@@ -5102,7 +5102,7 @@ def test_ask_mode_first_reply_asks_then_locks_to_the_answer_then_only_an_explici
     assert state.language_prompted is True and state.detected_language is None
 
     second = _post_message(token, conversation_id, "Nepali")
-    assert second["response"].startswith("Huncha, Nepali mai kura garaum")
+    assert second["response"].startswith("Huncha hajur, Nepali mai kura garaum")
     assert len(stub.calls) == 0
     state = _conversation_state(conversation_id)
     assert state.detected_language == "ne_roman" and state.language_switch_streak == 0

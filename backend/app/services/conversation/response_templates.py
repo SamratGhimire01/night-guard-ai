@@ -68,6 +68,7 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
             "बुक भयो{who}! {service}, {when} ({duration} मिनेट)। बुकिङ आईडी: {id}",
         ],
         "ne_roman": [
+            "Booking confirm bhayo{who}! {when} ma {service} ({duration} min) — bhetaula 😊 Booking ID: {id}",  # sheet #21
             "Sabai milyo{who}! {when} ma {service} book garidiye ({duration} min). Booking ID: {id}",
             "Book bhayo{who}! {service}, {when} ({duration} min). Tapaiko booking ID {id} ho.",
             "La done{who}, {when} ko {service} pakka bhayo ({duration} min). Booking ID: {id}",
@@ -84,6 +85,7 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
             "सरी{who}, त्यो समय गइसक्यो। {service} को लागि अझै खाली: {options}। कुन चाहिँ मिल्छ?",
         ],
         "ne_roman": [
+            "Tyo time chai bharkhar book bhaisakyo{who}. {service} ko lagi {options} khali cha — kun milcha?",  # sheet #22
             "Tyo time chai khali chaina raicha{who}. {service} ko lagi yo time haru khali cha: {options}. Tapailai kun chai milcha?",
             "Sorry{who}, tyo time gaisakyo. {service} ko lagi aile khali: {options}. Kun chai milcha?",
         ],
@@ -232,6 +234,9 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
             "त्यसमा म मद्दत गर्न सक्दिनँ — म {name} को सहायक हुँ। हाम्रो सेवाबारे केही सोध्नु छ?",
         ],
         "ne_roman": [
+            # situation sheet #39/#40 (2026-10-01)
+            "Tyo chai exact thaha bhayena hajur 😅 {name} ko service wa booking ko barema kei sodhnuhuncha?",
+            "Tyo chai mildaina hajur 😊 {name} ko service ko barema k janna man cha bhannus na.",
             "Tyo kura ma ta help garna sakdina — ma {name} ko booking, service, price ra time ko lagi matra hu. Yesko barema kehi chahiyo?",
             "Sorry, tyo mero kaam bahira ko kura bhayo — ma {name} ko kura matra herchu. Kehi book garnu cha?",
             "Tyo ma ta help garna mildaina — ma {name} ko assistant hu. Hamro service ko barema kehi sodhnu cha?",
@@ -251,6 +256,7 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
             "जहिले तयार हुनुहुन्छ, नाम र नम्बर पठाउनुस् — अनि पक्का।",
         ],
         "ne_roman": [
+            "Huss milcha! Booking pakka garna tapaiko naam ra phone number pathaidinus na.",  # situation sheet #20
             "Book garna tapaiko naam ra phone number (wa email) chahincha, confirm garna.",
             "Naam ra number matra pathaidinus na, ani turuntai book garidinchu.",
             "Naam ra number matra baki cha, ani book bhaihalcha.",
@@ -298,6 +304,7 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
             "कुन अपोइन्टमेन्ट हो — सेवा र दिन भनिदिनुस् न।",
         ],
         "ne_roman": [
+            "Huss, cancel garidinchu. Kun din ko appointment thiyo, bhandinus na.",  # situation sheet #24
             "Huncha — kun chai cancel garne (service ra din)?",
             "Kun appointment ho — service ra din bhanidinus na.",
         ],
@@ -536,6 +543,7 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
             "टिमलाई भनिसकेँ — उहाँहरूले छिट्टै सम्पर्क गर्नुहुन्छ।",
         ],
         "ne_roman": [
+            "Ma team lai inform gardinchu — chhadai tapailai contact garnuhunchha hai.",  # situation sheet #50
             "Yo kura team sanga sodhera chadai bhanchu.",
             "Ma team lai sodhera tapailai khabar garchu.",
             "Team lai bhanisake — uniharu le chadai contact garnu huncha.",
@@ -628,7 +636,7 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
         "en": ["That time isn't available anymore.",
             "That time's already taken.", "That one's gone, sorry.", "That slot's booked."],
         "ne_deva": ["त्यो समय बुक भइसक्यो।", "सरी, त्यो समय गइसक्यो।", "त्यो स्लट भरिएको छ।"],
-        "ne_roman": ["Tyo time book bhaisakyo.", "Sorry, tyo time gaisakyo.", "Tyo slot full cha."],
+        "ne_roman": ["Tyo time chai bharkhar book bhaisakyo.", "Sorry, tyo time gaisakyo.", "Tyo slot full cha."],
     },
     # The same slot list was shown in one of our last few replies: point back at it instead of pasting it again.
     "availability_refer_back": {
@@ -680,7 +688,7 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
     "language_chosen": {
         "en": "Great, we'll continue in English. How can I help you today?",
         "ne_deva": "हुन्छ, नेपालीमै कुरा गरौँ। भन्नुस्, के सहयोग गरूँ?",
-        "ne_roman": "Huncha, Nepali mai kura garaum. Bhannus, k help garum?",
+        "ne_roman": "Huncha hajur, Nepali mai kura garaum 😊 Bhannus na, k help garum?",  # situation sheet #53
     },
     # The honest fallback for fact_validator.check_response_facts: the drafted reply stated a claim not backed by this
     # tenant's real config, and a regenerate still didn't fix it. Followed by a real handoff.
@@ -694,6 +702,7 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
             "अड्कल गर्नुभन्दा टिमसँग सोधेर भन्छु — उहाँहरूले तपाईंलाई खबर गर्नुहुन्छ।",
         ],
         "ne_roman": [
+            "Yo kura chai ma team sanga bujhera tapailai chhitto khabar garchu hai.",  # situation sheet #49
             "Yo kura chai team sanga bujhera tapailai chhitto bhandinchu hai.",
             "Exact kura record ma bhetiyena — team sanga bujhera tapailai bhandinchu hai.",
         ],
