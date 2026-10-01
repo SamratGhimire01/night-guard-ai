@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   ActionIcon,
   Alert,
@@ -200,6 +200,15 @@ export default function WebsiteWidgetPage() {
     [business, debouncedDraft],
   )
 
+  // The preview reloads ~350ms after each edit. Whatever the page inside it does on load, typing must stay in the field
+  // the owner is editing: remember that field, and take focus back if the reloaded preview grabbed it.
+  const lastField = useRef<HTMLElement | null>(null)
+  const previewFrame = useRef<HTMLIFrameElement>(null)
+  const keepTypingFocus = () => {
+    const field = lastField.current
+    if (field && field.isConnected && document.activeElement === previewFrame.current) field.focus({ preventScroll: true })
+  }
+
   if (!business || !draft || !saved) {
     return (
       <Stack gap="lg">
@@ -264,7 +273,17 @@ export default function WebsiteWidgetPage() {
       />
 
       <div className="ng-widget-editor">
-        <Paper p={{ base: 'md', sm: 'lg' }} className="ng-widget-controls">
+        <Paper
+          p={{ base: 'md', sm: 'lg' }}
+          className="ng-widget-controls"
+          onFocusCapture={(e) => {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) lastField.current = e.target
+          }}
+          onBlurCapture={(e) => {
+            // Leaving for anywhere other than the preview (e.g. clicking a button) ends the "still typing" state.
+            if (e.relatedTarget && e.relatedTarget !== previewFrame.current) lastField.current = null
+          }}
+        >
           <Tabs defaultValue="look">
             <Tabs.List mb="lg">
               <Tabs.Tab value="look" leftSection={<IconPalette size={17} />}>
@@ -529,7 +548,13 @@ export default function WebsiteWidgetPage() {
           <div className="ng-preview-frame" data-device={device}>
             {/* The real widget script, running on the unsaved settings. allow-forms lets the message box submit, so
                 you can chat with your assistant here; there is no allow-same-origin, so the page stays sandboxed. */}
-            <iframe title="Website chat preview" srcDoc={doc} sandbox="allow-scripts allow-forms" />
+            <iframe
+              ref={previewFrame}
+              title="Website chat preview"
+              srcDoc={doc}
+              sandbox="allow-scripts allow-forms"
+              onLoad={keepTypingFocus}
+            />
           </div>
           <Text size="xs" c="dimmed" mt="xs" ta="center">
             This chat is live: messages you send here go to your assistant and appear in your Inbox.

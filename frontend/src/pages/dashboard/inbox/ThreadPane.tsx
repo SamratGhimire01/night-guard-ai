@@ -1,14 +1,29 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ActionIcon, Alert, Badge, Button, Group, Paper, Skeleton, Stack, Text, Textarea, Tooltip } from '@mantine/core'
+import { ActionIcon, Alert, Anchor, Badge, Button, Collapse, Group, Paper, Skeleton, Stack, Text, Textarea, Tooltip, UnstyledButton } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { IconArrowLeft, IconFlame, IconHeadset, IconLock, IconMail, IconPhone, IconRobot, IconSend, IconUserCheck } from '@tabler/icons-react'
+import {
+  IconArrowDown,
+  IconArrowLeft,
+  IconChevronDown,
+  IconChevronUp,
+  IconFlame,
+  IconHeadset,
+  IconLock,
+  IconMail,
+  IconPhone,
+  IconRobot,
+  IconSend,
+  IconUserCheck,
+} from '@tabler/icons-react'
 import { apiFetch, ApiError } from '../../../api/client'
 import type { InboxConversation, InboxMessage } from '../../../api/types'
 import EmptyState from '../../../components/EmptyState'
 import StatusBadge from '../../../components/StatusBadge'
 import MessageBubble from './MessageBubble'
-import { channelInfo, clockTime, dayLabel } from './format'
+import QuickReplies from './QuickReplies'
+import { channelInfo, clockTime, dayLabel, nameFromEmail } from './format'
 import { usePolling } from './usePolling'
+import { useStoredState } from './useStoredState'
 
 const THREAD_LIMIT = 200
 
@@ -34,6 +49,9 @@ export default function ThreadPane({ conversationId, onBack, onChanged }: Props)
   const [draft, setDraft] = useState('')
   const [pendingText, setPendingText] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [scrolledUp, setScrolledUp] = useState(false)
+  const [leadOpen, setLeadOpen] = useStoredState('ng.inbox.leadSummaryOpen', true)
+  const composer = useRef<HTMLTextAreaElement>(null)
 
   // The page renders this pane with key={conversationId}, so every conversation gets fresh state; `activeId` only guards
   // a response that arrives after the user has already moved on.
@@ -76,6 +94,14 @@ export default function ThreadPane({ conversationId, onBack, onChanged }: Props)
     const el = scroller.current
     if (el && stickToBottom.current) el.scrollTop = el.scrollHeight
   }, [messages, pendingText])
+
+  const jumpToLatest = () => {
+    const el = scroller.current
+    if (!el) return
+    stickToBottom.current = true
+    setScrolledUp(false)
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+  }
 
   // Opening a conversation (and every new customer message while it is open) marks it read.
   const lastCustomerId = messages ? [...messages].reverse().find((m) => m.sender_type === 'customer')?.id ?? '' : null
@@ -163,7 +189,7 @@ export default function ThreadPane({ conversationId, onBack, onChanged }: Props)
 
   return (
     <Paper p={0} h="100%" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* header */}
+      {/* header: who, where, how to reach them, and the one main action */}
       <Group p="md" gap="sm" wrap="nowrap" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
         {onBack && (
           <ActionIcon onClick={onBack} aria-label="Back to conversations" hiddenFrom="md">
@@ -176,13 +202,29 @@ export default function ThreadPane({ conversationId, onBack, onChanged }: Props)
               <Text fw={600} truncate>
                 {detail.customer_name}
               </Text>
-              <Group gap={6}>
+              <Group gap={8} wrap="wrap" mt={2}>
                 <Badge size="xs" color={channel.color}>
                   {channel.label}
                 </Badge>
+                {detail.customer_phone && (
+                  <Anchor href={`tel:${detail.customer_phone}`} size="xs" c="dimmed" underline="hover" title="Call">
+                    <Group gap={3} wrap="nowrap">
+                      <IconPhone size={12} />
+                      {detail.customer_phone}
+                    </Group>
+                  </Anchor>
+                )}
+                {detail.customer_email && (
+                  <Anchor href={`mailto:${detail.customer_email}`} size="xs" c="dimmed" underline="hover" title="Send an email">
+                    <Group gap={3} wrap="nowrap">
+                      <IconMail size={12} />
+                      {detail.customer_email}
+                    </Group>
+                  </Anchor>
+                )}
                 {detail.last_customer_message_at && (
                   <Text size="xs" c="dimmed">
-                    Customer last wrote {dayLabel(detail.last_customer_message_at)} {clockTime(detail.last_customer_message_at)}
+                    Last wrote {dayLabel(detail.last_customer_message_at).toLowerCase()} {clockTime(detail.last_customer_message_at)}
                   </Text>
                 )}
               </Group>
@@ -206,112 +248,152 @@ export default function ThreadPane({ conversationId, onBack, onChanged }: Props)
         )}
       </Group>
 
-      {/* who is handling it + escalation */}
+      {/* one slim line: who is answering right now */}
       {detail && (
-        <Stack gap={0}>
-          {detail.takeover.active ? (
-            <Alert color="blue" radius={0} icon={<IconUserCheck size={16} />} py={8}>
-              <Text size="sm">
-                <b>{detail.takeover_by_email ? detail.takeover_by_email.split('@')[0] : 'A staff member'}</b> is handling this
-                conversation — the AI is paused
-                {detail.takeover.until && <> and hands back automatically at {clockTime(detail.takeover.until)} unless a reply extends it</>}.
+        <Group
+          gap={8}
+          px="md"
+          py={6}
+          wrap="nowrap"
+          style={{
+            borderBottom: '1px solid var(--mantine-color-default-border)',
+            background: detail.takeover.active ? 'var(--mantine-color-blue-light)' : 'var(--mantine-color-default-hover)',
+          }}
+        >
+          {detail.takeover.active ? <IconUserCheck size={15} /> : <IconRobot size={15} />}
+          <Text size="xs" style={{ flex: 1 }}>
+            {detail.takeover.active ? (
+              <>
+                <b>{nameFromEmail(detail.takeover_by_email)}</b> is answering — the AI is paused
+                {detail.takeover.until && <> until {clockTime(detail.takeover.until)} (a reply extends it)</>}.
+              </>
+            ) : (
+              <>
+                <b>The AI is answering.</b> Type a reply below to step in — the AI pauses automatically.
+              </>
+            )}
+          </Text>
+        </Group>
+      )}
+
+      {/* escalation: needs a person */}
+      {detail?.open_handoff && (
+        <Alert color="orange" radius={0} icon={<IconHeadset size={16} />} py={8} title="The AI asked for a person">
+          <Group justify="space-between" wrap="nowrap" gap="sm">
+            <Text size="sm">{detail.open_handoff.reason}</Text>
+            <Tooltip label="Close the handoff once the customer has been helped — the AI takes over again">
+              <Button size="compact-xs" variant="light" color="teal" onClick={resolveHandoff} loading={busy} style={{ flexShrink: 0 }}>
+                Mark resolved
+              </Button>
+            </Tooltip>
+          </Group>
+        </Alert>
+      )}
+
+      {/* automatic buying-intent triage, scored in the background (app/services/lead_service.py); collapsible, and the
+          choice is remembered for every conversation */}
+      {detail?.lead_summary && (
+        <div
+          style={{
+            borderBottom: '1px solid var(--mantine-color-default-border)',
+            background: detail.lead_signal === 'high' ? 'var(--mantine-color-green-light)' : 'var(--mantine-color-default-hover)',
+          }}
+        >
+          <UnstyledButton
+            onClick={() => setLeadOpen(!leadOpen)}
+            aria-expanded={leadOpen}
+            aria-controls="ng-lead-summary"
+            w="100%"
+            px="md"
+            py={6}
+          >
+            <Group gap={8} wrap="nowrap">
+              <IconFlame size={15} color={detail.lead_signal === 'high' ? 'var(--mantine-color-green-7)' : undefined} />
+              <Text size="xs" fw={600}>
+                Potential customer
               </Text>
-            </Alert>
-          ) : (
-            <Alert color="gray" radius={0} icon={<IconRobot size={16} />} py={8}>
-              <Text size="sm">The AI is handling this conversation. Replying below (or “Take over”) pauses it.</Text>
-            </Alert>
-          )}
-          {detail.open_handoff && (
-            <Alert color="orange" radius={0} icon={<IconHeadset size={16} />} py={8} title="Escalated to a person">
-              <Group justify="space-between" wrap="nowrap" gap="sm">
-                <Text size="sm">{detail.open_handoff.reason}</Text>
-                <Button size="compact-xs" variant="light" color="teal" onClick={resolveHandoff} loading={busy}>
-                  Mark resolved
-                </Button>
+              {detail.lead_signal && (
+                <StatusBadge status={detail.lead_signal === 'high' ? 'high' : 'gray'} label={`${detail.lead_signal} intent`} size="xs" />
+              )}
+              {!leadOpen && (
+                <Text size="xs" c="dimmed" truncate style={{ flex: 1 }}>
+                  {detail.lead_summary}
+                </Text>
+              )}
+              <Group gap={2} wrap="nowrap" ml="auto" style={{ flexShrink: 0 }}>
+                <Text size="xs" c="dimmed">
+                  {leadOpen ? 'Hide' : 'Show'}
+                </Text>
+                {leadOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
               </Group>
-            </Alert>
-          )}
-        </Stack>
+            </Group>
+          </UnstyledButton>
+          <Collapse expanded={leadOpen}>
+            <Text id="ng-lead-summary" size="sm" px="md" pb="sm">
+              {detail.lead_summary}
+            </Text>
+          </Collapse>
+        </div>
       )}
 
       {/* messages */}
-      <div
-        ref={scroller}
-        tabIndex={0}
-        role="log"
-        aria-label="Messages"
-        onScroll={(e) => {
-          const el = e.currentTarget
-          stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-        }}
-        style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}
-      >
-        {messages === null ? (
-          <Stack gap="sm">
-            <Skeleton height={38} width="55%" />
-            <Skeleton height={38} width="45%" ml="auto" />
-            <Skeleton height={38} width="60%" />
-          </Stack>
-        ) : withPending.length === 0 ? (
-          <EmptyState title="No messages yet" />
-        ) : (
-          <>
-            {shown.length >= THREAD_LIMIT && (
-              <Text size="xs" c="dimmed" ta="center">
-                Showing the latest {THREAD_LIMIT} messages
-              </Text>
-            )}
-            {withPending.map((m, i) => {
-              const newDay = i === 0 || dayLabel(withPending[i - 1].created_at) !== dayLabel(m.created_at)
-              return (
-                <div key={m.id} style={{ display: 'contents' }}>
-                  {newDay && (
-                    <Text size="xs" c="dimmed" ta="center" my={4}>
-                      {dayLabel(m.created_at)}
-                    </Text>
-                  )}
-                  <MessageBubble message={m} onRetry={(text) => void send(text)} />
-                </div>
-              )
-            })}
-          </>
+      <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex' }}>
+        <div
+          ref={scroller}
+          tabIndex={0}
+          role="log"
+          aria-label="Messages"
+          onScroll={(e) => {
+            const el = e.currentTarget
+            stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+            setScrolledUp(!stickToBottom.current)
+          }}
+          style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}
+        >
+          {messages === null ? (
+            <Stack gap="sm">
+              <Skeleton height={38} width="55%" />
+              <Skeleton height={38} width="45%" ml="auto" />
+              <Skeleton height={38} width="60%" />
+            </Stack>
+          ) : withPending.length === 0 ? (
+            <EmptyState title="No messages yet" />
+          ) : (
+            <>
+              {shown.length >= THREAD_LIMIT && (
+                <Text size="xs" c="dimmed" ta="center">
+                  Showing the latest {THREAD_LIMIT} messages
+                </Text>
+              )}
+              {withPending.map((m, i) => {
+                const newDay = i === 0 || dayLabel(withPending[i - 1].created_at) !== dayLabel(m.created_at)
+                return (
+                  <div key={m.id} style={{ display: 'contents' }}>
+                    {newDay && (
+                      <Text size="xs" c="dimmed" ta="center" my={4}>
+                        {dayLabel(m.created_at)}
+                      </Text>
+                    )}
+                    <MessageBubble message={m} onRetry={(text) => void send(text)} />
+                  </div>
+                )
+              })}
+            </>
+          )}
+        </div>
+        {scrolledUp && (
+          <Button
+            size="compact-sm"
+            radius="xl"
+            variant="filled"
+            leftSection={<IconArrowDown size={14} />}
+            onClick={jumpToLatest}
+            style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', boxShadow: 'var(--mantine-shadow-sm)' }}
+          >
+            Latest messages
+          </Button>
         )}
       </div>
-
-      {/* automatic buying-intent triage, scored in the background (app/services/lead_service.py) */}
-      {detail?.lead_summary && (
-        <Alert
-          color={detail.lead_signal === 'high' ? 'green' : 'gray'}
-          radius={0}
-          icon={<IconFlame size={16} />}
-          py={8}
-          title="Potential customer"
-        >
-          <Stack gap={6}>
-            <Group gap={6}>
-              {detail.lead_signal && <StatusBadge status={detail.lead_signal === 'high' ? 'high' : 'gray'} label={`${detail.lead_signal} intent`} size="xs" />}
-            </Group>
-            <Text size="sm">{detail.lead_summary}</Text>
-            {(detail.customer_phone || detail.customer_email) && (
-              <Group gap="md">
-                {detail.customer_phone && (
-                  <Group gap={4}>
-                    <IconPhone size={13} />
-                    <Text size="xs" c="dimmed">{detail.customer_phone}</Text>
-                  </Group>
-                )}
-                {detail.customer_email && (
-                  <Group gap={4}>
-                    <IconMail size={13} />
-                    <Text size="xs" c="dimmed">{detail.customer_email}</Text>
-                  </Group>
-                )}
-              </Group>
-            )}
-          </Stack>
-        </Alert>
-      )}
 
       {/* composer */}
       <div style={{ borderTop: '1px solid var(--mantine-color-default-border)', padding: 12 }}>
@@ -320,13 +402,22 @@ export default function ThreadPane({ conversationId, onBack, onChanged }: Props)
             <Text size="sm">{detail.reply.reason}</Text>
           </Alert>
         ) : (
-          <Group align="flex-end" gap="sm" wrap="nowrap">
+          <Group align="flex-end" gap="xs" wrap="nowrap">
+            <QuickReplies
+              draft={draft}
+              disabled={!detail || busy}
+              onPick={(text) => {
+                setDraft(draft.trim() ? `${draft.trimEnd()} ${text}` : text)
+                composer.current?.focus()
+              }}
+            />
             <Textarea
+              ref={composer}
               style={{ flex: 1 }}
               autosize
-              minRows={2}
+              minRows={1}
               maxRows={6}
-              placeholder={detail ? 'Write a reply…  (Enter to send, Shift+Enter for a new line)' : ''}
+              placeholder={detail ? 'Write a reply…' : ''}
               aria-label="Reply"
               value={draft}
               disabled={!detail || busy}
@@ -345,7 +436,7 @@ export default function ThreadPane({ conversationId, onBack, onChanged }: Props)
         )}
         {detail && canReply && (
           <Text size="xs" c="dimmed" mt={6}>
-            Sending a reply pauses the AI in this conversation. It hands back on its own after 2 hours without a staff reply.
+            Enter to send · Shift+Enter for a new line · Replying pauses the AI here for 2 hours
           </Text>
         )}
       </div>
