@@ -42,7 +42,15 @@ docker exec -e PYTHONPATH=/app -e VOICE_PASS_MODE=auto night_guard_ai-backend-1 
   --judges hybrid:gemini/gemini-3.1-flash-lite --out tests/eval/simulator/results/voice_auto.json
 docker exec -e PYTHONPATH=/app night_guard_ai-backend-1 python -m tests.eval.simulator.run compare \
   tests/eval/simulator/results/voice_off.json tests/eval/simulator/results/voice_auto.json
+
+# where one defect comes from: template vs model text, per intent, with examples
+docker exec -e PYTHONPATH=/app night_guard_ai-backend-1 python -m tests.eval.simulator.run analyze \
+  tests/eval/simulator/results/voice_auto.json --defect not_template
 ```
+
+`compare` also pairs the same scenario, business and turn across the two runs, then counts bad → OK and OK → bad
+replies and runs a sign test. Per-business percentages built from 5–12 replies swing 8–33 points when a single reply
+flips, so only trust a difference the sign test calls real (p < 0.05).
 
 Options:
 - `--scenarios identity,complaint` and `--businesses trek,salon`: run only these.

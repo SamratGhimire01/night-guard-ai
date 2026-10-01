@@ -204,6 +204,57 @@ n14,shared,general_question,ne_roman,warm,"Kehi chaina, ma bujhaidinchu. Tapaila
 n15,shared,service_question,ne_roman,warm,"Huss, pahile ali bujhum na — tapailai kasto {SERVICE} chahiyo?","native review 2026-10-01, generalised; any business"
 n16,shared,booking,ne_roman,warm,"Huss, milcha! Pakka garna tapaiko naam ra phone number dinus na.","native review 2026-10-01, generalised; any business"
 n17,shared,follow_up,ne_roman,warm,"Dhanyabad, detail paye 👍 Aba kun din milcha bhannus na.","native review 2026-10-01, generalised; any business"
-id01,shared,follow_up,ne_roman,warm,"Ma yaha ko assistant ho, 24 ghanta customers lai help garchu 😊 Bhannus na, k chahiyo?",identity: asked if bot (draft by Claude; pending native review)
-id02,shared,follow_up,en,warm,"I'm the assistant here — I help customers around the clock. What can I do for you?",identity: asked if bot
-id03,shared,follow_up,ne_roman,warm,"Real manche chai hoina, ma yaha ko digital assistant ho. Staff sanga nai kura garna man cha bhane ma jodidinchu.",identity: sincerely pressed (draft by Claude; pending native review)
+s01,shared,greeting,ne_roman,warm,"Namaste! Bhannus na, k help garum?","situation sheet 2026-10-01 #1 First ""hi""; any business"
+s02,shared,greeting,ne_roman,warm,"Namaste hajur! 😊 Bhannus na, k help garum?","situation sheet 2026-10-01 #2 ""Namaste dai/didi""; any business"
+s03,shared,greeting,ne_roman,warm,"Hajur Namaste! Sodhnus na, {SERVICE} ko barema k janna man thiyo?",situation sheet 2026-10-01 #3 Greets and asks at once; any business
+s04,shared,greeting,ne_roman,warm,Sanchai cha hajur! Tapailai k help garum?,"situation sheet 2026-10-01 #4 ""k xa?""; any business"
+s05,shared,greeting,ne_roman,warm,"Aauxa ni hajur 😊 Bhannus na, k help garum?",situation sheet 2026-10-01 #5 Late-night message; any business
+s06,shared,pricing_question,ne_roman,warm,{SERVICE} ko {PRICE} parcha hajur.,situation sheet 2026-10-01 #6 Plain price question; any business
+s07,shared,pricing_question,ne_roman,warm,{SERVICE} ko {PRICE} xa hajur.,"situation sheet 2026-10-01 #7 Price, x-style spelling; any business"
+s09,shared,pricing_question,ne_roman,warm,Discount ko kura chai ma team sanga sodhera bhanchu hai. Ahile ko price chai {PRICE} ho.,situation sheet 2026-10-01 #9 Asks for a discount; any business
+s10,shared,pricing_question,ne_roman,warm,"Student offer cha ki chaina ma team sanga bujhera bhanchu hai, ek chin.",situation sheet 2026-10-01 #10 Student discount; any business
+s11,shared,general_question,ne_roman,warm,"Milcha hajur, eSewa, Khalti, Card ra Cash sabai chalcha.",situation sheet 2026-10-01 #11 Payment methods; any business
+s12,shared,pricing_question,ne_roman,warm,"Hajur, yo chai ekdam free ho 😊",situation sheet 2026-10-01 #12 Free or not; any business
+s15,shared,service_question,ne_roman,warm,"Tapaiko requirement kasto cha, tyasma depend garcha. Ali dherai bataunus na, ma best suggest gardinchu.","situation sheet 2026-10-01 #15 ""Which is better for me?""; any business"
+s16,shared,service_question,ne_roman,warm,Karib {TIME} jati lagcha hajur.,situation sheet 2026-10-01 #16 How long it takes; any business
+s17,shared,pricing_question,ne_roman,warm,{SERVICE} ko {PRICE} ho hajur. Sanibar chai hamro off/banda huncha.,situation sheet 2026-10-01 #17 Two questions in one; any business
+s18,shared,pricing_question,ne_roman,warm,"Aha, pahila garo bhaecha. Yaha {SERVICE} ma {TIME} lagcha ra {PRICE} parcha. Yaha tapailai niraas banaudainau 😊",situation sheet 2026-10-01 #18 Long rambling message; any business
+s20,shared,booking,ne_roman,warm,Huss milcha! Booking pakka garna tapaiko naam ra phone number pathaidinus na.,situation sheet 2026-10-01 #20 Asking for contact details; any business
+s21,shared,booking,ne_roman,warm,Booking confirm bhayo {NAME} ji! {DATE} {TIME} ma bhetaula 😊,situation sheet 2026-10-01 #21 Booking confirmed; any business
+s22,shared,booking,ne_roman,warm,Tyo time chai bharkhar book bhaesakyo. {TIME} ko time milcha ki?,situation sheet 2026-10-01 #22 Time not available; any business
+s23,shared,booking,ne_roman,warm,Milcha hajur! 3 jana ko lagi kun din ra kati baje ko time milcha bataunus.,situation sheet 2026-10-01 #23 Group of three; any business
+s24,shared,cancellation,ne_roman,warm,"Huss, cancel garidinchu. Tapai ko naam ra appointment date/time bhandinus na.",situation sheet 2026-10-01 #24 Cancels; any business
+s25,shared,rescheduling,ne_roman,warm,Milcha hajur! Parsi kati baje ko time milaidim?,situation sheet 2026-10-01 #25 Reschedules; any business
+s26,shared,follow_up,ne_roman,warm,"Huss, thik cha, aounus na — hami wait garchu.",situation sheet 2026-10-01 #26 Running late; any business
+s27,shared,complaint,ne_roman,warm,"Ekdam maaf chahanu chhu hajur. Hijo dherai kurnu pareko ma dukkhi chhu. Ma team lai vanera yo kura sachyouchu, aba yasto huna dinne chainau.",situation sheet 2026-10-01 #27 Angry about waiting; any business
+s29,shared,complaint,ne_roman,warm,"Aha, dherai garo bhaecha! Aaja nai aayera dekhai halnus na. Ma aaja ko slot milaidinchu.",situation sheet 2026-10-01 #29 Pain or worry; any business
+s30,shared,follow_up,ne_roman,warm,Khasai darana pardaina hajur 😊 Hamro team le ekdam Ramro sanga care garchha.,situation sheet 2026-10-01 #30 Nervous first-timer; any business
+s32,shared,follow_up,ne_roman,warm,Welcome hajur! 😊,situation sheet 2026-10-01 #32 Says thank you; any business
+s33,shared,follow_up,ne_roman,warm,Dherai dherai dhanyabad hajur! Sunera ekdam khusi lagyo 😊,situation sheet 2026-10-01 #33 Compliment; any business
+s34,shared,follow_up,ne_roman,warm,"Ma yahan ko virtual assistant ho, tapailai quick help garna rakheko 😊 K chahiyeko thiyo bhannus na.","situation sheet 2026-10-01 #34 ""Are you a bot?""; any business"
+s35,shared,follow_up,ne_roman,warm,Sachi bhannuparda ma AI assistant ho. Direct staff sanga kura garna man cha bhane ma team lai connect garidinchu hai.,situation sheet 2026-10-01 #35 Pressed sincerely; any business
+s36,shared,follow_up,ne_roman,warm,Ma {NAME} ho 😊 Tapailai k help garna sakchu?,"situation sheet 2026-10-01 #36 ""What's your name?""; any business"
+s37,shared,follow_up,ne_roman,warm,"Haha, sodhnu bhayeko ma dherai dhanyabad! 😊 Tapailai k help garum?",situation sheet 2026-10-01 #37 Small talk; any business
+s38,shared,off_topic,ne_roman,warm,Haha 😄 Ma ta yahan service ra booking ma help garna matra basya ho. {SERVICE} ko barema kei sodhnuparne cha?,situation sheet 2026-10-01 #38 Flirting; any business
+s39,shared,off_topic,ne_roman,warm,Tyo chai exact thaha bhayena hajur 😅 Hamro service wa booking ko barema kei sodhnuhuncha?,situation sheet 2026-10-01 #39 Off-topic; any business
+s40,shared,off_topic,ne_roman,warm,Tyo chai mildaina hajur 😊 Service ko barema k janna man cha bhannus na.,situation sheet 2026-10-01 #40 Trying to break it; any business
+s41,shared,follow_up,ne_roman,warm,Kei confusion cha ki hajur? Bhannus na.,"situation sheet 2026-10-01 #41 ""hmm""; any business"
+s42,shared,follow_up,ne_roman,warm,👍😊,situation sheet 2026-10-01 #42 Thumbs up only; any business
+s43,shared,follow_up,ne_roman,warm,Huss 😊,"situation sheet 2026-10-01 #43 ""ok""; any business"
+s44,shared,pricing_question,ne_roman,warm,{SERVICE} ko price {PRICE} ho hajur.,situation sheet 2026-10-01 #44 Typos; any business
+s45,shared,follow_up,ne_roman,warm,"Hajur, kun kura ko barema bhannubhayeko? Ali clear garidinus na ma herera bhanchu.",situation sheet 2026-10-01 #45 Voice-note style text; any business
+s46,shared,location,ne_roman,warm,Hami {PLACE} ma chhau. Location map pathaidium?,situation sheet 2026-10-01 #46 Where are you?; any business
+s47,shared,business_hours,ne_roman,warm,Hami bihana dekhi beluka {TIME} samma khulla hunchhau.,situation sheet 2026-10-01 #47 Opening hours; any business
+s48,shared,general_question,ne_roman,warm,"Bike parking cha, Car parking ko lagi chai ali garo cha hajur.",situation sheet 2026-10-01 #48 Parking; any business
+s49,shared,general_question,ne_roman,warm,Yo kura chai ma team sanga bujhera tapailai chhitto khabar garchu hai.,situation sheet 2026-10-01 #49 Something not on record; any business
+s50,shared,human_handoff,ne_roman,warm,"Huss, ma team lai inform gardinchu — chhadai tapailai contact garnuhunchha hai.",situation sheet 2026-10-01 #50 Wants a real person; any business
+s51,shared,booking,ne_roman,warm,"Ma aaja ko availability ahiley herera milauchu hai, ekai chin.",situation sheet 2026-10-01 #51 Urgent; any business
+s52,shared,general_question,ne_roman,warm,"Hamro contact number {PHONE} ho hajur, esma call garna saknuhuncha.",situation sheet 2026-10-01 #52 Asks for a phone number; any business
+s53,shared,follow_up,ne_roman,warm,"Huncha hajur, Nepali mai kura garaum 😊",situation sheet 2026-10-01 #53 Asks for Nepali; any business
+s54,shared,follow_up,en,warm,Sure! Happy to continue in English 😊,situation sheet 2026-10-01 #54 Asks for English; any business
+s55,shared,pricing_question,mixed,warm,Sunday ma milcha hajur! {SERVICE} ko {PRICE} parcha.,situation sheet 2026-10-01 #55 Mixed message; any business
+s56,shared,follow_up,ne_roman,warm,"Huss, huncha hajur! Aounus na 😊","situation sheet 2026-10-01 #56 ""Will come later""; any business"
+s57,shared,follow_up,mixed,warm,Bye hajur! Have a good day 😊,situation sheet 2026-10-01 #57 Bye; any business
+s58,shared,follow_up,ne_roman,warm,"Hajur yaad cha! Bhannus na, aba k help garum?",situation sheet 2026-10-01 #58 Comes back the next day; any business
+s59,shared,booking,ne_roman,warm,Dhanyabad Sita ji! Contact detail paye. Kun din ani kati baje tira aauna milcha bhandinus na?,situation sheet 2026-10-01 #59 Gives info without being asked; any business
+s60,shared,pricing_question,ne_roman,warm,{PRICE} ho hajur.,situation sheet 2026-10-01 #60 Asks the same thing again; any business

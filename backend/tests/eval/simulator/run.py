@@ -36,6 +36,15 @@ from tests.eval.simulator.checks import run_check
 from tests.eval.simulator.scenarios import BY_ID, SCENARIOS, fill
 
 SIM_PREFIX = "SIM "
+# Intents whose reply is the model's own text; every other intent's reply is a fixed template (booking, cancel, status,
+# hours, off-topic...). Mirrors orchestrator._VOICE_PASS_INTENTS (+ human_handoff: model text + a template addendum).
+LLM_INTENTS = {"greeting", "general_question", "service_question", "pricing_question", "location", "complaint",
+               "follow_up", "unknown", "human_handoff"}
+
+
+def source_of(turn: dict) -> str:
+    """"llm" or "template" -- where the reply text came from (a template reply can't be fixed by a better prompt)."""
+    return "llm" if turn.get("intent") in LLM_INTENTS else "template"
 RESULTS_DIR = Path(__file__).with_name("results")
 
 
@@ -98,12 +107,18 @@ def summarize(records: list[dict]) -> dict:
         add("business:" + r["business"], t["ok"])
         add("situation:" + r["situation"], t["ok"])
         add("lang:" + r["lang"], t["ok"])
+        src = source_of(t)
+        add("source:" + src, t["ok"])
+        add(f"intent:{t.get('intent')}", t["ok"])
         for f in t["lint"]:
             defects["lint:" + f.split(" ")[0]] += 1
+            defects[f"lint:{f.split(' ')[0]}@{src}"] += 1
         for c in t["checks"]:
             defects["check:" + c.split(":")[0]] += 1
+            defects[f"check:{c.split(':')[0]}@{src}"] += 1
         for q in t["checklist_no"]:
             defects["judge:" + q] += 1
+            defects[f"judge:{q}@{src}"] += 1
     convs = [r for r in records if r["turns"] and all("error" not in t for t in r["turns"])]
     clean = sum(all(t["ok"] for t in r["turns"]) for r in convs)
     errors = sum("error" in t for r in records for t in r["turns"])
@@ -130,13 +145,14 @@ def report(run: dict) -> str:
         f"({s['clean_conversations']['ok']}/{s['clean_conversations']['n']})",
         "",
     ]
-    for prefix, title in (("situation:", "By situation"), ("business:", "By business"), ("lang:", "By language")):
+    for prefix, title in (("source:", "By where the reply came from"), ("situation:", "By situation"),
+                          ("intent:", "By intent"), ("business:", "By business"), ("lang:", "By language")):
         rows = sorted(((k[len(prefix):], v) for k, v in b.items() if k.startswith(prefix)), key=lambda kv: kv[1]["pct"])
         out += [f"## {title} (worst first)", "", "| | OK | replies |", "|---|---|---|"]
         out += [f"| {k} | {v['pct']}% | {v['n']} |" for k, v in rows]
         out.append("")
     out += ["## What goes wrong most", "", "| defect | replies |", "|---|---|"]
-    out += [f"| {k} | {v} |" for k, v in list(s["defects"].items())[:20]]
+    out += [f"| {k} | {v} |" for k, v in s["defects"].items() if "@" not in k][:20]
     out += ["", "## Worst replies", ""]
     bad = [(r, t) for r in run["records"] for t in r["turns"] if "error" not in t and not t["ok"]]
     bad.sort(key=lambda rt: (len(rt[1]["lint"]) + len(rt[1]["checks"]) + len(rt[1]["checklist_no"])), reverse=True)
@@ -157,8 +173,71 @@ def compare(before: dict, after: dict) -> str:
         out.append(f"| {k} | {x if x is not None else '—'}% | {y if y is not None else '—'}% | {delta} |")
     cb, ca = before["summary"]["clean_conversations"]["pct"], after["summary"]["clean_conversations"]["pct"]
     out += ["", f"Conversations with every reply OK: {cb}% → {ca}%"]
+    fixed, broken, same = paired(before, after)
+    out += ["", "## Paired (same scenario, business and turn in both runs)", "",
+            f"- bad → OK: **{len(fixed)}**  ·  OK → bad: **{len(broken)}**  ·  unchanged: {same}",
+            f"- {_sign_test(len(fixed), len(broken))}", ""]
+    for title, rows in (("Fixed", fixed), ("Broken", broken)):
+        if rows:
+            out += [f"### {title} (first 10)", ""]
+            for key, b, a in rows[:10]:
+                out += [f"- `{key}` customer: `{a['customer']}`", f"  - before: {b['reply']}", f"  - after: {a['reply']}"]
+            out.append("")
     if before.get("judges") != after.get("judges"):
         out += ["", f"⚠ different judges: `{before.get('judges')}` vs `{after.get('judges')}` — not like for like."]
+    return "\n".join(out) + "\n"
+
+
+def _turn_index(run: dict) -> dict:
+    return {f"{r['scenario']}/{r['business']}/{i}": t for r in run["records"] for i, t in enumerate(r["turns"])
+            if "error" not in t}
+
+
+def paired(before: dict, after: dict) -> tuple[list, list, int]:
+    """Replies present in both runs: which flipped bad -> OK, OK -> bad, and how many didn't change. Pairing removes the
+    business-to-business noise a per-bucket percentage has with 5-12 replies per bucket."""
+    b, a = _turn_index(before), _turn_index(after)
+    fixed, broken, same = [], [], 0
+    for key in sorted(set(b) & set(a)):
+        if b[key]["ok"] == a[key]["ok"]:
+            same += 1
+        elif a[key]["ok"]:
+            fixed.append((key, b[key], a[key]))
+        else:
+            broken.append((key, b[key], a[key]))
+    return fixed, broken, same
+
+
+def _sign_test(wins: int, losses: int) -> str:
+    """Two-sided exact sign test on the flips: is the change more than a coin toss?"""
+    from math import comb
+
+    n = wins + losses
+    if n == 0:
+        return "no reply changed verdict"
+    k = min(wins, losses)
+    p = min(1.0, 2 * sum(comb(n, i) for i in range(k + 1)) / 2 ** n)
+    verdict = "a real difference" if p < 0.05 else "could be noise"
+    return f"sign test p = {p:.2f} ({verdict}; needs p < 0.05)"
+
+
+def analyze(run: dict, defect: str = "not_template", limit: int = 30) -> str:
+    """Where one defect comes from: per source and intent, plus examples."""
+    rows = [(r, t) for r in run["records"] for t in r["turns"] if "error" not in t]
+    hit = [(r, t) for r, t in rows if defect in " ".join(t["lint"] + t["checks"] + t["checklist_no"])]
+    out = [f"# `{defect}`: {len(hit)} of {len(rows)} replies", "", "| source | intent | flagged | of |", "|---|---|---|---|"]
+    by = defaultdict(lambda: [0, 0])
+    for r, t in rows:
+        key = (source_of(t), t.get("intent"))
+        by[key][1] += 1
+        by[key][0] += any(defect in x for x in t["lint"] + t["checks"] + t["checklist_no"])
+    for (src, intent), (k, n) in sorted(by.items(), key=lambda kv: -kv[1][0]):
+        if k:
+            out.append(f"| {src} | {intent} | {k} | {n} |")
+    out += ["", "## Examples", ""]
+    for r, t in hit[:limit]:
+        out += [f"- **{source_of(t)} / {t.get('intent')}** ({r['business']}/{r['scenario']}) customer: `{t['customer']}`",
+                f"  - {t['reply']}"]
     return "\n".join(out) + "\n"
 
 
@@ -253,8 +332,9 @@ def _judges(spec: str | None) -> dict:
 
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", nargs="?", default="run", choices=["run", "compare", "cleanup"])
-    ap.add_argument("paths", nargs="*", help="compare: before.json after.json")
+    ap.add_argument("command", nargs="?", default="run", choices=["run", "compare", "analyze", "cleanup"])
+    ap.add_argument("paths", nargs="*", help="compare: before.json after.json; analyze: run.json")
+    ap.add_argument("--defect", default="not_template", help="analyze: which defect to break down")
     ap.add_argument("--judges", default="", help="checklist judge spec; empty = lint + checks only (free)")
     ap.add_argument("--scenarios", default="", help="comma-separated scenario ids (default all)")
     ap.add_argument("--businesses", default="", help="comma-separated business keys (default all)")
@@ -270,6 +350,11 @@ def main(argv=None) -> None:
             sys.exit("compare needs two run JSON files")
         before, after = (json.loads(Path(p).read_text(encoding="utf-8")) for p in args.paths)
         print(compare(before, after))
+        return
+    if args.command == "analyze":
+        if len(args.paths) != 1:
+            sys.exit("analyze needs one run JSON file")
+        print(analyze(json.loads(Path(args.paths[0]).read_text(encoding="utf-8")), args.defect))
         return
 
     from app.db.database import SessionLocal
