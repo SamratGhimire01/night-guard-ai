@@ -1135,8 +1135,8 @@ def _format_contact_update_result(result: dict, language: str | None) -> str | N
 _VALID_LANGUAGES = {v.value for v in ConversationLanguage}
 # A reply that already tells the customer the team will follow up (handoff_addendum would only repeat it).
 _TEAM_FOLLOWUP_RE = re.compile(
-    r"\b(team|staff|doctor|manager)\b[^.?!\n]{0,60}\b(contact|call|connect|jod|bhan|sodh|bujh|inform|khabar|share|get back|"
-    r"follow up|reach out|phone)"
+    r"\b(team|staff|doctor|manager)\b[^.?!\n]{0,60}(\b(contact|call|connect|jod|bhan|sodh|bujh|inform|khabar|share|get back|"
+    r"follow up|reach out|phone|sampark)|सम्पर्क)"
     r"|\b(connect|jod)\w*\b[^.?!\n]{0,30}\b(team|staff)\b"
     r"|टिम[^।?!\n]{0,40}(सम्पर्क|खबर|सोध|भन)",
     re.IGNORECASE,
@@ -1390,17 +1390,37 @@ def _expected_response_language(
     return resolved
 
 
-def _response_language_mismatch(response_text: str, expected: str) -> bool:
+# Words only English has: a customer message with 3+ of these and no Nepali word is clearly English.
+_ENGLISH_FUNCTION_WORDS = frozenset(
+    "the a an is are am was were do does did how what when where which who why can could would will i you we my your "
+    "it this that for of to in on at near with from much many".split()
+)
+
+
+def _nepali_word_count(text: str) -> int:
+    return len({w.lower() for w in _WORD_RE.findall(text) if w.lower() in _ROMAN_NEPALI_WORDS})
+
+
+def _is_clearly_english(text: str) -> bool:
+    if _DEVANAGARI_RE.search(text) or _nepali_word_count(text):
+        return False
+    return sum(w.lower() in _ENGLISH_FUNCTION_WORDS for w in _WORD_RE.findall(text)) >= 3
+
+
+def _response_language_mismatch(response_text: str, expected: str, customer_message: str = "") -> bool:
     """Post-generation check (tone/language phase): does the drafted reply
     actually match the language it was told to write in? Reuses the same
     deterministic signals as _resolve_message_language rather than trusting
     the model's own self-report, for the same anchoring-bias reasons."""
     if _contains_hindi_leak(response_text):
         return True
-    if expected == ConversationLanguage.MIXED.value:
-        return False
     has_devanagari = bool(_DEVANAGARI_RE.search(response_text))
-    roman_count = len({w.lower() for w in _WORD_RE.findall(response_text) if w.lower() in _ROMAN_NEPALI_WORDS})
+    roman_count = _nepali_word_count(response_text)
+    if expected == ConversationLanguage.MIXED.value:
+        # A mixed customer accepts English, but not after a Nepali message: simulator barber "Hair Cut kati ho?" got a
+        # pure English reply.
+        customer_nepali = bool(_DEVANAGARI_RE.search(customer_message) or _nepali_word_count(customer_message))
+        return customer_nepali and not has_devanagari and roman_count == 0
     if expected == ConversationLanguage.NE_DEVA.value:
         return not has_devanagari
     if expected == ConversationLanguage.NE_ROMAN.value:
@@ -1409,7 +1429,9 @@ def _response_language_mismatch(response_text: str, expected: str) -> bool:
         # Same 2-match bar as _resolve_message_language's own Roman-Nepali check, so a
         # single collision-prone word (e.g. "la") never triggers a needless regenerate
         # on a genuine English reply.
-        return has_devanagari or roman_count >= 2
+        # on a genuine English reply. A clearly English message makes any Nepali word a mismatch: simulator it/switch_lang
+        # "hello, how much is Laptop Diagnosis?" got "…ko price NPR 500 ho, ra karib 30 minute lagcha" (one listed word).
+        return has_devanagari or roman_count >= (1 if _is_clearly_english(customer_message) else 2)
     return False
 
 
@@ -2194,7 +2216,7 @@ def _handle_turn(
         if (
             fact_check_front_desk_reason is None
             and expected_reply_language in _VALID_LANGUAGES
-            and _response_language_mismatch(classification.response, expected_reply_language)
+            and _response_language_mismatch(classification.response, expected_reply_language, content)
         ):
             logger.warning(
                 "drafted reply in the wrong language, regenerating once: conversation_id=%s expected=%s",
@@ -2211,7 +2233,7 @@ def _handle_turn(
                 language_repair_target=expected_reply_language,
                 style_exemplars=style_exemplars,
             )
-            if _response_language_mismatch(language_retry.response, expected_reply_language):
+            if _response_language_mismatch(language_retry.response, expected_reply_language, content):
                 logger.warning(
                     "language regenerate still didn't match, using it anyway: conversation_id=%s expected=%s",
                     conversation_id, expected_reply_language,
@@ -2243,7 +2265,7 @@ def _handle_turn(
                 if late_violations:
                     voice_info.update(used=False, rejected=f"fact check: {late_violations}")
                 elif expected_reply_language in _VALID_LANGUAGES and _response_language_mismatch(
-                    voiced, expected_reply_language
+                    voiced, expected_reply_language, content
                 ):
                     voice_info.update(used=False, rejected="wrong language")
                 else:
@@ -2883,12 +2905,6 @@ def _handle_turn(
         fact_check_front_desk_reason or resend_front_desk_reason or is_medical_emergency
         or intent == ConversationIntent.BUSINESS_HOURS
     )
-    # The model's own reply often already promises the follow-up ("ma team sanga connect garidinchu", "our team will
-    # call you"); adding the fixed closer on top made every complaint/haggle reply end with the same double promise
-    # (simulator: the top not_template pattern). The handoff row is still created for staff either way.
-    if handoff is not None and not reply_says_team_follows_up and not _TEAM_FOLLOWUP_RE.search(response_text):
-        response_text = f"{response_text} {render('handoff_addendum', language)}"
-
     # Last step: the word bank (Romanized Nepali) and the no-repeat / stock-ending / same-opener guards. Wording only --
     # see reply_polish's docstring for why no fact can change here.
     protected_names = [service.name for service in services]
@@ -2906,6 +2922,13 @@ def _handle_turn(
     )
     if polish_changes:
         logger.info("reply polished: conversation_id=%s changes=%s", conversation_id, polish_changes)
+    # The model's own reply often already promises the follow-up ("ma team sanga connect garidinchu", "our team will
+    # call you"); adding the fixed closer on top made every complaint/haggle reply end with the same double promise
+    # (simulator: the top not_template pattern). The handoff row is still created for staff either way.
+    # Checked on the polished text: the word bank swaps "sampark" -> "contact" (simulator lawyer/haggle got its own
+    # "team le sampark garnuhunchha" plus the closer), so the check must read the words the customer will see.
+    if handoff is not None and not reply_says_team_follows_up and not _TEAM_FOLLOWUP_RE.search(response_text):
+        response_text = f"{response_text} {render('handoff_addendum', language)}"
 
     customer_message = Message(
         conversation_id=conversation_id,

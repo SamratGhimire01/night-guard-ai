@@ -5586,6 +5586,8 @@ def test_no_second_team_promise_when_the_reply_already_makes_one(two_businesses,
         "That shouldn't have happened — I'll have our team call you today.",
         "Sorry about that, let me connect you with our staff.",
         "Aha, garo bhayecha — k k problem aaeko ho? Short ma vannus, ma team sanga share garera xadai samadhan garne try garxu.",
+        # lawyer/haggle: the word bank turns "sampark" into "contact" after the check used to run
+        "Team sanga discount ko barema kura garna milcha. Tapai chahiyo bhane ma team sampark garidinchu?",
     ):
         conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
         _stub_providers(monkeypatch, json.dumps({"intent": "complaint", "response": reply_text}))
@@ -5633,3 +5635,20 @@ def test_contact_updated_sentence_follows_the_reply_language_before_any_lock(two
     ).json()["response"]
     assert "Tapaiko contact details update garidiye." in reply, reply
     assert "I've updated your contact info" not in reply, reply
+
+
+def test_language_check_reads_the_customers_message():
+    """Simulator 2026-10-01: barber (mixed) "Hair Cut kati ho?" got a pure English reply; it/switch_lang "hello, how much
+    is Laptop Diagnosis?" got Romanized Nepali with only one listed word, under the English 2-word bar."""
+    from app.services.conversation.orchestrator import _response_language_mismatch as mismatch
+
+    assert mismatch("A haircut is NPR 300.", "mixed", "Hair Cut kati ho?") is True
+    assert mismatch("Hair Cut ko NPR 300 parcha.", "mixed", "Hair Cut kati ho?") is False
+    assert mismatch("Bye — take care! 😊", "mixed", "bye") is False  # mixed customers accept English
+    reply = "Laptop Diagnosis ko price NPR 500 ho, ra karib 30 minute lagcha. Book garidinchu ki?"
+    assert mismatch(reply, "en", "hello, how much is Laptop Diagnosis?") is True
+    assert mismatch(reply, "en", "Laptop Diagnosis price?") is False  # not clearly English: the 2-word bar stays
+    assert mismatch(
+        "Sure! Teeth Cleaning tomorrow works. What time suits you?", "en",
+        "Hi, I live near Baneshwor. Can I come tomorrow for Teeth Cleaning?",
+    ) is False
