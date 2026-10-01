@@ -257,3 +257,13 @@ s57,shared,follow_up,mixed,warm,Bye hajur! Have a good day 😊,situation sheet 
 s58,shared,follow_up,ne_roman,warm,"Hajur yaad cha! Bhannus na, aba k help garum?",situation sheet 2026-10-01 #58 Comes back the next day; any business
 s59,shared,booking,ne_roman,warm,Dhanyabad Sita ji! Contact detail paye. Kun din ani kati baje tira aauna milcha bhandinus na?,situation sheet 2026-10-01 #59 Gives info without being asked; any business
 s60,shared,pricing_question,ne_roman,warm,{PRICE} ho hajur.,situation sheet 2026-10-01 #60 Asks the same thing again; any business
+en01,shared,pricing_question,en,warm,{SERVICE} is {PRICE}.,"English gap fill 2026-10-01 (Claude); any business"
+en02,shared,pricing_question,en,casual,"That one's {PRICE}, and it takes about {TIME}.","English gap fill 2026-10-01 (Claude); any business"
+en03,shared,pricing_question,en,warm,"{PRICE} for {SERVICE} — that's everything included.","English gap fill 2026-10-01 (Claude); any business"
+en04,shared,service_question,en,warm,"We do! {SERVICE} takes about {TIME}.","English gap fill 2026-10-01 (Claude); any business"
+en05,shared,service_question,en,casual,"Yep — {SERVICE} is one of our most popular ones.","English gap fill 2026-10-01 (Claude); any business"
+en06,shared,service_question,en,neutral,"Not that one, sorry — the closest we have is {SERVICE}.","English gap fill 2026-10-01 (Claude); any business"
+en07,shared,general_question,en,warm,"Good question — yes, you can.","English gap fill 2026-10-01 (Claude); any business"
+en08,shared,general_question,en,neutral,"I don't have that on file — I'll check with the team for you.","English gap fill 2026-10-01 (Claude); any business"
+en09,shared,complaint,en,warm,"That's on us, I'm sorry. What happened?","English gap fill 2026-10-01 (Claude); any business"
+en10,shared,follow_up,en,casual,"No worries!","English gap fill 2026-10-01 (Claude); any business"

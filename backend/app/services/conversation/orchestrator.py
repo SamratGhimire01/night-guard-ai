@@ -2736,7 +2736,10 @@ def _handle_turn(
     # to whatever response_text ended up being — the LLM's own draft for a
     # non-dispatched intent, or a dispatch branch's deterministic sentence.
     if contact_sentence:
-        response_text = f"{response_text} {contact_sentence}"
+        # A booking confirmation is several lines ending in the check-in link: on the same line the sentence read as
+        # part of the URL (simulator 2026-10-01, "...qr/abc123 Tapaiko contact details update garidiye.").
+        joiner = "\n" if "\n" in response_text or response_text.rstrip().split(" ")[-1].startswith("http") else " "
+        response_text = f"{response_text}{joiner}{contact_sentence}"
     if resend_redirect_attempt:
         response_text = f"{response_text}\n{render('resend_contact_change_ignored', language)}"
 

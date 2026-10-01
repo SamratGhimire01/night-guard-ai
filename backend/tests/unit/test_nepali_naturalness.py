@@ -278,3 +278,24 @@ def test_slot_unavailable_replies_never_carry_the_internal_reason():
         for wordings in TEMPLATES[name].values():
             for text in wordings if isinstance(wordings, list) else [wordings]:
                 assert "{message}" not in text
+
+
+@pytest.mark.parametrize("template", ["cancellation_fail", "reschedule_fail"])
+@pytest.mark.parametrize("message", [
+    "Appointment not found.",
+    "This appointment is already cancelled and cannot be cancelled.",
+    "This appointment is already completed and cannot be rescheduled.",
+    "Requested time is not available (outside business hours, on a closed date, or in the past).",
+    "This slot was just booked by someone else — please choose another time.",
+    "Some brand new internal error nobody mapped yet.",
+])
+@pytest.mark.parametrize("language", ["en", "ne_roman", "ne_deva"])
+def test_tool_failures_never_leak_system_text(template, message, language):
+    """Native review #5 (2026-10-01): "requested time is not available (outside business hours, ...)" pasted mid-Nepali.
+    The cancel/reschedule tools' own messages must never reach the customer, in any language."""
+    from app.services.conversation.response_templates import render
+
+    reply = render(template, language, who="", message=message.rstrip(".").lower())
+    assert message.rstrip(".").lower() not in reply.lower()
+    for leak in ("internal", "requested time", "cannot be", "business hours", "appointment not found"):
+        assert leak not in reply.lower(), reply

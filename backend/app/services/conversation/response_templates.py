@@ -225,7 +225,7 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
     "off_topic": {
         "en": [
             "I'm just here to help with things related to {name} — appointments, services, hours, and the like. Is there something about that I can help with?",
-            "I'll have to pass on that one — I only handle {name} stuff. Need anything for a visit?",
+            "I'll have to pass on that one — I only handle {name} stuff. Anything I can help you with there?",
             "Not something I can help with, sorry — I'm {name}'s assistant. Anything about our services?",
         ],
         "ne_deva": [
@@ -304,7 +304,8 @@ TEMPLATES: dict[str, dict[str, str | list[str]]] = {
             "कुन अपोइन्टमेन्ट हो — सेवा र दिन भनिदिनुस् न।",
         ],
         "ne_roman": [
-            "Huss, cancel garidinchu. Kun din ko appointment thiyo, bhandinus na.",  # situation sheet #24
+            # situation sheet #24, without "cancel garidinchu": this asks which one, it can't promise a cancel yet
+            "Huss — kun din ko appointment cancel garne ho, bhandinus na.",
             "Huncha — kun chai cancel garne (service ra din)?",
             "Kun appointment ho — service ra din bhanidinus na.",
         ],
@@ -760,10 +761,60 @@ def variants(template_name: str, language: str | None) -> list[str]:
     return list(value) if isinstance(value, list) else [value]
 
 
+# The cancel/reschedule tools fail with booking_service's own English, developer-facing messages ("requested time is
+# not available (outside business hours, on a closed date, or in the past)"). Pasted into "{message}" they leaked
+# system text into the customer's reply -- in English, mid-Nepali (native review 2026-10-01, #5: unacceptable). Every
+# known message gets a customer-facing reason in the reply's language; anything unknown gets a plain generic one.
+_TOOL_REASON_TEMPLATES = frozenset({"cancellation_fail", "reschedule_fail"})
+_TOOL_REASONS: list[tuple[re.Pattern, dict[str, str]]] = [
+    (re.compile(r"appointment not found"), {
+        "en": "I couldn't find that appointment",
+        "ne_roman": "tyo appointment bhetiyena",
+        "ne_deva": "त्यो अपोइन्टमेन्ट भेटिएन",
+    }),
+    (re.compile(r"already cancel"), {
+        "en": "it's already cancelled",
+        "ne_roman": "tyo pahile nai cancel bhaisakeko cha",
+        "ne_deva": "त्यो पहिले नै क्यान्सल भइसकेको छ",
+    }),
+    (re.compile(r"already (completed|no_show|checked_in)"), {
+        "en": "that appointment has already happened",
+        "ne_roman": "tyo appointment ko din sakiyisakyo",
+        "ne_deva": "त्यो अपोइन्टमेन्टको दिन सकिइसक्यो",
+    }),
+    (re.compile(r"not available|outside business hours|closed date|in the past"), {
+        "en": "that time is outside our hours, on a closed day, or already past",
+        "ne_roman": "tyo time hamro khulla time bahira, banda din, wa gaisakeko time ho",
+        "ne_deva": "त्यो समय खुल्ला समयबाहिर, बन्द दिन, वा गइसकेको समय हो",
+    }),
+    (re.compile(r"just booked by someone else"), {
+        "en": "someone just booked that slot — could you pick another time?",
+        "ne_roman": "tyo slot bharkhar arko le book garyo — arko time rojnus na",
+        "ne_deva": "त्यो समय भर्खरै अर्कोले बुक गर्नुभयो — अर्को समय रोज्नुस् न",
+    }),
+]
+_TOOL_REASON_FALLBACK = {
+    "en": "something on our side didn't go through",
+    "ne_roman": "hamro tira kehi milena",
+    "ne_deva": "हाम्रोतर्फ केही मिलेन",
+}
+
+
+def tool_reason(message: str | None, language: str | None) -> str:
+    """A customer-facing reason for a cancel/reschedule tool failure, never the tool's own text."""
+    lang, text = _key(language), (message or "").lower()
+    for pattern, reasons in _TOOL_REASONS:
+        if pattern.search(text):
+            return reasons[lang]
+    return _TOOL_REASON_FALLBACK[lang]
+
+
 def render(template_name: str, language: str | None, **kwargs: str) -> str:
     """Never the same fixed text twice in one chat: the first wording this conversation hasn't seen yet, or -- once
     every wording has been used -- the one used longest ago. Deterministic (no randomness), so the first wording is
     always what a fresh conversation or a caller outside a turn gets."""
+    if template_name in _TOOL_REASON_TEMPLATES and "message" in kwargs:
+        kwargs = {**kwargs, "message": tool_reason(kwargs["message"], language)}
     formats = variants(template_name, language)
     rendered = [v.format(**kwargs) for v in formats]
     history = _reply_history.get()

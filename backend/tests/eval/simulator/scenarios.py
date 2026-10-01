@@ -17,7 +17,9 @@ SCENARIOS: list[dict] = [
         {"say": "aru kei offer xa ki?"},
     ]},
     {"id": "explain", "situation": "explain", "lang": "ne_roman", "turns": [
-        {"say": "{s1} vaneko k ho? k k garinxa?"},
+        # "k k garinxa" ("what's done in it") only made sense for a clinic service; asked about rice or a hotel room
+        # it got an honest "not on file" that the judge then counted against the bot.
+        {"say": "{s1} ko barema ali bujhaidinus na, k k pauxu?"},
         {"say": "kati time lagxa?"},
     ]},
     {"id": "two_questions", "situation": "multi_question", "lang": "ne_roman", "turns": [
