@@ -101,8 +101,6 @@ def test_english_with_place_names_is_english(chat_session):
     assert _locks(rows) == ["en", "en"], rows
 
 
-@pytest.mark.xfail(strict=True, reason="BUG found 2026-10-01: 'malai nepali ma bhannus na' in an English-locked chat is "
-                   "ignored and the next Nepali messages stay locked to English; fix pending in orchestrator's lock logic")
 def test_explicit_request_switches_at_once(chat_session):
     rows = chat_session([("Hello, what are your opening hours?", "en"), ("malai nepali ma bhannus na", "ne_roman"),
                          ("Teeth Cleaning kati parcha?", "ne_roman")])
@@ -121,3 +119,12 @@ def test_one_stray_english_line_does_not_switch(chat_session):
 def test_devanagari_stays_devanagari(chat_session):
     rows = chat_session([("नमस्ते, Teeth Cleaning कति हो?", "ne_deva"), ("ok", "unclear")])
     assert _locks(rows) == ["ne_deva", "ne_deva"], rows
+
+
+def test_mentioning_a_language_is_not_a_switch_request():
+    from app.services.conversation.orchestrator import _explicit_switch_request
+
+    for text in ["Do you speak Nepali?", "My Nepali is not good.", "Is the doctor fluent in English?", "ok"]:
+        assert _explicit_switch_request(text) is None, text
+    assert _explicit_switch_request("English ma kura garam") == "en"
+    assert _explicit_switch_request("नेपालीमा भन्नुस्") == "ne_deva"

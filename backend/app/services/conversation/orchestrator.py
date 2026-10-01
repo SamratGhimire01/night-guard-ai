@@ -1320,6 +1320,25 @@ def _resolve_locked_language(
     return language_for_this_turn
 
 
+# Bug found 2026-10-01 (test_language_session): "malai nepali ma bhannus na" in an English-locked chat only switched
+# if the model also set language_switch_request; when it didn't, the passive 3-message streak kept the chat in English.
+# Narrow on purpose: "Do you speak Nepali?" or "My Nepali is not good" is not a request to switch.
+_SWITCH_VERBS = r"(?:reply|respond|answer|talk|speak|write|text|chat|continue|switch|say|tell|explain)"
+_SWITCH_REQUEST_RES = [
+    (re.compile(r"नेपाली\s*मा"), ConversationLanguage.NE_DEVA.value),
+    (re.compile(rf"\bnepali\s*ma\b|\b{_SWITCH_VERBS}\b[^.?!]{{0,20}}\bin nepali\b|\bswitch to nepali\b", re.I),
+     ConversationLanguage.NE_ROMAN.value),
+    (re.compile(rf"\benglish\s*ma\b|\b{_SWITCH_VERBS}\b[^.?!]{{0,20}}\bin english\b|\bswitch to english\b", re.I),
+     ConversationLanguage.EN.value),
+]
+
+
+def _explicit_switch_request(content: str) -> str | None:
+    """Deterministic backstop for classification.language_switch_request: the language an explicit "reply in X"
+    request asks for, else None."""
+    return next((lang for pattern, lang in _SWITCH_REQUEST_RES if pattern.search(content)), None)
+
+
 # Tone/language phase: common Hindi-only tokens that sometimes leak into a
 # Nepali-locked reply (Nepali and Hindi are close enough that a model trained
 # mostly on Hindi data drifts there) -- none of these collide with the
@@ -1351,6 +1370,7 @@ def _expected_response_language(
     draft never silently moves the persisted lock."""
     if force_language:
         return force_language
+    language_switch_request = language_switch_request or _explicit_switch_request(content)
     if language_switch_request in _VALID_LANGUAGES:
         return language_switch_request
     if conversation.detected_language:
@@ -2284,8 +2304,9 @@ def _handle_turn(
         # Phase 25b: an explicit, unambiguous "switch to X" request (as opposed
         # to passive drift) overrides the lock immediately, this same turn —
         # see _resolve_locked_language's docstring.
-        is_explicit_language_switch = classification.language_switch_request in _VALID_LANGUAGES
-        language = _resolve_locked_language(conversation, message_language, classification.language_switch_request)
+        switch_request = classification.language_switch_request or _explicit_switch_request(content)
+        is_explicit_language_switch = switch_request in _VALID_LANGUAGES
+        language = _resolve_locked_language(conversation, message_language, switch_request)
 
     # Phase 23 urgent fix: a customer volunteering their name/email/phone
     # mid-conversation (e.g. an anonymous widget "Website Visitor" who never
