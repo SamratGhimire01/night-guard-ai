@@ -29,15 +29,35 @@ says that set-up is weakest exactly where we need it:
 | Gold set | 34 minimal pairs — two replies differing in exactly one known defect, so the right answer is known without an annotator (25 the lint must catch, 9 tone/warmth/helpfulness/robotic pairs only an LLM can judge). Plus native pairs from `docs/nepali_voice/native_review_sheet.md` once filled in. | `gold.py` |
 | Calibration gate | A judge is **trusted** only at ≥ 90% correct picks, ≥ 85% same answer in both orders, and (once ≥ 10 native verdicts exist) κ ≥ 0.6 with the native speaker. | `calibrate.py` |
 
+## v3 (after the first live calibration)
+
+The first live run (2026-10-01, on the owner's machine) confirmed the research: **Azure 74%, Groq gpt-oss-120b 68%**
+correct picks, Groq also position-biased (74% same answer in both orders), both missing exactly the language defects
+the lint gets 100% right. So v3 splits the work:
+
+- **Language defects** (Hindi, textbook words, timi, script, spelling, repeats, English dates): the lint decides. No
+  LLM is asked.
+- **Everything else** (answers the question, one question at a time, doesn't re-ask, reacts to pain/frustration, not a
+  template, no filler ending, right length, warm, would a receptionist send it): a **yes/no checklist**
+  (`rubric.CHECKLIST`), each reply checked on its own, so there is no A/B order to be biased by. Binary checklists are
+  far more consistent across judges than 1–5 scores ([CheckEval, EMNLP 2025](https://aclanthology.org/2025.emnlp-main.796/)).
+- **Gemini 3.1 Flash-Lite** (free tier) added: in a 2026 Nepali benchmark it kept 89.5% reading comprehension in Nepali
+  vs 97% in English, where small open models collapse. (gemini-3.5-flash is free only for 20 requests/day.)
+- **Trusted for**: a judge that misses the overall bar can still be trusted for the defect types it gets right.
+- Parallel (`--workers`), each judge paced to its own rate limit; everything cached.
+
+Specs: `lint`, `<llm>` (old holistic pairwise), `check:<llm>+<llm>`, `hybrid:<llm>+<llm>` (recommended).
+
 ## Run it
 
 ```bash
 # offline, free: the lint layer alone
 python -m tests.eval.nepali_judge.calibrate gold --judges lint
 
-# the LLM judges (keys in backend/.env; the Claude judge needs: pip install -r requirements-eval.txt)
+# v3: lint + yes/no checklist (keys in backend/.env: GEMINI_API_KEY, AZURE_OPENAI_*, GROQ_API_KEY)
 docker exec -e PYTHONPATH=/app night_guard_ai-backend-1 \
-  python -m tests.eval.nepali_judge.calibrate gold --judges lint,claude,azure,groq/openai/gpt-oss-120b \
+  python -m tests.eval.nepali_judge.calibrate gold \
+  --judges lint,hybrid:gemini/gemini-3.1-flash-lite,hybrid:azure,hybrid:groq/qwen/qwen3.8-27b,hybrid:gemini/gemini-3.1-flash-lite+azure \
   --out tests/eval/nepali_judge/calibration_$(date +%F).md
 
 # re-judge a saved before/after run with the trusted judges
@@ -46,6 +66,19 @@ python -m tests.eval.nepali_judge.calibrate rejudge tests/eval/phase4_results_20
 
 Results are cached in `cache.json` (git-ignored), so re-runs only pay for new comparisons. Only quote numbers from
 judges the calibration marked trusted.
+
+## Live result, v3 (2026-10-01, `calibration_gemini_2026-10-01.md`)
+
+| judge | correct picks | trusted |
+|---|---|---|
+| lint | 100% (25 language pairs) | yes |
+| **hybrid:gemini/gemini-3.1-flash-lite** | **97% (33/34)** | **yes** — for every defect type except `unhelpful` (2/3) |
+| check:gemini/gemini-3.1-flash-lite (no lint) | 41% | no — 0/5 on Hindi, but 2/2 cold, 3/3 robotic |
+| azure, holistic pairwise (v2 run) | 74% | no |
+| groq/openai/gpt-oss-120b, holistic pairwise (v2 run) | 68% | no |
+
+The split works: the lint covers what the LLM can't read reliably, the checklist covers tone. Use
+`hybrid:gemini/gemini-3.1-flash-lite` (add `+azure` once Azure has been calibrated in checklist mode).
 
 ## Status (2026-10-01)
 
