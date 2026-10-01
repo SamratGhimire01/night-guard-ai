@@ -5596,3 +5596,21 @@ def test_no_second_team_promise_when_the_reply_already_makes_one(two_businesses,
                 assert closer not in reply, reply
         with SessionLocal() as db:
             assert db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).count() == 1
+
+
+def test_template_reply_keeps_the_drafts_price_answer():
+    """Simulator 2026-10-01 photo/mixed: "Is Passport Photo available on Sunday? ani kati parcha?" -- the slot list
+    replaced the draft and the price answer was lost. A sentence with the service's real price is carried over; an
+    invented price or a template that already has a price is left alone."""
+    from types import SimpleNamespace
+
+    from app.services.conversation.orchestrator import _keep_draft_price
+
+    services = [SimpleNamespace(name="Passport Photo", price=300), SimpleNamespace(name="Studio Shoot", price=0)]
+    slots = "Passport Photo ko lagi yo time haru khali cha: Aaitabar — bihana 9 baje. Kun milcha?"
+    draft = "Aaitabar ma khulla cha. Passport Photo NPR 300 parcha. Kati baje aaunu huncha?"
+    assert _keep_draft_price(slots, draft, services) == f"Passport Photo NPR 300 parcha. {slots}"
+    assert _keep_draft_price(slots, "Passport Photo NPR 250 parcha.", services) == slots
+    assert _keep_draft_price(slots, "It's NPR 300.", services) == slots
+    assert _keep_draft_price("Price NPR 300. " + slots, draft, services) == "Price NPR 300. " + slots
+    assert _keep_draft_price(slots, None, services) == slots

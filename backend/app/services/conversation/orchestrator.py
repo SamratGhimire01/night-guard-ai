@@ -35,7 +35,7 @@ from app.services.channels import delivery
 from app.services.conversation import appointment_tools  # noqa: F401  registers CANCELLATION/RESCHEDULING tools
 from app.services.conversation import booking_tool  # noqa: F401  registers the BOOKING tool
 from app.services.conversation.contact_tool import UpdateContactInfoTool
-from app.services.conversation.fact_validator import check_response_facts
+from app.services.conversation.fact_validator import _PRICE_RE, _SENTENCE_SPLIT_RE, check_response_facts
 from app.services.conversation.formatting import format_service_list
 from app.services.conversation.reply_polish import finalize_reply
 from app.services.conversation.intent import classify_and_respond, translate_for_search
@@ -609,6 +609,23 @@ def _service_bridge(service: Service, customer_message: str, previous_reply: str
     if name in customer_message.lower() or (previous_reply and service.name in previous_reply):
         return ""
     return render("booking_service_bridge", language, service=service.name, description=service.description or "").strip() + " "
+
+
+def _keep_draft_price(template_reply: str, draft: str | None, services: list[Service]) -> str:
+    """A fixed template (slot list, opening hours) replaces the model's draft, which dropped the other half of a
+    two-question message: "Is Passport Photo available on Sunday? ani kati parcha?" got the slots but not the price
+    (simulator 2026-10-01, photo/mixed). Keeps the draft's first sentence that names a service together with that
+    service's real configured price, if the template doesn't already state a price."""
+    if not draft or _PRICE_RE.search(template_reply):
+        return template_reply
+    for sentence in _SENTENCE_SPLIT_RE.split(draft):
+        for _, amount in _PRICE_RE.findall(sentence):
+            if any(
+                s.name.lower() in sentence.lower() and float(s.price) and abs(float(amount.replace(",", "")) - float(s.price)) < 0.01
+                for s in services
+            ):
+                return f"{sentence.strip()} {template_reply}"
+    return template_reply
 
 
 def _propose_available_slots(
@@ -2539,6 +2556,7 @@ def _handle_turn(
                 # test_conversation.py's booking-failure suite).
                 requested_time_unavailable=True,
             )
+            response_text = _keep_draft_price(response_text, classification.response, services)
             # Same partial-clear judgment as _clear_booking_draft_after_attempt's failure
             # path: the requested time is definitely invalid, and the date only survives if
             # that SAME day still has other real openings (in which case it's still exactly
@@ -2602,6 +2620,7 @@ def _handle_turn(
                 previous_reply=_last_agent_reply(db, conversation_id),
                 customer_message=content,
             )
+            response_text = _keep_draft_price(response_text, classification.response, services)
             logger.info(
                 "propose_available_slots: conversation_id=%s service_id=%s",
                 conversation_id,
@@ -2742,7 +2761,7 @@ def _handle_turn(
         # describe_business_hours' docstring for the confirmed hallucination this
         # replaces (fact_validator.check_weekday_hours stays on as a safety net for
         # every OTHER intent that may still mention a day's hours in passing).
-        response_text = describe_business_hours(hours, language)
+        response_text = _keep_draft_price(describe_business_hours(hours, language), classification.response, services)
 
     # Phase 14: the service list is LLM-composed and live testing showed it comes back as one long ";"/","-separated line
     # for some phrasings — put each real service on its own line (deterministic, reads the real service names; leaves
