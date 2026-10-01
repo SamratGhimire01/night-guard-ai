@@ -1135,7 +1135,7 @@ def _format_contact_update_result(result: dict, language: str | None) -> str | N
 _VALID_LANGUAGES = {v.value for v in ConversationLanguage}
 # A reply that already tells the customer the team will follow up (handoff_addendum would only repeat it).
 _TEAM_FOLLOWUP_RE = re.compile(
-    r"\b(team|staff|doctor|manager)\b[^.?!\n]{0,60}\b(contact|call|connect|jod|bhan|sodh|bujh|inform|khabar|get back|"
+    r"\b(team|staff|doctor|manager)\b[^.?!\n]{0,60}\b(contact|call|connect|jod|bhan|sodh|bujh|inform|khabar|share|get back|"
     r"follow up|reach out|phone)"
     r"|\b(connect|jod)\w*\b[^.?!\n]{0,30}\b(team|staff)\b"
     r"|टिम[^।?!\n]{0,40}(सम्पर्क|खबर|सोध|भन)",

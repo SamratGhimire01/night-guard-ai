@@ -5585,6 +5585,7 @@ def test_no_second_team_promise_when_the_reply_already_makes_one(two_businesses,
         "Aha, garo bhayecha. Ma team lai bhanera tapailai contact garna lagauchu.",
         "That shouldn't have happened — I'll have our team call you today.",
         "Sorry about that, let me connect you with our staff.",
+        "Aha, garo bhayecha — k k problem aaeko ho? Short ma vannus, ma team sanga share garera xadai samadhan garne try garxu.",
     ):
         conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
         _stub_providers(monkeypatch, json.dumps({"intent": "complaint", "response": reply_text}))
