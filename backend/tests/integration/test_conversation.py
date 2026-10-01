@@ -2583,6 +2583,19 @@ def test_bare_price_list_gets_a_nepali_lead_in_in_a_roman_nepali_chat(two_busine
         assert resp.json()["response"].startswith(expected_start), (language, resp.json()["response"])
 
 
+def test_too_expensive_guidance_reaches_the_model(two_businesses, monkeypatch):
+    """Simulator expensive/haggle: "ati mahango vayo ni" got 3-4 sentences plus a team offer. The complaint guidance
+    caps it at two sentences: the feeling, then the cheapest option or one value point, and stop."""
+    stub = _stub_providers(monkeypatch, json.dumps({"intent": "complaint", "response": "Bujhe hajur."}))
+    conversation_id = _create_conversation(two_businesses["business_id_a"], _create_customer(two_businesses["token_a"]))
+    resp = client.post(f"/api/v1/conversations/{conversation_id}/messages",
+                       headers=_auth_header(two_businesses["token_a"]), json={"content": "ati mahango vayo ni"})
+    assert resp.status_code == 201, resp.text
+    system_prompt = stub.calls[0][0]["content"]
+    assert "TWO sentences at" in system_prompt and "cheapest real option" in system_prompt
+    assert "no team offer" in system_prompt
+
+
 def test_genuine_service_switch_is_acknowledged_not_silent(two_businesses, monkeypatch):
     """Real bug found live (PHASE_STATUS.md, "silent service switch"): real
     transcript this session — a customer named Dental Consultation, gave
