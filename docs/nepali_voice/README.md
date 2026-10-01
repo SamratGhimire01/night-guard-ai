@@ -40,6 +40,7 @@ wording of a template was used up, and repeated "what's my appointment?" answers
 2. `docker exec night_guard_ai-backend-1 python scripts/seed_style_exemplars.py --prune` — adds the new examples and
    retires the reworded old ones (only shared seed rows; tenant-specific rows are never touched).
 3. Native review: fill in `native_review_sheet.md` (30 real replies, before → after) and skim the word bank.
-4. Live scoring (needs Azure): `docker exec night_guard_ai-backend-1 python -m tests.eval.live_phase4_multijudge` (see its docstring for stages).
+4. Calibrate the judges, then score with the trusted ones: `backend/tests/eval/nepali_judge/README.md`.
+5. Live scoring (needs Azure): `docker exec night_guard_ai-backend-1 python -m tests.eval.live_phase4_multijudge` (see its docstring for stages).
 
 Re-measure any time: `python scripts/nepali_naturalness_report.py --old-templates <old response_templates.py>`.
