@@ -365,3 +365,59 @@ def test_gemini_stops_at_once_when_the_daily_quota_is_gone(monkeypatch):
     with pytest.raises(RuntimeError, match="daily quota"):
         judges.get("gemini/gemini-3.5-flash")([{"role": "user", "content": "hi"}])
     assert len(calls) == 1
+
+
+# --- native review (filled-in sheet layout) ------------------------------------------------------------------------
+
+
+_FILLED = """# review
+
+### 1
+
+* **Customer:** k k hunxa tapai ko ma
+* **Before:** old
+* **After:** Hamra services:
+* Cleaning (30 min)
+* Filling (30 min)
+
+Kun ma interest cha?
+
+* **Your verdict:** **OK / ACCEPTABLE.** Clean list.
+
+---
+
+### 2
+
+* **Customer:** open cha?
+* **Before:** old
+* **After:** Tyo ma guess garna chahanna.
+* **Your verdict:** **NEEDS IMPROVEMENT.** Too blunt.
+* *How a native receptionist would text:* "Yo kura chai team sanga bujhera bhandinchu hai."
+"""
+
+
+def test_filled_native_sheet_is_read_with_verdicts_rewrites_and_line_breaks(tmp_path):
+    sheet = tmp_path / "sheet.md"
+    sheet.write_text(_FILLED, encoding="utf-8")
+    labels = gold.native_labels(sheet)
+    assert [(e["id"], e["ok"]) for e in labels] == [("native-1", True), ("native-2", False)]
+    assert "\n* Cleaning (30 min)" in labels[0]["after"]  # a list stays a list
+    assert labels[1]["rewrite"] == "Yo kura chai team sanga bujhera bhandinchu hai."
+    assert [p["good"] for p in gold.native_pairs(sheet)] == ["Yo kura chai team sanga bujhera bhandinchu hai."]
+
+
+def test_an_english_system_sentence_inside_nepali_is_caught():
+    leak = ("Tyo time bharkhar book bhaisakyo, [NAME] — requested time is not available (outside business hours, on a "
+            "closed date, in the past, or already booked). Cleaning ko lagi yo time haru khali cha: Sombar (Sep 7) — "
+            "bihana 9 baje, sawa 9 baje, sadhe 9 baje. Kunai milcha?")  # native review #5, verbatim
+    assert "english_leak" in [f.code for f in lint(leak, "Cleaning nai ho, bholi 10 baje milcha?")]
+    assert "english_leak" not in [f.code for f in lint("Cleaning ko price 1500 ho, booking garna milcha.", "price kati?")]
+
+
+def test_a_list_answering_what_do_you_offer_is_not_a_monologue():
+    listing = "Hamra services: " + ", ".join(f"Service {i} (NPR {i}00, 30 min)" for i in range(12)) + ". Kun chai chahiyo?"
+    assert "monologue" not in [f.code for f in lint(listing, "k k hunxa tapai ko ma")]
+
+
+def test_native_ok_bar_allows_up_to_three_noes():
+    assert 6 / 9 >= calibrate.NATIVE_OK_CHECKLIST > 5 / 9

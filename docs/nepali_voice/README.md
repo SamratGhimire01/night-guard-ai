@@ -44,3 +44,19 @@ wording of a template was used up, and repeated "what's my appointment?" answers
 5. Live scoring (needs Azure): `docker exec night_guard_ai-backend-1 python -m tests.eval.live_phase4_multijudge` (see its docstring for stages).
 
 Re-measure any time: `python scripts/nepali_naturalness_report.py --old-templates <old response_templates.py>`.
+
+## Native review applied (2026-10-01)
+
+`native_review_sheet.md` is filled in (customer names, phones and emails replaced). What it changed:
+
+| Native finding | Fix |
+|---|---|
+| Internal English reason leaking mid-Nepali ("requested time is not available (outside business hours, ...)") | Removed from every "time not available" reply, all languages; "bharkhar book bhaisakyo" (claims someone just booked) -> "khali chaina raicha" |
+| "Tyo ma guess garna chahanna" sounds blunt | Native wording: "Yo kura chai team sanga bujhera tapailai chhitto bhandinchu hai." |
+| Hindi health words (dard, rakt, khoon, kabhi-kabhi) | Word bank swaps to dukhai, ragat, kahile kahi; bukha/tez flagged |
+| Literal translations / system words ("sunera man chhuttiyo", "configured bhayeko", "sacchai ko manche", "suni raheina") | Flagged by the word bank and named in the AI's word guide with the natural alternative |
+| xa and cha mixed in one message | Spelling mirror now works both ways: one reply, one style |
+| -- | Native rewrites as style examples, facts removed: 12 shared by **every** business (+5 generalised from native phrasing), 5 dental-only (teeth, extraction) |
+| Prompt examples mostly use a dental clinic | AI told to copy behaviour and tone only, never a service/word/situation the business doesn't have |
+
+Re-seed the examples after deploying: `docker exec night_guard_ai-backend-1 python scripts/seed_style_exemplars.py --prune`.

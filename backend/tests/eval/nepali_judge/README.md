@@ -80,6 +80,24 @@ judges the calibration marked trusted.
 The split works: the lint covers what the LLM can't read reliably, the checklist covers tone. Use
 `hybrid:gemini/gemini-3.1-flash-lite` (add `+azure` once Azure has been calibrated in checklist mode).
 
+## Against the native speaker (2026-10-01, `calibration_native_2026-10-01.md`)
+
+30 real replies reviewed by a native speaker (17 OK, 13 needs improvement, 13 with a native rewrite):
+
+| judge | picks the better reply (incl. native rewrite vs ours) | agrees with native OK / not OK (κ) | trusted |
+|---|---|---|---|
+| lint | 100% | 0.72 | yes |
+| **hybrid:gemini/gemini-3.1-flash-lite** | **98%** (13/13 native pairs) | **0.86** | **yes** |
+
+- The lint never calls a native-OK reply bad (17/17) and catches 9 of the 13 bad ones; the other 4 (ignores the
+  question, awkward paraphrase, asks for the phone twice, a grammar slip) are the checklist's job.
+- Gemini is stricter than the native speaker: it answers "sounds like a template" on 10 of 17 replies the native
+  marked OK. So "OK" for the checklist is at most 3 "no" answers out of 9 (`NATIVE_OK_CHECKLIST`). **That cut-off was
+  chosen on these same 30 replies, so 0.86 is optimistic** -- confirm it on a fresh native batch of ~20 replies.
+
+Gold set covers every kind of business, not only clinics: 34 clinic pairs + 9 for trekking, study abroad, an
+organic food shop, a salon and a restaurant (lint 30/30, hybrid 56/56 incl. native pairs except one `unhelpful`).
+
 ## Status (2026-10-01)
 
 - Lint layer: 25/25 on its gold pairs, 0 false alarms on the 34 good gold replies (`calibration_lint_2026-10-01.md`).
