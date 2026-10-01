@@ -338,9 +338,26 @@
   // Renders a text-message reply as several agent bubbles when the backend split it
   // (response_bubbles, additive/optional -- see WidgetMessageResponse), otherwise falls back
   // to a single bubble. Text-message path only -- the voice reply path never sends/checks this field.
+  // A person texting sends the second message a moment after the first, with the typing dots in between; every bubble
+  // landing in the same instant is what gives a bot away. The first bubble shows at once (the visitor already waited for
+  // the reply); each later one after a short pause scaled to its length, at most ~1.5s, so a reply never drags.
+  function bubbleGap(text) {
+    return Math.max(500, Math.min(1500, 350 + 18 * String(text || "").length));
+  }
+
   function appendAgentReply(data) {
     if (Array.isArray(data.response_bubbles) && data.response_bubbles.length > 1) {
-      for (var i = 0; i < data.response_bubbles.length; i++) appendMessage(data.response_bubbles[i], "agent");
+      var bubbles = data.response_bubbles.slice();
+      appendMessage(bubbles.shift(), "agent");
+      (function next() {
+        if (!bubbles.length) return;
+        setTyping(true);
+        setTimeout(function () {
+          setTyping(false);
+          appendMessage(bubbles.shift(), "agent");
+          next();
+        }, previewConfig ? 0 : bubbleGap(bubbles[0]));
+      })();
     } else if (data.response) {
       appendMessage(data.response, "agent");
     }

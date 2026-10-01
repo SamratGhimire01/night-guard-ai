@@ -258,6 +258,7 @@ def create_business(db, spec: dict, *, with_knowledge: bool):
     )
     db.add(business)
     db.flush()
+    _CREATED.add(business.id)
     for name, price, minutes, desc in spec["services"]:
         db.add(Service(business_id=business.id, name=name, description=desc or None, price=Decimal(price),
                        duration_minutes=max(minutes, 15)))
@@ -274,8 +275,25 @@ def create_business(db, spec: dict, *, with_knowledge: bool):
     return business
 
 
+# Businesses THIS process created. Cleanup deletes only these: a test's teardown once deleted every SIM business in
+# the shared DB, including the ones a simulator run in another process was still chatting with (2026-10-01).
+_CREATED: set = set()
+
+
 def delete_sim_businesses(db) -> int:
-    """Removes every SIM business; all tenant tables cascade on business delete."""
+    """Removes the SIM businesses this process created; all tenant tables cascade on business delete."""
+    from app.db.models.business import Business
+
+    if not _CREATED:
+        return 0
+    n = db.query(Business).filter(Business.id.in_(list(_CREATED))).delete(synchronize_session=False)
+    db.commit()
+    _CREATED.clear()
+    return n
+
+
+def delete_all_sim_businesses(db) -> int:
+    """Every SIM business, from any process: the explicit `cleanup` command only (never while a run is going)."""
     from app.db.models.business import Business
 
     n = db.query(Business).filter(Business.name.like(SIM_PREFIX + "%")).delete(synchronize_session=False)
@@ -361,14 +379,13 @@ def main(argv=None) -> None:
 
     db = SessionLocal()
     if args.command == "cleanup":
-        print(f"deleted {delete_sim_businesses(db)} SIM businesses")
+        print(f"deleted {delete_all_sim_businesses(db)} SIM businesses")
         return
 
     pairs = plan([s for s in args.scenarios.split(",") if s] or None,
                  [b for b in args.businesses.split(",") if b] or None, args.per_scenario)
     judges, cache = _judges(args.judges), Cache(Path(args.cache) if args.cache else None)
     run = {"started": datetime.now(UTC).isoformat(timespec="seconds"), "judges": args.judges, "records": []}
-    delete_sim_businesses(db)  # leftovers from an interrupted run
     try:
         created = {}
         for key in sorted({b for _, b in pairs}):
