@@ -173,3 +173,60 @@ def parse_pairwise(raw: str) -> dict:
     if "overall" not in data or not isinstance(winner, dict):
         raise BadJudgeOutput(f"missing overall/winner: {data!r}"[:200])
     return {"winner": {c: norm(winner.get(c, "tie")) for c in CRITERIA}, "overall": norm(data["overall"])}
+
+
+# --- Checklist mode (CheckEval-style) --------------------------------------------------------------------------------
+# Calibration on 2026-10-01 showed holistic 1-5 / "which is better" judgments are where Azure (74%) and Groq (68%, and
+# position-biased) fail on Romanized Nepali. Binary questions are far more consistent across judges (CheckEval,
+# EMNLP 2025). They cover only what the lint can't: language problems (Hindi, textbook words, script, spelling,
+# repeats) are already caught by rule. Every question is phrased so that "yes" is the good answer; each reply is
+# checked on its own, so there is no A/B order to be biased by.
+CHECKLIST: dict[str, str] = {
+    "answers": "Does the reply directly answer, or act on, what the customer's LATEST message is about? (A short warm "
+    "reply to a plain greeting or thank-you counts as yes.)",
+    "one_question": "If the reply asks the customer something, is it at most ONE clear question, not two or three "
+    "stacked together? (yes if it asks nothing)",
+    "no_reask": "Does the reply avoid asking for anything the customer already gave earlier in this chat (name, number, "
+    "date, time, service)? (yes if nothing was given before)",
+    "reacts_to_feelings": "If the customer mentions pain, worry, frustration or a complaint, does the reply react to it "
+    "the way a person would before moving on? (yes if there is nothing like that to react to)",
+    "not_template": "Does it avoid sounding like a template or a system message: stock openers ('Thank you for "
+    "reaching out', 'Got it —', 'Bujhe —'), announcements ('Your request has been processed', 'tapaiko anurodh safal "
+    "bhayo'), or a menu of everything the business offers when nobody asked?",
+    "no_filler_ending": "Does it end without a tacked-on filler such as 'let me know if you need anything else' or "
+    "'aru kehi chahiyo bhane bhannus'?",
+    "right_length": "Is it about as short as the customer's message called for: no padding, no paragraph for a "
+    "one-line question? (A longer answer is fine when the customer asked for an explanation.)",
+    "warm_respectful": "Is the tone warm and respectful: polite 'tapai'/'hajur' in Nepali, never 'timi', not curt "
+    "or cold?",
+    "would_send": "Would a friendly, experienced receptionist in Nepal plausibly send this exact message on WhatsApp?",
+}
+
+CHECKLIST_SYSTEM = (
+    "You review how a business texts its customers on WhatsApp and website chat in Nepal. You read English, Devanagari "
+    "Nepali, Romanized Nepali in every spelling (xa/cha, vayo/bhayo, voli/bholi are all fine), and code-mixed "
+    "Nepali/English. First write a one-line English gloss of the customer's latest message and of the reply, so it is "
+    "clear you understood them. Then answer each question about the REPLY with yes or no. Judge only what is written: "
+    "longer is not better, and a polite reply can still be a template.\n\nQuestions:\n"
+    + "\n".join(f'- "{k}": {v}' for k, v in CHECKLIST.items())
+    + '\n\nRespond with ONLY this JSON: {"gloss_customer": "...", "gloss_reply": "...", "answers": {'
+    + ", ".join(f'"{k}": "yes"|"no"' for k in CHECKLIST)
+    + "}}"
+)
+
+
+def checklist_messages(reply: str, customer: str, history=None, locked_language=None) -> list[dict]:
+    user = f"{_context_block(customer, history, locked_language)}\n\nBusiness reply to check:\n{reply}"
+    return [{"role": "system", "content": CHECKLIST_SYSTEM}, {"role": "user", "content": user}]
+
+
+def parse_checklist(raw: str) -> dict[str, bool]:
+    """{question_id: True (yes) | False (no)} for every checklist question. Raises BadJudgeOutput."""
+    answers = _json(raw).get("answers") or {}
+    out = {}
+    for key in CHECKLIST:
+        value = str(answers.get(key, "")).strip().lower()
+        if value not in ("yes", "no", "true", "false"):
+            raise BadJudgeOutput(f"no yes/no for {key!r}: {answers!r}"[:200])
+        out[key] = value in ("yes", "true")
+    return out

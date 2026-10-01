@@ -1,23 +1,32 @@
 """Measure judges against the gold set, and re-judge saved before/after replies with the trusted ones.
 
-    python -m tests.eval.nepali_judge.calibrate gold --judges lint,claude,azure,groq/openai/gpt-oss-120b
-    python -m tests.eval.nepali_judge.calibrate rejudge tests/eval/phase4_results_2026-09-29.json --judges lint,claude
+    python -m tests.eval.nepali_judge.calibrate gold --judges lint,hybrid:gemini/gemini-3.5-flash+azure
+    python -m tests.eval.nepali_judge.calibrate rejudge tests/eval/phase4_results_2026-09-29.json --judges hybrid:azure
 
-`lint` is the deterministic layer alone (free, offline). Every LLM judge listed is ALSO paired with the lint caps in
-the ensemble. Results are cached in --cache (default tests/eval/nepali_judge/cache.json) so a re-run only pays for
-what's new.
+Judge specs (comma-separated in --judges):
+    lint                      the rule layer alone (free, offline)
+    <llm>                     one LLM, holistic pairwise in both orders (the first design; kept for comparison)
+    check:<llm>[+<llm>...]    the yes/no checklist alone, each reply checked on its own (no lint)
+    hybrid:<llm>[+<llm>...]   lint decides language defects; otherwise the checklist ensemble decides  <- recommended
+<llm> is claude | azure | groq/<model> | gemini/<model> (judges.py).
 
-A judge is TRUSTED when, on the gold set:
-  - it picks the better reply on >= 90% of the pairs it is meant to judge (lint: only the pairs marked lint=True),
-  - it gives the same answer in both orders on >= 85% of pairs (LLM judges; position bias otherwise),
-  - and, once >= 10 native verdicts exist, its OK/not-OK call agrees with the native speaker at Cohen's kappa >= 0.6.
+Results are cached in --cache (default tests/eval/nepali_judge/cache.json): a re-run, or a new spec reusing a judge
+already run, only pays for what's new. Pairs are judged in parallel (--workers); each judge paces itself to its own
+rate limit.
+
+TRUSTED overall when, on the gold pairs it judges: >= 90% correct picks, >= 85% same answer in both orders (holistic
+pairwise only -- the checklist has no order), and, once >= 10 native verdicts exist, Cohen's kappa >= 0.6 against the
+native speaker. TRUSTED FOR a defect type when it got >= 90% of at least 2 pairs of that type: a judge that fails
+overall can still be the right tool for, say, warmth.
 """
 
 import argparse
 import hashlib
 import json
 import sys
+import threading
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from tests.eval.nepali_judge import engine, gold
@@ -25,6 +34,7 @@ from tests.eval.nepali_judge import judges as judge_mod
 from tests.eval.nepali_judge.lint import language_of
 
 ACCURACY_BAR, CONSISTENCY_BAR, KAPPA_BAR, MIN_NATIVE = 0.90, 0.85, 0.60, 10
+MIN_PER_DEFECT, NATIVE_OK_CHECKLIST = 2, 0.8
 DEFAULT_CACHE = Path(__file__).with_name("cache.json")
 
 
@@ -44,85 +54,156 @@ def cohen_kappa(a: list[bool], b: list[bool]) -> float | None:
 
 
 class Cache:
+    """JSON file cache, safe to share between worker threads."""
+
     def __init__(self, path: Path | None):
-        self.path, self.data = path, {}
+        self.path, self.data, self._lock = path, {}, threading.Lock()
         if path and path.exists():
             self.data = json.loads(path.read_text(encoding="utf-8"))
 
     def get(self, key):
-        return self.data.get(key)
+        with self._lock:
+            return self.data.get(key)
 
     def put(self, key, value):
-        self.data[key] = value
-        if self.path:
-            self.path.write_text(json.dumps(self.data, ensure_ascii=False, indent=1), encoding="utf-8")
+        with self._lock:
+            self.data[key] = value
+            if self.path:
+                tmp = self.path.with_suffix(".tmp")
+                tmp.write_text(json.dumps(self.data, ensure_ascii=False, indent=1), encoding="utf-8")
+                tmp.replace(self.path)
 
 
-def _compare_cached(cache: Cache, judge_name: str, judge, a: str, b: str, customer: str, history=None) -> dict:
-    key = "cmp|" + judge_name + "|" + hashlib.sha256(json.dumps([a, b, customer, history], ensure_ascii=False).encode()).hexdigest()
+def _key(*parts) -> str:
+    return hashlib.sha256(json.dumps(parts, ensure_ascii=False, default=str).encode()).hexdigest()
+
+
+# --- one comparison / one OK-call per spec ---------------------------------------------------------------------------
+
+
+def parse_spec(spec: str) -> tuple[str, list[str]]:
+    """("lint"|"pairwise"|"check"|"hybrid", [llm names])."""
+    if spec == "lint":
+        return "lint", []
+    for mode in ("check", "hybrid"):
+        if spec.startswith(mode + ":"):
+            return mode, [n for n in spec.removeprefix(mode + ":").split("+") if n]
+    return "pairwise", [spec]
+
+
+def _compare(spec: str, judges: dict, cache: Cache, a: str, b: str, customer: str, history) -> dict:
+    """{"verdict": "A"|"B"|"tie", "consistent": bool|None, "errors": {...}, "decided_by": str}."""
+    mode, _ = parse_spec(spec)
+    if mode == "pairwise":
+        key = "cmp|" + spec + "|" + _key(a, b, customer, history)
+        hit = cache.get(key)
+        if hit:
+            return hit
+        c = engine.compare(a, b, customer, judges, history=history)
+        result = {"verdict": c.verdict, "consistent": all(c.consistent.values()) if c.consistent else None,
+                  "errors": c.errors, "decided_by": "pairwise"}
+        if not c.errors:
+            cache.put(key, result)
+        return result
+    if mode == "lint":
+        h = engine.hybrid_compare(a, b, customer, {}, history=history)
+        return {"verdict": h.verdict, "consistent": None, "errors": {}, "decided_by": h.decided_by}
+    if mode == "check":
+        ca = engine.checklist(a, customer, judges, history=history, cache=cache)
+        cb = engine.checklist(b, customer, judges, history=history, cache=cache)
+        errors = {**ca.errors, **cb.errors}
+        margin = 1 / len(engine.rubric.CHECKLIST) - 1e-9
+        verdict = "A" if ca.score - cb.score >= margin else "B" if cb.score - ca.score >= margin else "tie"
+        return {"verdict": verdict if ca.raw and cb.raw else "tie", "consistent": None, "errors": errors,
+                "decided_by": "checklist"}
+    h = engine.hybrid_compare(a, b, customer, judges, history=history, cache=cache)
+    errors = {**(h.check_a.errors if h.check_a else {}), **(h.check_b.errors if h.check_b else {})}
+    return {"verdict": h.verdict, "consistent": None, "errors": errors, "decided_by": h.decided_by}
+
+
+def _native_ok(spec: str, judges: dict, cache: Cache, reply: str, customer: str) -> bool | None:
+    """Would this judge call the reply OK (what the native speaker marks "OK")? None = no usable answer."""
+    mode, _ = parse_spec(spec)
+    findings = engine.lint_mod.lint(reply, customer)
+    if mode == "lint":
+        return not findings
+    if mode in ("check", "hybrid"):
+        c = engine.checklist(reply, customer, judges, cache=cache)
+        if not c.raw:
+            return None
+        ok = c.score >= NATIVE_OK_CHECKLIST
+        return ok and not findings if mode == "hybrid" else ok
+    key = "abs|" + spec + "|" + _key(reply, customer)
     hit = cache.get(key)
-    if hit:
-        return hit
-    judges = {} if judge_name == "lint" else {judge_name: judge}
-    c = engine.compare(a, b, customer, judges, history=history)
-    result = {"verdict": c.verdict, "consistent": all(c.consistent.values()) if c.consistent else None, "errors": c.errors}
-    if not c.errors:
-        cache.put(key, result)
-    return result
+    if hit is None:
+        s = engine.score(reply, customer, judges)
+        if s.errors:
+            return None
+        hit = {"overall": s.overall}
+        cache.put(key, hit)
+    return hit["overall"] >= 4.0
 
 
-def _score_cached(cache: Cache, judge_name: str, judge, reply: str, customer: str) -> dict:
-    key = "abs|" + judge_name + "|" + hashlib.sha256(json.dumps([reply, customer], ensure_ascii=False).encode()).hexdigest()
-    hit = cache.get(key)
-    if hit:
-        return hit
-    judges = {} if judge_name == "lint" else {judge_name: judge}
-    s = engine.score(reply, customer, judges)
-    result = {"overall": s.overall, "criteria": s.criteria, "errors": s.errors}
-    if not s.errors:
-        cache.put(key, result)
-    return result
+# --- evaluation -------------------------------------------------------------------------------------------------------
 
 
-def evaluate_judge(judge_name: str, judge, cache: Cache, pairs: list[dict], native: list[dict]) -> dict:
-    per_defect = defaultdict(lambda: [0, 0])  # defect -> [right, total]
-    consistent = total_llm = errors = 0
-    for p in pairs:
-        if judge_name == "lint" and not p["lint"]:
-            continue
+def _judges_for(spec: str, judge=None) -> dict:
+    mode, names = parse_spec(spec)
+    if mode == "lint":
+        return {}
+    if judge is not None:  # tests pass a fake callable (or a ready dict for check/hybrid)
+        return judge if isinstance(judge, dict) else {names[0]: judge}
+    return {n: judge_mod.get(n) for n in names}
+
+
+def evaluate_judge(spec: str, judge, cache: Cache, pairs: list[dict], native: list[dict], *, workers: int = 1) -> dict:
+    mode, _ = parse_spec(spec)
+    judges = _judges_for(spec, judge)
+    todo = [p for p in pairs if mode != "lint" or p["lint"]]
+
+    def one(p):
         good_a = _good_is_a(p["id"])
         a, b = (p["good"], p["bad"]) if good_a else (p["bad"], p["good"])
-        r = _compare_cached(cache, judge_name, judge, a, b, p["customer"], p.get("history"))
+        return p, good_a, _compare(spec, judges, cache, a, b, p["customer"], p.get("history"))
+
+    with ThreadPoolExecutor(max(1, workers)) as pool:
+        results = list(pool.map(one, todo))
+
+    per_defect = defaultdict(lambda: [0, 0])
+    consistent = total_ordered = errors = 0
+    decided_by = defaultdict(int)
+    for p, good_a, r in results:
         if r["errors"]:
             errors += 1
             continue
         right = r["verdict"] == ("A" if good_a else "B")
         per_defect[p["defect"]][0] += right
         per_defect[p["defect"]][1] += 1
+        decided_by[r["decided_by"]] += 1
         if r["consistent"] is not None:
-            total_llm += 1
+            total_ordered += 1
             consistent += r["consistent"]
     right = sum(v[0] for v in per_defect.values())
     total = sum(v[1] for v in per_defect.values())
     accuracy = right / total if total else None
-    consistency = consistent / total_llm if total_llm else None
+    consistency = consistent / total_ordered if total_ordered else None
 
-    native_pred, native_true = [], []
-    for e in native:
-        s = _score_cached(cache, judge_name, judge, e["after"], e["customer"])
-        if not s["errors"]:
-            native_pred.append(s["overall"] >= 4.0)
-            native_true.append(e["ok"])
-    kappa = cohen_kappa(native_pred, native_true) if len(native_true) >= MIN_NATIVE else None
+    with ThreadPoolExecutor(max(1, workers)) as pool:
+        calls = list(pool.map(lambda e: (_native_ok(spec, judges, cache, e["after"], e["customer"]), e["ok"]), native))
+    pred = [p for p, _ in calls if p is not None]
+    true = [t for p, t in calls if p is not None]
+    kappa = cohen_kappa(pred, true) if len(true) >= MIN_NATIVE else None
 
     trusted = (
         accuracy is not None and accuracy >= ACCURACY_BAR
         and (consistency is None or consistency >= CONSISTENCY_BAR)
         and (kappa is None or kappa >= KAPPA_BAR)
     )
+    trusted_for = sorted(d for d, (r_, t) in per_defect.items() if t >= MIN_PER_DEFECT and r_ / t >= ACCURACY_BAR)
     return {
-        "judge": judge_name, "pairs": total, "accuracy": accuracy, "consistency": consistency,
-        "native_n": len(native_true), "kappa": kappa, "errors": errors, "trusted": trusted,
+        "judge": spec, "pairs": total, "accuracy": accuracy, "consistency": consistency, "native_n": len(true),
+        "kappa": kappa, "errors": errors, "trusted": trusted, "trusted_for": trusted_for,
+        "decided_by": dict(decided_by),
         "per_defect": {d: {"right": v[0], "total": v[1]} for d, v in sorted(per_defect.items())},
     }
 
@@ -134,8 +215,9 @@ def _pct(x):
 def gold_report(results: list[dict]) -> str:
     lines = [
         "# Nepali judge calibration", "",
-        f"Bars: accuracy ≥ {_pct(ACCURACY_BAR)}, same answer in both orders ≥ {_pct(CONSISTENCY_BAR)}, "
-        f"native agreement κ ≥ {KAPPA_BAR} (once ≥ {MIN_NATIVE} native verdicts exist).", "",
+        f"Bars: correct picks ≥ {_pct(ACCURACY_BAR)}; same answer in both orders ≥ {_pct(CONSISTENCY_BAR)} (holistic "
+        f"pairwise only); native agreement κ ≥ {KAPPA_BAR} once ≥ {MIN_NATIVE} native verdicts exist. 'Trusted for' = "
+        f"defect types with ≥ {_pct(ACCURACY_BAR)} on at least {MIN_PER_DEFECT} pairs.", "",
         "| judge | pairs | picks the better reply | same answer both orders | native κ (n) | errors | trusted |",
         "|---|---|---|---|---|---|---|",
     ]
@@ -145,6 +227,9 @@ def gold_report(results: list[dict]) -> str:
             f"| {r['judge']} | {r['pairs']} | {_pct(r['accuracy'])} | {_pct(r['consistency'])} | {k} ({r['native_n']}) "
             f"| {r['errors']} | {'**yes**' if r['trusted'] else 'no'} |"
         )
+    lines += ["", "## Trusted for", ""]
+    for r in results:
+        lines.append(f"- **{r['judge']}**: {', '.join(r.get('trusted_for') or []) or 'nothing yet'}")
     defects = sorted({d for r in results for d in r["per_defect"]})
     lines += ["", "## By defect (right / pairs)", "", "| defect | " + " | ".join(r["judge"] for r in results) + " |",
               "|---|" + "---|" * len(results)]
@@ -157,70 +242,69 @@ def gold_report(results: list[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def run_gold(judge_names: list[str], cache: Cache) -> list[dict]:
+def run_gold(specs: list[str], cache: Cache, workers: int = 6) -> list[dict]:
     pairs = gold.PAIRS + gold.native_pairs()
     native = gold.native_labels()
-    return [evaluate_judge(n, None if n == "lint" else judge_mod.get(n), cache, pairs, native) for n in judge_names]
+    return [evaluate_judge(s, None, cache, pairs, native, workers=workers) for s in specs]
 
 
-def run_rejudge(path: Path, judge_names: list[str], cache: Cache) -> str:
-    """Before vs after from a saved live_phase4_multijudge run, compared by the given judges (an ensemble)."""
+def run_rejudge(path: Path, specs: list[str], cache: Cache, workers: int = 6) -> str:
+    """Before vs after from a saved live_phase4_multijudge run, per spec ('after better' = the change helped)."""
     from tests.eval.phase4_cases import CASES
 
     messages = {c["id"]: c["message"] for c in CASES}
     gen = json.loads(path.read_text(encoding="utf-8"))["gen"]
-    llm = {n: judge_mod.get(n) for n in judge_names if n != "lint"}
-    tally = defaultdict(lambda: {"after": 0, "before": 0, "tie": 0})
+    pairs = []
     for key in sorted(gen):
         case_id, sample, arm = key.split("|")
         if arm != "after" or f"{case_id}|{sample}|before" not in gen or case_id not in messages:
             continue
         after, before = gen[key]["reply"], gen[f"{case_id}|{sample}|before"]["reply"]
-        if not after or not before or after == before:
-            continue
-        cache_key = "rej|" + ",".join(judge_names) + "|" + hashlib.sha256(json.dumps([after, before, messages[case_id]], ensure_ascii=False).encode()).hexdigest()
-        verdict = cache.get(cache_key)
-        if verdict is None:
-            c = engine.compare(after, before, messages[case_id], llm)
-            verdict = c.verdict
-            if not c.errors:
-                cache.put(cache_key, verdict)
-        outcome = {"A": "after", "B": "before"}.get(verdict, "tie")
-        lang = language_of(messages[case_id])
-        for bucket in ("all", lang):
-            tally[bucket][outcome] += 1
-    lines = [f"# Before vs after, re-judged by: {', '.join(judge_names)}", "", f"Source: `{path.name}` (only pairs whose replies differ)", "",
-             "| slice | after better | before better | tie | after win rate (excl. ties) |", "|---|---|---|---|---|"]
-    for bucket in ["all"] + sorted(b for b in tally if b != "all"):
-        t = tally[bucket]
-        decided = t["after"] + t["before"]
-        lines.append(f"| {bucket} | {t['after']} | {t['before']} | {t['tie']} | {_pct(t['after'] / decided) if decided else '—'} |")
-    return "\n".join(lines) + "\n"
+        if after and before and after != before:
+            pairs.append((messages[case_id], after, before))
+    out = ["# Before vs after, re-judged", "", f"Source: `{path.name}` ({len(pairs)} pairs whose replies differ)", ""]
+    for spec in specs:
+        judges = _judges_for(spec)
+        with ThreadPoolExecutor(max(1, workers)) as pool:
+            verdicts = list(pool.map(lambda t: (t[0], _compare(spec, judges, cache, t[1], t[2], t[0], None)), pairs))
+        tally = defaultdict(lambda: {"after": 0, "before": 0, "tie": 0})
+        for customer, r in verdicts:
+            outcome = {"A": "after", "B": "before"}.get(r["verdict"], "tie")
+            for bucket in ("all", language_of(customer)):
+                tally[bucket][outcome] += 1
+        out += [f"## {spec}", "", "| slice | after better | before better | tie | after win rate (excl. ties) |",
+                "|---|---|---|---|---|"]
+        for bucket in ["all"] + sorted(b for b in tally if b != "all"):
+            t = tally[bucket]
+            decided = t["after"] + t["before"]
+            out.append(f"| {bucket} | {t['after']} | {t['before']} | {t['tie']} | {_pct(t['after'] / decided) if decided else '—'} |")
+        out.append("")
+    return "\n".join(out)
 
 
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=["gold", "rejudge"])
     ap.add_argument("path", nargs="?", help="rejudge: a live_phase4_multijudge results JSON")
-    ap.add_argument("--judges", default="lint", help="comma-separated: lint, claude, azure, groq/<model>")
+    ap.add_argument("--judges", default="lint", help="comma-separated specs, see above")
     ap.add_argument("--cache", default=str(DEFAULT_CACHE), help="'' to disable")
+    ap.add_argument("--workers", type=int, default=6, help="pairs judged in parallel")
     ap.add_argument("--out", help="also write the report (markdown) here")
     args = ap.parse_args(argv)
-    names = [n.strip() for n in args.judges.split(",") if n.strip()]
+    specs = [n.strip() for n in args.judges.split(",") if n.strip()]
     cache = Cache(Path(args.cache) if args.cache else None)
     if args.command == "gold":
-        results = run_gold(names, cache)
+        results = run_gold(specs, cache, args.workers)
         report = gold_report(results)
-        Path(args.out or "/dev/null").write_text(report, encoding="utf-8") if args.out else None
         print(report)
         print(json.dumps(results, ensure_ascii=False, indent=1))
     else:
         if not args.path:
             sys.exit("rejudge needs the results JSON path")
-        report = run_rejudge(Path(args.path), names, cache)
-        if args.out:
-            Path(args.out).write_text(report, encoding="utf-8")
+        report = run_rejudge(Path(args.path), specs, cache, args.workers)
         print(report)
+    if args.out:
+        Path(args.out).write_text(report, encoding="utf-8")
 
 
 if __name__ == "__main__":

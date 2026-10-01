@@ -112,3 +112,84 @@ def compare(reply_a: str, reply_b: str, customer: str, judges: dict, *, history=
     for c, counts in per_criterion.items():
         criteria[c] = "A" if counts["A"] > counts["B"] else "B" if counts["B"] > counts["A"] else "tie"
     return Comparison(verdict, votes, consistent, criteria, lint_a, lint_b, errors)
+
+
+# --- Checklist + hybrid ----------------------------------------------------------------------------------------------
+
+
+@dataclass
+class Checklist:
+    answers: dict[str, float]  # question -> share of judges that said yes (good)
+    score: float  # mean over questions, 0..1
+    raw: dict[str, dict[str, bool]]  # judge -> its answers
+    errors: dict[str, str] = field(default_factory=dict)
+
+
+def checklist(reply: str, customer: str, judges: dict, *, history=None, locked_language=None, cache=None) -> Checklist:
+    """Every judge answers the yes/no checklist about this ONE reply. `cache`: optional get/put object keyed per
+    (judge, reply, context), so the same reply is never paid for twice across comparisons and runs."""
+    messages = rubric.checklist_messages(reply, customer, history, locked_language)
+    raw, errors = {}, {}
+    for name, judge in judges.items():
+        key = None
+        if cache is not None:
+            key = "chk|" + name + "|" + _digest(reply, customer, history, locked_language)
+            hit = cache.get(key)
+            if hit:
+                raw[name] = hit
+                continue
+        try:
+            raw[name] = _ask(judge, messages, rubric.parse_checklist)
+        except Exception as exc:  # noqa: BLE001
+            errors[name] = f"{type(exc).__name__}: {exc}"[:300]
+            continue
+        if cache is not None:
+            cache.put(key, raw[name])
+    if not raw:
+        return Checklist({}, 0.0, raw, errors)
+    answers = {q: sum(r[q] for r in raw.values()) / len(raw) for q in rubric.CHECKLIST}
+    return Checklist(answers, sum(answers.values()) / len(answers), raw, errors)  # unrounded: one question = 1/9 exactly
+
+
+def _digest(*parts) -> str:
+    import hashlib
+    import json
+
+    return hashlib.sha256(json.dumps(parts, ensure_ascii=False, default=str).encode()).hexdigest()
+
+
+def _lint_weight(findings) -> int:
+    return sum(6 - f.cap for f in findings)
+
+
+@dataclass
+class HybridComparison:
+    verdict: str  # "A" | "B" | "tie"
+    decided_by: str  # "lint" | "checklist" | "none"
+    lint_a: list[lint_mod.Finding]
+    lint_b: list[lint_mod.Finding]
+    check_a: Checklist | None
+    check_b: Checklist | None
+
+
+def hybrid_compare(reply_a, reply_b, customer, judges: dict, *, history=None, locked_language=None, cache=None) -> HybridComparison:
+    """Language first, by rule: if one reply has heavier hard defects (Hindi, textbook words, script, spelling,
+    repeats...) the other wins -- the lint is exact there and the LLMs measurably are not. Otherwise each reply gets
+    the yes/no checklist on its own (no A/B order to be biased by); a difference of at least one question decides."""
+    lint_a = lint_mod.lint(reply_a, customer, history, locked_language=locked_language)
+    lint_b = lint_mod.lint(reply_b, customer, history, locked_language=locked_language)
+    wa, wb = _lint_weight(lint_a), _lint_weight(lint_b)
+    if wa != wb:
+        return HybridComparison("A" if wa < wb else "B", "lint", lint_a, lint_b, None, None)
+    if not judges:
+        return HybridComparison("tie", "none", lint_a, lint_b, None, None)
+    ca = checklist(reply_a, customer, judges, history=history, locked_language=locked_language, cache=cache)
+    cb = checklist(reply_b, customer, judges, history=history, locked_language=locked_language, cache=cache)
+    if not ca.raw or not cb.raw:
+        return HybridComparison("tie", "none", lint_a, lint_b, ca, cb)
+    margin = 1 / len(rubric.CHECKLIST) - 1e-9  # one question's worth
+    if ca.score - cb.score >= margin:
+        return HybridComparison("A", "checklist", lint_a, lint_b, ca, cb)
+    if cb.score - ca.score >= margin:
+        return HybridComparison("B", "checklist", lint_a, lint_b, ca, cb)
+    return HybridComparison("tie", "checklist", lint_a, lint_b, ca, cb)

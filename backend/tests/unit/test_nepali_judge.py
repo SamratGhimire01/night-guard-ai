@@ -235,3 +235,133 @@ def test_claude_judge_sends_system_separately_with_fallbacks(monkeypatch):
 def test_unknown_judge_name_is_rejected():
     with pytest.raises(ValueError):
         judges.get("gpt-17")
+
+
+# --- v3: checklist, hybrid, Gemini, per-defect trust ----------------------------------------------------------------
+
+
+def _check(**overrides):
+    answers = {q: "yes" for q in rubric.CHECKLIST} | {k: ("yes" if v else "no") for k, v in overrides.items()}
+    return json.dumps({"gloss_customer": "", "gloss_reply": "", "answers": answers})
+
+
+def test_parse_checklist_needs_every_answer():
+    assert all(rubric.parse_checklist(_check()).values())
+    assert rubric.parse_checklist(_check(answers=False))["answers"] is False
+    with pytest.raises(rubric.BadJudgeOutput):
+        rubric.parse_checklist(json.dumps({"answers": {"answers": "maybe"}}))
+
+
+def test_checklist_ensemble_averages_judges_and_uses_the_cache():
+    calls = []
+
+    def counting(raw):
+        def call(messages):
+            calls.append(1)
+            return raw
+        return call
+
+    cache = calibrate.Cache(None)
+    judges_ = {"x": counting(_check()), "y": counting(_check(would_send=False, right_length=False))}
+    first = engine.checklist("Huss!", "ok", judges_, cache=cache)
+    assert first.answers["would_send"] == 0.5 and first.answers["answers"] == 1.0
+    assert first.score == pytest.approx((len(rubric.CHECKLIST) - 1) / len(rubric.CHECKLIST))  # two half-votes
+    engine.checklist("Huss!", "ok", judges_, cache=cache)
+    assert len(calls) == 2  # second time: both answers came from the cache
+
+
+def test_hybrid_lets_the_lint_decide_language_defects_without_asking_anyone():
+    asked = []
+    judges_ = {"x": lambda m: asked.append(1) or _check()}
+    h = engine.hybrid_compare("Kya abhi milcha?", "Milcha, aile aaunus.", "aile aauna milcha?", judges_)
+    assert (h.verdict, h.decided_by) == ("B", "lint") and asked == []
+
+
+def _prefers(good_text):
+    """Checklist judge that says 'no' to would_send for anything but good_text."""
+
+    def call(messages):
+        reply = messages[1]["content"].rsplit("Business reply to check:\n", 1)[1]
+        return _check(would_send=reply == good_text, reacts_to_feelings=reply == good_text)
+
+    return call
+
+
+def test_hybrid_uses_the_checklist_when_the_lint_sees_no_difference():
+    h = engine.hybrid_compare("Aaja 3 baje khali cha.", "Ouch 😕 aaja 3 baje khali cha — milcha?", "daat dukhyo",
+                              {"x": _prefers("Ouch 😕 aaja 3 baje khali cha — milcha?")})
+    assert (h.verdict, h.decided_by) == ("B", "checklist")
+    tie = engine.hybrid_compare("Huss.", "Hunchha.", "ok", {"x": _const(_check())})
+    assert tie.verdict == "tie"
+
+
+def test_parse_spec():
+    assert calibrate.parse_spec("lint") == ("lint", [])
+    assert calibrate.parse_spec("azure") == ("pairwise", ["azure"])
+    assert calibrate.parse_spec("hybrid:gemini/gemini-3.5-flash+azure") == ("hybrid", ["gemini/gemini-3.5-flash", "azure"])
+    assert calibrate.parse_spec("check:groq/qwen/qwen3.8-27b") == ("check", ["groq/qwen/qwen3.8-27b"])
+
+
+def _gold_oracle_checklist(messages):
+    """Perfect checklist judge for the gold set: every good reply passes, every bad one fails one question."""
+    reply = messages[1]["content"].rsplit("Business reply to check:\n", 1)[1]
+    goods = {p["good"] for p in gold.PAIRS}
+    return _check() if reply in goods else _check(would_send=False)
+
+
+def test_hybrid_with_a_good_checklist_judge_is_trusted_and_reports_what_it_is_trusted_for():
+    r = calibrate.evaluate_judge("hybrid:fake", {"fake": _gold_oracle_checklist}, calibrate.Cache(None), gold.PAIRS, [], workers=4)
+    assert r["accuracy"] == 1.0 and r["trusted"] and r["consistency"] is None
+    assert r["decided_by"]["lint"] >= sum(p["lint"] for p in gold.PAIRS)  # robot-2 also has a bookish word
+    assert {"hindi", "cold", "unhelpful"} <= set(r["trusted_for"])
+
+
+def test_a_useless_checklist_judge_is_not_trusted_for_the_llm_only_defects():
+    r = calibrate.evaluate_judge("check:fake", {"fake": _const(_check())}, calibrate.Cache(None), gold.PAIRS, [])
+    assert not r["trusted"] and "cold" not in r["trusted_for"]
+
+
+def test_pacer_spaces_out_calls(monkeypatch):
+    slept = []
+    clock = iter([0.0, 0.0, 0.0])
+    monkeypatch.setattr(judges.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(judges.time, "sleep", slept.append)
+    pacer = judges._Pacer(6.5)
+    pacer.wait(), pacer.wait(), pacer.wait()
+    assert slept == [0.0, 6.5, 13.0]
+
+
+def test_gemini_judge_request_and_retry(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("GEMINI_MIN_INTERVAL", "0")
+    monkeypatch.setattr(judges.time, "sleep", lambda s: None)
+    judges._pacers.clear()
+    sent, replies = [], iter([(503, {}), (200, {"choices": [{"message": {"content": "OK"}}]})])
+
+    def post(url, headers, json, timeout):
+        sent.append((url, headers, json))
+        status, body = next(replies)
+        return types.SimpleNamespace(status_code=status, json=lambda: body, text="busy", headers={})
+
+    monkeypatch.setattr(judges.httpx, "post", post)
+    assert judges.get("gemini/gemini-3.5-flash")([{"role": "user", "content": "hi"}]) == "OK"
+    assert len(sent) == 2  # one retry after the 503
+    url, headers, body = sent[-1]
+    assert "generativelanguage.googleapis.com" in url and headers["Authorization"] == "Bearer test-key"
+    assert body["model"] == "gemini-3.5-flash" and body["temperature"] == 0
+
+
+def test_gemini_stops_at_once_when_the_daily_quota_is_gone(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    monkeypatch.setenv("GEMINI_MIN_INTERVAL", "0")
+    judges._pacers.clear()
+    calls = []
+
+    def post(url, headers, json, timeout):
+        calls.append(1)
+        return types.SimpleNamespace(status_code=429, text="quotaId GenerateRequestsPerDayPerProjectPerModel-FreeTier", headers={})
+
+    monkeypatch.setattr(judges.httpx, "post", post)
+    with pytest.raises(RuntimeError, match="daily quota"):
+        judges.get("gemini/gemini-3.5-flash")([{"role": "user", "content": "hi"}])
+    assert len(calls) == 1
