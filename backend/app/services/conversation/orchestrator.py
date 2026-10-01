@@ -40,6 +40,7 @@ from app.services.conversation.formatting import format_service_list
 from app.services.conversation.reply_polish import finalize_reply
 from app.services.conversation.intent import classify_and_respond, translate_for_search
 from app.services.conversation.style_checks import check_response_style, repair_response_style
+from app.services.conversation.voice_pass import revoice
 from app.services.conversation.response_templates import (
     already_sent,
     describe_business_hours,
@@ -1115,6 +1116,12 @@ def _format_contact_update_result(result: dict, language: str | None) -> str | N
 
 
 _VALID_LANGUAGES = {v.value for v in ConversationLanguage}
+# Intents whose reply is the model's own free text (every other intent is replaced by a deterministic template).
+_VOICE_PASS_INTENTS = frozenset({
+    ConversationIntent.GREETING, ConversationIntent.GENERAL_QUESTION, ConversationIntent.SERVICE_QUESTION,
+    ConversationIntent.PRICING_QUESTION, ConversationIntent.LOCATION, ConversationIntent.COMPLAINT,
+    ConversationIntent.FOLLOW_UP, ConversationIntent.UNKNOWN,
+})
 
 # Phase 25: live testing found the LLM's own `message_language` self-report
 # can anchor toward whatever language the prompt just told it the
@@ -2170,6 +2177,43 @@ def _handle_turn(
                     conversation_id, expected_reply_language,
                 )
             classification = language_retry
+
+        # The "speak" step (voice_pass.py): only for intents whose reply IS the model's free text (every dispatched
+        # intent is overwritten by a deterministic template further down), only when the draft has a defect a native
+        # reader notices, and only if the rewrite keeps every fact -- re-checked here by the same fact_validator and
+        # language check the draft passed. Any doubt: the already-validated draft is sent.
+        if fact_check_front_desk_reason is None and classification.intent in _VOICE_PASS_INTENTS:
+            _tv = time.perf_counter()
+            voiced, voice_info = revoice(
+                classification.response,
+                customer=content,
+                language=expected_reply_language or classification.message_language,
+                previous_reply=_last_agent_reply(db, conversation_id),
+                exemplars=style_exemplars,
+                protected=(
+                    [business.name, business.persona_name or "", business.address or "", business.phone or ""]
+                    if business else []
+                ) + [s.name for s in services],
+            )
+            if voice_info.get("used"):
+                late_violations = check_response_facts(
+                    voiced, currency=currency, services=service_facts,
+                    hours_by_day=hours_by_day, known_text=known_text, knowledge_text=knowledge_text,
+                )
+                if late_violations:
+                    voice_info.update(used=False, rejected=f"fact check: {late_violations}")
+                elif expected_reply_language in _VALID_LANGUAGES and _response_language_mismatch(
+                    voiced, expected_reply_language
+                ):
+                    voice_info.update(used=False, rejected="wrong language")
+                else:
+                    classification = classification._replace(response=voiced)
+            if voice_info.get("reasons"):
+                logger.info(
+                    "voice pass: conversation_id=%s used=%s reasons=%s rejected=%s ms=%.0f",
+                    conversation_id, bool(voice_info.get("used")), voice_info.get("reasons"),
+                    voice_info.get("rejected") or voice_info.get("error"), (time.perf_counter() - _tv) * 1000,
+                )
     except RuntimeError:
         logger.exception(
             "LLM/embedding provider call failed after internal retries; degrading gracefully: "
