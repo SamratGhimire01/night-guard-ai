@@ -142,6 +142,46 @@ SCENARIOS: list[dict] = [
     ]},
 ]
 
+# --- language detection across a whole conversation ----------------------------------------------------------------
+# Short or ambiguous messages ("ok", "hmm", "price?") must never flip the language; a clear, repeated switch must.
+SCENARIOS += [
+    {"id": "lang_short_msgs", "situation": "language", "lang": "ne_roman", "turns": [
+        {"say": "namaste, {s1} kati parcha?", "checks": ["lang:ne_roman"]},
+        {"say": "ok", "checks": ["lang:ne_roman"]},
+        {"say": "price?", "checks": ["lang:ne_roman"]},
+        {"say": "hmm thik xa", "checks": ["lang:ne_roman"]},
+    ]},
+    {"id": "lang_en_place_names", "situation": "language", "lang": "en", "turns": [
+        {"say": "Hi, I live near Baneshwor. Can I come tomorrow for {s1}?", "checks": ["lang:en"]},
+        {"say": "ok", "checks": ["lang:en"]},
+    ]},
+    {"id": "lang_english_nouns", "situation": "language", "lang": "ne_roman", "turns": [
+        {"say": "{s1} ko booking cancel garna milcha?", "checks": ["lang:ne_roman"]},
+        {"say": "online payment accept garnuhunxa?", "checks": ["lang:ne_roman"]},
+    ]},
+    {"id": "lang_en_to_ne", "situation": "language", "lang": "mixed", "turns": [
+        {"say": "Hello, what are your opening hours?", "checks": ["lang:en"]},
+        {"say": "ok", "checks": ["lang:en"]},
+        {"say": "malai nepali ma bhannus na", "checks": ["lang:ne_roman"]},
+        {"say": "{s1} kati parcha?", "checks": ["lang:ne_roman"]},
+    ]},
+    {"id": "lang_ne_to_en", "situation": "language", "lang": "mixed", "turns": [
+        {"say": "namaste", "checks": ["lang:ne_roman"]},
+        {"say": "{s1} kati ho?", "checks": ["lang:ne_roman"]},
+        {"say": "Can you reply in English please? My Nepali is not good.", "checks": ["lang:en"]},
+        {"say": "What time do you close today?", "checks": ["lang:en"]},
+    ]},
+    {"id": "lang_one_english_line", "situation": "language", "lang": "ne_roman", "turns": [
+        {"say": "dai {s1} ko barema bhannus na", "checks": ["lang:ne_roman"]},
+        {"say": "Is it available tomorrow?", "checks": ["lang:ne_roman"]},
+        {"say": "kati baje aauna milxa?", "checks": ["lang:ne_roman"]},
+    ]},
+    {"id": "lang_deva_stays", "situation": "language", "lang": "ne_deva", "turns": [
+        {"say": "नमस्ते, {s1} कति हो?", "checks": ["lang:ne_deva"]},
+        {"say": "ok", "checks": ["lang:ne_deva"]},
+    ]},
+]
+
 BY_ID = {s["id"]: s for s in SCENARIOS}
 
 

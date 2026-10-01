@@ -31,6 +31,14 @@ def _numbers(text: str) -> set[str]:
 
 
 def run_check(name: str, reply: str, business: dict) -> str | None:
+    if name.startswith("lang:"):
+        # The reply must be in this language, whatever the conversation's lock says (the lint trusts the lock, so a
+        # wrongly locked conversation would pass it). ne_roman also accepts code-mixed Romanized Nepali.
+        from tests.eval.nepali_judge.lint import language_of
+
+        want, got = name[5:], language_of(reply)
+        ok = got == want or (want == "ne_roman" and got == "mixed") or (want == "mixed" and got == "ne_roman")
+        return None if ok else f"reply in {got}, customer is writing {want}"
     if name == "price1":
         price = business["services"][0][1]
         if price == 0:

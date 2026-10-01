@@ -189,6 +189,8 @@ FLAG_ONLY: list[tuple[str, str]] = [
     (r"configured bhayeko|configured chaina|configure bhayeko", "bookish"),  # system words -> "record ma bhetiyena"
     (r"sacchai ko manche|sachchai ko manche", "bookish"),  # -> "hamro staff"
     (r"guess garna chahanna|guess garna chahanna", "bookish"),
+    # Written-Nepali apologies (situation sheet review, 2026-10-01): people text "sorry" / "aha, garo bhayecha".
+    (r"maaf chahan\w*|kshama prarthi\w*|dukkhi (chhu|chu|xu)", "bookish"),
 ]
 
 # (?:...) matters: without it the word boundaries bind to the first and last alternative only, and "aunuhos" would

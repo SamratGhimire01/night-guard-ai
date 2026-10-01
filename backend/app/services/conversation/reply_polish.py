@@ -54,6 +54,8 @@ _HAS_FACT_RE = re.compile(r"\d|https?://|@")
 _MIN_REPEAT_LEN = 25
 # An offer ending is dropped when any of our last this-many replies already ended with a stock line.
 _OFFER_WINDOW = 3
+# An opener is dropped when either of our last this-many replies began with the same one.
+_OPENER_WINDOW = 2
 
 
 def _norm(text: str) -> str:
@@ -130,9 +132,10 @@ def finalize_reply(
         if i >= 0:
             text = (text[:i].rstrip(" ") + (" " if text[i + len(s):].strip() else "") + text[i + len(s):].lstrip(" ")).strip()
 
-    # 3. the same opener twice in a row
+    # 3. the same opener as one of our last two replies ("Huss —" ... "Huss —" reads like a script even with one
+    # reply in between; the simulator's not_template flags were full of it)
     opener = _opener(text)
-    if opener and previous and _opener(previous) == opener:
+    if opener and any(_opener(r) == opener for r in previous_replies[-_OPENER_WINDOW:]):
         rest = _OPENER_RE.sub("", text.strip(), count=1)
         if len(rest.split()) >= 2:
             changes.append(f"dropped repeated opener: {opener!r}")

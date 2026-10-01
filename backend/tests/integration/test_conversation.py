@@ -5570,3 +5570,29 @@ def test_handoff_addendum_only_where_the_reply_still_needs_it(two_businesses, mo
         with SessionLocal() as db:
             count = db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).count()
         assert count == int(expect_handoff)
+
+
+def test_no_second_team_promise_when_the_reply_already_makes_one(two_businesses, monkeypatch):
+    """Simulator 2026-10-01: complaint/haggle replies ended "…ma team sanga connect garidinchu. Yo kura team sanga
+    sodhera chadai bhanchu." -- the model's own follow-up promise plus the fixed closer. The closer is now skipped when
+    the reply already says the team will follow up; the handoff row is still created for staff."""
+    from app.db.models.handoff import HumanHandoff
+
+    token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
+    _setup_booking_business(token_a)
+    for reply_text in (
+        "Aha, garo bhayecha. Ma team lai bhanera tapailai contact garna lagauchu.",
+        "That shouldn't have happened — I'll have our team call you today.",
+        "Sorry about that, let me connect you with our staff.",
+    ):
+        conversation_id = _create_conversation(business_id_a, _create_customer(token_a))
+        _stub_providers(monkeypatch, json.dumps({"intent": "complaint", "response": reply_text}))
+        reply = client.post(
+            f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a),
+            json={"content": "hijo dherai kurna paryo, bekar service"},
+        ).json()["response"]
+        for language in ("en", "ne_roman"):
+            for closer in variants("handoff_addendum", language):
+                assert closer not in reply, reply
+        with SessionLocal() as db:
+            assert db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).count() == 1

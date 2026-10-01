@@ -1116,6 +1116,14 @@ def _format_contact_update_result(result: dict, language: str | None) -> str | N
 
 
 _VALID_LANGUAGES = {v.value for v in ConversationLanguage}
+# A reply that already tells the customer the team will follow up (handoff_addendum would only repeat it).
+_TEAM_FOLLOWUP_RE = re.compile(
+    r"\b(team|staff|doctor|manager)\b[^.?!\n]{0,60}\b(contact|call|connect|jod|bhan|sodh|bujh|inform|khabar|get back|"
+    r"follow up|reach out|phone)"
+    r"|\b(connect|jod)\w*\b[^.?!\n]{0,30}\b(team|staff)\b"
+    r"|टिम[^।?!\n]{0,40}(सम्पर्क|खबर|सोध|भन)",
+    re.IGNORECASE,
+)
 # Intents whose reply is the model's own free text (every other intent is replaced by a deterministic template).
 _VOICE_PASS_INTENTS = frozenset({
     ConversationIntent.GREETING, ConversationIntent.GENERAL_QUESTION, ConversationIntent.SERVICE_QUESTION,
@@ -2828,7 +2836,10 @@ def _handle_turn(
         fact_check_front_desk_reason or resend_front_desk_reason or is_medical_emergency
         or intent == ConversationIntent.BUSINESS_HOURS
     )
-    if handoff is not None and not reply_says_team_follows_up:
+    # The model's own reply often already promises the follow-up ("ma team sanga connect garidinchu", "our team will
+    # call you"); adding the fixed closer on top made every complaint/haggle reply end with the same double promise
+    # (simulator: the top not_template pattern). The handoff row is still created for staff either way.
+    if handoff is not None and not reply_says_team_follows_up and not _TEAM_FOLLOWUP_RE.search(response_text):
         response_text = f"{response_text} {render('handoff_addendum', language)}"
 
     # Last step: the word bank (Romanized Nepali) and the no-repeat / stock-ending / same-opener guards. Wording only --

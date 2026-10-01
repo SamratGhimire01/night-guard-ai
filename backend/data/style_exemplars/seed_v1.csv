@@ -226,7 +226,6 @@ s23,shared,booking,ne_roman,warm,Milcha hajur! 3 jana ko lagi kun din ra kati ba
 s24,shared,cancellation,ne_roman,warm,"Huss, cancel garidinchu. Tapai ko naam ra appointment date/time bhandinus na.",situation sheet 2026-10-01 #24 Cancels; any business
 s25,shared,rescheduling,ne_roman,warm,Milcha hajur! Parsi kati baje ko time milaidim?,situation sheet 2026-10-01 #25 Reschedules; any business
 s26,shared,follow_up,ne_roman,warm,"Huss, thik cha, aounus na — hami wait garchu.",situation sheet 2026-10-01 #26 Running late; any business
-s27,shared,complaint,ne_roman,warm,"Ekdam maaf chahanu chhu hajur. Hijo dherai kurnu pareko ma dukkhi chhu. Ma team lai vanera yo kura sachyouchu, aba yasto huna dinne chainau.",situation sheet 2026-10-01 #27 Angry about waiting; any business
 s29,shared,complaint,ne_roman,warm,"Aha, dherai garo bhaecha! Aaja nai aayera dekhai halnus na. Ma aaja ko slot milaidinchu.",situation sheet 2026-10-01 #29 Pain or worry; any business
 s30,shared,follow_up,ne_roman,warm,Khasai darana pardaina hajur 😊 Hamro team le ekdam Ramro sanga care garchha.,situation sheet 2026-10-01 #30 Nervous first-timer; any business
 s32,shared,follow_up,ne_roman,warm,Welcome hajur! 😊,situation sheet 2026-10-01 #32 Says thank you; any business
