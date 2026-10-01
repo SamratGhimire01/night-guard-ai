@@ -34,10 +34,16 @@ from app.main import app
 from app.schemas.conversation import ConversationIntent
 from app.services import booking_service, service_service
 from app.services.conversation.intent import _format_hours, _parse_response
-from app.services.conversation.response_templates import render
+from app.services.conversation.response_templates import render, variants
 from app.services.conversation.tools import TOOL_REGISTRY, find_tool
 
 client = TestClient(app)
+
+
+def _asks_for_contact(text: str) -> bool:
+    """The contact gate, in any of its wordings (they rotate so the same text is never sent twice in one chat)."""
+    lowered = text.lower()
+    return "name" in lowered and "number" in lowered
 
 
 def _unique_email(label: str) -> str:
@@ -1356,7 +1362,7 @@ def test_booking_blocked_when_customer_has_no_contact_info(two_businesses, monke
     assert resp.status_code == 201, resp.text
     body = resp.json()
     assert "you're all set" not in body["response"].lower()
-    assert "phone number or email" in body["response"].lower()
+    assert _asks_for_contact(body["response"].lower())
 
     with SessionLocal() as db:
         from app.db.models.appointment import Appointment
@@ -1394,7 +1400,7 @@ def test_group_booking_blocked_when_customer_has_no_contact_info(two_businesses,
     assert resp.status_code == 201, resp.text
     body = resp.json()
     assert "you're both booked" not in body["response"].lower()
-    assert "phone number or email" in body["response"].lower()
+    assert _asks_for_contact(body["response"].lower())
 
     with SessionLocal() as db:
         from app.db.models.appointment import Appointment
@@ -1458,7 +1464,7 @@ def test_booking_asks_again_after_gate_when_customer_still_gives_no_contact(two_
         headers=_auth_header(token_a),
         json={"content": "Can I get a cleaning next Monday at 2pm?"},
     )
-    assert "phone number or email" in resp.json()["response"].lower()
+    assert _asks_for_contact(resp.json()["response"].lower())
 
     _stub_providers(monkeypatch, _booking_reply("Cleaning", target_date.isoformat(), "14:00"))
     resp = client.post(
@@ -1466,7 +1472,7 @@ def test_booking_asks_again_after_gate_when_customer_still_gives_no_contact(two_
         headers=_auth_header(token_a),
         json={"content": "Just book it please."},
     )
-    assert "phone number or email" in resp.json()["response"].lower()
+    assert _asks_for_contact(resp.json()["response"].lower())
 
     with SessionLocal() as db:
         from app.db.models.appointment import Appointment
@@ -1559,7 +1565,7 @@ def test_provider_failure_renders_in_the_already_locked_language(two_businesses,
         json={"content": "kehi bhannu paryo"},
     )
     assert resp.status_code == 201, resp.text
-    assert "connect garna samasya" in resp.json()["response"].lower()
+    assert "ali problem aayo" in resp.json()["response"].lower()
 
 
 def test_handoff_reason_provider_failure_takes_priority_unconditionally():
@@ -1677,7 +1683,7 @@ def test_language_lock_set_from_first_message_and_used_in_deterministic_sentence
     )
     assert resp.status_code == 201, resp.text
     # ne_roman off_topic template, never the English one, never the LLM's own stubbed text.
-    assert "sanga related kura haru" in resp.json()["response"]
+    assert "help garna sakdina" in resp.json()["response"]
     assert "irrelevant stubbed text" not in resp.json()["response"]
 
     with SessionLocal() as db:
@@ -1734,7 +1740,7 @@ def test_language_lock_persists_across_turns_for_a_different_deterministic_sente
     # renders (not the "nothing known yet" booking_no_contact one), and it
     # must still be in the locked language, never English.
     body = resp.json()["response"]
-    assert "Lock garna malai tapaiko naam ra phone number wa email chahincha" in body
+    assert "Pakka garna tapaiko naam ra phone number (wa email) chahiyo" in body
     assert "Cleaning" in body
 
     with SessionLocal() as db:
@@ -2441,7 +2447,7 @@ def test_bare_digit_slot_pick_never_books_without_contact_info(two_businesses, m
     assert resp.status_code == 201, resp.text
     assert len(stub.calls) == 0, "resolving/gating a bare-digit slot pick must never call the LLM"
     body = resp.json()
-    assert "phone number or email" in body["response"].lower()
+    assert _asks_for_contact(body["response"].lower())
 
     with SessionLocal() as db:
         from app.db.models.appointment import Appointment
@@ -3091,7 +3097,7 @@ def test_booking_draft_survives_contact_gate_then_books_once_contact_given(two_b
         json={"content": "book me a cleaning next monday at 2pm"},
     )
     assert resp.status_code == 201, resp.text
-    assert "phone number or email" in resp.json()["response"].lower()
+    assert _asks_for_contact(resp.json()["response"].lower())
 
     with SessionLocal() as db:
         from app.db.models.appointment import Appointment
@@ -3144,7 +3150,7 @@ def test_booking_draft_correction_uses_latest_value_not_stale_one(two_businesses
         json={"content": "Book me a cleaning next Monday at 10am."},
     )
     assert resp.status_code == 201, resp.text
-    assert "phone number or email" in resp.json()["response"].lower()
+    assert _asks_for_contact(resp.json()["response"].lower())
 
     _stub_providers(monkeypatch, _partial_booking_reply(time="11:00", response="Sure, updating that."))
     resp = client.post(
@@ -3153,7 +3159,7 @@ def test_booking_draft_correction_uses_latest_value_not_stale_one(two_businesses
         json={"content": "Actually, make it 11am instead."},
     )
     assert resp.status_code == 201, resp.text
-    assert "phone number or email" in resp.json()["response"].lower(), "still gated — contact info not given yet"
+    assert _asks_for_contact(resp.json()["response"].lower()), "still gated — contact info not given yet"
 
     with SessionLocal() as db:
         from app.db.models.appointment import Appointment
@@ -3237,7 +3243,7 @@ def test_booking_completes_when_contact_info_arrives_on_an_off_intent_turn(two_b
         json={"content": "Can I book a cleaning next Monday at 2pm?"},
     )
     assert resp.status_code == 201, resp.text
-    assert "phone number or email" in resp.json()["response"].lower()
+    assert _asks_for_contact(resp.json()["response"].lower())
 
     # This turn is classified as follow_up, NOT booking — the LLM's own text
     # is a hedge ("Would you like me to go ahead and book...?") that must
@@ -3376,7 +3382,7 @@ def test_missing_slots_question_reflects_accumulated_draft_and_changes_every_tur
     body_4 = resp.json()["response"]
     assert body_4 != body_3, "the draft is now complete -- the contact gate must appear, a real, different sentence"
     assert "3:00 PM" in body_4
-    assert "phone number or email" in body_4.lower(), "the draft is complete -- NOW the real commitment point requires contact info"
+    assert _asks_for_contact(body_4.lower()), "the draft is complete -- NOW the real commitment point requires contact info"
 
     with SessionLocal() as db:
         from app.db.models.appointment import Appointment
@@ -3592,7 +3598,7 @@ def test_contact_gate_fires_only_once_booking_is_actually_ready_to_write(two_bus
         json={"content": "book me a cleaning next monday at 2pm"},
     )
     assert resp.status_code == 201, resp.text
-    assert "phone number or email" in resp.json()["response"].lower()
+    assert _asks_for_contact(resp.json()["response"].lower())
 
     with SessionLocal() as db:
         assert db.query(Appointment).filter(Appointment.business_id == business_id_a).count() == 0, (
@@ -4651,12 +4657,11 @@ def test_resend_can_only_ever_act_on_the_requesting_conversations_own_appointmen
             ).count()
 
     notifications_before = _notification_count()  # booking itself created its own booking_confirmed rows
-    clarify = "make sure I send the right one"
     for target in (foreign_same_tenant, foreign_other_tenant, uuid.uuid4()):
         for channel in ("email", "both", None):
             _stub_providers(monkeypatch, _resend_llm_reply(target, channel=channel))
             body = _say(token_a, conversation_id, f"resend appointment {target}")
-            assert clarify in body, body
+            assert any(v in body for v in variants("resend_clarify", "en")), body
             assert "/qr/" not in body
     assert fake.recipients == []
     with SessionLocal() as db:
@@ -4700,7 +4705,7 @@ def test_fourth_resend_request_is_honest_and_creates_a_real_front_desk_handoff(t
     _stub_providers(monkeypatch, _resend_llm_reply(appointment_id, channel="email"))
     for attempt in (1, 2, 3):
         body = _say(token_a, conversation_id, "resend my confirmation email")
-        assert "on their way" in body, (attempt, body)
+        assert "way to" in body and "@example.com" in body, (attempt, body)  # either wording of resend_email_sent
     with SessionLocal() as db:
         assert db.query(HumanHandoff).filter(HumanHandoff.conversation_id == conversation_id).count() == 0
 
@@ -4799,16 +4804,17 @@ def test_slot_list_is_never_repeated_verbatim_when_the_customer_names_no_time(tw
     second = say("I think I'll come on Monday morning instead, does that work?")
     third = say("Great, can you book that for me?")
     assert first not in (second, third), "the identical slot list was repeated"
+    assert second != third, "the follow-up nudge must not repeat itself word for word either"
     for reply in (second, third):
-        assert "tell me which one" in reply and "9:00 AM" in reply, f"repeat must ask for a time, keeping the options: {reply}"
+        assert "above" in reply and "9:00 AM" not in reply, f"repeat must point back at the list, not paste it: {reply}"
 
     # the customer finally names a time: the flow advances past the list (no more "which works for you" list)
     _stub_providers(monkeypatch, _partial_booking_reply(time="09:15", response="Great."))
     fourth = say("9:15 please")
-    assert "Which works for you?" not in fourth and "tell me which one" not in fourth, fourth
+    assert "Which works for you?" not in fourth and "above" not in fourth, fourth
 
 
-def test_bridged_slot_list_still_turns_into_pick_one_on_the_repeat(two_businesses, monkeypatch):
+def test_bridged_slot_list_still_turns_into_a_refer_back_on_the_repeat(two_businesses, monkeypatch):
     """trekking-10 x the repeat guard above: when the first list carried the one-time service bridge (the customer
     never named "Cleaning"), the second identical list must still be recognised as a repeat."""
     token_a, business_id_a = two_businesses["token_a"], two_businesses["business_id_a"]
@@ -4827,7 +4833,7 @@ def test_bridged_slot_list_still_turns_into_pick_one_on_the_repeat(two_businesse
     first = say("Can you fit me in on Monday?")
     assert first.startswith("That's booked through our Cleaning.") and "Which works for you?" in first, first
     second = say("Monday works, does that work?")
-    assert "tell me which one" in second and "booked through" not in second, second
+    assert "above" in second and "booked through" not in second, second
 
 
 def test_clarifier_keeps_the_service_bridge_when_only_the_reply_named_the_service(two_businesses, monkeypatch):
@@ -4861,7 +4867,7 @@ def test_service_bridge_fires_only_when_the_customer_never_named_the_service():
     assert _service_bridge(trek, ask, "Here's what's open for Trek Booking Consultation: ...", "en") == "", "once only"
     assert _service_bridge(cleaning, "a teeth cleaning please", None, "en") == "", "parenthetical ignored"
     assert _service_bridge(cleaning, "book me in", None, "en") == "That's booked through our Teeth Cleaning (Scaling & Polishing). "
-    assert _service_bridge(trek, "भोलि बुक गर्नु छ", None, "ne_deva") == "यो हाम्रो Trek Booking Consultation मार्फत बुक हुन्छ। "
+    assert _service_bridge(trek, "भोलि बुक गर्नु छ", None, "ne_deva") == "यो हाम्रो Trek Booking Consultation बाट बुक हुन्छ। "
     assert "free call" not in _service_bridge(trek, "bholi book garnu cha", None, "ne_roman"), "no English description in Nepali"
 
 
@@ -4899,11 +4905,12 @@ def test_devanagari_knowledge_search_uses_an_english_translation(monkeypatch):
     assert orchestrator_module._knowledge_query_vector("कति पर्छ?", original) is original
 
 
-def test_pick_one_template_exists_in_every_language():
-    from app.services.conversation.response_templates import render
+def test_refer_back_template_exists_in_every_language_and_never_repeats_the_list():
+    from app.services.conversation.response_templates import variants
 
     for lang in ("en", "ne_deva", "ne_roman"):
-        assert "9:00 AM" in render("availability_pick_one", lang, options="9:00 AM, 9:15 AM")
+        assert len(variants("availability_refer_back", lang)) >= 2
+        assert all("{options}" not in v for v in variants("availability_refer_back", lang))
 
 
 def test_describe_business_hours_reads_the_real_row_data_never_a_western_weekend_assumption():
@@ -5095,7 +5102,7 @@ def test_ask_mode_first_reply_asks_then_locks_to_the_answer_then_only_an_explici
     assert state.language_prompted is True and state.detected_language is None
 
     second = _post_message(token, conversation_id, "Nepali")
-    assert second["response"].startswith("Huncha, Nepali ma kura garaun")
+    assert second["response"].startswith("Huncha, Nepali mai kura garaum")
     assert len(stub.calls) == 0
     state = _conversation_state(conversation_id)
     assert state.detected_language == "ne_roman" and state.language_switch_streak == 0

@@ -37,15 +37,22 @@ from app.services.conversation import booking_tool  # noqa: F401  registers the 
 from app.services.conversation.contact_tool import UpdateContactInfoTool
 from app.services.conversation.fact_validator import check_response_facts
 from app.services.conversation.formatting import format_service_list
+from app.services.conversation.reply_polish import finalize_reply
 from app.services.conversation.intent import classify_and_respond, translate_for_search
 from app.services.conversation.style_checks import check_response_style, repair_response_style
 from app.services.conversation.response_templates import (
+    already_sent,
     describe_business_hours,
+    format_clock,
+    format_day,
+    format_slot_list,
+    format_when,
     parse_language_choice,
     render,
     render_contact_gate,
     render_language_question,
     render_missing_slots,
+    reply_history,
 )
 from app.services.conversation.tools import find_tool
 
@@ -91,19 +98,16 @@ def _resolve_booking_datetime(business: Business, date_str: str, time_str: str) 
         return None
 
 
-def _format_local(dt: datetime, tz: ZoneInfo) -> str:
-    return dt.astimezone(tz).strftime("%A, %B %-d at %-I:%M %p")
+def _format_local(dt: datetime, tz: ZoneInfo, language: str | None = None) -> str:
+    return format_when(dt.astimezone(tz), language)
 
 
-def _format_slot_options(slots: list[datetime], tz: ZoneInfo) -> str:
+def _format_slot_options(slots: list[datetime], tz: ZoneInfo, language: str | None = None) -> str:
     """The slot-list body of "here's what's open". When EVERY slot is on the same real local date, the date is stated
-    once and only times follow ("Monday, September 21 at 9:00 AM, 9:15 AM, 9:30 AM") instead of repeating the full date
-    before each time. If the slots span more than one real date, each keeps its own full date — dropping it there would
-    make the list ambiguous. A single slot is identical to _format_local (unchanged)."""
-    local = [slot.astimezone(tz) for slot in slots]
-    if len({slot.date() for slot in local}) == 1:
-        return f"{local[0].strftime('%A, %B %-d')} at " + ", ".join(slot.strftime("%-I:%M %p") for slot in local)
-    return ", ".join(_format_local(slot, tz) for slot in slots)
+    once and only times follow ("Monday, September 21 at 9:00 AM, 9:15 AM, 9:30 AM" / "Sombar (Sep 21) — bihana 9
+    baje, sawa 9 baje") instead of repeating the full date before each time. If the slots span more than one real date,
+    each keeps its own full date — dropping it there would make the list ambiguous."""
+    return format_slot_list([slot.astimezone(tz) for slot in slots], language)
 
 
 def _is_valid_date_str(value: str) -> bool:
@@ -122,12 +126,12 @@ def _is_valid_time_str(value: str) -> bool:
         return False
 
 
-def _format_date_only(date_str: str) -> str:
-    return datetime.strptime(date_str, "%Y-%m-%d").strftime("%A, %B %-d")
+def _format_date_only(date_str: str, language: str | None = None) -> str:
+    return format_day(datetime.strptime(date_str, "%Y-%m-%d"), language)
 
 
-def _format_time_only(time_str: str) -> str:
-    return datetime.strptime(time_str, "%H:%M").strftime("%-I:%M %p")
+def _format_time_only(time_str: str, language: str | None = None) -> str:
+    return format_clock(datetime.strptime(time_str, "%H:%M"), language)
 
 
 def _offered_slot_pick(
@@ -272,6 +276,7 @@ def _merge_booking_draft(
     booking_request: dict | None,
     offered_slots: list[datetime] | None = None,
     tz: ZoneInfo | None = None,
+    language: str | None = None,
 ) -> list[tuple[str, str]]:
     """Phase 25a — root-cause fix for the infinite booking-confirmation loop:
     real testing showed the LLM being asked, fresh every turn, to judge
@@ -344,12 +349,12 @@ def _merge_booking_draft(
 
     if date_str and _is_valid_date_str(date_str) and date_str != conversation.booking_draft_date:
         if conversation.booking_draft_date is not None and not is_pick:
-            switches.append((_format_date_only(conversation.booking_draft_date), _format_date_only(date_str)))
+            switches.append((_format_date_only(conversation.booking_draft_date, language), _format_date_only(date_str, language)))
         conversation.booking_draft_date = date_str
 
     if time_str and _is_valid_time_str(time_str) and time_str != conversation.booking_draft_time:
         if conversation.booking_draft_time is not None and not is_pick:
-            switches.append((_format_time_only(conversation.booking_draft_time), _format_time_only(time_str)))
+            switches.append((_format_time_only(conversation.booking_draft_time, language), _format_time_only(time_str, language)))
         conversation.booking_draft_time = time_str
 
     return switches
@@ -386,7 +391,9 @@ def _resolve_booking_draft(
     return service, scheduled_at
 
 
-def _describe_known_booking_slots(conversation: Conversation, services: list[Service], business: Business) -> str | None:
+def _describe_known_booking_slots(
+    conversation: Conversation, services: list[Service], business: Business, language: str | None = None
+) -> str | None:
     """Phase 25a-2 — root-cause fix for the "feels robotic" regression: real
     adversarial testing found the contact-info gate repeating one identical
     static sentence turn after turn while service/date/time genuinely
@@ -406,11 +413,11 @@ def _describe_known_booking_slots(conversation: Conversation, services: list[Ser
     if date_str and time_str:
         dt = _resolve_booking_datetime(business, date_str, time_str)
         if dt is not None:
-            when = _format_local(dt, ZoneInfo(business.timezone))
+            when = _format_local(dt, ZoneInfo(business.timezone), language)
     if when is None and date_str and _is_valid_date_str(date_str):
-        when = _format_date_only(date_str)
+        when = _format_date_only(date_str, language)
     elif when is None and time_str and _is_valid_time_str(time_str):
-        when = datetime.strptime(time_str, "%H:%M").strftime("%-I:%M %p")
+        when = _format_time_only(time_str, language)
 
     parts = [p for p in (service.name if service else None, when) if p]
     return ", ".join(parts) if parts else None
@@ -535,7 +542,7 @@ def _format_booking_result(
     who = f", {customer_name}" if customer_name else ""
     if result["success"]:
         appointment = result["appointment"]
-        when = _format_local(appointment["scheduled_at"], tz)
+        when = _format_local(appointment["scheduled_at"], tz, language)
         payment = result.get("payment")
         extras = _confirmation_extras(result.get("confirmation"), customer_name, language)
         if payment is None:
@@ -570,7 +577,11 @@ def _format_booking_result(
     message = result["message"].rstrip(".").lower()
     alternatives = result.get("alternative_slots") or []
     if alternatives:
-        options = ", ".join(_format_local(slot, tz) for slot in alternatives)
+        options = (
+            ", ".join(_format_local(slot, tz) for slot in alternatives)
+            if language in (None, ConversationLanguage.EN.value)
+            else _format_slot_options(alternatives, tz, language)
+        )
         return render(
             "booking_unavailable_with_alts", language, who=who, message=message, service=service.name, options=options
         )
@@ -688,27 +699,50 @@ def _propose_available_slots(
         slot.astimezone(ZoneInfo("UTC")).isoformat() for slot in shown_slots
     )
 
-    options = _format_slot_options(shown_slots, tz)
+    options = _format_slot_options(shown_slots, tz, language)
     if requested_date_str and _is_valid_date_str(requested_date_str) and slots[0].astimezone(tz).date() != search_start:
         reply = render(
             "availability_none_with_next_day",
             language,
             service=service.name,
-            requested=_format_date_only(requested_date_str),
+            requested=_format_date_only(requested_date_str, language),
             options=options,
         )
     else:
         reply = render("availability_options", language, service=service.name, options=options)
     reply = unavailable_prefix + reply
     # Live bug (2026-09-20): "Monday morning instead, does that work?" / "can you book that for me?" carry no specific
-    # time, so the extraction keeps wants_availability=true and the identical list came back turn after turn. The same
-    # words twice never move the customer forward: when the reply would repeat the previous one verbatim, say so and
-    # ask for the one thing missing -- which time -- instead. (The slots stay persisted above, so a digit still works.)
-    pick_one = render("availability_pick_one", language, options=options)
-    # endswith: the previous identical list may have carried the one-time service bridge in front of it.
-    if previous_reply in (reply, pick_one) or (previous_reply or "").endswith(" " + reply):
-        return pick_one
+    # time, so the extraction keeps wants_availability=true and the identical list came back turn after turn (7+ times
+    # in the 653 real conversations). The same list pasted again never moves the customer forward: when one of our
+    # last two replies already showed exactly these times, point back at it and ask for the one missing piece -- which
+    # time -- instead. (The slots stay persisted above, so a digit still works.)
+    if options in (previous_reply or "") or already_sent(options, within=2):
+        return unavailable_prefix + render("availability_refer_back", language)
     return _service_bridge(service, customer_message, previous_reply, language) + reply
+
+
+_REPLY_HISTORY_LIMIT = 40
+
+
+def _agent_reply_history(db: Session, conversation_id: uuid.UUID) -> list[str]:
+    """Our last replies in this conversation, oldest first (the current turn's reply isn't persisted yet)."""
+    rows = db.execute(
+        select(Message.content)
+        .where(Message.conversation_id == conversation_id, Message.sender_type == MessageSenderType.AGENT)
+        .order_by(Message.created_at.desc())
+        .limit(_REPLY_HISTORY_LIMIT)
+    ).scalars().all()
+    return [r for r in reversed(rows) if r]
+
+
+def _customer_texts(db: Session, conversation_id: uuid.UUID, current: str) -> list[str]:
+    rows = db.execute(
+        select(Message.content)
+        .where(Message.conversation_id == conversation_id, Message.sender_type == MessageSenderType.CUSTOMER)
+        .order_by(Message.created_at.desc())
+        .limit(_REPLY_HISTORY_LIMIT)
+    ).scalars().all()
+    return [current, *[r for r in rows if r]]
 
 
 def _last_agent_reply(db: Session, conversation_id: uuid.UUID) -> str | None:
@@ -862,7 +896,7 @@ def _format_group_booking_result(
             appointment = booking["appointment"]
             service = services_by_id.get(appointment["service_id"])
             service_name = service.name if service else "the service"
-            when = _format_local(appointment["scheduled_at"], tz)
+            when = _format_local(appointment["scheduled_at"], tz, language)
             return render(
                 "group_line_success",
                 language,
@@ -889,7 +923,7 @@ def _format_cancellation_result(result: dict, *, tz: ZoneInfo, customer_name: st
     confirmation or failure sentence is composed, off the tool's real result."""
     who = f", {customer_name}" if customer_name else ""
     if result["success"]:
-        when = _format_local(result["appointment"]["scheduled_at"], tz)
+        when = _format_local(result["appointment"]["scheduled_at"], tz, language)
         return render("cancellation_success", language, who=who, when=when)
     return render("cancellation_fail", language, who=who, message=result["message"].rstrip(".").lower())
 
@@ -897,7 +931,7 @@ def _format_cancellation_result(result: dict, *, tz: ZoneInfo, customer_name: st
 def _format_reschedule_result(result: dict, *, tz: ZoneInfo, customer_name: str | None, language: str | None) -> str:
     who = f", {customer_name}" if customer_name else ""
     if result["success"]:
-        when = _format_local(result["appointment"]["scheduled_at"], tz)
+        when = _format_local(result["appointment"]["scheduled_at"], tz, language)
         return render("reschedule_success", language, who=who, when=when)
     return render("reschedule_fail", language, who=who, message=result["message"].rstrip(".").lower())
 
@@ -916,7 +950,7 @@ def _format_appointment_status_result(
     recent_past = result["recent_past"]
 
     def describe(a: dict) -> str:
-        when = _format_local(datetime.fromisoformat(a["scheduled_at"]), tz)
+        when = _format_local(datetime.fromisoformat(a["scheduled_at"]), tz, language)
         return render("status_describe", language, service=a["service"], when=when, id=a["confirmation_code"])
 
     if not active and not recent_past:
@@ -1004,7 +1038,10 @@ def _emergency_response(business: Business | None, language: str | None) -> str:
     direct instruction to call/visit the clinic right away -- no real "book an emergency
     slot" mechanism exists in this codebase to route this into instead. Always paired with
     a real HumanHandoff (see escalation_front_desk_reason below) so staff see it too."""
-    phone = f" at {business.phone}" if business and business.phone else ""
+    # English reads "call us at 98...", Nepali "hamilai (98...) phone garnus" -- never an English "at" mid-Nepali.
+    phone = ""
+    if business and business.phone:
+        phone = f" at {business.phone}" if language in (None, ConversationLanguage.EN.value) else f" ({business.phone})"
     return render("emergency_handoff", language, phone=phone)
 
 
@@ -1591,15 +1628,18 @@ def handle_incoming_message(
     voice / testing callers pass nothing: their "delivery" is the HTTP response itself."""
     reply_lock = takeover_service.ReplyLock(conversation_id)
     try:
-        result = _handle_turn(
-            db,
-            conversation_id=conversation_id,
-            business_id=business_id,
-            content=content,
-            external_message_id=external_message_id,
-            force_language=force_language,
-            reply_lock=reply_lock,
-        )
+        # Every fixed template rendered this turn picks a wording this chat hasn't seen yet (response_templates.render),
+        # and _finalize_reply checks openings/endings against the same history.
+        with reply_history(_agent_reply_history(db, conversation_id)):
+            result = _handle_turn(
+                db,
+                conversation_id=conversation_id,
+                business_id=business_id,
+                content=content,
+                external_message_id=external_message_id,
+                force_language=force_language,
+                reply_lock=reply_lock,
+            )
         if result is not None and result.get("response") is not None and deliver is not None:
             # Every reply path holds the lock here (early branches: acquired at the locked checkpoint; the main flow and the
             # provider-failure path: at theirs). If one ever doesn't, take it now and re-check rather than send blind.
@@ -1762,7 +1802,9 @@ def _handle_turn(
                 conversation.booking_draft_date = picked_slot.astimezone(tz).strftime("%Y-%m-%d")
                 conversation.booking_draft_time = picked_slot.astimezone(tz).strftime("%H:%M")
                 response_text = render_contact_gate(
-                    _describe_known_booking_slots(conversation, services, business),
+                    _describe_known_booking_slots(
+                        conversation, services, business, force_language or conversation.detected_language
+                    ),
                     force_language or conversation.detected_language,
                 )
                 logger.info(
@@ -2297,6 +2339,7 @@ def _handle_turn(
     draft_switches = _merge_booking_draft(
         conversation, services, booking_request,
         offered_slots=offered_last_turn, tz=ZoneInfo(business.timezone) if business is not None else None,
+        language=language,
     )
 
     # Record whatever service THIS turn's response just recommended (rule 14b), so the
@@ -2440,7 +2483,7 @@ def _handle_turn(
             # The real moment of commitment — about to actually write a
             # booking — is the ONLY place contact info is required.
             if not has_contact:
-                response_text = render_contact_gate(_describe_known_booking_slots(conversation, services, business), language)
+                response_text = render_contact_gate(_describe_known_booking_slots(conversation, services, business, language), language)
             else:
                 result = tool.run(
                     db,
@@ -2743,6 +2786,24 @@ def _handle_turn(
     )
     if handoff is not None and not reply_says_team_follows_up:
         response_text = f"{response_text} {render('handoff_addendum', language)}"
+
+    # Last step: the word bank (Romanized Nepali) and the no-repeat / stock-ending / same-opener guards. Wording only --
+    # see reply_polish's docstring for why no fact can change here.
+    protected_names = [service.name for service in services]
+    if business is not None:
+        protected_names += [business.name, business.persona_name or "", business.address or "", business.phone or ""]
+    if customer_name:
+        protected_names.append(customer_name)
+    response_text, polish_changes = finalize_reply(
+        response_text,
+        language=language,
+        previous_replies=_agent_reply_history(db, conversation_id),
+        customer_texts=_customer_texts(db, conversation_id, content),
+        protected=protected_names,
+        intent=intent.value,
+    )
+    if polish_changes:
+        logger.info("reply polished: conversation_id=%s changes=%s", conversation_id, polish_changes)
 
     customer_message = Message(
         conversation_id=conversation_id,

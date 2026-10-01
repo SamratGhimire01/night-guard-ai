@@ -78,7 +78,7 @@ def test_confirmation_carries_name_place_qr_link_and_email_note(lang, payment):
 def test_each_language_gets_its_own_scaffold(payment):
     lines = {lang: _fmt(payment, lang).splitlines()[1:] for lang in LANGS}
     assert len({tuple(v) for v in lines.values()}) == 3, "the extra lines are translated, not English in every language"
-    assert "Booked for: Ram" in lines["en"] and "बुकिङ गरिएको: Ram" in lines["ne_deva"] and "Tapaiko naam ma: Ram" in lines["ne_roman"]
+    assert "Booked for: Ram" in lines["en"] and "बुकिङ: Ram को नाममा" in lines["ne_deva"] and "Naam: Ram" in lines["ne_roman"]
 
 
 @pytest.mark.parametrize("lang", LANGS)

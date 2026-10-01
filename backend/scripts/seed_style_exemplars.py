@@ -13,6 +13,12 @@ supports that for later, this seed set doesn't use it.
 
 Idempotent: skips a row whose (business_type, intent, language, text) already
 exists, so a re-run after adding new rows to the CSV only inserts the new ones.
+
+--prune also deletes every seeded (business_id IS NULL) row whose text is no longer in
+the CSV -- needed after a CSV row is reworded (2026-10-01 natural-Nepali pass: the old
+"नमस्ते है!" / "abhi thik garchu" / "sahayog" rows), since otherwise the old wording stays
+in the table and keeps being retrieved. Tenant-specific rows (business_id set) are never
+touched.
 """
 
 import csv
@@ -28,7 +34,7 @@ from app.services import style_exemplar_service
 CSV_PATH = Path(__file__).resolve().parent.parent / "data" / "style_exemplars" / "seed_v1.csv"
 
 
-def main() -> None:
+def main(prune: bool = False) -> None:
     db = SessionLocal()
     try:
         existing = {
@@ -55,10 +61,24 @@ def main() -> None:
             )
             existing.add(key)
             created += 1
-        print(f"style exemplar seed: {created} created, {skipped} already present, {len(rows)} total in CSV")
+        pruned = 0
+        if prune:
+            wanted = {
+                (None if r["business_type"] == "shared" else r["business_type"], r["intent"], r["language"], r["text"])
+                for r in rows
+            }
+            for e in db.query(StyleExemplar).filter(StyleExemplar.business_id.is_(None)).all():
+                if (e.business_type, e.intent, e.language, e.text) not in wanted:
+                    db.delete(e)
+                    pruned += 1
+            db.commit()
+        print(
+            f"style exemplar seed: {created} created, {skipped} already present, {pruned} retired, "
+            f"{len(rows)} total in CSV"
+        )
     finally:
         db.close()
 
 
 if __name__ == "__main__":
-    main()
+    main(prune="--prune" in sys.argv[1:])
