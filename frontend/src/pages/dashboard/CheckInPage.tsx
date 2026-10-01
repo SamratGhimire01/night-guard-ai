@@ -95,8 +95,14 @@ export default function CheckInPage() {
     // for the rear camera on a device that has one (real phones) while
     // still resolving to whatever camera IS available otherwise (desktop
     // webcams), so this one constraint object correctly covers both.
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
+    // Browsers only offer the camera on https:// (or localhost). On a plain http:// address — e.g. the dashboard opened
+    // on a phone at http://192.168.x.x — `navigator.mediaDevices` is undefined, and calling it crashed the whole app.
+    const camera = navigator.mediaDevices?.getUserMedia
+      ? navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
+      : Promise.reject(
+          new Error('This browser blocks the camera on this address. Open the dashboard over https:// to scan check-in codes.'),
+        )
+    camera
       .then((stream) => {
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop())

@@ -232,13 +232,15 @@
   var cfg = { name: DEFAULT_NAME, logo: null, welcome: DEFAULT_WELCOME, questions: [] };
   var welcomeShown = false;
 
-  function setOpen(open) {
+  // `focusInput` is false only for the dashboard preview's start-open: focusing from inside the preview iframe would steal
+  // the keyboard from whatever settings field the owner is typing in (the preview reloads as they type).
+  function setOpen(open, focusInput) {
     root.classList.toggle("ng-open", open);
     bubbleEl.setAttribute("aria-label", open ? "Close chat" : "Open chat");
     if (open) {
       popupEl.classList.remove("ng-visible");
       showWelcome();
-      inputEl.focus();
+      if (focusInput !== false) inputEl.focus();
       pollUpdates();
     } else {
       stopPolling();
@@ -402,7 +404,7 @@
     }
 
     root.classList.remove("ng-loading");
-    if (startOpen) setOpen(true);
+    if (startOpen) setOpen(true, false);
   }
 
   if (previewConfig) {

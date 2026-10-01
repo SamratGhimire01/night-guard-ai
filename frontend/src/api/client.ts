@@ -70,12 +70,16 @@ export function apiAssetUrl(url: string | null | undefined): string | null {
 /** Downloads a real file response (e.g. a report's .xlsx) — apiFetch always
  * does res.json(), which would corrupt binary content, so this is a small,
  * separate fetch that reuses the same auth/401 handling and saves the real
- * bytes via a throwaway <a> + object URL (revoked immediately after). */
+ * bytes via a throwaway <a> + object URL. */
 export async function downloadFile(path: string, filename: string): Promise<void> {
   const token = getToken()
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  })
+  const headers: Record<string, string> = {
+    // Same ngrok bypass as apiFetch. Without it a tunneled API answers 200 with ngrok's HTML warning page, which was
+    // saved as a broken .xlsx/.csv — so every download "did nothing" or produced a file Excel refused to open.
+    'ngrok-skip-browser-warning': 'true',
+  }
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res = await fetch(`${API_BASE_URL}${path}`, { headers })
 
   if (res.status === 401) {
     onUnauthorized?.()
@@ -85,14 +89,20 @@ export async function downloadFile(path: string, filename: string): Promise<void
     const body = await res.json().catch(() => null)
     throw new ApiError(res.status, body?.error?.message ?? `Download failed (${res.status}).`)
   }
+  // Any HTML here is a proxy/tunnel page, never the file we asked for — say so instead of saving it.
+  if ((res.headers.get('content-type') ?? '').includes('text/html')) {
+    throw new ApiError(res.status, 'Download failed: the server sent a web page instead of the file. Please try again.')
+  }
 
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
   link.download = filename
+  link.style.display = 'none'
   document.body.appendChild(link)
   link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  link.remove()
+  // Revoking in the same tick can cancel the download in Firefox and Safari; give the browser time to start it.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
