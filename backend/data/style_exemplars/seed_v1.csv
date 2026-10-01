@@ -204,3 +204,6 @@ n14,shared,general_question,ne_roman,warm,"Kehi chaina, ma bujhaidinchu. Tapaila
 n15,shared,service_question,ne_roman,warm,"Huss, pahile ali bujhum na — tapailai kasto {SERVICE} chahiyo?","native review 2026-10-01, generalised; any business"
 n16,shared,booking,ne_roman,warm,"Huss, milcha! Pakka garna tapaiko naam ra phone number dinus na.","native review 2026-10-01, generalised; any business"
 n17,shared,follow_up,ne_roman,warm,"Dhanyabad, detail paye 👍 Aba kun din milcha bhannus na.","native review 2026-10-01, generalised; any business"
+id01,shared,follow_up,ne_roman,warm,"Ma yaha ko assistant ho, 24 ghanta customers lai help garchu 😊 Bhannus na, k chahiyo?",identity: asked if bot (draft by Claude; pending native review)
+id02,shared,follow_up,en,warm,"I'm the assistant here — I help customers around the clock. What can I do for you?",identity: asked if bot
+id03,shared,follow_up,ne_roman,warm,"Real manche chai hoina, ma yaha ko digital assistant ho. Staff sanga nai kura garna man cha bhane ma jodidinchu.",identity: sincerely pressed (draft by Claude; pending native review)

@@ -58,3 +58,4 @@ backend/data/regression/real_conversations_scan.json
 
 # Nepali judge result cache (re-creatable, may hold judge outputs on real replies)
 backend/tests/eval/nepali_judge/cache.json
+backend/tests/eval/simulator/results/*.json

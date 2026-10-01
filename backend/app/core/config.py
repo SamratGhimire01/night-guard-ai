@@ -40,6 +40,19 @@ class Settings(BaseSettings):
             raise ValueError("AZURE_OPENAI_REASONING_EFFORT must be one of: default, minimal, low, medium, high, xhigh")
         return value
 
+    # The "speak" step (app/services/conversation/voice_pass.py): a short second LLM call that rewrites a free-text reply
+    # naturally. "auto" = only when the draft has a defect a native reader notices; "always" = every free-text reply;
+    # "off" = never (the one-env-var rollback, VOICE_PASS_MODE=off).
+    voice_pass_mode: str = "auto"
+
+    @field_validator("voice_pass_mode")
+    @classmethod
+    def _valid_voice_pass_mode(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in {"off", "auto", "always"}:
+            raise ValueError("VOICE_PASS_MODE must be one of: off, auto, always")
+        return value
+
     # Gmail SMTP — the real EmailNotificationProvider (app/services/notifications/).
     # Empty by default: the provider treats missing credentials as a real,
     # non-retryable send failure rather than crashing at import time.
