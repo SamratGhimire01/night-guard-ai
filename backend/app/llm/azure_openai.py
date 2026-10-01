@@ -4,7 +4,7 @@ import time
 import httpx
 
 from app.core.config import settings
-from app.llm.base import ChatProvider, EmbeddingProvider, LLMProviderError
+from app.llm.base import ChatProvider, ContentFilterError, EmbeddingProvider, LLMProviderError
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,20 @@ def _post(path: str, body: dict) -> dict:
         raise LLMProviderError(
             f"LLM provider request failed: {type(last_transport_error).__name__}"
         ) from None
+    if last_response.status_code == 400 and _is_content_filter(last_response):
+        raise ContentFilterError("LLM provider request blocked by content filter") from None
     raise LLMProviderError(f"LLM provider request failed with HTTP {last_response.status_code}") from None
+
+
+def _is_content_filter(response) -> bool:
+    """Azure's 400 for a filtered prompt: {"error": {"code": "content_filter", "innererror": {"code":
+    "ResponsibleAIPolicyViolation"}}}."""
+    try:
+        error = response.json().get("error") or {}
+    except Exception:
+        return False
+    codes = {error.get("code"), (error.get("innererror") or {}).get("code")}
+    return bool(codes & {"content_filter", "ResponsibleAIPolicyViolation"})
 
 
 class AzureEmbeddingProvider(EmbeddingProvider):

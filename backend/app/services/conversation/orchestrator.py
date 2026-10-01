@@ -17,6 +17,7 @@ from app.db.models.customer import Customer
 from app.db.models.notification import NotificationStatus
 from app.db.models.service import Service
 from app.llm import get_embedding_provider
+from app.llm.base import ContentFilterError
 from app.memory import assemble_context
 from app.memory.conversations import get_conversation
 from app.memory.summarization import maybe_summarize_conversation
@@ -1444,6 +1445,8 @@ def _handle_provider_failure(
     content: str,
     external_message_id: str | None,
     force_language: str | None = None,
+    business: Business | None = None,
+    content_filtered: bool = False,
 ) -> dict:
     """Urgent fix (real 500 found live, PHASE_STATUS.md): the LLM/embedding
     provider call failed even after its own internal retries
@@ -1464,17 +1467,23 @@ def _handle_provider_failure(
     staff reviewing handoffs later see the real cause, not a fabricated
     "customer asked for a human"."""
     language = force_language or conversation.detected_language
-    handoff_service.maybe_create_handoff(
-        db, business_id=business_id, conversation_id=conversation_id,
-        intent=ConversationIntent.UNKNOWN, best_similarity=None, is_provider_failure=True,
-    )
-    response_text = f"{render('provider_failure', language)} {render('handoff_addendum', language)}"
+    # Azure's content filter refused the customer's message (simulator jailbreak got "trouble connecting" + a handoff):
+    # the provider is fine, so decline it like any off-topic message -- no failure sentence, nothing for staff.
+    intent = ConversationIntent.OFF_TOPIC if content_filtered else ConversationIntent.UNKNOWN
+    if content_filtered:
+        response_text = _off_topic_response(business, language)
+    else:
+        handoff_service.maybe_create_handoff(
+            db, business_id=business_id, conversation_id=conversation_id,
+            intent=intent, best_similarity=None, is_provider_failure=True,
+        )
+        response_text = f"{render('provider_failure', language)} {render('handoff_addendum', language)}"
 
     customer_message = Message(
         conversation_id=conversation_id,
         sender_type=MessageSenderType.CUSTOMER,
         content=content,
-        detected_intent=ConversationIntent.UNKNOWN.value,
+        detected_intent=intent.value,
         external_message_id=external_message_id,
     )
     db.add(customer_message)
@@ -1489,11 +1498,11 @@ def _handle_provider_failure(
     db.refresh(agent_message)
 
     logger.info(
-        "orchestrated conversation turn: conversation_id=%s intent=provider_failure tool_available=False",
-        conversation_id,
+        "orchestrated conversation turn: conversation_id=%s intent=%s tool_available=False",
+        conversation_id, "content_filtered" if content_filtered else "provider_failure",
     )
     return {
-        "intent": ConversationIntent.UNKNOWN,
+        "intent": intent,
         "response": response_text,
         "customer_message_id": customer_message.id,
         "agent_message_id": agent_message.id,
@@ -2276,12 +2285,17 @@ def _handle_turn(
                     conversation_id, bool(voice_info.get("used")), voice_info.get("reasons"),
                     voice_info.get("rejected") or voice_info.get("error"), (time.perf_counter() - _tv) * 1000,
                 )
-    except RuntimeError:
-        logger.exception(
-            "LLM/embedding provider call failed after internal retries; degrading gracefully: "
-            "conversation_id=%s",
-            conversation_id,
-        )
+    except RuntimeError as exc:
+        content_filtered = isinstance(exc, ContentFilterError)
+        if content_filtered:
+            logger.info("content filter refused the turn; declining as off-topic: conversation_id=%s", conversation_id)
+            force_language = _expected_response_language(conversation, content, force_language)
+        else:
+            logger.exception(
+                "LLM/embedding provider call failed after internal retries; degrading gracefully: "
+                "conversation_id=%s",
+                conversation_id,
+            )
         reply_lock.acquire()
         if takeover_service.is_active(db, conversation_id=conversation_id):
             return _takeover_turn(db, conversation=conversation, content=content, external_message_id=external_message_id)
@@ -2293,6 +2307,8 @@ def _handle_turn(
             content=content,
             external_message_id=external_message_id,
             force_language=force_language,
+            business=business,
+            content_filtered=content_filtered,
         )
     intent, response_text = classification.intent, classification.response
 

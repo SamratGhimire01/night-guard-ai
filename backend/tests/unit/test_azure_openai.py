@@ -98,3 +98,19 @@ def test_post_does_not_retry_a_genuine_non_404_error_status():
             _post("embeddings", {"input": ["x"]})
 
     assert calls["n"] == 1
+
+
+def test_post_raises_content_filter_error_on_a_filtered_prompt():
+    """Azure's real 400 body for a jailbreak (captured live 2026-10-01) is a ContentFilterError, not a provider failure;
+    any other 400 stays a plain LLMProviderError."""
+    from app.llm.base import ContentFilterError
+
+    filtered = {"error": {"code": "content_filter", "status": 400, "innererror": {
+        "code": "ResponsibleAIPolicyViolation", "content_filter_result": {"jailbreak": {"detected": True, "filtered": True}}}}}
+    with patch("app.llm.azure_openai.httpx.post", return_value=_FakeResponse(400, filtered)):
+        with pytest.raises(ContentFilterError):
+            _post("chat/completions", {})
+    with patch("app.llm.azure_openai.httpx.post", return_value=_FakeResponse(400, {"error": {"code": "BadRequest"}})):
+        with pytest.raises(RuntimeError) as exc:
+            _post("chat/completions", {})
+    assert not isinstance(exc.value, ContentFilterError)

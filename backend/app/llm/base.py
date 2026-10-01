@@ -7,6 +7,11 @@ class LLMProviderError(RuntimeError):
     degrade let it propagate and the app turns it into a 503 with a plain message (app/core/exceptions.py)."""
 
 
+class ContentFilterError(LLMProviderError):
+    """Azure's content filter refused the prompt (HTTP 400, code content_filter / ResponsibleAIPolicyViolation) -- the
+    customer's message tripped it (e.g. a jailbreak), the provider itself is fine. Chat answers it as off-topic."""
+
+
 class EmbeddingProvider(ABC):
     """Turns text into vectors. Implementations wrap a specific backend (Azure
     OpenAI, etc.) so business logic never depends on a specific provider."""
