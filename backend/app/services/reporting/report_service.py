@@ -35,13 +35,15 @@ _RESCHEDULE_ACTION = "appointment_rescheduled"
 # 46) — never guaranteed to be filled in. So this stays an ESTIMATE of billed
 # value at list price, never presented as confirmed collected revenue.
 REVENUE_ESTIMATE_DEFINITION = (
-    "Estimated billed value of non-cancelled appointments (any status except CANCELLED) at each "
-    "appointment's service list price (Service.price, Phase 4). This is an ESTIMATE of billed "
-    "value, not confirmed collected revenue — real payment tracking (Phase 44 online deposits, "
-    "Phase 46 in-person collection at check-in) only covers services with a deposit configured "
-    "and only when a real payment/collection actually happened, not every appointment's full "
-    "price. Not reduced for discounts, taxes, or no-shows."
+    "Estimated billed value of appointments that were not cancelled and were not no-shows, at each "
+    "appointment's service list price (Service.price, Phase 4). Upcoming appointments are included at "
+    "their list price. This is an ESTIMATE of billed value, not confirmed collected revenue — real "
+    "payment tracking (Phase 44 online deposits, Phase 46 in-person collection at check-in) only covers "
+    "services with a deposit configured and only when a real payment/collection actually happened. "
+    "Deposits kept from no-shows are reported separately (Analytics). Not reduced for discounts or taxes."
 )
+# Appointments that never turn into a billed visit: excluded from every revenue estimate.
+UNBILLED_STATUSES = frozenset({AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW})
 
 
 def _sum_service_prices(rows, services: dict) -> Decimal:
@@ -116,9 +118,7 @@ def _appointments_scheduled(
         }
         for a in appointments
     ]
-    revenue_estimate = _sum_service_prices(
-        (a for a in appointments if a.status != AppointmentStatus.CANCELLED), services
-    )
+    revenue_estimate = _sum_service_prices((a for a in appointments if a.status not in UNBILLED_STATUSES), services)
     return rows, revenue_estimate
 
 

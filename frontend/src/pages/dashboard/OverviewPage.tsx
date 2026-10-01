@@ -99,7 +99,12 @@ export default function OverviewPage() {
           <StatGridSkeleton />
         ) : (
           <SimpleGrid cols={{ base: 2, sm: 4 }}>
-            <StatCard label="Appointments today" value={todayAppts.length} icon={<IconCalendarEvent {...ICON} />} />
+            {/* Visits actually happening today: a cancelled booking is still listed below, but it is not an appointment. */}
+            <StatCard
+              label="Appointments today"
+              value={todayAppts.filter((a) => a.status !== 'cancelled').length}
+              icon={<IconCalendarEvent {...ICON} />}
+            />
             <StatCard
               label="Confirmed today"
               value={todayAppts.filter((a) => a.status === 'confirmed').length}

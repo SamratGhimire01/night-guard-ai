@@ -11,7 +11,37 @@ from app.db.models.customer import Customer
 from app.schemas.customer import CustomerCreate, CustomerUpdate
 
 
+def _existing_contact(db: Session, *, business_id: uuid.UUID, payload: CustomerCreate) -> Customer | None:
+    """The customer this business already has with the same phone number (compared by digits, so "980-000 0000" and
+    "9800000000" match) or, without a phone, the same email."""
+    if payload.phone:
+        digits = "".join(ch for ch in payload.phone if ch.isdigit())
+        return db.execute(
+            select(Customer)
+            .where(Customer.business_id == business_id, func.regexp_replace(Customer.phone, r"\D", "", "g") == digits)
+            .order_by(Customer.created_at)
+            .limit(1)
+        ).scalar_one_or_none()
+    if payload.email:
+        return db.execute(
+            select(Customer)
+            .where(Customer.business_id == business_id, func.lower(Customer.email) == payload.email.lower())
+            .order_by(Customer.created_at)
+            .limit(1)
+        ).scalar_one_or_none()
+    return None
+
+
 def create_customer(db: Session, *, business_id: uuid.UUID, payload: CustomerCreate) -> Customer:
+    """Adds a customer, or returns the existing one with the same phone (or email). A regular who books by phone or
+    walks in again is the same customer: a copy per visit would split their history and count them as new each time."""
+    existing = _existing_contact(db, business_id=business_id, payload=payload)
+    if existing is not None:
+        if payload.email and not existing.email:
+            existing.email = payload.email
+            db.commit()
+            db.refresh(existing)
+        return existing
     customer = Customer(business_id=business_id, **payload.model_dump())
     db.add(customer)
     db.commit()

@@ -55,3 +55,6 @@ backend/data/regression/real_conversations/
 backend/data/regression/real_conversations_scan.json
 # Whole-repo archives
 *.zip
+
+# Nepali judge result cache (re-creatable, may hold judge outputs on real replies)
+backend/tests/eval/nepali_judge/cache.json

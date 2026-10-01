@@ -17888,3 +17888,40 @@ force-recreated before the live pass. Full suite not run (deferred to end of bat
   per-channel cap (Instagram about 1000, Messenger about 2000) if a length rejection is ever seen live.
 - **Line break to space inside a bubble:** a line break after a sentence end becomes a space. No text is lost, only
   formatting. This affects WhatsApp, Instagram and Messenger.
+
+## Natural Nepali voice for the business assistant (2026-10-01)
+- **Problem (measured on the 653 real conversations, 1,895 replies):** Romanized-Nepali replies averaged 1.15
+  textbook/Hindi/error words each (samaya ×134, chahanu huncha ×82, kripaya ×72, garnuhos ×70, janakari ×60…), 93
+  exact repeats of an earlier reply in the same chat, the same opener twice in a row 60 times, and English dates
+  mid-Nepali. About a quarter of replies were fixed templates, which the last prompt-only round never touched.
+- **Changes** (details: `docs/nepali_voice/README.md`):
+  - `nepali_wordbank.py`: 255 natural words/phrases by situation; 73 never-use rules (60 auto-swaps, 13 flag-only);
+    x/v spelling mirror (customers write xa/vayo/hunxa far more than cha/bhayo/huncha).
+  - `reply_polish.finalize_reply`, the last step of the main flow: word bank (Romanized/mixed only), filler endings
+    dropped, a stock offer dropped when one of the last 3 replies already ended with one (never a greeting's help
+    question), the same opener never twice in a row. Wording only: names/links/ids are masked, no sentence with a
+    digit or link is ever dropped, a reply is never emptied.
+  - Templates: every Romanized and Devanagari wording rewritten; 2–4 wordings for the repeatable ones. `render()`
+    picks the first wording whose FIXED text this chat hasn't seen (history set once per turn in
+    `handle_incoming_message`), else the least recently used. English first wordings are byte-identical to before.
+  - Nepali dates/times (`format_when`/`format_slot_list`): "Sombar (Oct 5), bihana sadhe 10 baje", dedh/adhai/sawa.
+  - A slot list shown in one of the last 2 replies is pointed back at (`availability_refer_back`) instead of pasted
+    again; `availability_pick_one` is retired.
+  - Prompt: "always hajur" replaced by "tapai by default, hajur as a warm yes, never timi, mirror the register";
+    word-bank section (rule 7b); broken examples fixed (Hamiले, saknchu, "can't book directly", the stock
+    "aru kehi sahayog chahiyo bhane bhanuhos"); 16 natural Romanized/mixed examples. Not shortened — no live eval
+    available to prove a cut is safe.
+  - Exemplars: 41 → 134 Romanized/mixed rows; Hindi "नमस्ते है"/"abhi" rows fixed. `seed_style_exemplars.py --prune`
+    retires reworded seed rows (tenant rows untouched).
+  - Judge prompt gained Nepali-naturalness guidance (both arms judged with it, so a before/after stays like-for-like).
+- **Measured after** (`scripts/nepali_naturalness_report.py`, same replies re-run through today's code):
+  never-use words per Romanized reply 1.15 → 0.001; exact repeats 93 → 24; same opener in a row 60 → 0; stock
+  endings 5.2% → 3.5%; fixed Romanized wordings with a never-use word 87 → 0. The LLM's own new wording is NOT in
+  these numbers — needs the live 3-judge run (Azure unreachable from the cloud sandbox).
+- **Bugs caught while testing:** (1) the "drop a sentence already sent" guard removed the actual contact request —
+  now limited to stock filler/offers; (2) ungrouped regex alternations let "aunuhos" match inside "btaunuhos";
+  (3) data-only changes (10 → 11 baje) made the same fixed sentence repeat — "used" now compares fixed text.
+- **Tests:** new `tests/unit/test_nepali_naturalness.py` (42) and `tests/integration/test_nepali_voice.py` (end to
+  end). Existing tests that pinned the old Nepali wording were updated; English pins are unchanged.
+- **OPEN:** native review of `docs/nepali_voice/native_review_sheet.md` (30 real replies) and the word bank; live
+  3-judge before/after; production steps (force-recreate backend, seed `--prune`).

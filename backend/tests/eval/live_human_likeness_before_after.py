@@ -56,6 +56,14 @@ _JUDGE_SYSTEM_PROMPT = (
     "are not told which system produced which, and must judge purely on how the text reads. Score "
     "EACH reply independently, 1-5 (5 = genuinely sounds like a thoughtful human on the other end, "
     "1 = obviously robotic/scripted), with one short sentence of reason for each. "
+    # 2026-10-01 natural-voice pass: generic judges are weak at Romanized Nepali, so spell out what a native texter
+    # notices. Both arms of a run are judged with this same prompt, so a before/after stays like-for-like.
+    "If a reply is in Nepali (Devanagari or Romanized) also judge it as a native Nepali speaker texting would: "
+    "natural chat words (huss, la, pakka, milcha?, k, kati, kaile, bholi, ni, ta, sadhe 10 baje) and the customer's "
+    "own spelling (xa/vayo if they write that) read human; Hindi words (kya, aap, nahi, abhi, bilkul, kahan, samay) "
+    "or textbook/office Nepali (kripaya, prapta, janakari, sahayog, madhyam, upalabdha, aagami, maaf garnuhos, "
+    "sakinu huncha, chahanu huncha) or an English date like 'Monday, October 5 at 10:00 AM' mid-Nepali read robotic "
+    "and should cost at least one point; plain grammar mistakes cost more. "
     'Respond with ONLY a JSON object of this exact shape, nothing else: '
     '{"reply_a": {"score": <1-5 integer>, "reason": "..."}, '
     '"reply_b": {"score": <1-5 integer>, "reason": "..."}}'

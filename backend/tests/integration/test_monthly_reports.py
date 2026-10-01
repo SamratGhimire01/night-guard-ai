@@ -248,19 +248,44 @@ def test_booking_conversion_definition_and_value(business_ready):
     token, service_id = business_ready["token"], business_ready["service_id"]
     year, month = _current_year_month()
 
+    chatters = []
     for i in range(4):
         cust = _create_customer(token, phone=f"+1555333000{i}")
         _create_conversation(business_ready["business_id"], uuid.UUID(cust["id"]))
-    booking_customer = _create_customer(token, phone="+15553330099")
-    when = _future_slot(3, 11)
-    _book(token, service_id, uuid.UUID(booking_customer["id"]), when)
+        chatters.append(uuid.UUID(cust["id"]))
+    # One chatting customer books twice in chat: one converted conversation, not two
+    chat_bookings = [_book(token, service_id, chatters[0], _future_slot(3, 11)), _book(token, service_id, chatters[0], _future_slot(3, 13))]
+    with SessionLocal() as db:
+        for b in chat_bookings:
+            db.get(Appointment, uuid.UUID(b["id"])).source_channel = "website"
+        db.commit()
+    # A phone/walk-in booking added from the dashboard is not a chat conversion
+    walk_in = _create_customer(token, phone="+15553330099")
+    _book(token, service_id, uuid.UUID(walk_in["id"]), _future_slot(3, 15))
 
     report = client.get(f"/api/v1/reports/monthly?year={year}&month={month}", headers=_auth_header(token)).json()
     bc = report["booking_conversion"]
-    assert bc["numerator"] == 1  # 1 appointment requested (created)
-    assert bc["denominator"] == 4  # 4 conversations created (the booking customer got none)
+    assert bc["numerator"] == 1  # 1 of the 4 conversations led to a booking in chat
+    assert bc["denominator"] == 4
     assert bc["value"] == pytest.approx(1 / 4)
-    assert "proxy" in bc["definition"].lower()
+    assert "never above 100%" in bc["definition"].lower()
+
+
+def test_revenue_estimate_leaves_out_no_shows(business_ready):
+    token, service_id = business_ready["token"], business_ready["service_id"]
+    year, month = _this_year_month()
+    appts = []
+    for i in range(3):
+        cust = _create_customer(token, phone=f"+1555777000{i}")
+        when = datetime.combine(_day_in_current_month(4), datetime.min.time()).replace(hour=8 + i, tzinfo=ZoneInfo("UTC"))
+        appts.append(_book(token, service_id, uuid.UUID(cust["id"]), when))
+    with SessionLocal() as db:
+        db.get(Appointment, uuid.UUID(appts[0]["id"])).status = AppointmentStatus.NO_SHOW
+        db.commit()
+
+    report = client.get(f"/api/v1/reports/monthly?year={year}&month={month}", headers=_auth_header(token)).json()
+    assert report["revenue_estimate"]["value"] == "100.00"  # 2 visits x 50.00; the no-show isn't billed
+    assert report["revenue_estimate"]["appointment_count"] == 2
 
 
 # --- cancellation_rate: stated definition, verified numerator/denominator ---------------

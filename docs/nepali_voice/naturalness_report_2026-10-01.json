@@ -1,0 +1,138 @@
+{
+  "conversations": 653,
+  "before": {
+    "replies": 1895,
+    "romanized_replies": 774,
+    "never_use_words_per_romanized_reply": 1.15,
+    "never_use_words_by_kind": {
+      "hindi": 8,
+      "bookish": 803,
+      "error": 79
+    },
+    "top_never_use_words": [
+      [
+        "samaya",
+        134
+      ],
+      [
+        "chahanu huncha",
+        82
+      ],
+      [
+        "kripaya",
+        72
+      ],
+      [
+        "garnuhos",
+        70
+      ],
+      [
+        "janakari",
+        60
+      ],
+      [
+        "bhanuhos",
+        53
+      ],
+      [
+        "dinuhos",
+        33
+      ],
+      [
+        "gari diye",
+        32
+      ],
+      [
+        "sahayog",
+        31
+      ],
+      [
+        "batauna sakinu huncha",
+        31
+      ],
+      [
+        "madhyam",
+        20
+      ],
+      [
+        "garna chahanu huncha",
+        17
+      ],
+      [
+        "maaf garnuhos",
+        17
+      ],
+      [
+        "jankari",
+        15
+      ],
+      [
+        "tyo sambandhi",
+        15
+      ]
+    ],
+    "exact_repeats": 93,
+    "stock_ending_pct": 5.2,
+    "same_opener_in_a_row": 60
+  },
+  "after_code_guards": {
+    "replies": 1895,
+    "romanized_replies": 774,
+    "never_use_words_per_romanized_reply": 0.062,
+    "never_use_words_by_kind": {
+      "hindi": 0,
+      "bookish": 48,
+      "error": 0
+    },
+    "top_never_use_words": [
+      [
+        "madhyam",
+        20
+      ],
+      [
+        "aadi",
+        15
+      ],
+      [
+        "bujhna chahanchu",
+        12
+      ],
+      [
+        "awastha",
+        1
+      ]
+    ],
+    "exact_repeats": 87,
+    "stock_ending_pct": 3.3,
+    "same_opener_in_a_row": 0
+  },
+  "after_code_guards_and_templates": {
+    "replies": 1895,
+    "romanized_replies": 774,
+    "never_use_words_per_romanized_reply": 0.001,
+    "never_use_words_by_kind": {
+      "hindi": 0,
+      "bookish": 1,
+      "error": 0
+    },
+    "top_never_use_words": [
+      [
+        "awastha",
+        1
+      ]
+    ],
+    "exact_repeats": 24,
+    "stock_ending_pct": 3.5,
+    "same_opener_in_a_row": 0
+  },
+  "templates": {
+    "after": {
+      "ne_roman_wordings": 96,
+      "never_use_words": 0
+    },
+    "before": {
+      "ne_roman_wordings": 59,
+      "never_use_words": 87
+    }
+  }
+}

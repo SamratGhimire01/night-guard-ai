@@ -6,15 +6,33 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from app.schemas.common import safe_str
 
 
+# services.price is NUMERIC(10, 2); anything larger crashed the insert with a 500 instead of a clear message.
+_MAX_PRICE = Decimal("99999999.99")
+# A service is something booked into one day.
+_MAX_DURATION_MINUTES = 24 * 60
+
+
 def _non_negative_price(value: Decimal) -> Decimal:
+    if not value.is_finite():
+        raise ValueError("Price must be a number.")
     if value < 0:
         raise ValueError("Price must not be negative.")
+    if value > _MAX_PRICE:
+        raise ValueError("Price is too large.")
     return value
 
 
 def _positive_duration(value: int) -> int:
     if value <= 0:
         raise ValueError("Duration must be a positive number of minutes.")
+    if value > _MAX_DURATION_MINUTES:
+        raise ValueError("Duration can be at most 24 hours (1440 minutes).")
+    return value
+
+
+def _not_blank(value: str) -> str:
+    if not value.strip():
+        raise ValueError("This field must not be blank.")
     return value
 
 
@@ -43,6 +61,7 @@ class ServiceCreate(BaseModel):
     deposit_enabled: bool = False
     deposit_percentage: int | None = None
 
+    _validate_name = field_validator("name")(_not_blank)
     _validate_price = field_validator("price")(_non_negative_price)
     _validate_duration = field_validator("duration_minutes")(_positive_duration)
 
@@ -79,7 +98,7 @@ class ServiceUpdate(BaseModel):
     def name_not_null(cls, value: str | None) -> str:
         if value is None:
             raise ValueError("This field is required and cannot be cleared to null.")
-        return value
+        return _not_blank(value)
 
     @field_validator("price")
     @classmethod

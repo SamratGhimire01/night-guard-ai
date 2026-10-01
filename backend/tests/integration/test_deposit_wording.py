@@ -18,7 +18,7 @@ from app.db.models.conversation import Conversation
 from app.db.models.payment import Payment
 from app.services import payment_service
 from app.services.conversation.orchestrator import _format_booking_result
-from app.services.conversation.response_templates import render
+from app.services.conversation.response_templates import format_when, render
 from tests.integration.test_payment_choice import (  # noqa: F401
     _agent_messages,
     _pending_chat_payment,
@@ -32,7 +32,7 @@ from tests.integration.test_payments import premium_npr_ready, two_businesses  #
 LANGS = ["en", "ne_deva", "ne_roman"]
 BOOKING_ID = "11bed445-3b1b-4d96-9f1d-985120789685"
 # the phrase each language's booking_success / payment_received uses for "all set" — must NOT open a pending booking
-ALL_SET = {"en": "all set", "ne_deva": "भइसक्यो", "ne_roman": "Sabai milyo"}
+ALL_SET = {"en": "all set", "ne_deva": "सबै मिल्यो", "ne_roman": "Sabai milyo"}
 RESERVED = {"en": "reserved", "ne_deva": "रिजर्भ", "ne_roman": "reserve gari"}
 CONFIRMED = {"en": "is now confirmed", "ne_deva": "अब पक्का भयो", "ne_roman": "ab pakka bhayo"}
 
@@ -84,7 +84,7 @@ def test_deposit_booking_still_choosing_a_gateway_reads_reserved_and_asks(lang):
 def test_no_deposit_booking_message_is_completely_unchanged(lang):
     expected = render(
         "booking_success", lang, who=", Ram", service="Tooth Filling",
-        when="Tuesday, September 22 at 10:30 AM", duration="30", id=BOOKING_ID,
+        when=format_when(_APPT["scheduled_at"].astimezone(_TZ), lang), duration="30", id=BOOKING_ID,
     )
     assert _fmt(None, lang) == expected
     assert ALL_SET[lang].lower() in expected.lower()
@@ -96,6 +96,11 @@ def test_no_deposit_english_text_is_byte_identical_to_the_original():
         f"You're all set, Ram! I've booked Tooth Filling for Tuesday, September 22 at 10:30 AM (30 min). "
         f"Your booking ID is {BOOKING_ID}."
     )
+
+
+def test_nepali_booking_messages_state_the_time_the_nepali_way():
+    assert "Mangalbar (Sep 22), bihana sadhe 10 baje" in _fmt(None, "ne_roman")
+    assert "मंगलबार (Sep 22), बिहान साढे 10 बजे" in _fmt(None, "ne_deva")
 
 
 @pytest.mark.parametrize("lang", LANGS)

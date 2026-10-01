@@ -10,6 +10,13 @@ def _write_sheet(ws: Worksheet, headers: list[str], rows: list[list]) -> None:
     ws.append(headers)
     for row in rows:
         ws.append(row)
+    # openpyxl stores any text starting with "=" as a formula. Customer names and messages come from the public chat,
+    # so a visitor calling themselves '=HYPERLINK("http://evil…","Refund")' would plant a live formula in the owner's
+    # report. Every value we write is data: keep it as text.
+    for cells in ws.iter_rows():
+        for cell in cells:
+            if cell.data_type == "f":
+                cell.data_type = "s"
 
 
 def build_report_workbook(report: dict) -> Workbook:
