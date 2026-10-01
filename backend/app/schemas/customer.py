@@ -1,9 +1,23 @@
+import re
 import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 from app.schemas.common import safe_str
+
+_PHONE_RE = re.compile(r"^\+?[0-9 ()\-.]+$")
+
+
+def _valid_phone(value: str | None) -> str | None:
+    """Digits with the usual separators (+977 980-000 0000, (555) 010-0100). Anything else typed into the dashboard
+    would be saved and then fail silently when an SMS or WhatsApp message is sent to it."""
+    if value is None or not value.strip():
+        return None
+    value = value.strip()
+    if not _PHONE_RE.match(value) or not 6 <= sum(ch.isdigit() for ch in value) <= 15:
+        raise ValueError("Enter a phone number using digits, e.g. +977 9800000000.")
+    return value
 
 
 class CustomerCreate(BaseModel):
@@ -12,11 +26,25 @@ class CustomerCreate(BaseModel):
     # app/schemas/common.py's docstring for the real bug this closes).
     name: safe_str(255)
     phone: safe_str(50) | None = None
-    email: safe_str(255) | None = None
+    email: EmailStr | None = None
     preferred_language: safe_str(32) | None = None
     # Phase 15: explicit SMS consent, settable at creation. Also settable
     # later now via CustomerUpdate (this gap closed for real, see below).
     sms_opt_in: bool = False
+
+    @field_validator("name")
+    @classmethod
+    def name_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("This field must not be blank.")
+        return value
+
+    _validate_phone = field_validator("phone")(_valid_phone)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def blank_email_is_none(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
 
 
 class CustomerUpdate(BaseModel):
@@ -45,7 +73,11 @@ class CustomerUpdate(BaseModel):
     def name_not_null(cls, value: str | None) -> str:
         if value is None:
             raise ValueError("This field is required and cannot be cleared to null.")
+        if not value.strip():
+            raise ValueError("This field must not be blank.")
         return value
+
+    _validate_phone = field_validator("phone")(_valid_phone)
 
     @field_validator("sms_opt_in")
     @classmethod

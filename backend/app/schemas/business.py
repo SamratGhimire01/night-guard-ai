@@ -115,6 +115,16 @@ class BusinessUpdate(BaseModel):
     sign_off: safe_str(200) | None = None
     owner_alerts_enabled: bool | None = None
 
+    @field_validator("website", "logo_url")
+    @classmethod
+    def http_url(cls, value: str | None) -> str | None:
+        # Only real web addresses: a "javascript:" or "data:" value would run as code wherever it is shown as a link.
+        if value is None or not value.strip():
+            return None if value is None else ""
+        if not re.match(r"^https?://[^\s/$.?#][^\s]*$", value.strip(), re.IGNORECASE):
+            raise ValueError("Enter the full address, starting with https://")
+        return value.strip()
+
     @field_validator("brand_color")
     @classmethod
     def valid_hex_color(cls, value: str | None) -> str | None:

@@ -18,7 +18,12 @@ from app.services import integration_service
 from app.services.notifications.email_provider import EmailNotificationProvider
 from app.services.notifications.templates.render import render_monthly_report_email
 from app.services.reporting.excel_export import monthly_report_to_xlsx_bytes
-from app.services.reporting.report_service import REVENUE_ESTIMATE_DEFINITION, _name_maps, _sum_service_prices
+from app.services.reporting.report_service import (
+    REVENUE_ESTIMATE_DEFINITION,
+    UNBILLED_STATUSES,
+    _name_maps,
+    _sum_service_prices,
+)
 
 _RESCHEDULE_ACTION = "appointment_rescheduled"
 _WEEKDAY_NAMES = list(calendar.day_name)  # ["Monday", ..., "Sunday"]
@@ -74,16 +79,15 @@ def generate_monthly_report(db: Session, *, business_id: uuid.UUID, year: int, m
       population: a cancelled appointment never actually occupied staff time
       or reflected fulfilled demand, so counting it would overstate real
       workload/popularity.
-    - booking_conversion = appointments requested this month ÷ total
-      conversations this month. This is an honest proxy, not precise
-      per-conversation attribution: this codebase does not persist
-      per-conversation/message intent classification anywhere (verified —
-      no `intent` column exists on Message or Conversation; Phase 8's
-      classification happens in memory, per turn, and is never stored), so
-      "conversations that had real booking intent" cannot be queried
-      directly. A future phase persisting intent per turn would let this
-      become a precise "true booking-intent conversion" metric instead of
-      this proxy.
+    - booking_conversion = conversations started this month whose customer
+      booked in chat this month (Appointment.source_channel set) ÷
+      conversations started this month. It used to be all appointments
+      requested ÷ conversations, which counted dashboard/phone bookings as
+      chat conversions and showed rates above 100%. Appointments are not
+      linked to a conversation row, so "booked in chat by the same customer
+      in the same month" is the attribution.
+    - revenue_estimate excludes cancelled AND no-show appointments (see
+      REVENUE_ESTIMATE_DEFINITION): a missed visit is not billed value.
     """
     business = db.get(Business, business_id)
     if business is None:
@@ -154,7 +158,8 @@ def generate_monthly_report(db: Session, *, business_id: uuid.UUID, year: int, m
     _customers, services, _staff = _name_maps(
         db, business_id=business_id, customer_ids=set(), service_ids=set(service_counts), staff_ids=set()
     )
-    revenue_estimate = _sum_service_prices(active_rows, services)
+    billed_rows = [a for a in active_rows if a.status not in UNBILLED_STATUSES]
+    revenue_estimate = _sum_service_prices(billed_rows, services)
 
     busiest_days = [
         {"day": day, "count": day_counts.get(day, 0)}
@@ -174,7 +179,30 @@ def generate_monthly_report(db: Session, *, business_id: uuid.UUID, year: int, m
     ]
 
     cancellation_rate_value = (cancelled_of_scheduled / scheduled_for_month) if scheduled_for_month else None
-    booking_conversion_value = (appointments_requested / conversations_total) if conversations_total else None
+    # Of the conversations started this month, how many belong to a customer who booked IN CHAT this month. Counting
+    # conversations (not bookings) keeps it a real rate: a dashboard/phone booking is not a chat conversion, and a
+    # customer booking twice in one chat is still one converted conversation, so it can never exceed 100%.
+    chat_bookers = (
+        select(Appointment.customer_id)
+        .where(
+            Appointment.business_id == business_id,
+            Appointment.source_channel.is_not(None),
+            Appointment.created_at >= start,
+            Appointment.created_at < end,
+        )
+        .scalar_subquery()
+    )
+    converted_conversations = db.execute(
+        select(func.count())
+        .select_from(Conversation)
+        .where(
+            Conversation.business_id == business_id,
+            Conversation.created_at >= start,
+            Conversation.created_at < end,
+            Conversation.customer_id.in_(chat_bookers),
+        )
+    ).scalar_one()
+    booking_conversion_value = (converted_conversations / conversations_total) if conversations_total else None
 
     return {
         "business_id": str(business_id),
@@ -217,18 +245,17 @@ def generate_monthly_report(db: Session, *, business_id: uuid.UUID, year: int, m
         },
         "booking_conversion": {
             "value": booking_conversion_value,
-            "numerator": appointments_requested,
+            "numerator": converted_conversations,
             "denominator": conversations_total,
             "definition": (
-                "Appointments requested (created) this month ÷ total conversations this month. "
-                "An honest proxy, not precise per-conversation attribution — this codebase does not "
-                "persist per-conversation intent classification (no `intent` column exists on "
-                "Message/Conversation), so true 'booking-intent conversations' can't be queried directly."
+                "Of the conversations started this month, the share whose customer booked an appointment in "
+                "chat this month. Bookings added from the dashboard (phone calls, walk-ins) are not chat "
+                "conversions and are not counted. Never above 100%."
             ),
         },
         "revenue_estimate": {
             "value": str(revenue_estimate),
-            "appointment_count": len(active_rows),
+            "appointment_count": len(billed_rows),
             "definition": REVENUE_ESTIMATE_DEFINITION,
         },
         "busiest_days": busiest_days,

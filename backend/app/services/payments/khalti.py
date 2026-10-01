@@ -102,4 +102,11 @@ class KhaltiPaymentProvider(PaymentProvider):
             "/api/v2/epayment/lookup/", {"pidx": gateway_reference}, recover_status_on_http_error=True
         )
         status = response.get("status", "")
-        return PaymentVerification(completed=status == "Completed", raw_status=status, gateway_reference=gateway_reference)
+        completed = status == "Completed"
+        # A "Completed" lookup must also be for the amount we asked for: never mark a deposit paid on a smaller payment.
+        paid = response.get("total_amount")
+        expected = int((amount * 100).to_integral_value())
+        if completed and paid is not None and int(paid) != expected:
+            logger.warning("khalti payment %s completed for %s paisa, expected %s; not marking it paid", payment_id, paid, expected)
+            completed = False
+        return PaymentVerification(completed=completed, raw_status=status, gateway_reference=gateway_reference)
