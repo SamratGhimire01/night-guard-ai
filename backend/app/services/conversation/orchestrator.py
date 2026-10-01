@@ -2812,6 +2812,11 @@ def _handle_turn(
         ConversationIntent.SERVICE_QUESTION, ConversationIntent.PRICING_QUESTION, ConversationIntent.GENERAL_QUESTION
     ):
         response_text = format_service_list(response_text, [service.name for service in services])
+        # A list with nothing before it read as a bare dump in a Nepali chat (simulator barber/lang_short_msgs "price?"
+        # -> "- Hair Cut — NPR 300\n- Beard Trim — ..."): give it a short Nepali lead-in.
+        bare_list = response_text.startswith("- ") and re.search(r"\d", response_text)
+        if bare_list and language in (ConversationLanguage.NE_ROMAN.value, ConversationLanguage.MIXED.value):
+            response_text = f"Hamro rate yesto cha:\n{response_text}"
 
     # Phase 23 urgent fix: contact info volunteered THIS turn (resolved above,
     # ahead of the booking dispatch — see the Phase 24 note there) is appended

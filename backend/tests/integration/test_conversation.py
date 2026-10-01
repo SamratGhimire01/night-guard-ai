@@ -2557,6 +2557,32 @@ def test_ordinal_word_slot_pick_still_falls_through_to_the_llm_path_unaffected(t
         assert appointments[0].scheduled_at == slot_2
 
 
+def test_bare_price_list_gets_a_nepali_lead_in_in_a_roman_nepali_chat(two_businesses, monkeypatch):
+    """Simulator barber/lang_short_msgs: "price?" in a Romanized-Nepali chat got a bare "- Hair Cut — NPR 300" list with
+    no Nepali around it. ne_roman/mixed get "Hamro rate yesto cha:" first; an English chat keeps the plain list."""
+    token_a = two_businesses["token_a"]
+    with SessionLocal() as db:
+        db.get(Business, two_businesses["business_id_a"]).currency = "NPR"
+        db.commit()
+    for name, price in (("Hair Cut", "300.00"), ("Beard Trim", "150.00")):
+        resp = client.post("/api/v1/services", json={"name": name, "price": price, "duration_minutes": 30},
+                           headers=_auth_header(token_a))
+        assert resp.status_code == 201, resp.text
+    _stub_providers(monkeypatch, json.dumps(
+        {"intent": "pricing_question", "response": "Hair Cut — NPR 300 ra Beard Trim — NPR 150", "needs_human_handoff": False}
+    ))
+    for language, expected_start in (("ne_roman", "Hamro rate yesto cha:\n- Hair Cut"), ("mixed", "Hamro rate yesto"),
+                                     ("en", "- Hair Cut")):
+        conversation_id = _create_conversation(two_businesses["business_id_a"], _create_customer(token_a))
+        with SessionLocal() as db:
+            db.get(Conversation, conversation_id).detected_language = language
+            db.commit()
+        resp = client.post(f"/api/v1/conversations/{conversation_id}/messages", headers=_auth_header(token_a),
+                           json={"content": "price?"})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["response"].startswith(expected_start), (language, resp.json()["response"])
+
+
 def test_genuine_service_switch_is_acknowledged_not_silent(two_businesses, monkeypatch):
     """Real bug found live (PHASE_STATUS.md, "silent service switch"): real
     transcript this session — a customer named Dental Consultation, gave
