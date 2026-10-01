@@ -1179,21 +1179,7 @@ def _knowledge_query_vector(content: str, query_vector: list[float]) -> list[flo
         logger.warning("knowledge query translation failed, searching the original text", exc_info=True)
     return query_vector
 
-# Urgent fix (real bug found live, PHASE_STATUS.md): a customer's first
-# message being a short, generic, cross-language-ambiguous greeting ("hlo",
-# "hi", "hey"...) was getting a confident message_language self-report from
-# the LLM (often "en", since these are English-alphabet fillers) that then
-# locked the WHOLE conversation the instant it arrived — _resolve_locked_
-# language locks immediately on the first clear signal, with no concept of
-# "too little real signal to decide yet". None of these tokens carries any
-# real evidence of which language the customer actually wants; a real
-# Nepali/Romanized-Nepali greeting ("namaste", "dhanyabad", ...) is
-# deliberately NOT in this set, since that IS real signal. Only applies when
-# the message reduces to exactly this ONE token — "hi, cleaning ko price?"
-# still carries real content and is unaffected.
-_AMBIGUOUS_GREETING_TOKENS = {
-    "hi", "hlo", "hllo", "hello", "hey", "heya", "heyy", "yo", "yoo", "sup", "hola", "hii", "oi", "ok", "okay",
-}
+
 _WORD_RE = re.compile(r"[a-zA-Z]+")
 
 # Urgent fix (real bug found live, PHASE_STATUS.md): Phase 25 already
@@ -1244,7 +1230,7 @@ _ROMAN_NEPALI_WORDS = {
     #   override_beats_anchoring already asserts "Can I get a cha (chai tea)..."
     #   stays "en", which adding "chai" here would break.
     # - "okay"/"ok" — already deliberately excluded as ambiguous/no-signal
-    #   (see _AMBIGUOUS_GREETING_TOKENS above); these are common neutral
+    #   (see _resolve_message_language: one word alone is no signal); these are common neutral
     #   English filler, not real Nepali evidence.
     # - bare "k" (half of "k xa") — a single letter, extremely common in
     #   English chat as "ok" shorthand; far too collision-prone even under
@@ -1263,9 +1249,10 @@ def _resolve_message_language(content: str, llm_reported: str | None) -> str | N
         return ConversationLanguage.NE_DEVA.value
 
     words = _WORD_RE.findall(content)
-    if len(words) == 1 and words[0].lower() in _AMBIGUOUS_GREETING_TOKENS:
-        # Too little real signal to decide anything from — never locks,
-        # never counts toward (or against) an existing streak.
+    if not words or (len(words) == 1 and words[0].lower() not in _ROMAN_NEPALI_WORDS):
+        # Too little real signal to decide anything from ("ok", "hi", "thanks", "price?", "👍") — never locks, never
+        # counts toward (or against) an existing streak. Simulator 2026-10-01: one English word or an emoji must not
+        # move a Nepali chat to English.
         return None
 
     # Distinct words, not occurrences -- "la la la" (an English interjection, not

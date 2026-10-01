@@ -137,7 +137,10 @@ def finalize_reply(
     opener = _opener(text)
     if opener and any(_opener(r) == opener for r in previous_replies[-_OPENER_WINDOW:]):
         rest = _OPENER_RE.sub("", text.strip(), count=1)
-        if len(rest.split()) >= 2:
+        # In a Nepali chat a short reply's opener can be its only Nepali: "Huss, welcome! 😊" lost "Huss," and went out
+        # as English "Welcome! 😊" (simulator 2026-10-01, booking_flow "thank you hai").
+        nepali_chat = language in _NEPALI_ROMAN or language == ConversationLanguage.NE_DEVA.value
+        if len(rest.split()) >= (4 if nepali_chat else 2):
             changes.append(f"dropped repeated opener: {opener!r}")
             text = _capitalize(rest)
     return text, changes

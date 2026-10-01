@@ -189,6 +189,12 @@ def test_offer_ending_survives_once_but_not_on_the_next_turns():
 def test_same_opener_is_never_used_twice_in_a_row():
     assert _finalize("Got it — which day works?", previous=["Got it — cleaning it is."]) == "Which day works?"
     assert _finalize("Got it — which day works?", previous=["Sure, cleaning it is."]) == "Got it — which day works?"
+    # Nepali chat: the opener is a short reply's only Nepali ("thank you hai" -> "Welcome! 😊" in English)
+    previous = ["Huss — Car Driving Course, Sukrabar, beluka 4 baje."]
+    assert _finalize("Huss, welcome! 😊", previous=previous, language="ne_roman") == "Huss, welcome! 😊"
+    assert _finalize("Huss — kati baje aaunu huncha bhannus?", previous=previous, language="ne_roman") == (
+        "Kati baje aaunu huncha bhannus?"
+    )
 
 
 def test_repeated_real_request_is_kept():

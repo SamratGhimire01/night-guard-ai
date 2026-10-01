@@ -140,3 +140,9 @@ def test_latin_greeting_never_locks_or_replies_devanagari(chat_session):
         assert rows[0][1] != "ne_deva", rows
         assert _expected_response_language(Conversation(), greeting, None, None, "ne_deva") == "ne_roman"
     assert _expected_response_language(Conversation(), "hi", None, None, None) is None
+
+
+def test_english_word_or_emoji_alone_never_moves_a_nepali_chat(chat_session):
+    rows = chat_session([("Teeth Cleaning kati parcha? bholi milcha?", "ne_roman"), ("thanks", "en"), ("👍", "en"),
+                         ("great", "en"), ("perfect", "en")])
+    assert _locks(rows) == ["ne_roman"] * 5, rows

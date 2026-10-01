@@ -2189,7 +2189,8 @@ def test_passive_single_word_drift_does_not_override_lock_or_create_handoff(two_
     with SessionLocal() as db:
         conversation = db.get(Conversation, conversation_id)
         assert conversation.detected_language == "ne_roman"
-        assert conversation.language_switch_streak == 1
+        # One word alone is no signal at all (simulator 2026-10-01): it doesn't even start a streak.
+        assert conversation.language_switch_streak == 0
 
 
 def test_explicit_language_switch_reverse_direction_nepali(two_businesses, monkeypatch):
