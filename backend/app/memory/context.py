@@ -47,6 +47,7 @@ def assemble_context(
             {
                 "sender_type": message.sender_type.value,
                 "content": message.content,
+                "detected_intent": message.detected_intent,
                 "created_at": message.created_at.isoformat(),
             }
             for message in recent_messages

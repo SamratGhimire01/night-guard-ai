@@ -1439,6 +1439,21 @@ def _response_language_mismatch(response_text: str, expected: str, customer_mess
     return False
 
 
+def _without_off_topic_turns(context: dict) -> dict:
+    """The context minus every off-topic customer message and the reply right after it."""
+    kept, skip_reply = [], False
+    for message in context["recent_messages"]:
+        if message["sender_type"] == "customer":
+            skip_reply = message.get("detected_intent") == ConversationIntent.OFF_TOPIC.value
+            if skip_reply:
+                continue
+        elif skip_reply:
+            skip_reply = False
+            continue
+        kept.append(message)
+    return {**context, "recent_messages": kept}
+
+
 def _handle_provider_failure(
     db: Session,
     *,
@@ -1994,16 +2009,21 @@ def _handle_turn(
             conversation_id, pre_call_language or "en", len(style_exemplars),
             [{"id": str(e.id), "intent": e.intent, "register": e.register, "text": e.text} for e in style_exemplars],
         )
-        classification = classify_and_respond(
-            business=business,
-            context=context,
-            knowledge_results=knowledge_results,
-            customer_message=content,
-            services=services,
-            locked_language=pre_call_language,
-            hours=hours,
-            style_exemplars=style_exemplars,
+        call = dict(
+            business=business, knowledge_results=knowledge_results, customer_message=content, services=services,
+            locked_language=pre_call_language, hours=hours, style_exemplars=style_exemplars,
         )
+        try:
+            classification = classify_and_respond(context=context, **call)
+        except ContentFilterError:
+            # An earlier filtered message (declined as off-topic) is still in the history and trips the filter on every
+            # later turn (simulator jailbreak: "ok fine, how much is X?" got off-topic too). Retry once without the
+            # off-topic turns, and keep that history for the rest of this turn's calls.
+            clean = _without_off_topic_turns(context)
+            if clean["recent_messages"] == context["recent_messages"]:
+                raise
+            context = clean
+            classification = classify_and_respond(context=context, **call)
         # Saved now, before the grounding guard below (or anything else) can
         # replace classification.response -- the stuck-loop check further down
         # must see what the model itself kept drafting, not whatever
